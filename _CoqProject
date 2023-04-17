@@ -1,0 +1,5 @@
+-Q src Lib
+-R theories Theories
+
+src/Main.v
+
