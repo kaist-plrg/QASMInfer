@@ -18,3 +18,36 @@ such as `Lib/` for library modules and `Theory` for theory modules.
 
 `doc/` is a directory containing my project's documentation,
 such as design documents, user guides, or any other relevant materials.
+
+
+GPT4 suggestion for the file system:
+
+your_openqasm_interpreter/
+│
+├── _CoqProject
+├── Makefile
+│
+├── src/
+│   ├── Utils/
+│   │   ├── <utility_module>.v
+│   │   └── ...
+│   │
+│   ├── Gates/
+│   │   ├── <gate_module>.v
+│   │   └── ...
+│   │
+│   ├── Parser/
+│   │   ├── Lexer.v
+│   │   ├── Parser.v
+│   │   └── Syntax.v
+│   │
+│   ├── Interpreter/
+│   │   ├── Environment.v
+│   │   ├── Interpreter.v
+│   │   └── Semantics.v
+│   │
+│   └── Main.v
+│
+└── doc/
+    └── ...
+
