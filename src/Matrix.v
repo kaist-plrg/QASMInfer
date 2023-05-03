@@ -35,7 +35,7 @@ Proof.
   reflexivity.
 Qed.
 
-Definition Mbop (bop : C -> C -> C) (m1 m2 : Matrix) (Hrows : rows m1 = rows m2) (Hcols : cols m1 = cols m2):
+Definition Mbop (bop: C -> C -> C) (m1 m2: Matrix) (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2):
   {m: Matrix | rows m = rows m1 /\ cols m = cols m1}.
 Proof.
   destruct (bop_lists bop (data m1) (data m2) (matrix_shape_size m1 m2 Hrows Hcols)) as [newData newH].
@@ -50,6 +50,14 @@ Proof.
   - split. reflexivity. reflexivity.
   - rewrite newH. apply data_length.
 Defined.
+
+Theorem Mbop_correct: forall
+  (bop: C -> C -> C)
+  (m1 m2: Matrix)
+  (Hrows: rows m1 = rows m2)
+  (Hcols: cols m1 = cols m2),
+  (proj1_sig (Mbop bop m1 m2 Hrows Hcols)
+
 
 
 (* Definition Mopp (m: Matrix): option Matrix

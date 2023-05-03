@@ -8,6 +8,39 @@ Import ListNotations.
 Open Scope bool_scope.
 Open Scope list_scope.
 
+(* get an nth element of a list safely ========================================================== *)
+Fixpoint nth_safe {A: Type} (l: list A) (n: nat) (H: n < length l): A.
+Proof.
+  destruct l as [|h t].
+  - simpl in H.
+    lia.
+  - destruct n as [|n'].
+    + exact h.
+    + simpl in H.
+      refine (nth_safe A t n' _).
+      lia.
+Defined.
+
+(* We can believe that built-in `nth_error` function is correct. *)
+Property nth_safe_correct: forall (A: Type) (n: nat) (l: list A) (H: n < length l),
+  nth_error l n = Some (nth_safe l n H).
+Proof.
+  intros.
+  revert H.
+  revert n.
+  induction l as [|h t].
+  - intros.
+    simpl in H.
+    lia.
+  - intros.
+    destruct n as [|n'].
+    + reflexivity.
+    + simpl in H.
+      simpl.
+      apply IHt.
+Qed.
+
+(* ============================================================================================== *)
 
 Fixpoint bop_lists {A: Type} (bop: A -> A -> A) (l1 l2: list A) (H: length l1 = length l2):
 {l: list A | length l = length l1} :=
