@@ -1,12 +1,13 @@
 Require Export Util.
 Require Export Real.
 
-Declare Scope C_scope.
+
 Open Scope nat_scope.
-Open Scope R_scope.
-Open Scope C_scope.
 Bind Scope nat_scope with nat.
+Open Scope R_scope.
 Bind Scope R_scope with R.
+Open Scope util_scope.
+Declare Scope C_scope.
 Bind Scope C_scope with C.
 
 Definition C := (R * R)%type.
