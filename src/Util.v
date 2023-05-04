@@ -47,6 +47,22 @@ Proof.
       apply IHt.
 Qed.
 
+Lemma map_nth_safe: forall
+(A B: Type) (f: A -> B) (l: list A) (n nmap: nat) (H: n < length l) (Hmap: nmap < length (map f l)),
+nmap = n -> nth_safe (map f l) nmap Hmap = f (nth_safe l n H).
+Proof.
+  intros A B f l.
+  induction l as [|h t].
+  - intros. simpl in H. lia.
+  - intros.
+    destruct n as [|n'].
+    + subst nmap.
+      reflexivity.
+    + subst nmap.
+      apply IHt.
+      reflexivity.
+Qed.
+
 (* ============================================================================================== *)
 (* combine two lists using the given binary operator ============================================ *)
 

@@ -40,6 +40,84 @@ Defined.
 Notation "m '[' i Hi '][' j Hj ']'" :=
   (Mget m i j Hi Hj) (at level 9, i at level 9, Hi at level 9, j at level 9, Hj at level 9, no associativity).
 (* ============================================================================================== *)
+(* element-wise unary operation ================================================================= *)
+
+Definition Muop (uop: C -> C) (m: Matrix): {m': Matrix | rows m' = rows m /\ cols m' = cols m}.
+Proof.
+  refine (
+    exist _ {| rows := rows m;
+              cols := cols m;
+              data := map uop (data m);
+              data_length := _  |}
+              _
+  ).
+  simpl.
+  Unshelve.
+  - split. reflexivity. reflexivity.
+  - rewrite map_length.
+    apply data_length.
+Defined.
+
+Property Muop_correct: forall
+  (uop: C -> C)
+  (m1 m2: Matrix)
+  (i j: nat)
+  (Huop: rows m2 = rows m1 /\ cols m2 = cols m1)
+  (H1i: i < rows m1) (H1j: j < cols m1)
+  (H2i: i < rows m2) (H2j: j < cols m2),
+  exist _ m2 Huop = Muop uop m1 ->
+  m2[i H2i][j H2j] = uop m1[i H1i][j H1j].
+Proof.
+  intros.
+  inversion H.
+  subst m2.
+  unfold Mget.
+  simpl.
+  eapply map_nth_safe.
+  reflexivity.
+Qed.
+
+(* ============================================================================================== *)
+(* opposite of a matrix ========================================================================= *)
+
+Definition Mopp (m: Matrix): {m': Matrix | rows m' = rows m /\ cols m' = cols m} :=
+  Muop Copp m.
+
+Notation "- x" := (Mopp x) : M_scope.
+
+Property Mopp_correct: forall
+  (m1 m2: Matrix)
+  (i j: nat)
+  (Huop: rows m2 = rows m1 /\ cols m2 = cols m1)
+  (H1i: i < rows m1) (H1j: j < cols m1)
+  (H2i: i < rows m2) (H2j: j < cols m2),
+  exist _ m2 Huop = Mopp m1 ->
+  m2[i H2i][j H2j] = Copp m1[i H1i][j H1j].
+Proof.
+  apply Muop_correct.
+Qed.
+
+(* ============================================================================================== *)
+(* scalar multiplication ======================================================================== *)
+
+Definition Msmul (s: C) (m: Matrix): {m': Matrix | rows m' = rows m /\ cols m' = cols m} :=
+  Muop (Cmult s) m.
+
+Property Msuml_correct: forall
+  (s: C)
+  (m1 m2: Matrix)
+  (i j: nat)
+  (Huop: rows m2 = rows m1 /\ cols m2 = cols m1)
+  (H1i: i < rows m1) (H1j: j < cols m1)
+  (H2i: i < rows m2) (H2j: j < cols m2),
+  exist _ m2 Huop = Msmul s m1 ->
+  m2[i H2i][j H2j] = (Cmult s) m1[i H1i][j H1j].
+Proof.
+  intro s.
+  apply Muop_correct.
+Qed.
+
+(* ============================================================================================== *)
 (* element-wise binary operation ================================================================ *)
 
 Definition Mbop (bop: C -> C -> C) (m1 m2: Matrix) (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2):
@@ -68,7 +146,7 @@ Property Mbop_correct: forall
   (H2i: i < rows m2) (H2j: j < cols m2)
   (H3i: i < rows m3) (H3j: j < cols m3),
   exist _ m3 Hbop = Mbop bop m1 m2 Hrows Hcols ->
-  m3[i H3i][j H3j] = bop (m1[i H1i][j H1j]) (m2[i H2i][j H2j]).
+  m3[i H3i][j H3j] = bop m1[i H1i][j H1j] m2[i H2i][j H2j].
 Proof.
   intros.
   eapply bop_lists_correct.
@@ -160,5 +238,4 @@ Qed.
 
 (* ============================================================================================== *)
 
-(* Definition Mopp (m: Matrix): option Matrix
-Definition Mmult (m1 m2: Matrix): option Matrix. *)
+(* Definition Mmult (m1 m2: Matrix): option Matrix. *)
