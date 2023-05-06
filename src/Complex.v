@@ -13,8 +13,10 @@ Bind Scope C_scope with C.
 Definition C := (R * R)%type.
 
 Definition RTC (x: R): C := (x, 0).
+Definition NTC (n: nat): C := (INR n, 0).
 
 Coercion RTC : R >-> C.
+Coercion NTC : nat >-> C.
 
 Definition Cplus (x y : C) : C := (fst x + fst y, snd x + snd y).
 Definition Copp (x : C) : C := (-fst x, -snd x).

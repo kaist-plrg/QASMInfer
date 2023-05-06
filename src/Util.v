@@ -11,7 +11,61 @@ Open Scope bool_scope.
 Open Scope list_scope.
 Declare Scope util_scope.
 
-(* useful lemmas ================================================================================ *)
+(* a list of range 0..n ========================================================================= *)
+
+Fixpoint range (n: nat): list nat.
+Proof.
+  destruct n as [|n'].
+  - exact [].
+  - exact (range n' ++ [n']).
+Defined.
+
+Fact in_range_lt: forall (x n: nat), In x (range n) -> x < n.
+Proof.
+  induction n as [|n'].
+  - contradiction.
+  - simpl.
+    intros.
+    apply in_app_or in H.
+    destruct H.
+    + apply IHn' in H.
+      lia.
+    + simpl.
+      apply in_inv in H.
+      destruct H.
+      * lia.
+      * contradiction.
+Qed.
+
+Fact length_range: forall n: nat, length (range n) = n.
+Proof.
+  induction n as [|n'].
+  - reflexivity.
+  - simpl.
+    rewrite app_length.
+    simpl.
+    lia.
+Qed.
+
+(* ============================================================================================== *)
+(* mapping list with the proof of inclusion ===================================================== *)
+
+Fixpoint map_with_proof {A B: Type} (l: list A): (forall x, In x l -> B) -> list B :=
+  match l with
+  | [] => fun _ => []
+  | h :: t => fun f => (f h (in_eq h t)) :: (map_with_proof t (fun x H => f x (in_cons h x t H)))
+  end.
+
+Fact length_map_with_proof: forall (A B: Type) (l: list A) (f: (forall x, In x l -> B)),
+  length (map_with_proof l f) = length l.
+Proof.
+  intros.
+  induction l as [|h t].
+  - reflexivity.
+  - simpl.
+    f_equal.
+    apply IHt.
+Qed.
 
 (* ============================================================================================== *)
 (* get an nth element of a list safely ========================================================== *)
@@ -47,6 +101,15 @@ Proof.
       apply IHt.
 Qed.
 
+Lemma eq_nth_safe: forall (A: Type) (n: nat) (l: list A) (H1 H2: n < length l),
+  nth_safe l n H1 = nth_safe l n H2.
+Proof.
+  intros.
+  assert (H1 = H2) by apply proof_irrelevance.
+  rewrite H.
+  reflexivity.
+Qed.
+
 Lemma map_nth_safe: forall
 (A B: Type) (f: A -> B) (l: list A) (n nmap: nat) (H: n < length l) (Hmap: nmap < length (map f l)),
 nmap = n -> nth_safe (map f l) nmap Hmap = f (nth_safe l n H).
@@ -61,6 +124,51 @@ Proof.
     + subst nmap.
       apply IHt.
       reflexivity.
+Qed.
+
+Lemma firstn_nth_safe: forall
+  (A: Type) (l: list A) (n1 n2: nat)
+  (H1: n2 < length (firstn n1 l)) (H2: n2 < length l),
+  n1 >= n2 -> nth_safe (firstn n1 l) n2 H1 = nth_safe l n2 H2.
+Proof.
+  intros.
+  revert H1 H2 H.
+  revert l n2.
+  induction n1 as [|n1'].
+  - intros.
+    simpl in H1.
+    lia.
+  - intros.
+    destruct l as [|h t].
+    + simpl in H2.
+      lia.
+    + simpl.
+      destruct n2 as [|n2'].
+      * reflexivity.
+      * apply IHn1'.
+        lia.
+Qed.
+
+Lemma skipn_nth_safe: forall
+  (A: Type) (l: list A) (n1 n2: nat)
+  (H1: n2 < length (skipn n1 l)) (H2: n1 + n2 < length l),
+  nth_safe (skipn n1 l) n2 H1 = nth_safe l (n1 + n2) H2.
+Proof.
+  intros A l.
+  induction l as [|h t].
+  - intros.
+    simpl in H2.
+    lia.
+  - intros.
+    destruct n1 as [|n1'].
+    + destruct n2 as [|n2'].
+      * reflexivity.
+      * intros.
+        simpl.
+        apply eq_nth_safe.
+    + intros.
+      simpl.
+      apply IHt.
 Qed.
 
 (* ============================================================================================== *)
