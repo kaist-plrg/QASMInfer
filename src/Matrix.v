@@ -386,6 +386,33 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
+(* conjucate tranpose of a matrix =============================================================== *)
+
+Definition Mconjtrans (m: Matrix): {mt: Matrix | rows mt = cols m /\ cols mt = rows m}.
+Proof.
+  refine( exist _
+    {|
+      rows := cols m;
+      cols := rows m;
+      inner := fun i j => Cconj (inner m j i);
+    |} _ ).
+    Unshelve.
+    split. reflexivity. reflexivity.
+    apply cols_pos. apply rows_pos.
+Defined.
+
+Property Mconjtrans_correct: forall (m mct: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _) (Hmct: _),
+  exist _ mct Hmct = Mconjtrans m -> mct[[j Hj'|i Hi']] = Cconj(m[[i Hi|j Hj]]) .
+Proof.
+  unfold Mconjtrans.
+  unfold Mget.
+  intros.
+  inversion H.
+  simpl.
+  reflexivity.
+Qed.
+
+(* ============================================================================================== *)
 
 (* Definition Mmult (m1 m2: Matrix): option Matrix. *)
 (* Definition transpose, dagger *)
