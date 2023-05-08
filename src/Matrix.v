@@ -244,8 +244,6 @@ Definition Mplus
   {m: Matrix | rows m = rows m1 /\ cols m = cols m1} :=
   Mbop Cplus m1 m2 Hrows Hcols.
 
-Infix "+" := Mplus : M_scope.
-
 Property Mplus_correct: forall
   (m1 m2 m3: Matrix)
   (i j: nat)
@@ -267,8 +265,6 @@ Definition Mminus
   (m1 m2: Matrix) (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2):
   {m: Matrix | rows m = rows m1 /\ cols m = cols m1} :=
   Mbop Cminus m1 m2 Hrows Hcols.
-
-Infix "-" := Mminus : M_scope.
 
 Property Mminus_correct: forall
   (m1 m2 m3: Matrix)
@@ -360,6 +356,33 @@ Proof.
         reflexivity.
     + contradiction.
   - contradiction.
+Qed.
+
+(* ============================================================================================== *)
+(* transpose of a matrix ======================================================================== *)
+
+Definition Mtranspose (m: Matrix): {mt: Matrix | rows mt = cols m /\ cols mt = rows m}.
+Proof.
+  refine( exist _
+    {|
+      rows := cols m;
+      cols := rows m;
+      inner := fun i j => inner m j i;
+    |} _ ).
+    Unshelve.
+    split. reflexivity. reflexivity.
+    apply cols_pos. apply rows_pos.
+Defined.
+
+Property Mtranspose_correct: forall (m mt: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _) (Hmt: _),
+  exist _ mt Hmt = Mtranspose m -> m[[i Hi|j Hj]] = mt[[j Hj'|i Hi']].
+Proof.
+  unfold Mtranspose.
+  unfold Mget.
+  intros.
+  inversion H.
+  simpl.
+  reflexivity.
 Qed.
 
 (* ============================================================================================== *)
