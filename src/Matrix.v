@@ -106,6 +106,20 @@ Proof.
   lia.
 Defined.
 
+Fact eq_dot_product: forall (m1 m2 m3 m4: Matrix) (H1: _) (H2: _) (H3: _) (H4: _) (H5: _) (H6: _),
+  m1 = m3 -> m2 = m4 -> dot_product m1 m2 H1 H2 H3 = dot_product m3 m4 H4 H5 H6.
+Proof.
+  intros.
+  subst m1 m2.
+  assert (H1 = H4) as HP1 by apply proof_irrelevance.
+  assert (H2 = H5) as HP2 by apply proof_irrelevance.
+  assert (H3 = H6) as HP3 by apply proof_irrelevance.
+  rewrite HP1.
+  rewrite HP2.
+  rewrite HP3.
+  reflexivity.
+Qed.
+
 (* ============================================================================================== *)
 (* element-wise unary operation ================================================================= *)
 
@@ -310,7 +324,43 @@ Defined.
 
 Definition Mmult (m1 m2: Matrix) (H: cols m1 = rows m2): {m: Matrix | rows m = rows m1 /\ cols m = cols m2}.
 Proof.
+  refine( exist _
+    {|rows:= rows m1;
+      cols:= cols m2;
+      inner:= fun i j => Mmult_inner m1 m2 i j H;
+    |} _).
+  Unshelve.
+  split. reflexivity. reflexivity.
+  apply rows_pos. apply cols_pos.
+Defined.
 
+Property Mmult_correct: forall (m1 m2 m r c: Matrix) (i j: nat)
+  (Hi: _) (Hj: _) (H: _) (Hm: _) (Hmi: _) (Hmj: _) (Hr1: _) (Hr2: _) (Hc1: _) (Hc2: _) (Hrc: _),
+  exist _ m Hm = Mmult m1 m2 H ->
+  exist _ r Hr1 = extract_row m1 i Hi ->
+  exist _ c Hc1 = extract_col m2 j Hj ->
+  m[[i Hmi|j Hmj]] = dot_product r c Hr2 Hc2 Hrc.
+Proof.
+  intros.
+  inversion H0.
+  unfold Mget.
+  rewrite H4.
+  simpl.
+  unfold Mmult_inner.
+  destruct (lt_dec i (rows m1)).
+  - destruct (lt_dec j (cols m2)).
+    + simpl.
+      inversion H1.
+      inversion H2.
+      simpl.
+      apply eq_dot_product.
+      * rewrite H5.
+        reflexivity.
+      * rewrite H6.
+        reflexivity.
+    + contradiction.
+  - contradiction.
+Qed.
 
 (* ============================================================================================== *)
 
