@@ -379,6 +379,3 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
-
-(* Definition trace, partial trace *)
-(* Definition tensor_product *)
