@@ -414,7 +414,5 @@ Qed.
 
 (* ============================================================================================== *)
 
-(* Definition Mmult (m1 m2: Matrix): option Matrix. *)
-(* Definition transpose, dagger *)
 (* Definition trace, partial trace *)
 (* Definition tensor_product *)
