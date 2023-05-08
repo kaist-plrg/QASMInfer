@@ -295,8 +295,22 @@ Qed.
 (* ============================================================================================== *)
 (* matrix multiplication ======================================================================== *)
 
-Definition Mmult
-  (m1 m2: Matrix) (H: cols m1 = rows m2): {m: Matrix | rows m = rows m1 /\ cols m = cols m2}.
+Definition Mmult_inner (m1 m2: Matrix) (i j: nat) (H: cols m1 = rows m2): C.
+Proof.
+  destruct (lt_dec i (rows m1)) as [Hi | Hi'].
+  - destruct (lt_dec j (cols m2)) as [Hj | Hj'].
+    + destruct (extract_row m1 i Hi) as [r Hr].
+      destruct Hr as [Hr1 Hr2].
+      destruct (extract_col m2 j Hj) as [c Hc].
+      destruct Hc as [Hc1 Hc2].
+      refine (dot_product r c Hr1 Hc2 _). lia.
+    + exact O.
+  - exact O.
+Defined.
+
+Definition Mmult (m1 m2: Matrix) (H: cols m1 = rows m2): {m: Matrix | rows m = rows m1 /\ cols m = cols m2}.
+Proof.
+
 
 (* ============================================================================================== *)
 
