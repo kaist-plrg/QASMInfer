@@ -13,105 +13,97 @@ Bind Scope C_scope with C.
 Record Matrix := {
   rows: nat;
   cols: nat;
-  data: list C;
+  inner: nat -> nat -> C;
   rows_pos: rows > 0;
   cols_pos: cols > 0;
-  data_length: length data = (rows * cols)%nat
 }.
-
-Lemma matrix_shape_size: forall m1 m2: Matrix,
-  rows m1 = rows m2 -> cols m1 = cols m2 -> length (data m1) = length (data m2).
-Proof.
-  intros m1 m2 Hrows Hcols.
-  repeat rewrite data_length.
-  rewrite Hrows.
-  rewrite Hcols.
-  reflexivity.
-Qed.
 
 (* ============================================================================================== *)
 (* get an element from a matrix ================================================================= *)
 
-Definition Mget (m : Matrix) (i j: nat) (Hi: i < rows m) (Hj: j < cols m): C.
-Proof.
-  refine (nth_safe (data m) (i * cols m + j) _).
-  rewrite data_length.
-  nia.
-Defined.
+Definition Mget (m : Matrix) (i j: nat) (Hi: i < rows m) (Hj: j < cols m): C := inner m i j.
 
 Notation "m '[[' i Hi '|' j Hj ']]'" :=
   (Mget m i j Hi Hj) (at level 10, i at level 9, Hi at level 9, j at level 9, Hj at level 9, no associativity).
 
 (* ============================================================================================== *)
-(* extract i-th row ============================================================================= *)
+(* row and column vectors ======================================================================= *)
 
-Definition extract_row (m: Matrix) (i: nat) (H: i < rows m): {l: list C | length l = cols m}.
+Definition extract_row (m: Matrix) (i: nat) (H: i < rows m): {m': Matrix | rows m' = 1 /\ cols m' = cols m}.
 Proof.
-  refine( exist _ (firstn (cols m) (skipn (i * cols m) (data m))) _).
-  apply firstn_length_le.
-  rewrite skipn_length.
-  rewrite data_length.
-  nia.
+  refine ( exist _
+    {|rows := 1;
+      cols := cols m;
+      inner := fun i' j' => inner m (i + i')%nat (j');
+      rows_pos := _;
+      cols_pos := _;
+    |} _).
+  Unshelve.
+  - split. reflexivity. reflexivity.
+  - lia.
+  - apply cols_pos.
 Defined.
 
 Property extract_row_correct: forall
-  (m: Matrix) (i j: nat) (row: list C)
-  (Hi: i < rows m) (Hj: j < cols m) (Hr: length row = cols m) (Hjr: j < length row),
-  exist _ row Hr = extract_row m i Hi ->
-  nth_safe row j Hjr = m[[i Hi|j Hj]].
+  (m r: Matrix) (i j: nat)
+  (Hi Hi': i < rows m) (Hj: j < cols m) (Hr: rows r = 1 /\ cols r = cols m) (Hir: 0 < rows r) (Hjr: j < cols r),
+  exist _ r Hr = extract_row m i Hi ->
+  r[[0 Hir|j Hjr]] = m[[i Hi'|j Hj]].
 Proof.
   unfold extract_row.
-  unfold Mget.
   intros.
-  revert Hj Hjr.
   inversion H.
+  unfold Mget.
+  rewrite H1.
   intros.
-  assert (j < length (skipn (i * cols m) (data m))) as H2.
-  { rewrite skipn_length.
-    rewrite data_length.
-    clear H.
-    nia. }
-  rewrite firstn_nth_safe with (H2 := H2).
-  assert (i * cols m + j < length (data m)) as H3.
-  { rewrite data_length.
-    clear H.
-    nia. }
-  rewrite skipn_nth_safe with (H2 := H3).
-  apply eq_nth_safe.
-  clear H.
-  lia.
+  simpl.
+  replace (i + 0)%nat with i by lia.
+  reflexivity.
 Qed.
 
-(* ============================================================================================== *)
-(* extract j-th column ========================================================================== *)
-
-(* Fixpoint extract_col_suppl
-  (data: list C) (cols: nat) (j: nat) (acc: list C) (H: j < cols): list C.
+Definition extract_col (m: Matrix) (j: nat) (H: j < cols m): {m': Matrix | rows m' = rows m /\ cols m' = 1}.
 Proof.
-  destruct data as [|h t].
-  - exact acc.
-  - refine (extract_col_suppl (skipn cols (h :: t)) cols j (acc ++ [nth_safe (firstn cols (h :: t)) j _]) H). *)
-
-Definition ith_of_jth_col
-  (m: Matrix) (j: nat) (Hj: j < cols m)
-  (i: nat) (Hin: In i (range (rows m))): C.
-Proof.
-  refine (nth_safe (data m) (i * cols m + j) _).
-  rewrite data_length.
-  apply in_range_lt in Hin.
-  nia.
+  refine ( exist _
+    {|rows := rows m;
+      cols := 1;
+      inner := fun i' j' => inner m (i')%nat (j + j');
+    |} _).
+  Unshelve.
+  - split. reflexivity. reflexivity.
+  - apply rows_pos.
+  - lia.
 Defined.
 
-Definition extract_col (m: Matrix) (j: nat) (H: j < cols m): {l: list C | length l = rows m}.
+Property extract_col_correct: forall
+  (m c: Matrix) (i j: nat)
+  (Hi: i < rows m) (Hj Hj': j < cols m) (Hc: rows c = rows m /\ cols c = 1) (Hic: i < rows c) (Hjc: 0 < cols c),
+  exist _ c Hc = extract_col m j Hj ->
+  c[[i Hic|0 Hjc]] = m[[i Hi|j Hj']].
 Proof.
-  refine (
-    exist _
-    (map_with_proof (range(rows m)) (ith_of_jth_col m j H))
-    _
-  ).
-  rewrite length_map_with_proof.
-  rewrite length_range.
+  unfold extract_col.
+  intros.
+  inversion H.
+  unfold Mget.
+  rewrite H1.
+  intros.
+  simpl.
+  replace (j + 0)%nat with j by lia.
   reflexivity.
+Qed.
+
+Fixpoint dot_product_suppl (r c: Matrix) (idx: nat)
+  (Hi: idx <= cols r) (Hr: rows r = 1) (Hc: cols c = 1) (Hrc: cols r = rows c): C.
+Proof.
+  destruct idx as [|idx'].
+  - exact O.
+  - refine (r[[O _|idx' _]] * c[[idx' _|O _]] + dot_product_suppl r c idx' _ Hr Hc Hrc).
+    lia. lia. lia. lia. lia.
+Defined.
+
+Definition dot_product (r c: Matrix) (Hr: rows r = 1) (Hc: cols c = 1) (Hrc: cols r = rows c): C.
+Proof.
+  refine (dot_product_suppl r c (cols r) _ Hr Hc Hrc).
+  lia.
 Defined.
 
 (* ============================================================================================== *)
@@ -122,7 +114,7 @@ Proof.
   refine (
     exist _ {| rows := rows m;
               cols := cols m;
-              data := map uop (data m)
+              inner := fun i j => uop (inner m i j)
             |}
             _
   ).
@@ -131,8 +123,6 @@ Proof.
   - split. reflexivity. reflexivity.
   - apply rows_pos.
   - apply cols_pos.
-  - rewrite map_length.
-    apply data_length.
 Defined.
 
 Property Muop_correct: forall
@@ -143,14 +133,13 @@ Property Muop_correct: forall
   (H1i: i < rows m1) (H1j: j < cols m1)
   (H2i: i < rows m2) (H2j: j < cols m2),
   exist _ m2 Huop = Muop uop m1 ->
-  m2[i H2i][j H2j] = uop m1[i H1i][j H1j].
+  m2[[i H2i|j H2j]] = uop (m1[[i H1i|j H1j]]).
 Proof.
   intros.
   inversion H.
   subst m2.
   unfold Mget.
   simpl.
-  eapply map_nth_safe.
   reflexivity.
 Qed.
 
@@ -169,7 +158,7 @@ Property Mopp_correct: forall
   (H1i: i < rows m1) (H1j: j < cols m1)
   (H2i: i < rows m2) (H2j: j < cols m2),
   exist _ m2 Huop = Mopp m1 ->
-  m2[i H2i][j H2j] = Copp m1[i H1i][j H1j].
+  m2[[i H2i|j H2j]] = Copp (m1[[i H1i|j H1j]]).
 Proof.
   apply Muop_correct.
 Qed.
@@ -188,7 +177,7 @@ Property Msuml_correct: forall
   (H1i: i < rows m1) (H1j: j < cols m1)
   (H2i: i < rows m2) (H2j: j < cols m2),
   exist _ m2 Huop = Msmul s m1 ->
-  m2[i H2i][j H2j] = (Cmult s) m1[i H1i][j H1j].
+  m2[[i H2i|j H2j]] = (Cmult s) (m1[[i H1i|j H1j]]).
 Proof.
   intro s.
   apply Muop_correct.
@@ -200,19 +189,18 @@ Qed.
 Definition Mbop (bop: C -> C -> C) (m1 m2: Matrix) (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2):
   {m: Matrix | rows m = rows m1 /\ cols m = cols m1}.
 Proof.
-  destruct (bop_lists bop (data m1) (data m2) (matrix_shape_size m1 m2 Hrows Hcols)) as [newData newH].
+  (* destruct (bop_lists bop (data m1) (data m2) (matrix_shape_size m1 m2 Hrows Hcols)) as [newData newH]. *)
   refine (
-    exist _ {| rows := rows m1;
-             cols := cols m1;
-             data := newData;
-             data_length := _  |}
+    exist _ {|rows := rows m1;
+              cols := cols m1;
+              inner := fun i j => bop (inner m1 i j) (inner m2 i j);
+              |}
              _
   ).
   Unshelve.
   - split. reflexivity. reflexivity.
   - apply rows_pos.
   - apply cols_pos.
-  - rewrite newH. apply data_length.
 Defined.
 
 Property Mbop_correct: forall
@@ -225,24 +213,13 @@ Property Mbop_correct: forall
   (H2i: i < rows m2) (H2j: j < cols m2)
   (H3i: i < rows m3) (H3j: j < cols m3),
   exist _ m3 Hbop = Mbop bop m1 m2 Hrows Hcols ->
-  m3[i H3i][j H3j] = bop m1[i H1i][j H1j] m2[i H2i][j H2j].
+  m3[[i H3i|j H3j]] = bop (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
 Proof.
+  unfold Mbop, Mget.
   intros.
-  eapply bop_lists_correct.
-  - destruct Hbop as [e1 e2].
-    apply matrix_shape_size.
-    apply e1. apply e2.
-  - unfold Mbop in H.
-    destruct (bop_lists bop (data m1) (data m2) (matrix_shape_size m1 m2 Hrows Hcols)) as [x p] eqn:E.
-    rewrite E.
-    simpl.
-    inversion H.
-    reflexivity.
-  - rewrite Hcols.
-    reflexivity.
-  - destruct Hbop as [E1 E2].
-    rewrite E2.
-    reflexivity.
+  inversion H.
+  simpl.
+  reflexivity.
 Qed.
 
 (* ============================================================================================== *)
@@ -264,7 +241,7 @@ Property Mplus_correct: forall
   (H2i: i < rows m2) (H2j: j < cols m2)
   (H3i: i < rows m3) (H3j: j < cols m3),
   exist _ m3 Hbop = Mplus m1 m2 Hrows Hcols ->
-  m3[i H3i][j H3j] = Cplus (m1[i H1i][j H1j]) (m2[i H2i][j H2j]).
+  m3[[i H3i|j H3j]] = Cplus (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
 Proof.
   apply Mbop_correct.
 Qed.
@@ -288,7 +265,7 @@ Property Mminus_correct: forall
   (H2i: i < rows m2) (H2j: j < cols m2)
   (H3i: i < rows m3) (H3j: j < cols m3),
   exist _ m3 Hbop = Mminus m1 m2 Hrows Hcols ->
-  m3[i H3i][j H3j] = Cminus (m1[i H1i][j H1j]) (m2[i H2i][j H2j]).
+  m3[[i H3i|j H3j]] = Cminus (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
 Proof.
   apply Mbop_correct.
 Qed.
@@ -310,20 +287,13 @@ Property Meltmul_correct: forall
   (H2i: i < rows m2) (H2j: j < cols m2)
   (H3i: i < rows m3) (H3j: j < cols m3),
   exist _ m3 Hbop = Meltmul m1 m2 Hrows Hcols ->
-  m3[i H3i][j H3j] = Cmult (m1[i H1i][j H1j]) (m2[i H2i][j H2j]).
+  m3[[i H3i|j H3j]] = Cmult (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
 Proof.
   apply Mbop_correct.
 Qed.
 
 (* ============================================================================================== *)
 (* matrix multiplication ======================================================================== *)
-
-Fixpoint dot_product (l1 l2: list C) (H: length l1 = length l2): C.
-Proof.
-  destruct (bop_lists Cmult l1 l2 H) as [l Hl].
-  apply (fold_left Cplus l 0).
-Defined.
-
 
 Definition Mmult
   (m1 m2: Matrix) (H: cols m1 = rows m2): {m: Matrix | rows m = rows m1 /\ cols m = cols m2}.

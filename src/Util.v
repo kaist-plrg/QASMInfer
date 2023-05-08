@@ -4,6 +4,7 @@ Require Export Reals.
 Require Export Psatz.
 Require Export List.
 Require Export Coq.Logic.ProofIrrelevance.
+Require Export Coq.Logic.PropExtensionality.
 Import ListNotations.
 
 Open Scope nat_scope.
@@ -17,7 +18,7 @@ Fixpoint range_suppl (n i: nat): list nat.
 Proof.
   destruct n as [|n'].
   - exact [].
-  - exact (0 + i :: range_suppl n' (i + 1)).
+  - exact (i :: range_suppl n' (i + 1)).
 Defined.
 
 Definition range (n: nat): list nat := range_suppl n 0.
@@ -70,6 +71,17 @@ Fixpoint map_with_proof {A B: Type} (l: list A): (forall x, In x l -> B) -> list
   | h :: t => fun f => (f h (in_eq h t)) :: (map_with_proof t (fun x H => f x (in_cons h x t H)))
   end.
 
+Fixpoint map_range_with_proof {A: Type} (n m: nat): (forall x, x < m + n -> A) -> list A.
+Proof.
+  destruct (range_suppl n m) as [|h t] eqn: E.
+  - refine ( fun _ => []).
+  - destruct n as [|n'].
+    + simpl in E. discriminate E.
+    + refine (fun f => (f h _) :: (map_range_with_proof A n' (1 + m) (fun x H => f x _))).
+      * simpl in E. inversion E. lia.
+      * lia.
+Defined.
+
 Fact length_map_with_proof: forall (A B: Type) (l: list A) (f: (forall x, In x l -> B)),
   length (map_with_proof l f) = length l.
 Proof.
@@ -83,6 +95,16 @@ Qed.
 
 Fact fun_eq_in_map_with_proof:
   forall (A B: Type) (l: list A) (f: forall x, In x l -> B) (x: A) (H1: In x l) (H2: In x l),
+  f x H1 = f x H2.
+Proof.
+  intros.
+  assert (H1 = H2) by apply proof_irrelevance.
+  rewrite H.
+  reflexivity.
+Qed.
+
+Fact fun_eq_in_map_range_with_proof:
+  forall (A: Type) (x n: nat) (f: forall x, x < n -> A) (H1: x < n) (H2: x < n),
   f x H1 = f x H2.
 Proof.
   intros.
@@ -195,6 +217,36 @@ Proof.
       apply IHt.
 Qed.
 
+Fact range_suppl_map_range_with_proof:
+  forall (A: Type) (n m i: nat) (f: (forall x, x < m + n -> A))
+  (H1: i < length (map_range_with_proof n m f)) (H2: i + m < m + n),
+  nth_safe (map_range_with_proof n m f) i H1 = f (i + m) H2.
+Proof.
+  induction n as [|n'].
+  - intros.
+    simpl in H2.
+    lia.
+  - intros.
+    destruct i as [|i'].
+    + simpl.
+      apply fun_eq_in_map_range_with_proof.
+    + simpl.
+      assert ((forall x, x < m + S n') = (forall x, x < m + 1 + n')).
+      { apply propositional_extensionality.
+        split.
+        - intros. replace (m + 1 + n') with (m + S n') by lia. apply H.
+        - intros. replace (m + S n') with (m + 1 + n') by lia. apply H. }
+      specialize (IHn' (m + 1) i' f).
+      eapply IHn'.
+      rewrite H in IHn'.
+      rewrite f in H.
+      specialize (IHn' (m + 1) i' f).
+    unfold map_range_with_proof.
+    simpl in H1, H2.
+    simpl
+    destruct (eq_nat_dec i n') as [H3|H3].
+    +
+
 Fact range_suppl_map_with_proof:
   forall (A: Type) (l: list nat) (n m i: nat) (f: (forall x, In x l -> A))
   (H1: i < length (map_with_proof l f)) (H2: In (i + m) l),
@@ -225,6 +277,15 @@ Proof.
           inversion H.
           subst h.
           apply fun_eq_in_map_with_proof. }
+      * destruct n as [|n'].
+        { simpl in H. discriminate H. }
+        { simpl in H.
+          inversion H.
+          subst h.
+          specialize IHt with (n := n') (m := m + 1) (i := i').
+          apply IHt.
+          apply IHt in H4.
+          rewrite (IHt).
 
 
 Fact range_map_with_proof:
