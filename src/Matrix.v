@@ -43,7 +43,7 @@ Notation "m '[[' i Hi '|' j Hj ']]'" :=
   (Mget m i j Hi Hj) (at level 10, i at level 9, Hi at level 9, j at level 9, Hj at level 9, no associativity).
 
 (* ============================================================================================== *)
-(* extract i-th row or j-th column ============================================================== *)
+(* extract i-th row ============================================================================= *)
 
 Definition extract_row (m: Matrix) (i: nat) (H: i < rows m): {l: list C | length l = cols m}.
 Proof.
@@ -82,94 +82,37 @@ Proof.
   lia.
 Qed.
 
+(* ============================================================================================== *)
+(* extract j-th column ========================================================================== *)
 
-Definition jth_of_ith_row
-(m: Matrix) (i: nat) (Hi: i < rows m)
-(j: nat) (Hin: In j (range (cols m))): C.
+(* Fixpoint extract_col_suppl
+  (data: list C) (cols: nat) (j: nat) (acc: list C) (H: j < cols): list C.
 Proof.
-  refine (m[[i Hi|j _]]).
-  apply in_range_lt.
-  apply Hin.
+  destruct data as [|h t].
+  - exact acc.
+  - refine (extract_col_suppl (skipn cols (h :: t)) cols j (acc ++ [nth_safe (firstn cols (h :: t)) j _]) H). *)
+
+Definition ith_of_jth_col
+  (m: Matrix) (j: nat) (Hj: j < cols m)
+  (i: nat) (Hin: In i (range (rows m))): C.
+Proof.
+  refine (nth_safe (data m) (i * cols m + j) _).
+  rewrite data_length.
+  apply in_range_lt in Hin.
+  nia.
 Defined.
 
-Definition extract_row (m: Matrix) (i: nat) (H: i < rows m): {l: list C | length l = cols m}.
+Definition extract_col (m: Matrix) (j: nat) (H: j < cols m): {l: list C | length l = rows m}.
 Proof.
   refine (
     exist _
-    (map_with_proof (range(cols m)) (jth_of_ith_row m i H))
+    (map_with_proof (range(rows m)) (ith_of_jth_col m j H))
     _
   ).
   rewrite length_map_with_proof.
   rewrite length_range.
   reflexivity.
 Defined.
-
-(* Definition extract_row (m: Matrix) (i: nat) (H: i < rows m): {l: list C | length l = cols m}.
-
-Fixpoint extract_row_suppl (m: Matrix) (i len: nat) (Hi: i < rows m) (Hlen: len <= cols m): {l: list C | length l = len}.
-Proof.
-  destruct len as [|j].
-  - exists []. reflexivity.
-  - remember [(Mget m i j Hi Hlen)] as t.
-    assert (j <= cols m) as Hj by lia.
-    destruct (extract_row_suppl m i j Hi Hj) as [l' H'].
-    refine (exist _ (l' ++ t) _).
-    rewrite app_length.
-    rewrite H'.
-    subst t.
-    simpl.
-    lia.
-Defined.
-
-Definition extract_row (m: Matrix) (i: nat) (H: i < rows m): {l: list C | length l = cols m}.
-Proof.
-  refine (extract_row_suppl m i (cols m) H _). lia.
-Defined. *)
-
-Property extract_row_correct: forall
-  (m1 m2: Matrix) (i1 i2 j1 j2 r1 r2 c1 c2: nat) (row: list C)
-  (Hi1: i1 < rows m1) (Hj1: j1 < length row) (Hl: length row = cols m1)
-  (Hi2: i2 < rows m2) (Hj2: j2 < cols m2),
-  m1 = m2 -> i1 = i2 -> j1 = j2 ->
-  row = proj1_sig (extract_row m1 i1 Hi1) ->
-  nth_safe row j1 Hj1 = Mget m2 i2 j2 Hi2 Hj2.
-Proof.
-  unfold extract_row.
-  (* unfold map_with_proof. *)
-  simpl.
-  intros.
-  revert Hl Hj2 Hi2 Hj1.
-  induction j1 as [|j1'].
-  - subst m2 i2 j2.
-    destruct row as [|h t] eqn: E.
-    + assert (@length nat [] = length( map_with_proof (range (cols m1)) (jth_of_ith_row m1 i1 Hi1))) as H.
-      { rewrite <- H2.
-        reflexivity.
-      }
-      simpl in H.
-      rewrite length_map_with_proof in H.
-      rewrite length_range in H.
-      lia.
-    + simpl.
-      destruct (cols m1).
-      unfold range in H2.
-  -
-
-
-
-
-
-
-  - intros.
-    simpl in Hl.
-    lia.
-  - intros.
-    subst i2 j2.
-    destruct j1 as [|j1'].
-    + simpl in *.
-      destruct (cols m).
-
-
 
 (* ============================================================================================== *)
 (* element-wise unary operation ================================================================= *)
@@ -388,3 +331,6 @@ Definition Mmult
 (* ============================================================================================== *)
 
 (* Definition Mmult (m1 m2: Matrix): option Matrix. *)
+(* Definition transpose, dagger *)
+(* Definition trace, partial trace *)
+(* Definition tensor_product *)

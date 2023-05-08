@@ -13,38 +13,52 @@ Declare Scope util_scope.
 
 (* a list of range 0..n ========================================================================= *)
 
-Fixpoint range (n: nat): list nat.
+Fixpoint range_suppl (n i: nat): list nat.
 Proof.
   destruct n as [|n'].
   - exact [].
-  - exact (range n' ++ [n']).
+  - exact (0 + i :: range_suppl n' (i + 1)).
 Defined.
+
+Definition range (n: nat): list nat := range_suppl n 0.
+
+Fact in_range_suppl_lt: forall (x n m: nat), In x (range_suppl n m) -> x < n + m.
+Proof.
+  induction n as [|n'].
+  - simpl. contradiction.
+  - simpl.
+    intros.
+    destruct H.
+    + lia.
+    + apply IHn' in H.
+      lia.
+Qed.
 
 Fact in_range_lt: forall (x n: nat), In x (range n) -> x < n.
 Proof.
-  induction n as [|n'].
-  - contradiction.
-  - simpl.
-    intros.
-    apply in_app_or in H.
-    destruct H.
-    + apply IHn' in H.
-      lia.
-    + simpl.
-      apply in_inv in H.
-      destruct H.
-      * lia.
-      * contradiction.
+  unfold range.
+  intros.
+  replace n with (n + 0).
+  apply in_range_suppl_lt.
+  apply H.
+  lia.
 Qed.
 
-Fact length_range: forall n: nat, length (range n) = n.
+Fact length_range_suppl: forall n m: nat, length (range_suppl n m) = n.
 Proof.
   induction n as [|n'].
   - reflexivity.
   - simpl.
-    rewrite app_length.
-    simpl.
-    lia.
+    intros.
+    f_equal.
+    apply IHn'.
+Qed.
+
+Fact length_range: forall n: nat, length (range n) = n.
+Proof.
+  unfold range.
+  intros.
+  apply length_range_suppl.
 Qed.
 
 (* ============================================================================================== *)
@@ -65,6 +79,16 @@ Proof.
   - simpl.
     f_equal.
     apply IHt.
+Qed.
+
+Fact fun_eq_in_map_with_proof:
+  forall (A B: Type) (l: list A) (f: forall x, In x l -> B) (x: A) (H1: In x l) (H2: In x l),
+  f x H1 = f x H2.
+Proof.
+  intros.
+  assert (H1 = H2) by apply proof_irrelevance.
+  rewrite H.
+  reflexivity.
 Qed.
 
 (* ============================================================================================== *)
@@ -170,6 +194,99 @@ Proof.
       simpl.
       apply IHt.
 Qed.
+
+Fact range_suppl_map_with_proof:
+  forall (A: Type) (l: list nat) (n m i: nat) (f: (forall x, In x l -> A))
+  (H1: i < length (map_with_proof l f)) (H2: In (i + m) l),
+  l = range_suppl n m -> nth_safe (map_with_proof l f) i H1 = f (i + m) H2.
+Proof.
+  induction l  as [|h t].
+  - intros.
+    simpl in H2.
+    contradiction.
+  - intros.
+    simpl in H1, H2.
+    destruct H2 as [H2 | H2].
+    + subst h.
+      simpl.
+      destruct i as [|i'].
+      * apply fun_eq_in_map_with_proof.
+      * destruct n as [|n'].
+        { simpl in H. discriminate H. }
+        { simpl in H.
+          inversion H.
+          lia. }
+    + simpl.
+      destruct i as [|i'].
+      * destruct n as [|n'].
+        { simpl in H. discriminate H. }
+        { simpl in H.
+          replace m with (0 + m) in H by reflexivity.
+          inversion H.
+          subst h.
+          apply fun_eq_in_map_with_proof. }
+
+
+Fact range_map_with_proof:
+  forall (A: Type) (l: list nat) (n i: nat) (f: (forall x , In x l -> A))
+  (H1: i < length (map_with_proof l f)) (H2: In i l),
+  l = range n -> nth_safe (map_with_proof l f) i H1 = f i H2.
+Proof.
+  unfold range.
+  intros A l.
+  induction l as [|h t IH].
+  - intros.
+    simpl in H2.
+    contradiction.
+  - intros.
+    simpl in H1.
+    simpl in H2.
+    destruct H2 as [H2 | H2].
+    + subst h.
+      simpl.
+      destruct i as [|i'].
+      * assert (in_eq 0 t = or_introl eq_refl) by apply proof_irrelevance.
+        rewrite H0.
+        reflexivity.
+      * destruct n as [|n'].
+        { simpl in H. discriminate H. }
+        { simpl in H. discriminate H. }
+    + destruct i as [|i'].
+      * simpl.
+        destruct n as [|n'].
+        { simpl in H. discriminate H. }
+        { simpl in H.
+          inversion H.
+          subst h.
+          assert (in_eq 0 t = or_intror H2) by apply proof_irrelevance.
+          rewrite H0.
+          reflexivity. }
+      * simpl.
+        eapply IH.
+
+
+
+
+
+
+
+  intros A l n.
+  revert l.
+  induction n as [|n'].
+  - simpl.
+    intros.
+    subst l.
+    simpl.
+    contradiction.
+  - simpl.
+    intros.
+    revert i f H1 H2.
+    subst l.
+    intros.
+    unfold map_with_proof.
+    simpl.
+
+
 
 (* ============================================================================================== *)
 (* combine two lists using the given binary operator ============================================ *)
