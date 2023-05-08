@@ -45,8 +45,7 @@ Proof.
 Defined.
 
 Property extract_row_correct: forall
-  (m r: Matrix) (i j: nat)
-  (Hi Hi': i < rows m) (Hj: j < cols m) (Hr: rows r = 1 /\ cols r = cols m) (Hir: 0 < rows r) (Hjr: j < cols r),
+  (m r: Matrix) (i j: nat) (Hi Hi': _) (Hj: _) (Hr: _) (Hir: _) (Hjr: _),
   exist _ r Hr = extract_row m i Hi ->
   r[[0 Hir|j Hjr]] = m[[i Hi'|j Hj]].
 Proof.
@@ -76,7 +75,7 @@ Defined.
 
 Property extract_col_correct: forall
   (m c: Matrix) (i j: nat)
-  (Hi: i < rows m) (Hj Hj': j < cols m) (Hc: rows c = rows m /\ cols c = 1) (Hic: i < rows c) (Hjc: 0 < cols c),
+  (Hi: _) (Hj Hj': _) (Hc: _) (Hic: _) (Hjc: _),
   exist _ c Hc = extract_col m j Hj ->
   c[[i Hic|0 Hjc]] = m[[i Hi|j Hj']].
 Proof.
@@ -140,12 +139,8 @@ Proof.
 Defined.
 
 Property Muop_correct: forall
-  (uop: C -> C)
-  (m1 m2: Matrix)
-  (i j: nat)
-  (Huop: rows m2 = rows m1 /\ cols m2 = cols m1)
-  (H1i: i < rows m1) (H1j: j < cols m1)
-  (H2i: i < rows m2) (H2j: j < cols m2),
+  (uop: C -> C) (m1 m2: Matrix) (i j: nat)
+  (Huop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
   exist _ m2 Huop = Muop uop m1 ->
   m2[[i H2i|j H2j]] = uop (m1[[i H1i|j H1j]]).
 Proof.
@@ -166,11 +161,8 @@ Definition Mopp (m: Matrix): {m': Matrix | rows m' = rows m /\ cols m' = cols m}
 Notation "- x" := (Mopp x) : M_scope.
 
 Property Mopp_correct: forall
-  (m1 m2: Matrix)
-  (i j: nat)
-  (Huop: rows m2 = rows m1 /\ cols m2 = cols m1)
-  (H1i: i < rows m1) (H1j: j < cols m1)
-  (H2i: i < rows m2) (H2j: j < cols m2),
+  (m1 m2: Matrix) (i j: nat)
+  (Huop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
   exist _ m2 Huop = Mopp m1 ->
   m2[[i H2i|j H2j]] = Copp (m1[[i H1i|j H1j]]).
 Proof.
@@ -184,14 +176,9 @@ Definition Msmul (s: C) (m: Matrix): {m': Matrix | rows m' = rows m /\ cols m' =
   Muop (Cmult s) m.
 
 Property Msuml_correct: forall
-  (s: C)
-  (m1 m2: Matrix)
-  (i j: nat)
-  (Huop: rows m2 = rows m1 /\ cols m2 = cols m1)
-  (H1i: i < rows m1) (H1j: j < cols m1)
-  (H2i: i < rows m2) (H2j: j < cols m2),
-  exist _ m2 Huop = Msmul s m1 ->
-  m2[[i H2i|j H2j]] = (Cmult s) (m1[[i H1i|j H1j]]).
+  (s: C) (m1 m2: Matrix) (i j: nat)
+  (Huop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
+  exist _ m2 Huop = Msmul s m1 -> m2[[i H2i|j H2j]] = (Cmult s) (m1[[i H1i|j H1j]]).
 Proof.
   intro s.
   apply Muop_correct.
@@ -218,14 +205,8 @@ Proof.
 Defined.
 
 Property Mbop_correct: forall
-  (bop: C -> C -> C)
-  (m1 m2 m3: Matrix)
-  (i j: nat)
-  (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2)
-  (Hbop: rows m3 = rows m1 /\ cols m3 = cols m1)
-  (H1i: i < rows m1) (H1j: j < cols m1)
-  (H2i: i < rows m2) (H2j: j < cols m2)
-  (H3i: i < rows m3) (H3j: j < cols m3),
+  (bop: C -> C -> C) (m1 m2 m3: Matrix) (i j: nat)
+  (Hrows: _) (Hcols: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
   exist _ m3 Hbop = Mbop bop m1 m2 Hrows Hcols ->
   m3[[i H3i|j H3j]] = bop (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
 Proof.
@@ -245,13 +226,8 @@ Definition Mplus
   Mbop Cplus m1 m2 Hrows Hcols.
 
 Property Mplus_correct: forall
-  (m1 m2 m3: Matrix)
-  (i j: nat)
-  (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2)
-  (Hbop: rows m3 = rows m1 /\ cols m3 = cols m1)
-  (H1i: i < rows m1) (H1j: j < cols m1)
-  (H2i: i < rows m2) (H2j: j < cols m2)
-  (H3i: i < rows m3) (H3j: j < cols m3),
+  (m1 m2 m3: Matrix) (i j: nat)
+  (Hrows: _) (Hcols: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
   exist _ m3 Hbop = Mplus m1 m2 Hrows Hcols ->
   m3[[i H3i|j H3j]] = Cplus (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
 Proof.
@@ -267,13 +243,8 @@ Definition Mminus
   Mbop Cminus m1 m2 Hrows Hcols.
 
 Property Mminus_correct: forall
-  (m1 m2 m3: Matrix)
-  (i j: nat)
-  (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2)
-  (Hbop: rows m3 = rows m1 /\ cols m3 = cols m1)
-  (H1i: i < rows m1) (H1j: j < cols m1)
-  (H2i: i < rows m2) (H2j: j < cols m2)
-  (H3i: i < rows m3) (H3j: j < cols m3),
+  (m1 m2 m3: Matrix) (i j: nat)
+  (Hrows: _) (Hcols: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
   exist _ m3 Hbop = Mminus m1 m2 Hrows Hcols ->
   m3[[i H3i|j H3j]] = Cminus (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
 Proof.
@@ -289,13 +260,8 @@ Definition Meltmul
   Mbop Cmult m1 m2 Hrows Hcols.
 
 Property Meltmul_correct: forall
-  (m1 m2 m3: Matrix)
-  (i j: nat)
-  (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2)
-  (Hbop: rows m3 = rows m1 /\ cols m3 = cols m1)
-  (H1i: i < rows m1) (H1j: j < cols m1)
-  (H2i: i < rows m2) (H2j: j < cols m2)
-  (H3i: i < rows m3) (H3j: j < cols m3),
+  (m1 m2 m3: Matrix) (i j: nat)
+  (Hrows: _) (Hcols: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
   exist _ m3 Hbop = Meltmul m1 m2 Hrows Hcols ->
   m3[[i H3i|j H3j]] = Cmult (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
 Proof.
