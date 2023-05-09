@@ -1,7 +1,7 @@
 Require Export Tensor.
 Import ListNotations.
 
-Declare Scope Q_scope.
+Declare Scope Qst_scope.
 Open Scope nat_scope.
 Bind Scope nat_scope with nat.
 Open Scope util_scope.
@@ -19,6 +19,9 @@ Record Qstate := {
   inner_rows_qst: rows inner_qst = (2^bits_qst)%nat;
   inner_cols_qst: cols inner_qst = 1;
 }.
+
+(* ============================================================================================== *)
+(* fundamental qubit states ===================================================================== *)
 
 Definition Qstate_0: Qstate.
 Proof.
@@ -84,5 +87,4 @@ Record Qoperator := {
   inner_cols_qop: cols inner_qop = (2^bits_qop)%nat;
 }.
 
-(* ============================================================================================== *)
 (* ============================================================================================== *)

@@ -1,14 +1,14 @@
 Require Export Util.
-Require Export Reals.
 
-
+Declare Scope C_scope.
 Open Scope nat_scope.
 Bind Scope nat_scope with nat.
 Open Scope R_scope.
 Bind Scope R_scope with R.
 Open Scope util_scope.
-Declare Scope C_scope.
+Open Scope C_scope.
 Bind Scope C_scope with C.
+
 
 Definition C := (R * R)%type.
 
@@ -26,12 +26,11 @@ Definition Cinv (x : C) : C := (fst x / (fst x ^ 2 + snd x ^ 2), - snd x / (fst 
 Definition Cdiv (x y : C) : C := Cmult x (Cinv y).
 
 (* Added exponentiation *)
-Fixpoint Cpow (c : C) (n : nat) : C :=
+(* Fixpoint Cpow (c : C) (n : nat) : C :=
   match n with
   | 0%nat => 1
   | S n' => Cmult c (Cpow c n')
-  end.
-
+  end. *)
 
 Infix "+" := Cplus : C_scope.
 Notation "- x" := (Copp x) : C_scope.
@@ -39,13 +38,24 @@ Infix "-" := Cminus : C_scope.
 Infix "*" := Cmult : C_scope.
 Notation "/ x" := (Cinv x) : C_scope.
 Infix "/" := Cdiv : C_scope.
+
+Definition Cabs (x : C) : R := sqrt (fst x ^ 2 + snd x ^ 2).
+
+Definition Carg (x : C) : R := atan (snd x) (fst x).
+
+Definition Cexp (x : C): C :=
+  let r := fst x in
+  let theta := snd x in
+  (exp r) * ((cos theta) + (0, sin theta)).
+
+Definition Cpow (cb ce: C): C :=
 Infix "^" := Cpow : C_scope.
 
-Definition Re (z : C) : R := fst z.
 
-Definition Im (z : C) : R := snd z.
+Definition Creal (z : C) : R := fst z.
 
-Definition Cmod (x : C) : R := sqrt (fst x ^ 2 + snd x ^ 2).
+Definition Cimag (z : C) : R := snd z.
+
 
 Definition Cconj (x : C) : C := (fst x, (- snd x)%R).
 
@@ -69,3 +79,5 @@ Proof.
 Qed.
 
 Ltac lca := eapply c_proj_eq; simpl; lra.
+
+

@@ -1,6 +1,7 @@
 Require Export Bool.
 Require Export Arith.
 Require Export Reals.
+Require Export Reals.Rtrigo_facts.
 Require Export Psatz.
 Require Export List.
 Require Export Coq.Logic.ProofIrrelevance.
@@ -12,6 +13,63 @@ Open Scope bool_scope.
 Open Scope list_scope.
 Declare Scope util_scope.
 
+
+(* arctangent of y / x ========================================================================== *)
+
+Local Open Scope R_scope.
+
+Definition atan2 (x y : R) : R :=
+  if Rlt_dec x 0 then
+    PI + atan (y / x)
+  else if Rlt_dec 0 x then
+    if Rlt_dec y 0 then
+      2 * PI + (atan (y / x))
+    else
+      atan (y / x)
+  else
+    if Rlt_dec y 0 then
+      3 * PI / 2
+    else if Rlt_dec 0 y then
+      PI / 2
+    else
+      0.
+
+Lemma atan2_correct: forall (x y a: R), x <> 0 -> a = atan2 x y -> tan a = (y / x).
+Proof.
+  unfold atan2.
+  intros x y a.
+  specialize (atan_bound (y / x)) as H.
+  assert (cos (atan (y / x)) > 0) as Hc.
+  { apply cos_gt_0. lra. lra. }
+  intros.
+  subst a.
+  destruct (Rlt_dec x 0).
+  - rewrite tan_pi_plus.
+    + apply tan_atan.
+    + destruct (Rgt_dec (cos (atan (y / x))) 0). lra. lra.
+  - destruct (Rlt_dec 0 x).
+    + destruct (Rlt_dec y 0).
+      * replace (2 * PI + atan (y / x)) with (PI + (PI + atan (y / x))) by lra.
+        repeat rewrite tan_pi_plus.
+        apply tan_atan.
+        lra.
+        rewrite cos_pi_plus.
+        lra.
+      * apply tan_atan.
+    + exfalso.
+        apply n.
+        apply Rnot_le_lt.
+        intros H1.
+        apply n0.
+        { destruct (Rtotal_order 0 x) as [H2 | [H3 | H4]].
+        - exact H2.
+        - lra.
+        - lra. }
+Qed.
+
+Local Close Scope R_scope.
+
+(* ============================================================================================== *)
 (* a list of range 0..n ========================================================================= *)
 
 Fixpoint range_suppl (n i: nat): list nat.
