@@ -57,7 +57,6 @@ Definition Creal (z : C) : R := fst z.
 
 Definition Cimag (z : C) : R := snd z.
 
-
 Definition Cconj (x : C) : C := (fst x, (- snd x)%R).
 
 

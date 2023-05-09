@@ -23,32 +23,32 @@ Record Qstate := {
 (* ============================================================================================== *)
 (* fundamental qubit states ===================================================================== *)
 
-Definition Qstate_0: Qstate.
+Definition Qstate_0: {q: Qstate | bits_qst q = 1}.
 Proof.
-  refine {|
+  refine (exist _ {|
     bits_qst := 1;
     inner_qst := {|
       rows := 2;
       cols := 1;
       inner := fun i j => i; (* 0 j -> 0, 1 j -> 1 *)
       |}
-    |}.
+    |} _).
   Unshelve.
-  reflexivity. reflexivity. lia. lia.
+  reflexivity. lia. lia. reflexivity. reflexivity.
 Defined.
 
-Definition Qstate_1: Qstate.
+Definition Qstate_1: {q: Qstate | bits_qst q = 1}.
 Proof.
-  refine {|
+  refine ( exist _ {|
     bits_qst := 1;
     inner_qst := {|
       rows := 2;
       cols := 1;
       inner := fun i j => 1 - i; (* 0 j -> 1, 1 j -> 0 *)
       |}
-    |}.
+    |} _).
   Unshelve.
-  reflexivity. reflexivity. lia. lia.
+  reflexivity. lia. lia. reflexivity. reflexivity.
 Defined.
 
 (* qubit state product ========================================================================== *)
@@ -58,7 +58,7 @@ Definition Qstate_prod (q1 q2: Qstate): {q: Qstate | bits_qst q = (bits_qst q1 +
 Proof.
   refine (exist _ {|
     bits_qst := bits_qst q1 + bits_qst q2;
-    inner_qst := proj1_sig (Tproduct (inner_qst q1) (inner_qst q2));
+    inner_qst := (Tproduct (inner_qst q1) (inner_qst q2)).1;
     |} _).
   Unshelve.
   - reflexivity.
@@ -76,15 +76,5 @@ Proof.
     repeat rewrite inner_cols_qst.
     lia.
 Defined.
-
-(* ============================================================================================== *)
-(* quantum qubit operator ======================================================================= *)
-
-Record Qoperator := {
-  bits_qop: nat;
-  inner_qop: Matrix;
-  inner_rows_qop: rows inner_qop = (2^bits_qop)%nat;
-  inner_cols_qop: cols inner_qop = (2^bits_qop)%nat;
-}.
 
 (* ============================================================================================== *)

@@ -379,3 +379,18 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
+(* fundamental matrices ========================================================================= *)
+
+Definition eye (n: nat) (H: n > 0): {m: Matrix | rows m = n /\ cols m = n}.
+Proof.
+  refine ( exist _ {|
+    rows := n;
+    cols := n;
+    inner := fun i j => if i =? j then 1 else 0;
+    |} _ ).
+  Unshelve.
+  split.
+  reflexivity. reflexivity. apply H. apply H.
+Defined.
+
+(* ============================================================================================== *)
