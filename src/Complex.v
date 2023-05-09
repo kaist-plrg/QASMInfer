@@ -41,16 +41,17 @@ Infix "/" := Cdiv : C_scope.
 
 Definition Cabs (x : C) : R := sqrt (fst x ^ 2 + snd x ^ 2).
 
-Definition Carg (x : C) : R := atan (snd x) (fst x).
+Definition Carg (x : C) : R := atan2 (fst x) (snd x).
 
 Definition Cexp (x : C): C :=
   let r := fst x in
   let theta := snd x in
   (exp r) * ((cos theta) + (0, sin theta)).
 
-Definition Cpow (cb ce: C): C :=
-Infix "^" := Cpow : C_scope.
+Definition Cln (x: C): C := (ln (Cabs x), Carg x).
 
+Definition Cpow (cb ce: C): C := Cexp ((Cln cb) * ce).
+Infix "^" := Cpow : C_scope.
 
 Definition Creal (z : C) : R := fst z.
 
