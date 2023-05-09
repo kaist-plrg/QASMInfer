@@ -33,6 +33,18 @@ Proof.
     lia.
 Defined.
 
+Property Tproduct_correct: forall
+  (m1 m2 mt: Matrix) (i j: nat) (Ht: _) (Hi: _) (Hj: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
+  exist _ mt Ht = Tproduct m1 m2 ->
+  mt[[i Hi|j Hj]] = m1[[(i / rows m2) H1i|(j / cols m2) H1j]] * m2[[(i mod rows m2) H2i|(j mod cols m2) H2j]].
+Proof.
+  unfold Mget.
+  intros.
+  inversion H.
+  simpl.
+  reflexivity.
+Qed.
+
 (* ============================================================================================== *)
 
 (* Definition trace, partial trace *)
