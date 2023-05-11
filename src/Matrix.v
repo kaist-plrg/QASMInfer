@@ -10,18 +10,26 @@ Bind Scope C_scope with C.
 
 (* Matrix record ================================================================================ *)
 
-Record Matrix := {
+Record Matrix_inner: Type := {
   rows: nat;
   cols: nat;
   inner: nat -> nat -> C;
-  rows_pos: rows > 0;
-  cols_pos: cols > 0;
 }.
+
+Record Matrix: Type := {
+  inner_mat: Matrix_inner;
+  rows_pos: rows inner_mat > 0;
+  cols_pos: cols inner_mat > 0;
+}.
+
+Notation "m .rows" := (rows (inner_mat m)) (at level 9, format "m '.rows'").
+Notation "m .cols" := (cols (inner_mat m)) (at level 9, format "m '.cols'").
+Notation "m .inner" := (inner (inner_mat m)) (at level 9, format "m '.inner'").
 
 (* ============================================================================================== *)
 (* get an element from a matrix ================================================================= *)
 
-Definition Mget (m : Matrix) (i j: nat) (Hi: i < rows m) (Hj: j < cols m): C := inner m i j.
+Definition Mget (m : Matrix) (i j: nat) (Hi: i < m.rows) (Hj: j < m.cols): C := m.inner i j.
 
 Notation "m '[[' i Hi '|' j Hj ']]'" :=
   (Mget m i j Hi Hj) (at level 10, i at level 9, Hi at level 9, j at level 9, Hj at level 9, no associativity).
@@ -29,19 +37,27 @@ Notation "m '[[' i Hi '|' j Hj ']]'" :=
 (* ============================================================================================== *)
 (* row and column vectors ======================================================================= *)
 
-Definition extract_row (m: Matrix) (i: nat) (H: i < rows m): {m': Matrix | rows m' = 1 /\ cols m' = cols m}.
+Definition extract_row_inner (m: Matrix_inner) (i: nat): {m': Matrix_inner | rows m' = 1 /\ cols m' = cols m}.
 Proof.
+  refine ( exist _ {|
+    rows := 1;
+    cols := cols m;
+    inner := fun i' j' => inner m (i + i')%nat (j');
+    |} _ ).
+  split. reflexivity. reflexivity.
+Defined.
+
+Definition extract_row (m: Matrix) (i: nat) (H: i < m.rows): {m': Matrix | m'.rows = 1 /\ m'.cols = m.cols}.
+Proof.
+  destruct (extract_row_inner (inner_mat m) i) as [m' Hm'].
   refine ( exist _
-    {|rows := 1;
-      cols := cols m;
-      inner := fun i' j' => inner m (i + i')%nat (j');
-      rows_pos := _;
-      cols_pos := _;
-    |} _).
+    {|inner_mat := m' |} _).
   Unshelve.
-  - split. reflexivity. reflexivity.
-  - lia.
-  - apply cols_pos.
+  - simpl. apply Hm'.
+  - simpl. lia.
+  - destruct Hm' as [_ Hm].
+    rewrite Hm.
+    apply cols_pos.
 Defined.
 
 Property extract_row_correct: forall
@@ -60,17 +76,26 @@ Proof.
   reflexivity.
 Qed.
 
-Definition extract_col (m: Matrix) (j: nat) (H: j < cols m): {m': Matrix | rows m' = rows m /\ cols m' = 1}.
+Definition extract_col_inner (m: Matrix_inner) (j: nat): {m': Matrix_inner | rows m' = rows m /\ cols m' = 1}.
 Proof.
-  refine ( exist _
-    {|rows := rows m;
-      cols := 1;
-      inner := fun i' j' => inner m (i')%nat (j + j');
-    |} _).
+  refine ( exist _ {|
+    rows := rows m;
+    cols := 1;
+    inner := fun i' j' => inner m (i')%nat (j + j');
+    |} _ ).
+  split. reflexivity. reflexivity.
+Defined.
+
+Definition extract_col (m: Matrix) (j: nat) (H: j < m.cols): {m': Matrix | m'.rows = m.rows /\ m'.cols = 1}.
+Proof.
+  destruct (extract_col_inner (inner_mat m) j) as [m' Hm'].
+  refine ( exist _ {|inner_mat := m'|} _).
   Unshelve.
-  - split. reflexivity. reflexivity.
-  - apply rows_pos.
-  - lia.
+  - simpl. apply Hm'.
+  - destruct Hm' as [Hm _].
+    rewrite Hm.
+    apply rows_pos.
+  - simpl. lia.
 Defined.
 
 Property extract_col_correct: forall
@@ -90,19 +115,16 @@ Proof.
   reflexivity.
 Qed.
 
-Fixpoint dot_product_suppl (r c: Matrix) (idx: nat)
-  (Hi: idx <= cols r) (Hr: rows r = 1) (Hc: cols c = 1) (Hrc: cols r = rows c): C.
+Fixpoint dot_product_inner (r c: Matrix_inner) (idx: nat): C.
 Proof.
   destruct idx as [|idx'].
   - exact O.
-  - refine (r[[O _|idx' _]] * c[[idx' _|O _]] + dot_product_suppl r c idx' _ Hr Hc Hrc).
-    lia. lia. lia. lia. lia.
+  - apply (inner r O idx' * inner c idx' O + dot_product_inner r c idx').
 Defined.
 
-Definition dot_product (r c: Matrix) (Hr: rows r = 1) (Hc: cols c = 1) (Hrc: cols r = rows c): C.
+Definition dot_product (r c: Matrix) (Hr: r.rows = 1) (Hc: c.cols = 1) (Hrc: r.cols = c.rows): C.
 Proof.
-  refine (dot_product_suppl r c (cols r) _ Hr Hc Hrc).
-  lia.
+  refine (dot_product_inner (inner_mat r) (inner_mat c) (r.cols)).
 Defined.
 
 Fact eq_dot_product: forall (m1 m2 m3 m4: Matrix) (H1: _) (H2: _) (H3: _) (H4: _) (H5: _) (H6: _),
@@ -122,20 +144,26 @@ Qed.
 (* ============================================================================================== *)
 (* element-wise unary operation ================================================================= *)
 
-Definition Muop (uop: C -> C) (m: Matrix): {m': Matrix | rows m' = rows m /\ cols m' = cols m}.
+Definition Muop_inner (uop: C -> C) (m: Matrix_inner): {m': Matrix_inner | rows m' = rows m /\ cols m' = cols m}.
 Proof.
-  refine (
-    exist _ {| rows := rows m;
-              cols := cols m;
-              inner := fun i j => uop (inner m i j)
-            |}
-            _
-  ).
-  simpl.
+  refine ( exist _ {|
+    rows := rows m;
+    cols := cols m;
+    inner := fun i j => uop (inner m i j);
+    |} _ ).
+  simpl. split. reflexivity. reflexivity.
+Defined.
+
+Definition Muop (uop: C -> C) (m: Matrix): {m': Matrix | m'.rows = m.rows /\ m'.cols = m.cols}.
+Proof.
+  destruct (Muop_inner uop (inner_mat m)) as [m' Hm'].
+  refine (exist _ {|inner_mat := m'|} _).
+  simpl. apply Hm'.
   Unshelve.
-  - split. reflexivity. reflexivity.
-  - apply rows_pos.
-  - apply cols_pos.
+  - destruct Hm' as [H1 H2].
+    rewrite H1. apply rows_pos.
+  - destruct Hm' as [H1 H2].
+    rewrite H2. apply cols_pos.
 Defined.
 
 Property Muop_correct: forall
@@ -155,7 +183,7 @@ Qed.
 (* ============================================================================================== *)
 (* opposite of a matrix ========================================================================= *)
 
-Definition Mopp (m: Matrix): {m': Matrix | rows m' = rows m /\ cols m' = cols m} :=
+Definition Mopp (m: Matrix): {m': Matrix | m'.rows = m.rows  /\ m'.cols = m.cols} :=
   Muop Copp m.
 
 Notation "- x" := (Mopp x) : M_scope.
@@ -172,7 +200,7 @@ Qed.
 (* ============================================================================================== *)
 (* scalar multiplication ======================================================================== *)
 
-Definition Msmul (s: C) (m: Matrix): {m': Matrix | rows m' = rows m /\ cols m' = cols m} :=
+Definition Msmul (s: C) (m: Matrix): {m': Matrix | m'.rows = m.rows  /\ m'.cols = m.cols} :=
   Muop (Cmult s) m.
 
 Property Msuml_correct: forall
@@ -187,21 +215,26 @@ Qed.
 (* ============================================================================================== *)
 (* element-wise binary operation ================================================================ *)
 
-Definition Mbop (bop: C -> C -> C) (m1 m2: Matrix) (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2):
-  {m: Matrix | rows m = rows m1 /\ cols m = cols m1}.
+Definition Mbop_inner (bop: C -> C -> C) (m1 m2: Matrix_inner):
+  {m: Matrix_inner | rows m = rows m1 /\ cols m = cols m1}.
 Proof.
-  (* destruct (bop_lists bop (data m1) (data m2) (matrix_shape_size m1 m2 Hrows Hcols)) as [newData newH]. *)
-  refine (
-    exist _ {|rows := rows m1;
-              cols := cols m1;
-              inner := fun i j => bop (inner m1 i j) (inner m2 i j);
-              |}
-             _
-  ).
+  refine (exist _ {|
+    rows := rows m1;
+    cols := cols m1;
+    inner := fun i j => bop (inner m1 i j) (inner m2 i j) |} _ ).
+  simpl. split. reflexivity. reflexivity.
+Defined.
+
+Definition Mbop (bop: C -> C -> C) (m1 m2: Matrix) (Hrows: m1.rows = m2.rows) (Hcols: m1.cols = m2.cols):
+  {m: Matrix | m.rows = m1.rows /\ m.cols = m1.cols}.
+Proof.
+  destruct (Mbop_inner bop (inner_mat m1) (inner_mat m2)) as [m Hm].
+  destruct Hm as [H1 H2].
+  refine (exist _ {|inner_mat:= m|} _).
   Unshelve.
-  - split. reflexivity. reflexivity.
-  - apply rows_pos.
-  - apply cols_pos.
+  - simpl. split. lia. lia.
+  - rewrite H1. apply rows_pos.
+  - rewrite H2. apply cols_pos.
 Defined.
 
 Property Mbop_correct: forall
@@ -221,8 +254,8 @@ Qed.
 (* matrix addition ============================================================================== *)
 
 Definition Mplus
-  (m1 m2: Matrix) (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2):
-  {m: Matrix | rows m = rows m1 /\ cols m = cols m1} :=
+  (m1 m2: Matrix) (Hrows: m1.rows = m2.rows) (Hcols: m1.cols = m2.cols):
+  {m: Matrix | m.rows = m1.rows /\ m.cols = m1.cols} :=
   Mbop Cplus m1 m2 Hrows Hcols.
 
 Property Mplus_correct: forall
@@ -238,8 +271,8 @@ Qed.
 (* matrix subtraction =========================================================================== *)
 
 Definition Mminus
-  (m1 m2: Matrix) (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2):
-  {m: Matrix | rows m = rows m1 /\ cols m = cols m1} :=
+  (m1 m2: Matrix) (Hrows: m1.rows = m2.rows) (Hcols: m1.cols = m2.cols):
+  {m: Matrix | m.rows = m1.rows /\ m.cols = m1.cols} :=
   Mbop Cminus m1 m2 Hrows Hcols.
 
 Property Mminus_correct: forall
@@ -255,8 +288,8 @@ Qed.
 (* matrix element-wise multiplication =========================================================== *)
 
 Definition Meltmul
-  (m1 m2: Matrix) (Hrows: rows m1 = rows m2) (Hcols: cols m1 = cols m2):
-  {m: Matrix | rows m = rows m1 /\ cols m = cols m1} :=
+  (m1 m2: Matrix) (Hrows: m1.rows = m2.rows) (Hcols: m1.cols = m2.cols):
+  {m: Matrix | m.rows = m1.rows /\ m.cols = m1.cols} :=
   Mbop Cmult m1 m2 Hrows Hcols.
 
 Property Meltmul_correct: forall
@@ -271,26 +304,21 @@ Qed.
 (* ============================================================================================== *)
 (* matrix multiplication ======================================================================== *)
 
-Definition Mmult_inner (m1 m2: Matrix) (i j: nat) (H: cols m1 = rows m2): C.
+Definition Mmult_inner (m1 m2: Matrix_inner) (i j: nat): C.
 Proof.
-  destruct (lt_dec i (rows m1)) as [Hi | Hi'].
-  - destruct (lt_dec j (cols m2)) as [Hj | Hj'].
-    + destruct (extract_row m1 i Hi) as [r Hr].
-      destruct Hr as [Hr1 Hr2].
-      destruct (extract_col m2 j Hj) as [c Hc].
-      destruct Hc as [Hc1 Hc2].
-      refine (dot_product r c Hr1 Hc2 _). lia.
-    + exact O.
-  - exact O.
+  destruct (extract_row_inner m1 i) as [r _].
+  destruct (extract_col_inner m2 j) as [c _].
+  refine (dot_product_inner r c (cols r)).
 Defined.
 
-Definition Mmult (m1 m2: Matrix) (H: cols m1 = rows m2): {m: Matrix | rows m = rows m1 /\ cols m = cols m2}.
+Definition Mmult (m1 m2: Matrix) (H: m1.cols = m2.rows):
+  {m: Matrix | m.rows = m1.rows /\ m.cols = m2.cols}.
 Proof.
   refine( exist _
-    {|rows:= rows m1;
-      cols:= cols m2;
-      inner:= fun i j => Mmult_inner m1 m2 i j H;
-    |} _).
+    {|inner_mat := {|
+        rows:= m1.rows;
+        cols:= m2.cols;
+        inner:= fun i j => Mmult_inner (inner_mat m1) (inner_mat m2) i j; |} |} _).
   Unshelve.
   split. reflexivity. reflexivity.
   apply rows_pos. apply cols_pos.
@@ -305,36 +333,28 @@ Property Mmult_correct: forall (m1 m2 m r c: Matrix) (i j: nat)
 Proof.
   intros.
   inversion H0.
+  inversion H1.
+  inversion H2.
   unfold Mget.
   rewrite H4.
-  simpl.
   unfold Mmult_inner.
-  destruct (lt_dec i (rows m1)).
-  - destruct (lt_dec j (cols m2)).
-    + simpl.
-      inversion H1.
-      inversion H2.
-      simpl.
-      apply eq_dot_product.
-      * rewrite H5.
-        reflexivity.
-      * rewrite H6.
-        reflexivity.
-    + contradiction.
-  - contradiction.
+  unfold dot_product.
+  rewrite H5.
+  rewrite H6.
+  simpl.
+  reflexivity.
 Qed.
 
 (* ============================================================================================== *)
 (* transpose of a matrix ======================================================================== *)
 
-Definition Mtranspose (m: Matrix): {mt: Matrix | rows mt = cols m /\ cols mt = rows m}.
+Definition Mtranspose (m: Matrix): {mt: Matrix | mt.rows = m.cols /\ mt.cols = m.rows}.
 Proof.
-  refine( exist _
-    {|
-      rows := cols m;
-      cols := rows m;
-      inner := fun i j => inner m j i;
-    |} _ ).
+  refine( exist _ {|inner_mat := {|
+      rows := m.cols;
+      cols := m.rows;
+      inner := fun i j => inner (inner_mat m) j i;
+    |} |} _ ).
     Unshelve.
     split. reflexivity. reflexivity.
     apply cols_pos. apply rows_pos.
@@ -354,14 +374,13 @@ Qed.
 (* ============================================================================================== *)
 (* conjucate tranpose of a matrix =============================================================== *)
 
-Definition Mconjtrans (m: Matrix): {mt: Matrix | rows mt = cols m /\ cols mt = rows m}.
+Definition Mconjtrans (m: Matrix): {mt: Matrix | mt.rows = m.cols /\ mt.cols = m.rows}.
 Proof.
-  refine( exist _
-    {|
-      rows := cols m;
-      cols := rows m;
-      inner := fun i j => Cconj (inner m j i);
-    |} _ ).
+  refine( exist _ {|inner_mat := {|
+      rows := m.cols;
+      cols := m.rows;
+      inner := fun i j => Cconj (inner (inner_mat m) j i);
+    |} |} _ ).
     Unshelve.
     split. reflexivity. reflexivity.
     apply cols_pos. apply rows_pos.
@@ -381,13 +400,13 @@ Qed.
 (* ============================================================================================== *)
 (* fundamental matrices ========================================================================= *)
 
-Definition eye (n: nat) (H: n > 0): {m: Matrix | rows m = n /\ cols m = n}.
+Definition eye (n: nat) (H: n > 0): {m: Matrix | m.rows = n /\ m.cols = n}.
 Proof.
-  refine ( exist _ {|
+  refine ( exist _ {|inner_mat := {|
     rows := n;
     cols := n;
     inner := fun i j => if i =? j then 1 else 0;
-    |} _ ).
+    |}|} _ ).
   Unshelve.
   split.
   reflexivity. reflexivity. apply H. apply H.

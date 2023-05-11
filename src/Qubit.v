@@ -18,6 +18,7 @@ Record Qstate := {
   inner_qst: Matrix;
   inner_rows_qst: rows inner_qst = (2^bits_qst)%nat;
   inner_cols_qst: cols inner_qst = 1;
+  inner_normalized: forall (H: _), inner (Mmult (Mconjtrans inner_qst).1 inner_qst H).1 0 0 = 1;
 }.
 
 (* ============================================================================================== *)
@@ -35,6 +36,11 @@ Proof.
     |} _).
   Unshelve.
   reflexivity. lia. lia. reflexivity. reflexivity.
+  intros. simpl.
+  unfold Mmult_inner.
+  simpl.
+  unfold dot_product.
+  lca.
 Defined.
 
 Definition Qstate_1: {q: Qstate | bits_qst q = 1}.
@@ -49,6 +55,11 @@ Proof.
     |} _).
   Unshelve.
   reflexivity. lia. lia. reflexivity. reflexivity.
+  intros. simpl.
+  unfold Mmult_inner.
+  simpl.
+  unfold dot_product.
+  lca.
 Defined.
 
 (* qubit state product ========================================================================== *)
@@ -75,6 +86,7 @@ Proof.
     rewrite Hq2.
     repeat rewrite inner_cols_qst.
     lia.
+  - simpl.
 Defined.
 
 (* ============================================================================================== *)

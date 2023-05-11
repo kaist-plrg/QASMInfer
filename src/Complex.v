@@ -39,7 +39,8 @@ Infix "*" := Cmult : C_scope.
 Notation "/ x" := (Cinv x) : C_scope.
 Infix "/" := Cdiv : C_scope.
 
-Definition Cabs (x : C) : R := sqrt (fst x ^ 2 + snd x ^ 2).
+Definition Cabs_sq (x : C) : R := fst x ^ 2 + snd x ^ 2.
+Definition Cabs (x : C) : R := sqrt (Cabs_sq x).
 
 Definition Carg (x : C) : R := atan2 (fst x) (snd x).
 

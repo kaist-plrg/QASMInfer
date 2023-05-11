@@ -46,5 +46,18 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
+(* distributive property of tensor product ====================================================== *)
+Lemma Tproduct_dist: forall
+  (m1 m2 m3 m4: Matrix) (i j: nat) (H12: _) (H34: _) (H1234: _) (Hi1: _) (Hj1: _) (Hi2: _) (Hj2: _),
+  (Tproduct (Mmult m1 m2 H12).1 (Mmult m3 m4 H34).1).1[[i Hi1|j Hj1]]
+  = (Mmult (Tproduct m1 m3).1 (Tproduct m2 m4).1 H1234).1[[i Hi2|j Hj2]].
+Proof.
+  intros.
+  unfold Mget. simpl.
+  unfold Tproduct. simpl.
+  unfold Mmult. simpl.
+  unfold Mmult_inner. simpl.
+
+(* ============================================================================================== *)
 
 (* Definition trace, partial trace *)
