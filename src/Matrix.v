@@ -143,19 +143,105 @@ Defined.
 Definition dot_product (r: RowVec) (c: ColVec) (Hrc: RCeqbits r c): C :=
   dot_product_suppl (RVinner r) (CVinner c) (RVsize r).
 
-(* Fact eq_dot_product: forall (m1 m2 m3 m4: Matrix) (H1: _) (H2: _) (H3: _) (H4: _) (H5: _) (H6: _),
-  m1 = m3 -> m2 = m4 -> dot_product m1 m2 H1 H2 H3 = dot_product m3 m4 H4 H5 H6.
+Lemma dot_product_suppl_scale_l: forall (l: nat) (c: C) (f1 f2 f: nat -> C),
+  (forall n, f1 n = c * f2 n) -> dot_product_suppl f1 f l = c * dot_product_suppl f2 f l.
 Proof.
   intros.
-  subst m1 m2.
-  assert (H1 = H4) as HP1 by apply proof_irrelevance.
-  assert (H2 = H5) as HP2 by apply proof_irrelevance.
-  assert (H3 = H6) as HP3 by apply proof_irrelevance.
-  rewrite HP1.
-  rewrite HP2.
-  rewrite HP3.
-  reflexivity.
-Qed. *)
+  induction l as [|l'].
+  - lca.
+  - simpl.
+    rewrite IHl'.
+    rewrite H.
+    lca.
+Qed.
+
+Lemma dot_product_suppl_scale_r: forall (l: nat) (c: C) (f1 f2 f: nat -> C),
+  (forall n, f1 n = c * f2 n) -> dot_product_suppl f f1 l = c * dot_product_suppl f f2 l.
+Proof.
+  intros.
+  induction l as [|l'].
+  - lca.
+  - simpl.
+    rewrite IHl'.
+    rewrite H.
+    lca.
+Qed.
+
+Lemma dot_product_suppl_comm: forall (l: nat) (f1 f2: nat -> C),
+  dot_product_suppl f1 f2 l = dot_product_suppl f2 f1 l.
+Proof.
+  intros.
+  induction l as [|l'].
+  - reflexivity.
+  - simpl.
+    rewrite IHl'.
+    lca.
+Qed.
+
+Lemma dot_product_suppl_dist_l: forall (l: nat) (f f1 f2 f12: nat -> C),
+  (forall n, f12 n = f1 n + f2 n) -> dot_product_suppl f12 f l = dot_product_suppl f1 f l + dot_product_suppl f2 f l.
+Proof.
+  intros.
+  induction l as [|l'].
+  - simpl. lca.
+  - simpl.
+    ring_simplify.
+    rewrite IHl'.
+    rewrite H.
+    lca.
+Qed.
+
+Lemma dot_product_suppl_dist_r: forall (l: nat) (f f1 f2 f12: nat -> C),
+  (forall n, f12 n = f1 n + f2 n) -> dot_product_suppl f f12 l = dot_product_suppl f f1 l + dot_product_suppl f f2 l.
+Proof.
+  intros.
+  induction l as [|l'].
+  - simpl. lca.
+  - simpl.
+    ring_simplify.
+    rewrite IHl'.
+    rewrite H.
+    lca.
+Qed.
+
+Lemma dot_product_suppl_assoc: forall (l: nat) (f1 f3: nat -> C) (f2: nat -> nat -> C),
+  dot_product_suppl (fun j0 => dot_product_suppl f1 (fun i0 => f2 i0 j0) l) f3 l =
+  dot_product_suppl f1 (fun i0 => dot_product_suppl (fun j0 => f2 i0 j0) f3 l) l.
+Proof.
+  intros.
+  induction l as [|l'].
+  - reflexivity.
+  - simpl.
+    specialize dot_product_suppl_dist_l with
+      (f := f3)
+      (f1 := fun j0 => f1 l' * f2 l' j0)
+      (f2 := fun j0 => dot_product_suppl f1 (fun i0 : nat => f2 i0 j0) l')
+      (f12 := fun j0 : nat => f1 l' * f2 l' j0 + dot_product_suppl f1 (fun i0 : nat => f2 i0 j0) l') as Hdist1.
+    specialize dot_product_suppl_dist_r with
+      (f := f1)
+      (f1 := fun i0 => f2 i0 l' * f3 l')
+      (f2 := fun i0 => dot_product_suppl (fun j0 : nat => f2 i0 j0) f3 l')
+      (f12 := fun i0 : nat => f2 i0 l' * f3 l' + dot_product_suppl (fun j0 : nat => f2 i0 j0) f3 l') as Hdist2.
+    rewrite Hdist1.
+    rewrite Hdist2.
+    rewrite IHl'.
+    specialize dot_product_suppl_scale_l with
+    (f1 := fun j0 : nat => f1 l' * f2 l' j0)
+    (f2 := fun j0 : nat => f2 l' j0)
+    (c := f1 l') as Hscale1.
+    specialize dot_product_suppl_scale_r with
+    (f1 := fun i0 : nat => f2 i0 l' * f3 l')
+    (f2 := fun i0 : nat => f2 i0 l')
+    (c := f3 l') as Hscale2.
+    rewrite Hscale1.
+    rewrite Hscale2.
+    ring_simplify.
+    lca.
+    intros. lca.
+    intros. lca.
+    intros. lca.
+    intros. lca.
+Qed.
 
 (* ============================================================================================== *)
 (* element-wise unary operation ================================================================= *)
@@ -320,6 +406,38 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma Mmult_assoc: forall (m1 m2 m3 m12 m12_3 m23 m1_23: Matrix)
+  (H12: _) (H12_3: _) (H23: _) (H1_23: _) (E12: _) (E12_3: _) (E23: _) (E1_23: _),
+  exist _ m12 E12 = Mmult m1 m2 H12 ->
+  exist _ m12_3 E12_3 = Mmult m12 m3 H12_3 ->
+  exist _ m23 E23 = Mmult m2 m3 H23 ->
+  exist _ m1_23 E1_23 = Mmult m1 m23 H1_23 ->
+  Mequal m12_3 m1_23.
+Proof.
+  intros.
+  unfold Mequal.
+  inversion H.
+  inversion H0.
+  inversion H1.
+  inversion H2.
+  split.
+  - unfold MMeqbits.
+    simpl.
+    rewrite H12_3.
+    symmetry.
+    apply (eq_trans H12 H23).
+  - unfold Mget.
+    simpl.
+    rewrite H4.
+    rewrite H6.
+    unfold Mmult_inner.
+    unfold extract_row_unsafe.
+    unfold extract_col_unsafe.
+    unfold RVsize.
+    unfold Msize in *.
+    simpl in *.
+
+
 (* ============================================================================================== *)
 (* transpose of a matrix ======================================================================== *)
 
@@ -402,7 +520,7 @@ Proof.
       { apply Nat.eqb_neq. lia. }
       rewrite H0.
       rewrite Cmult_0_r.
-      rewrite Cadd_0_l.
+      rewrite Cplus_0_l.
       apply IHl'.
       apply Hl.
     + simpl.
@@ -422,7 +540,7 @@ Proof.
           simpl.
           replace (j' =? n) with false.
           rewrite Cmult_0_r.
-          rewrite Cadd_0_l.
+          rewrite Cplus_0_l.
           apply IHj'.
           lia.
           symmetry.
@@ -452,7 +570,7 @@ Proof.
       { apply Nat.eqb_neq. lia. }
       rewrite H0.
       rewrite Cmult_0_l.
-      rewrite Cadd_0_l.
+      rewrite Cplus_0_l.
       apply IHl'.
       apply Hl.
     + simpl.
@@ -472,7 +590,7 @@ Proof.
           simpl.
           replace (n =? j') with false.
           rewrite Cmult_0_l.
-          rewrite Cadd_0_l.
+          rewrite Cplus_0_l.
           apply IHj'.
           lia.
           symmetry.

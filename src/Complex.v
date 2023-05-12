@@ -12,6 +12,9 @@ Bind Scope C_scope with C.
 
 Definition C := (R * R)%type.
 
+Definition Czero : C := (0, 0).
+Definition Cone : C := (1, 0).
+
 Definition RTC (x: R): C := (x, 0).
 Definition NTC (n: nat): C := (INR n, 0).
 
@@ -81,10 +84,16 @@ Qed.
 
 Ltac lca := eapply c_proj_eq; simpl; lra.
 
-Lemma Cadd_0_l: forall (c: C), 0 + c = c.
+Lemma Cplus_assoc : forall x y z: C, Cplus x (Cplus y z) = Cplus (Cplus x y) z.
 Proof. intros. lca. Qed.
 
-Lemma Cadd_0_r: forall (c: C), c + 0 = c.
+Lemma Cplus_comm : forall x y: C, Cplus x y = Cplus y x.
+Proof. intros. lca. Qed.
+
+Lemma Cplus_0_l: forall (c: C), 0 + c = c.
+Proof. intros. lca. Qed.
+
+Lemma Cplus_0_r: forall (c: C), c + 0 = c.
 Proof. intros. lca. Qed.
 
 Lemma Cmult_0_l: forall (c: C), 0 * c = 0.
@@ -93,9 +102,36 @@ Proof. intros. lca. Qed.
 Lemma Cmult_0_r: forall (c: C), c * 0 = 0.
 Proof. intros. lca. Qed.
 
-Lemma Cmult_Cplus_dist: forall (c1 c2 c3 c4: C),
-  (c1 + c2) * (c3 + c4) = c1 * c3 + c1 * c4 + c2 * c3 + c2 * c4.
+Lemma Cplus_opp_r : forall x y: C, Cminus x y = Cplus x (Copp y).
+Proof. intros. lca. Qed.
+
+Lemma Cmult_assoc : forall x y z: C, Cmult x (Cmult y z) = Cmult (Cmult x y) z.
+Proof. intros. lca. Qed.
+
+Lemma Cmult_comm : forall x y: C, Cmult x y = Cmult y x.
+Proof. intros. lca. Qed.
+
+Lemma Cmult_one_l : forall x: C, Cmult Cone x = x.
+Proof. intros. lca. Qed.
+
+Lemma Cmult_plus_distr_l : forall x y z: C, Cmult (Cplus x y) z = Cplus (Cmult x z) (Cmult y z).
+Proof. intros. lca. Qed.
+
+Definition C_Ring : Ring_theory.ring_theory Czero Cone Cplus Cmult Cminus Copp eq.
 Proof.
-  intros.
-  lca.
+  constructor.
+  - apply Cplus_0_l.
+  - apply Cplus_comm.
+  - apply Cplus_assoc.
+  - apply Cmult_one_l.
+  - apply Cmult_comm.
+  - apply Cmult_assoc.
+  - apply Cmult_plus_distr_l.
+  - apply Cplus_opp_r.
+  - intros. lca.
 Qed.
+
+Add Ring CRing : C_Ring.
+
+Lemma Cplus_cancel_l: forall x y z: C, y = z -> x + y = x + z.
+Proof. intros. rewrite H. reflexivity. Qed.
