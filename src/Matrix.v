@@ -438,6 +438,57 @@ Proof.
       apply Hj.
 Qed.
 
+Fact Mmult_eye_l_suppl: forall (j l: nat) (f: nat -> C),
+  j < l -> dot_product_suppl (fun j0 => if j =? j0 then 1 else 0) f l = f j.
+Proof.
+  intros.
+  induction l as [|l'].
+  - intros.
+    lia.
+  - intros.
+    destruct (lt_dec j l') as [Hl|Hl].
+    + simpl.
+      assert (j =? l' = false).
+      { apply Nat.eqb_neq. lia. }
+      rewrite H0.
+      rewrite Cmult_0_l.
+      rewrite Cadd_0_l.
+      apply IHl'.
+      apply Hl.
+    + simpl.
+      assert (l' = j) as Hj.
+      {
+        (* destruct (lt_eq_lt_dec j l') as [[H1|H2]|H3]. *)
+        destruct (lt_eq_lt_dec j l') as [Hj|Hj].
+        - destruct Hj as [Hj|Hj]. lia. lia.
+        - lia. }
+      replace (l' =? j) with true.
+      subst l'.
+      assert (forall n, n >= j -> dot_product_suppl (fun i0 : nat => if n =? i0 then 1 else 0) f j = 0).
+      { clear.
+        induction j as [|j'].
+        - reflexivity.
+        - intros.
+          simpl.
+          replace (n =? j') with false.
+          rewrite Cmult_0_l.
+          rewrite Cadd_0_l.
+          apply IHj'.
+          lia.
+          symmetry.
+          apply <- Nat.eqb_neq.
+          lia. }
+      specialize H0 with j.
+      assert (dot_product_suppl (fun j0 : nat => if j =? j0 then 1 else 0) f j = 0).
+      { apply H0. lia. }
+      rewrite H1.
+      rewrite Nat.eqb_refl.
+      lca.
+      symmetry.
+      apply <- Nat.eqb_eq.
+      apply Hj.
+Qed.
+
 Lemma Mmult_eye_r: forall (m m' e: Matrix) (Hm': _) (He: _) (Hme: _),
   exist _ e He = (eye (Mbits m)) ->
   exist _ m' Hm' = Mmult m e Hme -> Mequal m' m.
@@ -458,6 +509,29 @@ Proof.
     apply Hj2.
 Qed.
 
-
+Lemma Mmult_eye_l: forall (m m' e: Matrix) (Hm': _) (He: _) (Hem: _),
+  exist _ e He = (eye (Mbits m)) ->
+  exist _ m' Hm' = Mmult e m Hem -> Mequal m' m.
+Proof.
+  unfold Mequal.
+  intros.
+  inversion H.
+  inversion H0.
+  split.
+  - apply eq_trans with (y := Mbits e).
+    apply Hm'.
+    apply Hem.
+  - unfold Mget.
+    rewrite H3.
+    unfold Mmult_inner.
+    rewrite H2.
+    unfold RVsize.
+    simpl.
+    specialize (Mmult_eye_l_suppl i (2 ^ Mbits m) (fun i0 => Minner m i0 j)).
+    intros.
+    apply H1 in Hi2.
+    rewrite Hi2.
+    reflexivity.
+Qed.
 
 (* ============================================================================================== *)
