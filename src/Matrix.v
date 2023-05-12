@@ -436,7 +436,9 @@ Proof.
     unfold RVsize.
     unfold Msize in *.
     simpl in *.
-
+    rewrite H12.
+    apply dot_product_suppl_assoc.
+Qed.
 
 (* ============================================================================================== *)
 (* transpose of a matrix ======================================================================== *)
