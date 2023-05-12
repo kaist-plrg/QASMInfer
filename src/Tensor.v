@@ -9,53 +9,48 @@ Open Scope C_scope.
 Bind Scope C_scope with C.
 
 
-(* tensor product =============================================================================== *)
+(* tensor product of matrices =================================================================== *)
 
-Definition Tproduct_inner (m1 m2: Matrix_inner):
-  {m: Matrix_inner | rows m = (rows m1 * rows m2)%nat /\ cols m = (cols m1 * cols m2)%nat}.
+Definition TMproduct (m1 m2: Matrix): {m: Matrix | Mbits m = (Mbits m1 + Mbits m2)%nat}.
 Proof.
-  refine ( exist _ {|
-      rows := rows m1 * rows m2;
-      cols := cols m1 * cols m2;
-      inner := fun i j => Cmult (
-        inner m1 (i / rows m2) (j / cols m2)
-      ) (
-        inner m2 (i mod rows m2) (j mod cols m2)
-      )
-    |} _ ).
-  simpl. split. reflexivity. reflexivity.
+  refine (exist _ {|
+    Mbits := Mbits m1 + Mbits m2;
+    Minner := fun i j => Cmult (
+      Minner m1 (i / Msize m2) (j / Msize m2)
+    ) (
+      Minner m2 (i mod Msize m2) (j mod Msize m2)
+    )|} _).
+    reflexivity.
 Defined.
 
-Definition Tproduct (m1 m2: Matrix):
-  {m: Matrix | m.rows = (m1.rows * m2.rows)%nat /\ m.cols = (m1.cols * m2.cols)%nat}.
-Proof.
-  destruct (Tproduct_inner (inner_mat m1) (inner_mat m2)) as [m Hm].
-  inversion Hm.
-  refine( exist _ {|inner_mat := m|} _ ).
-  Unshelve.
-  - simpl. apply Hm.
-  - assert (m1.rows > 0) by apply rows_pos.
-    assert (m2.rows > 0) by apply rows_pos.
-    lia.
-  - assert (m1.cols > 0) by apply cols_pos.
-    assert (m2.cols > 0) by apply cols_pos.
-    lia.
-Defined.
-
-Property Tproduct_correct: forall
+Property TMproduct_correct: forall
   (m1 m2 mt: Matrix) (i j: nat) (Ht: _) (Hi: _) (Hj: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
-  exist _ mt Ht = Tproduct m1 m2 ->
+  exist _ mt Ht = TMproduct m1 m2 ->
   mt[[i Hi|j Hj]] =
-  m1[[(i / m2.rows) H1i|(j / m2.cols) H1j]] * m2[[(i mod m2.rows) H2i|(j mod m2.cols) H2j]].
+  m1[[(i / Msize m2) H1i|(j / Msize m2) H1j]] * m2[[(i mod Msize m2) H2i|(j mod Msize m2) H2j]].
 Proof.
   unfold Mget. simpl.
-  unfold Tproduct. simpl.
-  unfold Tproduct_inner. simpl.
+  unfold TMproduct. simpl.
   intros.
   inversion H.
   simpl.
   reflexivity.
 Qed.
+
+(* ============================================================================================== *)
+(* tensor product of vectors ==================================================================== *)
+
+Definition TRVproduct (r1 r2: RowVec): {r: RowVec | RVbits r = (RVbits r1 + RVbits r2)%nat}.
+Proof.
+  refine (exist _ {|
+    RVbits := RVbits r1 + RVbits r2;
+    RVinner := fun j => Cmult (
+      RVinner r1 (j / RVsize r2)
+    ) (
+      RVinner r2 (j mod RVsize r2)
+    )|} _).
+    reflexivity.
+Defined.
 
 (* ============================================================================================== *)
 (* distributive property of tensor product ====================================================== *)

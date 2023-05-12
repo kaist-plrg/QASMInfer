@@ -7,6 +7,7 @@ Bind Scope nat_scope with nat.
 Open Scope util_scope.
 Open Scope C_scope.
 Bind Scope C_scope with C.
+Delimit Scope C_scope with C.
 
 (* Matrix record ================================================================================ *)
 
@@ -53,16 +54,25 @@ Notation "m '[[' i Hi '|' j Hj ']]'" :=
   (Mget m i j Hi Hj) (at level 10, i at level 9, Hi at level 9, j at level 9, Hj at level 9, no associativity).
 
 (* ============================================================================================== *)
-(* equality of two matrices ===================================================================== *)
-
-Definition Mequal (m1 m2: Matrix): Prop := forall (i j: nat) (Hi1: _) (Hi2: _) (Hj1: _) (Hj2: _),
-(MMeqbits m1 m2) /\ (m1[[i Hi1|j Hj1]] = m2[[i Hi2|j Hj2]]).
-
-(* ============================================================================================== *)
 (* get an element from a vector ================================================================= *)
 
 Definition RVget (r : RowVec) (j: nat) (Hj: j < RVsize r): C := RVinner r j.
 Definition CVget (c : ColVec) (i: nat) (Hi: i < CVsize c): C := CVinner c i.
+
+(* ============================================================================================== *)
+(* equality of two matrices ===================================================================== *)
+
+Definition Mequal (m1 m2: Matrix): Prop := forall (i j: nat) (Hi1: _) (Hi2: _) (Hj1: _) (Hj2: _),
+  (MMeqbits m1 m2) /\ (m1[[i Hi1|j Hj1]] = m2[[i Hi2|j Hj2]]).
+
+(* ============================================================================================== *)
+(* equality of two vectors ====================================================================== *)
+
+Definition RVequal (r1 r2: RowVec): Prop := forall (j: nat) (Hj1: _) (Hj2: _),
+  (RReqbits r1 r2) /\ (RVget r1 j Hj1 = RVget r2 j Hj2).
+
+Definition CVequal (c1 c2: ColVec): Prop := forall (i: nat) (Hi1: _) (Hi2: _),
+  (CCeqbits c1 c2) /\ (CVget c1 i Hi1 = CVget c2 i Hi2).
 
 (* ============================================================================================== *)
 (* extract row and column vectors from a matrix ================================================= *)
@@ -353,20 +363,6 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
-(* matrix element-wise multiplication =========================================================== *)
-
-Definition Meltmul (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop Cmult m1 m2 Hbits.
-
-Lemma Meltmul_correct: forall
-  (m1 m2 m3: Matrix) (i j: nat)
-  (Hbits: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
-  exist _ m3 Hbop = Meltmul m1 m2 Hbits ->
-  m3[[i H3i|j H3j]] = Cmult (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
-Proof.
-  apply Mbop_correct.
-Qed.
-
-(* ============================================================================================== *)
 (* matrix multiplication ======================================================================== *)
 
 Definition Mmult_inner (m1 m2: Matrix) (i j: nat): C.
@@ -439,6 +435,163 @@ Proof.
     rewrite H12.
     apply dot_product_suppl_assoc.
 Qed.
+
+(* ============================================================================================== *)
+(* matrix-vector multiplication ================================================================= *)
+
+Definition MVmult_inner (m: Matrix) (c: ColVec) (i: nat): C.
+Proof.
+  destruct (extract_row_unsafe m i) as [r _].
+  apply (dot_product_suppl (RVinner r) (CVinner c) (CVsize c)).
+Defined.
+
+Definition MVmult (m: Matrix) (c: ColVec) (H: MCeqbits m c): {c': ColVec | CCeqbits c c'}.
+Proof.
+  refine(exist _ {|
+    CVbits := CVbits c;
+    CVinner := fun i => MVmult_inner m c i;
+    |} _).
+  reflexivity.
+Defined.
+
+Lemma MVmult_correct: forall (m: Matrix) (r: RowVec) (c c': ColVec) (i: nat)
+  (Hi: _) (H: _) (Hc': _) (Hci: _) (Hr: _) (Hrc: _),
+  exist _ c' Hc' = MVmult m c H ->
+  exist _ r Hr = extract_row m i Hi ->
+  CVget c' i Hci = dot_product r c Hrc.
+Proof.
+  intros.
+  inversion H0.
+  inversion H1.
+  unfold CVget, dot_product.
+  rewrite H3.
+  rewrite H4.
+  unfold MVmult_inner.
+  unfold RVsize.
+  simpl.
+  rewrite H.
+  reflexivity.
+Qed.
+
+Lemma MMVmult_assoc: forall (m1 m2 m12: Matrix) (c3 c23 c12_3 c1_23: ColVec)
+  (H12: _) (H12_3: _) (H23: _) (H1_23: _) (E12: _) (E12_3: _) (E23: _) (E1_23: _),
+  exist _ m12 E12 = Mmult m1 m2 H12 ->
+  exist _ c12_3 E12_3 = MVmult m12 c3 H12_3 ->
+  exist _ c23 E23 = MVmult m2 c3 H23 ->
+  exist _ c1_23 E1_23 = MVmult m1 c23 H1_23 ->
+  CVequal c12_3 c1_23.
+Proof.
+  intros.
+  unfold CVequal.
+  inversion H.
+  inversion H0.
+  inversion H1.
+  inversion H2.
+  split.
+  - unfold CCeqbits.
+    simpl.
+    rewrite <- H12_3.
+    rewrite E12.
+    apply H1_23.
+  - unfold CVget.
+    simpl.
+    rewrite H4.
+    rewrite H6.
+    unfold Mmult_inner.
+    unfold MVmult_inner.
+    unfold extract_row_unsafe.
+    unfold CVsize.
+    unfold RVsize.
+    simpl in *.
+    replace (CVbits c3) with (Mbits m1).
+    apply dot_product_suppl_assoc.
+    rewrite <- H12_3.
+    rewrite E12.
+    reflexivity.
+Qed.
+
+(* ============================================================================================== *)
+(* vector-matrix multiplication ================================================================= *)
+
+
+Definition VMmult_inner (r: RowVec) (m: Matrix) (j: nat): C.
+Proof.
+  destruct (extract_col_unsafe m j) as [c _].
+  apply (dot_product_suppl (RVinner r) (CVinner c) (RVsize r)).
+Defined.
+
+Definition VMmult (r: RowVec) (m: Matrix) (H: RMeqbits r m): {r': RowVec | RReqbits r r'}.
+Proof.
+  refine(exist _ {|
+    RVbits := RVbits r;
+    RVinner := fun j => VMmult_inner r m j;
+    |} _).
+  reflexivity.
+Defined.
+
+Lemma VMmult_correct: forall (m: Matrix) (r r': RowVec) (c: ColVec) (j: nat)
+  (Hj: _) (H: _) (Hr': _) (Hri: _) (Hc: _) (Hrc: _),
+  exist _ r' Hr' = VMmult r m H ->
+  exist _ c Hc = extract_col m j Hj ->
+  RVget r' j Hri = dot_product r c Hrc.
+Proof.
+  intros.
+  inversion H0.
+  inversion H1.
+  unfold RVget, dot_product.
+  rewrite H3.
+  rewrite H4.
+  unfold MVmult_inner.
+  unfold RVsize.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma VMMmult_assoc: forall (r1 r12 r12_3 r1_23: RowVec) (m3 m2 m23: Matrix)
+  (H12: _) (H12_3: _) (H23: _) (H1_23: _) (E12: _) (E12_3: _) (E23: _) (E1_23: _),
+  exist _ r12 E12 = VMmult r1 m2 H12 ->
+  exist _ r12_3 E12_3 = VMmult r12 m3 H12_3 ->
+  exist _ m23 E23 = Mmult m2 m3 H23 ->
+  exist _ r1_23 E1_23 = VMmult r1 m23 H1_23 ->
+  RVequal r12_3 r1_23.
+Proof.
+  intros.
+  unfold RVequal.
+  inversion H.
+  inversion H0.
+  inversion H1.
+  inversion H2.
+  split.
+  - unfold RReqbits.
+    simpl.
+    rewrite H12_3.
+    rewrite E12.
+    symmetry.
+    apply H12_3.
+  - unfold RVget.
+    simpl.
+    rewrite H4.
+    rewrite H6.
+    unfold Mmult_inner.
+    unfold VMmult_inner.
+    unfold extract_col_unsafe.
+    unfold CVsize.
+    unfold RVsize.
+    simpl in *.
+    replace (RVbits r1) with (Mbits m2).
+    apply dot_product_suppl_assoc.
+Qed.
+
+(* vector-vector multiplication (outer product) ================================================= *)
+
+Definition VVmult (c: ColVec) (r: RowVec) (H: CReqbits c r): {m: Matrix | CMeqbits c m}.
+Proof.
+  refine(exist _ {|
+    Mbits := CVbits c;
+    Minner := fun i j => CVinner c i * RVinner r j;
+    |} _).
+  reflexivity.
+Defined.
 
 (* ============================================================================================== *)
 (* transpose of a matrix ======================================================================== *)
@@ -653,5 +806,15 @@ Proof.
     rewrite Hi2.
     reflexivity.
 Qed.
+
+(* ============================================================================================== *)
+(* ring ========================================================================================= *)
+
+(* Definition M_inner_Ring (bits: nat): Ring_theory.ring_theory (Mzero bits) (eye bits) (Mplus
+
+
+
+
+Czero Cone Cplus Cmult Cminus Copp eq. *)
 
 (* ============================================================================================== *)

@@ -8,6 +8,7 @@ Bind Scope R_scope with R.
 Open Scope util_scope.
 Open Scope C_scope.
 Bind Scope C_scope with C.
+Delimit Scope C_scope with C.
 
 
 Definition C := (R * R)%type.
@@ -117,7 +118,7 @@ Proof. intros. lca. Qed.
 Lemma Cmult_plus_distr_l : forall x y z: C, Cmult (Cplus x y) z = Cplus (Cmult x z) (Cmult y z).
 Proof. intros. lca. Qed.
 
-Definition C_Ring : Ring_theory.ring_theory Czero Cone Cplus Cmult Cminus Copp eq.
+Definition C_Ring: Ring_theory.ring_theory Czero Cone Cplus Cmult Cminus Copp eq.
 Proof.
   constructor.
   - apply Cplus_0_l.
@@ -131,7 +132,7 @@ Proof.
   - intros. lca.
 Qed.
 
-Add Ring CRing : C_Ring.
+Add Ring CRing: C_Ring.
 
 Lemma Cplus_cancel_l: forall x y z: C, y = z -> x + y = x + z.
 Proof. intros. rewrite H. reflexivity. Qed.
