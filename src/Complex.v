@@ -81,4 +81,14 @@ Qed.
 
 Ltac lca := eapply c_proj_eq; simpl; lra.
 
+Lemma Cmult_0_r: forall (c: C), c * 0 = 0.
+Proof.
+  intros. lca.
+Qed.
 
+Lemma Cmult_Cplus_dist: forall (c1 c2 c3 c4: C),
+  (c1 + c2) * (c3 + c4) = c1 * c3 + c1 * c4 + c2 * c3 + c2 * c4.
+Proof.
+  intros.
+  lca.
+Qed.

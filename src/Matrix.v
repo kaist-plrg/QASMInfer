@@ -115,16 +115,16 @@ Proof.
   reflexivity.
 Qed.
 
-Fixpoint dot_product_inner (r c: Matrix_inner) (idx: nat): C.
+Fixpoint dot_product_inner (r c: nat -> nat -> C) (idx: nat): C.
 Proof.
   destruct idx as [|idx'].
   - exact O.
-  - apply (inner r O idx' * inner c idx' O + dot_product_inner r c idx').
+  - apply (r O idx' * c idx' O + dot_product_inner r c idx').
 Defined.
 
 Definition dot_product (r c: Matrix) (Hr: r.rows = 1) (Hc: c.cols = 1) (Hrc: r.cols = c.rows): C.
 Proof.
-  refine (dot_product_inner (inner_mat r) (inner_mat c) (r.cols)).
+  refine (dot_product_inner (inner (inner_mat r)) (inner (inner_mat c)) (r.cols)).
 Defined.
 
 Fact eq_dot_product: forall (m1 m2 m3 m4: Matrix) (H1: _) (H2: _) (H3: _) (H4: _) (H5: _) (H6: _),
@@ -308,7 +308,7 @@ Definition Mmult_inner (m1 m2: Matrix_inner) (i j: nat): C.
 Proof.
   destruct (extract_row_inner m1 i) as [r _].
   destruct (extract_col_inner m2 j) as [c _].
-  refine (dot_product_inner r c (cols r)).
+  refine (dot_product_inner (inner r) (inner c) (cols r)).
 Defined.
 
 Definition Mmult (m1 m2: Matrix) (H: m1.cols = m2.rows):
@@ -348,16 +348,25 @@ Qed.
 (* ============================================================================================== *)
 (* transpose of a matrix ======================================================================== *)
 
+Definition Mtranspose_inner (m: Matrix_inner):
+  {mt: Matrix_inner | rows mt = cols m /\ cols mt = rows m}.
+Proof.
+  refine ( exist _ {|
+    rows := cols m;
+    cols := rows m;
+    inner := fun i j => inner m j i;
+    |} _ ).
+  split. reflexivity. reflexivity.
+Defined.
+
 Definition Mtranspose (m: Matrix): {mt: Matrix | mt.rows = m.cols /\ mt.cols = m.rows}.
 Proof.
-  refine( exist _ {|inner_mat := {|
-      rows := m.cols;
-      cols := m.rows;
-      inner := fun i j => inner (inner_mat m) j i;
-    |} |} _ ).
-    Unshelve.
-    split. reflexivity. reflexivity.
-    apply cols_pos. apply rows_pos.
+  destruct (Mtranspose_inner (inner_mat m)) as [mt Ht].
+  inversion Ht as [H1 H2].
+  refine( exist _ {|inner_mat := mt |} _ ).
+  Unshelve. simpl. apply Ht.
+  rewrite H1. apply cols_pos.
+  rewrite H2. apply rows_pos.
 Defined.
 
 Property Mtranspose_correct: forall (m mt: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _) (Hmt: _),
@@ -374,16 +383,25 @@ Qed.
 (* ============================================================================================== *)
 (* conjucate tranpose of a matrix =============================================================== *)
 
+Definition Mconjtrans_inner (m: Matrix_inner):
+  {mt: Matrix_inner | rows mt = cols m /\ cols mt = rows m}.
+Proof.
+  refine ( exist _ {|
+    rows := cols m;
+    cols := rows m;
+    inner := fun i j => Cconj (inner m j i);
+    |} _ ).
+  split. reflexivity. reflexivity.
+Defined.
+
 Definition Mconjtrans (m: Matrix): {mt: Matrix | mt.rows = m.cols /\ mt.cols = m.rows}.
 Proof.
-  refine( exist _ {|inner_mat := {|
-      rows := m.cols;
-      cols := m.rows;
-      inner := fun i j => Cconj (inner (inner_mat m) j i);
-    |} |} _ ).
-    Unshelve.
-    split. reflexivity. reflexivity.
-    apply cols_pos. apply rows_pos.
+  destruct (Mconjtrans_inner (inner_mat m)) as [mt Ht].
+  inversion Ht as [H1 H2].
+  refine( exist _ {|inner_mat := mt |} _ ).
+  Unshelve. simpl. apply Ht.
+  rewrite H1. apply cols_pos.
+  rewrite H2. apply rows_pos.
 Defined.
 
 Property Mconjtrans_correct: forall (m mct: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _) (Hmct: _),
@@ -398,18 +416,28 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
-(* fundamental matrices ========================================================================= *)
+(* identity matrix ============================================================================== *)
 
-Definition eye (n: nat) (H: n > 0): {m: Matrix | m.rows = n /\ m.cols = n}.
+Definition eye_inner (n: nat): {m: Matrix_inner | rows m = n /\ cols m = n}.
 Proof.
-  refine ( exist _ {|inner_mat := {|
+  refine ( exist _ {|
     rows := n;
     cols := n;
     inner := fun i j => if i =? j then 1 else 0;
-    |}|} _ ).
-  Unshelve.
-  split.
-  reflexivity. reflexivity. apply H. apply H.
+    |} _).
+  simpl. split. reflexivity. reflexivity.
 Defined.
+
+Definition eye (n: nat) (H: n > 0): {m: Matrix | m.rows = n /\ m.cols = n}.
+Proof.
+  destruct (eye_inner n) as [eye He].
+  inversion He.
+  refine ( exist _ {|inner_mat := eye|} _ ).
+  Unshelve.
+  simpl. apply He.
+  lia. lia.
+Defined.
+
+Lemma Mmult_eye_id:
 
 (* ============================================================================================== *)

@@ -14,6 +14,16 @@ Open Scope list_scope.
 Declare Scope util_scope.
 
 
+(* useful tactics =============================================================================== *)
+
+Ltac simpl_left :=
+  match goal with
+    |- ?lhs = ?rhs =>
+    let lhs' := eval simpl in lhs in
+        replace (lhs = rhs) with (lhs' = rhs) by (f_equal; reflexivity)
+  end.
+
+(* ============================================================================================== *)
 (* useful notations ============================================================================= *)
 
 Notation "x .1" := (proj1_sig x) (at level 9, format "x '.1'").
