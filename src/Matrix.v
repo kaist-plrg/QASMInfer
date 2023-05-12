@@ -17,9 +17,7 @@ Record Matrix: Type := {
 
 Definition Msize (m: Matrix): nat := Nat.pow 2 (Mbits m).
 
-
-(* Notation "m .msize" := (2 ^ (bits_mat m))%nat (at level 9, format "m '.msize'").
-Notation "m .minner" := (inner_mat m) (at level 9, format "m '.minner'"). *)
+Definition MMeqbits (m1 m2: Matrix): Prop := Mbits m1 = Mbits m2.
 
 (* ============================================================================================== *)
 (* Vector record ================================================================================ *)
@@ -37,7 +35,6 @@ Record ColVec: Type := {
 Definition RVsize (r: RowVec): nat := Nat.pow 2 (RVbits r).
 Definition CVsize (c: ColVec): nat := Nat.pow 2 (CVbits c).
 
-Definition MMeqbits (m1 m2: Matrix): Prop := Mbits m1 = Mbits m2.
 Definition MReqbits (m: Matrix) (r: RowVec): Prop := Mbits m = RVbits r.
 Definition RMeqbits (r: RowVec) (m: Matrix) : Prop := RVbits r = Mbits m.
 Definition MCeqbits (m: Matrix) (c: ColVec): Prop := Mbits m = CVbits c.
@@ -54,6 +51,12 @@ Definition Mget (m : Matrix) (i j: nat) (Hi: i < Msize m) (Hj: j < Msize m): C :
 
 Notation "m '[[' i Hi '|' j Hj ']]'" :=
   (Mget m i j Hi Hj) (at level 10, i at level 9, Hi at level 9, j at level 9, Hj at level 9, no associativity).
+
+(* ============================================================================================== *)
+(* equality of two matrices ===================================================================== *)
+
+Definition Mequal (m1 m2: Matrix): Prop := forall (i j: nat) (Hi1: _) (Hi2: _) (Hj1: _) (Hj2: _),
+(MMeqbits m1 m2) /\ (m1[[i Hi1|j Hj1]] = m2[[i Hi2|j Hj2]]).
 
 (* ============================================================================================== *)
 (* get an element from a vector ================================================================= *)
@@ -385,6 +388,76 @@ Proof.
   reflexivity.
 Defined.
 
-Lemma Mmult_eye_id:
+Fact Mmult_eye_r_suppl: forall (j l: nat) (f: nat -> C),
+  j < l -> dot_product_suppl f (fun i0 => if i0 =? j then 1 else 0) l = f j.
+Proof.
+  intros.
+  induction l as [|l'].
+  - intros.
+    lia.
+  - intros.
+    destruct (lt_dec j l') as [Hl|Hl].
+    + simpl.
+      assert (l' =? j = false).
+      { apply Nat.eqb_neq. lia. }
+      rewrite H0.
+      rewrite Cmult_0_r.
+      rewrite Cadd_0_l.
+      apply IHl'.
+      apply Hl.
+    + simpl.
+      assert (l' = j) as Hj.
+      {
+        (* destruct (lt_eq_lt_dec j l') as [[H1|H2]|H3]. *)
+        destruct (lt_eq_lt_dec j l') as [Hj|Hj].
+        - destruct Hj as [Hj|Hj]. lia. lia.
+        - lia. }
+      replace (l' =? j) with true.
+      subst l'.
+      assert (forall n, n >= j -> dot_product_suppl f (fun i0 : nat => if i0 =? n then 1 else 0) j = 0).
+      { clear.
+        induction j as [|j'].
+        - reflexivity.
+        - intros.
+          simpl.
+          replace (j' =? n) with false.
+          rewrite Cmult_0_r.
+          rewrite Cadd_0_l.
+          apply IHj'.
+          lia.
+          symmetry.
+          apply <- Nat.eqb_neq.
+          lia. }
+      specialize H0 with j.
+      assert (dot_product_suppl f (fun i0 : nat => if i0 =? j then 1 else 0) j = 0).
+      { apply H0. lia. }
+      rewrite H1.
+      lca.
+      symmetry.
+      apply <- Nat.eqb_eq.
+      apply Hj.
+Qed.
+
+Lemma Mmult_eye_r: forall (m m' e: Matrix) (Hm': _) (He: _) (Hme: _),
+  exist _ e He = (eye (Mbits m)) ->
+  exist _ m' Hm' = Mmult m e Hme -> Mequal m' m.
+Proof.
+  unfold Mequal.
+  intros.
+  inversion H.
+  inversion H0.
+  split.
+  - apply Hm'.
+  - unfold Mget.
+    rewrite H3.
+    unfold Mmult_inner.
+    rewrite H2.
+    unfold RVsize.
+    simpl.
+    apply Mmult_eye_r_suppl.
+    apply Hj2.
+Qed.
+
+
 
 (* ============================================================================================== *)

@@ -86,6 +86,11 @@ Proof.
   intros. lca.
 Qed.
 
+Lemma Cadd_0_l: forall (c: C), 0 + c = c.
+Proof.
+  intros. lca.
+Qed.
+
 Lemma Cmult_Cplus_dist: forall (c1 c2 c3 c4: C),
   (c1 + c2) * (c3 + c4) = c1 * c3 + c1 * c4 + c2 * c3 + c2 * c4.
 Proof.
