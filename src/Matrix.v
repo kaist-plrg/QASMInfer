@@ -82,6 +82,24 @@ Proof.
   reflexivity.
 Defined.
 
+Definition extract_row_unsafe (m: Matrix) (i: nat): {r: RowVec | RMeqbits r m}.
+Proof.
+  refine (exist _ {|
+    RVbits := Mbits m;
+    RVinner := fun j => Minner m i j;
+    |} _ ).
+  reflexivity.
+Defined.
+
+Definition extract_col_unsafe (m: Matrix) (j: nat): {c: ColVec | CMeqbits c m}.
+Proof.
+  refine (exist _ {|
+    CVbits := Mbits m;
+    CVinner := fun i => Minner m i j;
+    |} _ ).
+  reflexivity.
+Defined.
+
 Lemma extract_row_correct: forall
   (m: Matrix) (r: RowVec) (i j: nat) (Hi Hi': _) (Hj: _) (Hr: _) (Hjr: _),
   exist _ r Hr = extract_row m i Hi ->
@@ -148,7 +166,7 @@ Proof.
   reflexivity.
 Defined.
 
-Property Muop_correct: forall
+Lemma Muop_correct: forall
   (uop: C -> C) (m1 m2: Matrix) (i j: nat)
   (Huop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
   exist _ m2 Huop = Muop uop m1 ->
@@ -169,7 +187,7 @@ Definition Mopp (m: Matrix): {m': Matrix | MMeqbits m' m} := Muop Copp m.
 
 Notation "- x" := (Mopp x) : M_scope.
 
-Property Mopp_correct: forall
+Lemma Mopp_correct: forall
   (m1 m2: Matrix) (i j: nat)
   (Huop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
   exist _ m2 Huop = Mopp m1 ->
@@ -183,7 +201,7 @@ Qed.
 
 Definition Msmul (s: C) (m: Matrix): {m': Matrix | MMeqbits m' m} := Muop (Cmult s) m.
 
-Property Msuml_correct: forall
+Lemma Msuml_correct: forall
   (s: C) (m1 m2: Matrix) (i j: nat)
   (Huop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
   exist _ m2 Huop = Msmul s m1 -> m2[[i H2i|j H2j]] = (Cmult s) (m1[[i H1i|j H1j]]).
@@ -204,7 +222,7 @@ Proof.
   simpl. reflexivity.
 Defined.
 
-Property Mbop_correct: forall
+Lemma Mbop_correct: forall
   (bop: C -> C -> C) (m1 m2 m3: Matrix) (i j: nat)
   (Hbits: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
   exist _ m3 Hbop = Mbop bop m1 m2 Hbits ->
@@ -222,7 +240,7 @@ Qed.
 
 Definition Mplus (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop Cplus m1 m2 Hbits.
 
-Property Mplus_correct: forall
+Lemma Mplus_correct: forall
   (m1 m2 m3: Matrix) (i j: nat)
   (Hbits: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
   exist _ m3 Hbop = Mplus m1 m2 Hbits ->
@@ -236,7 +254,7 @@ Qed.
 
 Definition Mminus (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop Cminus m1 m2 Hbits.
 
-Property Mminus_correct: forall
+Lemma Mminus_correct: forall
   (m1 m2 m3: Matrix) (i j: nat)
   (Hbits: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
   exist _ m3 Hbop = Mminus m1 m2 Hbits ->
@@ -250,7 +268,7 @@ Qed.
 
 Definition Meltmul (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop Cmult m1 m2 Hbits.
 
-Property Meltmul_correct: forall
+Lemma Meltmul_correct: forall
   (m1 m2 m3: Matrix) (i j: nat)
   (Hbits: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
   exist _ m3 Hbop = Meltmul m1 m2 Hbits ->
@@ -262,32 +280,28 @@ Qed.
 (* ============================================================================================== *)
 (* matrix multiplication ======================================================================== *)
 
-Definition Mmult_inner (m1 m2: Matrix_inner) (i j: nat): C.
+Definition Mmult_inner (m1 m2: Matrix) (i j: nat): C.
 Proof.
-  destruct (extract_row_inner m1 i) as [r _].
-  destruct (extract_col_inner m2 j) as [c _].
-  refine (dot_product_inner (inner r) (inner c) (cols r)).
+  destruct (extract_row_unsafe m1 i) as [r _].
+  destruct (extract_col_unsafe m2 j) as [c _].
+  refine (dot_product_suppl (RVinner r) (CVinner c) (RVsize r)).
 Defined.
 
-Definition Mmult (m1 m2: Matrix) (H: Mbits m1 = Mbits m2).
-  {m: Matrix | m.rows = m1.rows /\ m.cols = m2.cols}.
+Definition Mmult (m1 m2: Matrix) (H: MMeqbits m1 m2): {m: Matrix | MMeqbits m m1}.
 Proof.
-  refine( exist _
-    {|inner_mat := {|
-        rows:= m1.rows;
-        cols:= m2.cols;
-        inner:= fun i j => Mmult_inner (inner_mat m1) (inner_mat m2) i j; |} |} _).
-  Unshelve.
-  split. reflexivity. reflexivity.
-  apply rows_pos. apply cols_pos.
+  refine(exist _ {|
+    Mbits := Mbits m1;
+    Minner := fun i j => Mmult_inner m1 m2 i j;
+    |} _).
+  reflexivity.
 Defined.
 
-Property Mmult_correct: forall (m1 m2 m r c: Matrix) (i j: nat)
-  (Hi: _) (Hj: _) (H: _) (Hm: _) (Hmi: _) (Hmj: _) (Hr1: _) (Hr2: _) (Hc1: _) (Hc2: _) (Hrc: _),
+Lemma Mmult_correct: forall (m1 m2 m: Matrix) (r: RowVec) (c: ColVec) (i j: nat)
+  (Hi: _) (Hj: _) (H: _) (Hm: _) (Hmi: _) (Hmj: _) (Hr1: _) (Hc1: _) (Hrc: _),
   exist _ m Hm = Mmult m1 m2 H ->
   exist _ r Hr1 = extract_row m1 i Hi ->
   exist _ c Hc1 = extract_col m2 j Hj ->
-  m[[i Hmi|j Hmj]] = dot_product r c Hr2 Hc2 Hrc.
+  m[[i Hmi|j Hmj]] = dot_product r c Hrc.
 Proof.
   intros.
   inversion H0.
@@ -306,28 +320,16 @@ Qed.
 (* ============================================================================================== *)
 (* transpose of a matrix ======================================================================== *)
 
-Definition Mtranspose_inner (m: Matrix_inner):
-  {mt: Matrix_inner | rows mt = cols m /\ cols mt = rows m}.
+Definition Mtranspose (m: Matrix): {m': Matrix| MMeqbits m m'}.
 Proof.
   refine ( exist _ {|
-    rows := cols m;
-    cols := rows m;
-    inner := fun i j => inner m j i;
+    Mbits := Mbits m;
+    Minner := fun i j => Minner m j i;
     |} _ ).
-  split. reflexivity. reflexivity.
+  reflexivity.
 Defined.
 
-Definition Mtranspose (m: Matrix): {mt: Matrix | mt.rows = m.cols /\ mt.cols = m.rows}.
-Proof.
-  destruct (Mtranspose_inner (inner_mat m)) as [mt Ht].
-  inversion Ht as [H1 H2].
-  refine( exist _ {|inner_mat := mt |} _ ).
-  Unshelve. simpl. apply Ht.
-  rewrite H1. apply cols_pos.
-  rewrite H2. apply rows_pos.
-Defined.
-
-Property Mtranspose_correct: forall (m mt: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _) (Hmt: _),
+Lemma Mtranspose_correct: forall (m mt: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _) (Hmt: _),
   exist _ mt Hmt = Mtranspose m -> m[[i Hi|j Hj]] = mt[[j Hj'|i Hi']].
 Proof.
   unfold Mtranspose.
@@ -341,31 +343,19 @@ Qed.
 (* ============================================================================================== *)
 (* conjucate tranpose of a matrix =============================================================== *)
 
-Definition Mconjtrans_inner (m: Matrix_inner):
-  {mt: Matrix_inner | rows mt = cols m /\ cols mt = rows m}.
+Definition Mconjtrans (m: Matrix): {m': Matrix| MMeqbits m m'}.
 Proof.
   refine ( exist _ {|
-    rows := cols m;
-    cols := rows m;
-    inner := fun i j => Cconj (inner m j i);
+    Mbits := Mbits m;
+    Minner := fun i j => Cconj (Minner m j i);
     |} _ ).
-  split. reflexivity. reflexivity.
+  reflexivity.
 Defined.
 
-Definition Mconjtrans (m: Matrix): {mt: Matrix | mt.rows = m.cols /\ mt.cols = m.rows}.
+Lemma Mconjtrans_correct: forall (m mct: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _) (Hmt: _),
+  exist _ mct Hmt = Mconjtrans m -> mct[[i Hi|j Hj]] = Cconj(m[[j Hj'|i Hi']]).
 Proof.
-  destruct (Mconjtrans_inner (inner_mat m)) as [mt Ht].
-  inversion Ht as [H1 H2].
-  refine( exist _ {|inner_mat := mt |} _ ).
-  Unshelve. simpl. apply Ht.
-  rewrite H1. apply cols_pos.
-  rewrite H2. apply rows_pos.
-Defined.
-
-Property Mconjtrans_correct: forall (m mct: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _) (Hmct: _),
-  exist _ mct Hmct = Mconjtrans m -> mct[[j Hj'|i Hi']] = Cconj(m[[i Hi|j Hj]]) .
-Proof.
-  unfold Mconjtrans.
+  unfold Mtranspose.
   unfold Mget.
   intros.
   inversion H.
@@ -376,7 +366,7 @@ Qed.
 (* ============================================================================================== *)
 (* identity matrix ============================================================================== *)
 
-Definition eye_inner (n: nat): {m: Matrix_inner | rows m = n /\ cols m = n}.
+(* Definition eye_inner (n: nat): {m: Matrix_inner | rows m = n /\ cols m = n}.
 Proof.
   refine ( exist _ {|
     rows := n;
@@ -384,16 +374,15 @@ Proof.
     inner := fun i j => if i =? j then 1 else 0;
     |} _).
   simpl. split. reflexivity. reflexivity.
-Defined.
+Defined. *)
 
-Definition eye (n: nat) (H: n > 0): {m: Matrix | m.rows = n /\ m.cols = n}.
+Definition eye (bits: nat): {m: Matrix | Mbits m = bits}.
 Proof.
-  destruct (eye_inner n) as [eye He].
-  inversion He.
-  refine ( exist _ {|inner_mat := eye|} _ ).
-  Unshelve.
-  simpl. apply He.
-  lia. lia.
+  refine (exist _ {|
+    Mbits := bits;
+    Minner := fun i j => if i =? j then 1 else 0;
+    |} _).
+  reflexivity.
 Defined.
 
 Lemma Mmult_eye_id:
