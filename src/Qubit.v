@@ -13,6 +13,9 @@ Open Scope T_scope.
 
 (* qubit state ================================================================================== *)
 
+Inductive Qstate: nat -> Colvec -> Prop :=
+|
+
 Record Qstate := {
   bits_qst: nat;
   inner_qst: Matrix;

@@ -617,6 +617,27 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
+(* transpose of a vector ======================================================================== *)
+
+Definition RVtranspose (r: RowVec): {c: ColVec| CReqbits c r}.
+Proof.
+  refine ( exist _ {|
+    CVbits := RVbits r;
+    CVinner :=  RVinner r;
+    |} _ ).
+  reflexivity.
+Defined.
+
+Definition CVtranspose (c: ColVec): {r: RowVec| RCeqbits r c}.
+Proof.
+  refine ( exist _ {|
+    RVbits := CVbits c;
+    RVinner :=  CVinner c;
+    |} _ ).
+  reflexivity.
+Defined.
+
+(* ============================================================================================== *)
 (* conjucate tranpose of a matrix =============================================================== *)
 
 Definition Mconjtrans (m: Matrix): {m': Matrix| MMeqbits m m'}.
