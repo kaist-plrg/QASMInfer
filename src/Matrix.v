@@ -638,7 +638,7 @@ Proof.
 Defined.
 
 (* ============================================================================================== *)
-(* conjucate tranpose of a matrix =============================================================== *)
+(* conjugate tranpose of a matrix =============================================================== *)
 
 Definition Mconjtrans (m: Matrix): {m': Matrix| MMeqbits m m'}.
 Proof.
@@ -659,6 +659,27 @@ Proof.
   simpl.
   reflexivity.
 Qed.
+
+(* ============================================================================================== *)
+(* conjugate transpose of a vector ============================================================== *)
+
+Definition RVconjtrans (r: RowVec): {c: ColVec| CReqbits c r}.
+Proof.
+  refine ( exist _ {|
+    CVbits := RVbits r;
+    CVinner :=  fun i => Cconj (RVinner r i);
+    |} _ ).
+  reflexivity.
+Defined.
+
+Definition CVconjtrans (c: ColVec): {r: RowVec| RCeqbits r c}.
+Proof.
+  refine ( exist _ {|
+    RVbits := CVbits c;
+    RVinner :=  fun i => Cconj (CVinner c i);
+    |} _ ).
+  reflexivity.
+Defined.
 
 (* ============================================================================================== *)
 (* trace ======================================================================================== *)
