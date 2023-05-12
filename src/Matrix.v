@@ -640,17 +640,19 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
-(* identity matrix ============================================================================== *)
+(* trace ======================================================================================== *)
 
-(* Definition eye_inner (n: nat): {m: Matrix_inner | rows m = n /\ cols m = n}.
+Fixpoint Mtrace_suppl (m: nat -> nat -> C) (idx: nat): C.
 Proof.
-  refine ( exist _ {|
-    rows := n;
-    cols := n;
-    inner := fun i j => if i =? j then 1 else 0;
-    |} _).
-  simpl. split. reflexivity. reflexivity.
-Defined. *)
+  destruct idx as [|idx'].
+  - exact O.
+  - apply (m idx' idx' + Mtrace_suppl m idx').
+Defined.
+
+Definition Mtrace (m: Matrix): C := Mtrace_suppl (Minner m) (Msize m).
+
+(* ============================================================================================== *)
+(* identity matrix ============================================================================== *)
 
 Definition eye (bits: nat): {m: Matrix | Mbits m = bits}.
 Proof.
