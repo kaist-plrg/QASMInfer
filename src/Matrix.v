@@ -284,8 +284,6 @@ Qed.
 
 Definition Mopp (m: Matrix): {m': Matrix | MMeqbits m' m} := Muop Copp m.
 
-Notation "- x" := (Mopp x) : M_scope.
-
 Lemma Mopp_correct: forall
   (m1 m2: Matrix) (i j: nat)
   (Huop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),

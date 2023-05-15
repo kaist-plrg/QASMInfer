@@ -52,14 +52,14 @@ Proof.
     reflexivity.
 Defined.
 
-Definition TRVproduct (r1 r2: RowVec): {r: RowVec | RVbits r = (RVbits r1 + RVbits r2)%nat}.
+Definition TCVproduct (c1 c2: ColVec): {c: ColVec | CVbits c = (CVbits c1 + CVbits c2)%nat}.
 Proof.
   refine (exist _ {|
-    RVbits := RVbits r1 + RVbits r2;
-    RVinner := fun j => Cmult (
-      RVinner r1 (j / RVsize r2)
+    CVbits := CVbits c1 + CVbits c2;
+    CVinner := fun i => Cmult (
+      CVinner c1 (i / CVsize c2)
     ) (
-      RVinner r2 (j mod RVsize r2)
+      CVinner c2 (i mod CVsize c2)
     )|} _).
     reflexivity.
 Defined.

@@ -10,19 +10,18 @@ Bind Scope C_scope with C.
 Open Scope M_scope.
 Open Scope T_scope.
 
+(* base single qubit state ====================================================================== *)
 
+Definition Q0: ColVec := {| CVbits := 1; CVinner := fun i => i |}.
+
+Definition Q1: ColVec := {| CVbits := 1; CVinner := fun i => 1 - i |}.
+
+(* ============================================================================================== *)
 (* qubit state ================================================================================== *)
 
-Inductive Qstate: nat -> Colvec -> Prop :=
-|
-
-Record Qstate := {
-  bits_qst: nat;
-  inner_qst: Matrix;
-  inner_rows_qst: rows inner_qst = (2^bits_qst)%nat;
-  inner_cols_qst: cols inner_qst = 1;
-  inner_normalized: forall (H: _), inner (Mmult (Mconjtrans inner_qst).1 inner_qst H).1 0 0 = 1;
-}.
+Inductive Qstate: nat -> ColVec -> Prop :=
+| Qstate_base_0: Qstate 0 Q0
+| Qstate_base_1: Qstate 0 Q1.
 
 (* ============================================================================================== *)
 (* fundamental qubit states ===================================================================== *)

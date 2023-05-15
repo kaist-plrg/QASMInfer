@@ -14,6 +14,17 @@ Open Scope list_scope.
 Declare Scope util_scope.
 
 
+(* natural number lemmas ======================================================================== *)
+
+Lemma sub_add_comm: forall (l m n: nat), m <= l -> l - m + n = l + n - m.
+Proof.
+  intros.
+  replace (l - m + n) with (l - m + m - m + n) by lia.
+  rewrite (Nat.sub_add m l H).
+  lia.
+Qed.
+
+(* ============================================================================================== *)
 (* useful tactics =============================================================================== *)
 
 Ltac simpl_left :=
