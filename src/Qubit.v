@@ -19,14 +19,14 @@ Definition Q1: ColVec := {| CVbits := 1; CVinner := fun i => 1 - i |}.
 (* ============================================================================================== *)
 (* qubit state ================================================================================== *)
 
-Inductive Qstate: nat -> ColVec -> Prop :=
+(* Inductive Qstate: nat -> ColVec -> Prop :=
 | Qstate_base_0: Qstate 0 Q0
-| Qstate_base_1: Qstate 0 Q1.
+| Qstate_base_1: Qstate 0 Q1. *)
 
 (* ============================================================================================== *)
 (* fundamental qubit states ===================================================================== *)
 
-Definition Qstate_0: {q: Qstate | bits_qst q = 1}.
+(* Definition Qstate_0: {q: Qstate | bits_qst q = 1}.
 Proof.
   refine (exist _ {|
     bits_qst := 1;
@@ -62,12 +62,12 @@ Proof.
   simpl.
   unfold dot_product.
   lca.
-Defined.
+Defined. *)
 
 (* qubit state product ========================================================================== *)
 (* ============================================================================================== *)
 
-Definition Qstate_prod (q1 q2: Qstate): {q: Qstate | bits_qst q = (bits_qst q1 + bits_qst q2)%nat}.
+(* Definition Qstate_prod (q1 q2: Qstate): {q: Qstate | bits_qst q = (bits_qst q1 + bits_qst q2)%nat}.
 Proof.
   refine (exist _ {|
     bits_qst := bits_qst q1 + bits_qst q2;
@@ -89,6 +89,6 @@ Proof.
     repeat rewrite inner_cols_qst.
     lia.
   - simpl.
-Defined.
+Defined. *)
 
 (* ============================================================================================== *)

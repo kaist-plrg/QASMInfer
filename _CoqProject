@@ -6,3 +6,4 @@ src/Operator.v
 src/Qubit.v
 src/Tensor.v
 src/Util.v
+test/Swaptest.v

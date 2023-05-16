@@ -94,7 +94,7 @@ Definition Qswap2: Matrix := {|
     end;
   |}.
 
-Eval compute in (Minner Qswap2 1 2).
+(* Eval compute in (Minner Qswap2 1 2). *)
 
 Fixpoint Qswap1n (n: nat) (H: n > 1): {m: Matrix | Mbits m = n}.
 Proof.
@@ -260,3 +260,4 @@ Defined.
 (* quantum qubit operator ======================================================================= *)
 
 (* Inductive Qoperator: nat -> Matrix -> Prop := *)
+(* | *)
