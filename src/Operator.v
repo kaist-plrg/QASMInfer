@@ -124,6 +124,20 @@ Proof.
     lia.
 Defined.
 
+Definition QswapOp (n q1 q2: nat) (op: Matrix)
+  (H1: q1 < n) (H2: q2 < n) (Hop: Mbits op = n): {m: Matrix | Mbits m = n}.
+Proof.
+  destruct (Qswap n q1 q2 H1 H2) as [swapq1q2 Hq1q2].
+  assert (MMeqbits swapq1q2 op) as Hswapop.
+  { unfold MMeqbits. lia. }
+  destruct (Mmult swapq1q2 op Hswapop) as [m' Hm'].
+  destruct (Mmult m' swapq1q2 Hm') as [m Hm].
+  refine (exist _ m _).
+  rewrite Hm.
+  rewrite Hm'.
+  apply Hq1q2.
+Defined.
+
 (* ============================================================================================== *)
 (* CNOT operator ================================================================================ *)
 
@@ -171,9 +185,33 @@ Proof.
   lia.
 Defined.
 
-Definition Qcnot (n qc qt: nat) (Hc: qc < n) (Ht: qt < n).
+Definition Qcnot (n qc qt: nat) (Hn: n >= 2) (Hc: qc < n) (Ht: qt < n): {m: Matrix | Mbits m = n}.
 Proof.
-
+  assert (0 < n) as H0 by lia.
+  assert (1 < n) as H1 by lia.
+  destruct (QcnotCTn n Hn) as [cnotctn Hctn].
+  destruct (QcnotTCn n Hn) as [cnottcn Htcn].
+  (* qc = 0 *)
+  { destruct (Nat.eq_dec qc 0) as [Hqc0|Hqc0].
+    { destruct (Nat.eq_dec qt 1) as [Hqt1|Hqt1].
+      { apply (QcnotCTn n Hn). }
+      { apply (QswapOp n 1 qt cnotctn H1 Ht Hctn). } }
+  (* qc = 1 *)
+  { destruct (Nat.eq_dec qc 1) as [Hqc1|Hqc1].
+    { destruct (Nat.eq_dec qt 0) as [Hqt0|Hqt0].
+      { apply (QcnotTCn n Hn). }
+      { apply (QswapOp n 0 qt cnottcn H0 Ht Htcn). } }
+  (* qc = otherwise *)
+  { (* qt = 0 *)
+    { destruct (Nat.eq_dec qt 0) as [Hqt0|Hqt0].
+      { apply (QswapOp n 1 qc cnottcn H1 Hc Htcn). }
+    (* qt = 1 *)
+    { destruct (Nat.eq_dec qt 1) as [Hqt1|Hqt1].
+      { apply (QswapOp n 0 qc cnotctn H0 Hc Hctn). }
+    (* qt = otherwise *)
+    { destruct (QswapOp n 0 qc cnotctn H0 Hc Hctn) as [m' Hm'].
+      apply (QswapOp n 1 qt m' H1 Ht Hm'). } } } } } }
+Defined.
 
 (* ============================================================================================== *)
 (* quantum qubit operator ======================================================================= *)
