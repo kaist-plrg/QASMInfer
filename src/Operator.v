@@ -120,85 +120,14 @@ Proof.
       rewrite H1.
       reflexivity. }
     rewrite H5.
-
-
-
-
-
-
-
-
-
-    specialize
-      (Mmult_eq m1
-      (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23)
-      (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1)
-      H1_23 H1_23) as Hmeq.
-    assert (
-      Mequal
-      (Mmult m1 (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23) H1_23)
-      (Mmult m1 (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1) H1_23) ->
-      Minner (Mmult m1 (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23) H1_23) i j
-      = Minner (Mmult m1 (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1) H1_23) i j).
-    { intros.
-      destruct H2 as [_ H2].
-      unfold Mget in H2.
-      simpl_bits.
-      apply H2.
-      lia. lia. lia. lia. }
-    rewrite H2.
-    unfold Qop_unitary in H1.
-
-    rewrite Hmeq.
-
-
-
-    rewrite Mmult_eq.
-    unfold Qop_unitary in *.
-    unfold Mequal in *.
-    destruct H0 as [H00 H01].
-    destruct H1 as [H10 H11].
-    unfold Mget in *.
-    unfold Qop_mmd in *.
-    unfold Msize in *.
-    rewrite Mmult_bits_l in *.
-    rewrite eye_bits in *.
+    specialize (Mmult_eye_l (Mconjtrans m1) (Mconjtrans_bits m1)) as Heye.
+    simpl_bits.
     unfold Mmult in *.
-    unfold Mmult_inner in *.
-    simpl in *.
-    unfold eye.
-    f_equal.
-    unfold Msize in *.
-    simpl.
-    rewrite H in Hi2.
-    rewrite H in Hj2.
-    specialize (H01 i j Hi1 Hi1 Hj1 Hj1).
-    specialize (H11 i j Hi2 Hi2 Hj2 Hj2).
-    f_equal.
-
-
-
-  unfold Qop_unitary.
-  intros.
-  split.
-  - reflexivity.
-  - unfold Qop_mmd in *.
-    unfold Mget in *.
-    unfold Mconjtrans in *.
-    unfold Mmult in *.
-    unfold Mequal in *.
-    simpl in *.
-    unfold Mmult_inner in *.
-    unfold extract_row_unsafe in *.
-    unfold extract_col_unsafe in *.
-    unfold RVsize in *.
-    unfold Msize in *.
-    unfold MMeqbits in *.
-    simpl in *.
-
-    simpl.
-    unfold Mequal in H0.
-    unfold
+    rewrite H in Heye.
+    rewrite Heye.
+    rewrite H0.
+    reflexivity.
+Qed.
 
 (* ============================================================================================== *)
 (* single qubit rotation operators ============================================================== *)

@@ -343,11 +343,14 @@ Proof. intro s. apply Muop_correct. Qed.
 (* ============================================================================================== *)
 (* element-wise binary operation ================================================================ *)
 
-Definition Mbop (bop: C -> C -> C) (m1 m2: Matrix) (Hbits: MMeqbits m1 m2): Matrix :=
+Definition Mbop_unsafe (bop: C -> C -> C) (m1 m2: Matrix): Matrix :=
   {|
     Mbits := Mbits m1;
     Minner := fun i j => bop (Minner m1 i j) (Minner m2 i j)
   |}.
+
+Definition Mbop (bop: C -> C -> C) (m1 m2: Matrix) (Hbits: MMeqbits m1 m2): Matrix :=
+  Mbop_unsafe bop m1 m2.
 
 Lemma Mbop_bits_l: forall (bop: C -> C -> C) (m1 m2: Matrix) (Hbits: _),
   MMeqbits m1 (Mbop bop m1 m2 Hbits).
@@ -378,7 +381,7 @@ Qed.
 (* ============================================================================================== *)
 (* matrix addition ============================================================================== *)
 
-Definition Mplus (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop Cplus m1 m2 Hbits.
+Definition Mplus (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop_unsafe Cplus m1 m2.
 
 Lemma Mplus_bits_l: forall (m1 m2: Matrix) (Hbits: _), MMeqbits m1 (Mplus m1 m2 Hbits).
 Proof. apply Mbop_bits_l. Qed.
@@ -395,7 +398,7 @@ Proof. apply Mbop_correct. Qed.
 (* ============================================================================================== *)
 (* matrix subtraction =========================================================================== *)
 
-Definition Mminus (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop Cminus m1 m2 Hbits.
+Definition Mminus (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop_unsafe Cminus m1 m2.
 
 Lemma Mminus_bits_l: forall (m1 m2: Matrix) (Hbits: _), MMeqbits m1 (Mminus m1 m2 Hbits).
 Proof. apply Mbop_bits_l. Qed.
@@ -418,11 +421,13 @@ Definition Mmult_inner (m1 m2: Matrix) (i j: nat): C :=
     (CVinner (extract_col_unsafe m2 j))
     (Msize m1).
 
-Definition Mmult (m1 m2: Matrix) (H: MMeqbits m1 m2): Matrix :=
+Definition Mmult_unsafe (m1 m2: Matrix) : Matrix :=
   {|
     Mbits := Mbits m1;
     Minner := fun i j => Mmult_inner m1 m2 i j;
   |}.
+
+Definition Mmult (m1 m2: Matrix) (H: MMeqbits m1 m2): Matrix := Mmult_unsafe m1 m2.
 
 Lemma Mmult_bits_l: forall (m1 m2: Matrix) (H: _), MMeqbits (Mmult m1 m2 H) m1.
 Proof. reflexivity. Qed.
@@ -460,6 +465,7 @@ Proof.
     unfold Mget.
     simpl.
     unfold Mmult.
+    unfold Mmult_unsafe.
     unfold Mmult_inner.
     unfold extract_row_unsafe.
     unfold extract_col_unsafe.
@@ -883,6 +889,7 @@ Proof.
   - intros.
     unfold Mget.
     unfold Mmult.
+    unfold Mmult_unsafe.
     unfold Mmult_inner.
     simpl.
     rewrite Mmult_eye_l_suppl.
