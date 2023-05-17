@@ -63,26 +63,8 @@ Definition CVget (c : ColVec) (i: nat) (Hi: i < CVsize c): C := CVinner c i.
 (* ============================================================================================== *)
 (* equality of two matrices ===================================================================== *)
 
-Lemma Mequal: forall (m1 m2: Matrix),
-  Mbits m1 = Mbits m2 -> (forall i j, Minner m1 i j = Minner m2 i j) -> m1 = m2.
-Proof.
-  intros.
-  destruct m1, m2.
-  simpl in *.
-  assert (Minner0 = Minner1).
-  { assert (forall i, Minner0 i = Minner1 i).
-    { intros.
-      apply functional_extensionality.
-      apply H0. }
-    apply functional_extensionality.
-    apply H1. }
-  rewrite H.
-  rewrite H1.
-  reflexivity.
-Qed.
-
-Definition Mequal (m1 m2: Matrix): Prop :=
-  (MMeqbits m1 m2) /\ (forall (i j: nat) (Hi1: _) (Hi2: _) (Hj1: _) (Hj2: _), m1[[i Hi1|j Hj1]] = m2[[i Hi2|j Hj2]]).
+Axiom Mequal: forall (m1 m2: Matrix),
+  Mbits m1 = Mbits m2 -> (forall i j, i < Msize m1 -> j < Msize m2 -> Minner m1 i j = Minner m2 i j) -> m1 = m2.
 
 (* ============================================================================================== *)
 (* equality of two vectors ====================================================================== *)
@@ -471,9 +453,7 @@ Lemma Mmult_assoc: forall (m1 m2 m3: Matrix)
   (Mmult (Mmult m1 m2 H12) m3 H12_3) = (Mmult m1 (Mmult m2 m3 H23) H1_23).
 Proof.
   intros.
-  split.
-  unfold Mequal.
-  split.
+  apply Mequal.
   - unfold MMeqbits.
     reflexivity.
   - intros.
@@ -490,7 +470,7 @@ Proof.
     apply dot_product_suppl_assoc.
 Qed.
 
-Lemma Mmult_eq: forall (m1 m2 m3: Matrix) (H12: _) (H13: _),
+(* Lemma Mmult_eq: forall (m1 m2 m3: Matrix) (H12: _) (H13: _),
 Mequal m2 m3 -> Mequal (Mmult m1 m2 H12) (Mmult m1 m3 H13).
 Proof.
   intros.
@@ -516,7 +496,7 @@ Proof.
     apply H1.
     lia.
     lia.
-Qed.
+Qed. *)
 
 
 (* ============================================================================================== *)
@@ -717,10 +697,10 @@ Proof.
 Qed.
 
 Lemma Mconjtrans_mult: forall (m1 m2: Matrix) (H12: _) (H21: _),
-  Mequal (Mconjtrans (Mmult m1 m2 H12)) (Mmult (Mconjtrans m2) (Mconjtrans m1) H21).
+  Mconjtrans (Mmult m1 m2 H12) = Mmult (Mconjtrans m2) (Mconjtrans m1) H21.
 Proof.
   intros.
-  split.
+  apply Mequal.
   - unfold MMeqbits.
     repeat rewrite Mmult_bits_l.
     repeat rewrite Mconjtrans_bits.
@@ -877,11 +857,10 @@ Proof.
       apply Hj.
 Qed.
 
-Lemma Mmult_eye_r: forall (m m' e: Matrix) (Hme: _), Mequal (Mmult m (eye (Mbits m)) Hme) m.
+Lemma Mmult_eye_r: forall (m: Matrix) (Hme: _),Mmult m (eye (Mbits m)) Hme = m.
 Proof.
-  unfold Mequal.
   intros.
-  split.
+  apply Mequal.
   - unfold MMeqbits.
     rewrite Mmult_bits_r.
     apply eye_bits.
@@ -891,14 +870,13 @@ Proof.
     unfold Mmult_inner.
     simpl.
     apply Mmult_eye_r_suppl.
-    apply Hj2.
+    apply H0.
 Qed.
 
-Lemma Mmult_eye_l: forall (m m' e: Matrix) (Hem: _), Mequal (Mmult (eye (Mbits m)) m Hem) m.
+Lemma Mmult_eye_l: forall (m: Matrix) (Hem: _), Mmult (eye (Mbits m)) m Hem = m.
 Proof.
-  unfold Mequal.
   intros.
-  split.
+  apply Mequal.
   - unfold MMeqbits.
     rewrite Mmult_bits_r.
     apply eye_bits.
@@ -910,10 +888,16 @@ Proof.
     rewrite Mmult_eye_l_suppl.
     reflexivity.
     replace (Msize (eye (Mbits m))) with (Msize m).
-    apply Hi2.
-    unfold Msize.
-    rewrite eye_bits.
-    reflexivity.
+    + unfold Msize in *;
+      repeat rewrite Mmult_bits_l in *;
+      repeat rewrite Mconjtrans_bits in *;
+      repeat rewrite eye_bits in *.
+      apply H.
+    + unfold Msize in *;
+      repeat rewrite Mmult_bits_l in *;
+      repeat rewrite Mconjtrans_bits in *;
+      repeat rewrite eye_bits in *.
+      reflexivity.
 Qed.
 
 (* ============================================================================================== *)

@@ -15,50 +15,28 @@ Open Scope T_scope.
 
 Definition Qop_mmd (m: Matrix): Matrix := Mmult m (Mconjtrans m) (Mconjtrans_bits m).
 
-Definition Qop_unitary (m: Matrix) := Mequal (Qop_mmd m) (eye (Mbits m)).
+Definition Qop_unitary (m: Matrix) := Qop_mmd m = eye (Mbits m).
 
 Lemma Qop_unitary_mult_suppl: forall (m1 m2: Matrix) (H12: _) (H21: _) (H1221: _),
-  Mequal (Mmult (Mmult m1 m2 H12) (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H1221) (eye (Mbits m1)) ->
+  Mmult (Mmult m1 m2 H12) (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H1221 = eye (Mbits m1) ->
   Qop_unitary (Mmult m1 m2 H12).
 Proof.
   intros.
-  split.
+  apply Mequal.
   - unfold MMeqbits.
     reflexivity.
   - intros.
     specialize (Mconjtrans_mult m1 m2 H12 H21) as Hd.
-    destruct Hd as [Hd1 Hd2].
-    unfold Mget in *.
-    rewrite Mmult_bits_l.
-    destruct H as [H1 H2].
-    unfold Mget in H2.
-    unfold Msize in *.
     unfold Qop_mmd in *.
-    rewrite Mconjtrans_bits in *.
-    repeat rewrite Mmult_bits_l in *.
-    rewrite Mconjtrans_bits in *.
-    rewrite eye_bits in *.
-    rewrite <- H2.
-    unfold Qop_mmd.
-    assert (Mequal (Mmult (Mmult m1 m2 H12) (Mconjtrans (Mmult m1 m2 H12))
-    (Mconjtrans_bits (Mmult m1 m2 H12))) (Mmult (Mmult m1 m2 H12) (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H1221)) as Heq.
-    { apply Mmult_eq.
-      split.
-      - unfold MMeqbits.
-        repeat rewrite Mconjtrans_bits.
-        rewrite Mmult_bits_l.
-        rewrite Mmult_bits_r.
-        rewrite Mconjtrans_bits.
-        reflexivity.
-      - unfold Mget.
-        apply Hd2. }
-    destruct Heq.
-    unfold Mget in *.
-    unfold Msize in *.
-    unfold Qop_mmd in *.
-    repeat rewrite Mmult_bits_l in *.
-    apply H0.
-    lia.  lia.  lia.  lia.  lia.  lia.  lia.  lia.
+    unfold Mmult in *.
+    rewrite Hd.
+    simpl in *.
+    unfold eye in H.
+    inversion H.
+    assert (forall f g: nat -> nat -> C, f = g -> f i j = g i j) as Hfeq.
+    { intros. rewrite H2. reflexivity. }
+    apply Hfeq in H3.
+    apply H3.
 Qed.
 
 Lemma Qop_unitary_mult: forall (m1 m2: Matrix) (H: _),
@@ -76,95 +54,127 @@ Proof.
     rewrite Mconjtrans_bits.
     apply H. }
   apply (Qop_unitary_mult_suppl m1 m2 H H21 H1221).
-  Unshelve.
-  - split.
-    + unfold MMeqbits.
+  apply Mequal.
+  - unfold MMeqbits.
+    repeat rewrite Mmult_bits_l.
+    apply eye_bits.
+  - intros.
+    simpl_bits.
+    unfold Mget.
+    assert (MMeqbits m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21)) as H23.
+    { unfold MMeqbits.
       repeat rewrite Mmult_bits_l.
-      apply eye_bits.
-    + intros.
-      unfold Mget.
-      assert (MMeqbits m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21)) as H23.
-      { unfold MMeqbits.
-        repeat rewrite Mmult_bits_l.
-        rewrite Mconjtrans_bits.
-        reflexivity. }
-      assert (MMeqbits m1 (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23)) as H1_23.
-      { unfold MMeqbits.
-        repeat rewrite Mmult_bits_l.
-        apply H. }
-      specialize
-        (Mmult_assoc m1 m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H H1221 H23 H1_23)
-        as Hassoc.
-      destruct Hassoc as [_ Hassoc].
-      unfold Mget, Msize in *.
+      rewrite Mconjtrans_bits.
+      reflexivity. }
+    assert (MMeqbits m1 (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23)) as H1_23.
+    { unfold MMeqbits.
+      repeat rewrite Mmult_bits_l.
+      apply H. }
+    specialize
+      (Mmult_assoc m1 m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H H1221 H23 H1_23)
+      as Hassoc.
+    rewrite Hassoc.
+    assert (MMeqbits (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1)) as H22_1.
+    { unfold MMeqbits.
+      repeat rewrite Mmult_bits_l.
+      rewrite Mconjtrans_bits.
+      symmetry.
+      apply H. }
+    assert (MMeqbits m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21)) as H2_21.
+    { unfold MMeqbits.
       simpl_bits.
-      specialize (Hassoc i j Hi1 Hi1 Hj1 Hj2).
-      rewrite Hassoc.
-      assert (MMeqbits (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1)) as H22_1.
-      { unfold MMeqbits.
-        repeat rewrite Mmult_bits_l.
-        rewrite Mconjtrans_bits.
-        symmetry.
-        apply H. }
-      assert (MMeqbits m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21)) as H2_21.
-      { unfold MMeqbits.
+      reflexivity. }
+    assert (
+      (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23) =
+      (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1)) as Hassoc2.
+    { apply Mequal.
+      - unfold MMeqbits.
         simpl_bits.
-        reflexivity. }
-      assert (Mequal
-        (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23)
-        (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1)) as Hassoc2.
-      { split.
-        - unfold MMeqbits.
-          simpl_bits.
-          reflexivity.
-        - intros.
-          unfold Mget.
-          simpl_bits.
-          specialize
-            (Mmult_assoc m2 (Mconjtrans m2) (Mconjtrans m1) (Mconjtrans_bits m2) H22_1 H21 H2_21)
-            as Hassoc2.
-          destruct Hassoc2 as [_ Hassoc2].
-          unfold Mget in Hassoc2.
-          simpl_bits.
-          symmetry.
-          apply Hassoc2.
-          lia.
-          lia.
-          lia.
-          lia.
-      }
-      assert (MMeqbits m1 (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23)) as H1_2_21.
-      { unfold MMeqbits.
-      assert (MMeqbits m1 (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1)) as H1_22_1.
-      specialize
-        (Mmult_eq m1
-        (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23)
-        (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1)) as Hmeq.
+        reflexivity.
+      - intros.
+        unfold Mget.
+        simpl_bits.
+        specialize
+          (Mmult_assoc m2 (Mconjtrans m2) (Mconjtrans m1) (Mconjtrans_bits m2) H22_1 H21 H23)
+          as Hassoc2.
+        rewrite Hassoc2.
+        reflexivity.
+    }
+    assert (MMeqbits m1 (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1)) as H1_22_1.
+    { simpl_bits. apply H. }
+    assert (
+      Mmult m1 (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23) H1_23 =
+      Mmult m1 (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1) H1_22_1).
+    { unfold Mmult in *.
+      rewrite Hassoc2.
+      reflexivity. }
+    rewrite H4.
+    unfold Qop_unitary in *.
+    unfold Qop_mmd in *.
+    assert (MMeqbits m1 (Mmult (eye (Mbits m2)) (Mconjtrans m1) H22_1)) as H1e1.
+    { simpl_bits. apply H. }
+    assert (
+      Mmult m1 (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1) H1_22_1 =
+      Mmult m1 (Mmult (eye (Mbits m2)) (Mconjtrans m1) H22_1) H1e1).
+    { unfold Mmult in *.
+      rewrite H1.
+      reflexivity. }
+    rewrite H5.
 
 
 
-      rewrite Mmult_eq.
-      unfold Qop_unitary in *.
-      unfold Mequal in *.
-      destruct H0 as [H00 H01].
-      destruct H1 as [H10 H11].
-      unfold Mget in *.
-      unfold Qop_mmd in *.
-      unfold Msize in *.
-      rewrite Mmult_bits_l in *.
-      rewrite eye_bits in *.
-      unfold Mmult in *.
-      unfold Mmult_inner in *.
-      simpl in *.
-      unfold eye.
-      f_equal.
-      unfold Msize in *.
-      simpl.
-      rewrite H in Hi2.
-      rewrite H in Hj2.
-      specialize (H01 i j Hi1 Hi1 Hj1 Hj1).
-      specialize (H11 i j Hi2 Hi2 Hj2 Hj2).
-      f_equal.
+
+
+
+
+
+
+    specialize
+      (Mmult_eq m1
+      (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23)
+      (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1)
+      H1_23 H1_23) as Hmeq.
+    assert (
+      Mequal
+      (Mmult m1 (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23) H1_23)
+      (Mmult m1 (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1) H1_23) ->
+      Minner (Mmult m1 (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23) H1_23) i j
+      = Minner (Mmult m1 (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1) H1_23) i j).
+    { intros.
+      destruct H2 as [_ H2].
+      unfold Mget in H2.
+      simpl_bits.
+      apply H2.
+      lia. lia. lia. lia. }
+    rewrite H2.
+    unfold Qop_unitary in H1.
+
+    rewrite Hmeq.
+
+
+
+    rewrite Mmult_eq.
+    unfold Qop_unitary in *.
+    unfold Mequal in *.
+    destruct H0 as [H00 H01].
+    destruct H1 as [H10 H11].
+    unfold Mget in *.
+    unfold Qop_mmd in *.
+    unfold Msize in *.
+    rewrite Mmult_bits_l in *.
+    rewrite eye_bits in *.
+    unfold Mmult in *.
+    unfold Mmult_inner in *.
+    simpl in *.
+    unfold eye.
+    f_equal.
+    unfold Msize in *.
+    simpl.
+    rewrite H in Hi2.
+    rewrite H in Hj2.
+    specialize (H01 i j Hi1 Hi1 Hj1 Hj1).
+    specialize (H11 i j Hi2 Hi2 Hj2 Hj2).
+    f_equal.
 
 
 
