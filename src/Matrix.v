@@ -1,4 +1,5 @@
 Require Export Complex.
+Require Import FunctionalExtensionality.
 Import ListNotations.
 
 Declare Scope M_scope.
@@ -62,8 +63,26 @@ Definition CVget (c : ColVec) (i: nat) (Hi: i < CVsize c): C := CVinner c i.
 (* ============================================================================================== *)
 (* equality of two matrices ===================================================================== *)
 
-Definition Mequal (m1 m2: Matrix): Prop := forall (i j: nat) (Hi1: _) (Hi2: _) (Hj1: _) (Hj2: _),
-  (MMeqbits m1 m2) /\ (m1[[i Hi1|j Hj1]] = m2[[i Hi2|j Hj2]]).
+Lemma Mequal: forall (m1 m2: Matrix),
+  Mbits m1 = Mbits m2 -> (forall i j, Minner m1 i j = Minner m2 i j) -> m1 = m2.
+Proof.
+  intros.
+  destruct m1, m2.
+  simpl in *.
+  assert (Minner0 = Minner1).
+  { assert (forall i, Minner0 i = Minner1 i).
+    { intros.
+      apply functional_extensionality.
+      apply H0. }
+    apply functional_extensionality.
+    apply H1. }
+  rewrite H.
+  rewrite H1.
+  reflexivity.
+Qed.
+
+Definition Mequal (m1 m2: Matrix): Prop :=
+  (MMeqbits m1 m2) /\ (forall (i j: nat) (Hi1: _) (Hi2: _) (Hj1: _) (Hj2: _), m1[[i Hi1|j Hj1]] = m2[[i Hi2|j Hj2]]).
 
 (* ============================================================================================== *)
 (* equality of two vectors ====================================================================== *)
@@ -275,6 +294,22 @@ Proof.
     lca.
 Qed.
 
+Lemma dot_product_suppl_f_r: forall (l: nat) (f1 f2 f3: nat -> C),
+  (forall n, n < l -> f2 n = f3 n) -> dot_product_suppl f1 f2 l = dot_product_suppl f1 f3 l.
+Proof.
+  intros.
+  induction l as [|l'].
+  - reflexivity.
+  - simpl.
+    rewrite IHl'.
+    rewrite H.
+    reflexivity.
+    lia.
+    intros.
+    apply H.
+    lia.
+Qed.
+
 (* ============================================================================================== *)
 (* element-wise unary operation ================================================================= *)
 
@@ -431,16 +466,18 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma Mmult_assoc: forall (m1 m2 m3 m12 m12_3 m23 m1_23: Matrix)
+Lemma Mmult_assoc: forall (m1 m2 m3: Matrix)
   (H12: _) (H12_3: _) (H23: _) (H1_23: _),
-  Mequal (Mmult (Mmult m1 m2 H12) m3 H12_3) (Mmult m1 (Mmult m2 m3 H23) H1_23).
+  (Mmult (Mmult m1 m2 H12) m3 H12_3) = (Mmult m1 (Mmult m2 m3 H23) H1_23).
 Proof.
   intros.
+  split.
   unfold Mequal.
   split.
   - unfold MMeqbits.
     reflexivity.
-  - unfold Mget.
+  - intros.
+    unfold Mget.
     simpl.
     unfold Mmult.
     unfold Mmult_inner.
@@ -453,12 +490,33 @@ Proof.
     apply dot_product_suppl_assoc.
 Qed.
 
-(* Lemma Mmult_eq: forall (m1 m2 m3: Matrix) (H12: _) (H13: _),
+Lemma Mmult_eq: forall (m1 m2 m3: Matrix) (H12: _) (H13: _),
 Mequal m2 m3 -> Mequal (Mmult m1 m2 H12) (Mmult m1 m3 H13).
 Proof.
   intros.
   split.
-  - Unfold  *)
+  - unfold MMeqbits.
+    repeat rewrite Mmult_bits_l.
+    reflexivity.
+  - intros.
+    destruct H.
+    unfold Mget in *.
+    unfold Mmult.
+    unfold Mmult_inner.
+    simpl.
+    apply dot_product_suppl_f_r.
+    intros.
+    unfold MMeqbits in *.
+    unfold Msize in *.
+    rewrite Mmult_bits_r in *.
+    apply H0.
+    rewrite <- H12.
+    apply H1.
+    rewrite <- H13.
+    apply H1.
+    lia.
+    lia.
+Qed.
 
 
 (* ============================================================================================== *)
@@ -668,7 +726,8 @@ Proof.
     repeat rewrite Mconjtrans_bits.
     repeat rewrite Mmult_bits_l.
     apply H12.
-  - unfold Mget.
+  - intros.
+    unfold Mget.
     simpl.
     unfold Mmult_inner.
     unfold extract_row_unsafe.
@@ -826,7 +885,8 @@ Proof.
   - unfold MMeqbits.
     rewrite Mmult_bits_r.
     apply eye_bits.
-  - unfold Mget.
+  - intros.
+    unfold Mget.
     unfold Mmult.
     unfold Mmult_inner.
     simpl.
@@ -842,7 +902,8 @@ Proof.
   - unfold MMeqbits.
     rewrite Mmult_bits_r.
     apply eye_bits.
-  - unfold Mget.
+  - intros.
+    unfold Mget.
     unfold Mmult.
     unfold Mmult_inner.
     simpl.
@@ -854,6 +915,16 @@ Proof.
     rewrite eye_bits.
     reflexivity.
 Qed.
+
+(* ============================================================================================== *)
+(* tactic of simplifying bits =================================================================== *)
+
+Ltac simpl_bits :=
+  unfold MMeqbits in *;
+  unfold Msize in *;
+  repeat rewrite Mmult_bits_l in *;
+  repeat rewrite Mconjtrans_bits in *;
+  repeat rewrite eye_bits in *.
 
 (* ============================================================================================== *)
 (* ring ========================================================================================= *)
