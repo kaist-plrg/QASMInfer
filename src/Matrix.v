@@ -77,68 +77,62 @@ Definition CVequal (c1 c2: ColVec): Prop := forall (i: nat) (Hi1: _) (Hi2: _),
 (* ============================================================================================== *)
 (* extract row and column vectors from a matrix ================================================= *)
 
-Definition extract_row (m: Matrix) (i: nat) (Hi: i < Msize m): {r: RowVec | RMeqbits r m}.
-Proof.
-  refine (exist _ {|
+Definition extract_row (m: Matrix) (i: nat) (Hi: i < Msize m): RowVec :=
+  {|
     RVbits := Mbits m;
     RVinner := fun j => Minner m i j;
-    |} _ ).
-  reflexivity.
-Defined.
+  |}.
 
-Definition extract_col (m: Matrix) (j: nat) (Hj: j < Msize m): {c: ColVec | CMeqbits c m}.
-Proof.
-  refine (exist _ {|
+Lemma extract_row_bits: forall (m: Matrix) (i: nat) (Hi: _), RMeqbits (extract_row m i Hi) m.
+Proof. reflexivity. Qed.
+
+Definition extract_col (m: Matrix) (j: nat) (Hj: j < Msize m): ColVec :=
+  {|
     CVbits := Mbits m;
     CVinner := fun i => Minner m i j;
-    |} _ ).
-  reflexivity.
-Defined.
+  |}.
 
-Definition extract_row_unsafe (m: Matrix) (i: nat): {r: RowVec | RMeqbits r m}.
-Proof.
-  refine (exist _ {|
+Lemma extract_col_bits: forall (m: Matrix) (j: nat) (Hj: _), CMeqbits (extract_col m j Hj) m.
+Proof. reflexivity. Qed.
+
+Definition extract_row_unsafe (m: Matrix) (i: nat): RowVec :=
+  {|
     RVbits := Mbits m;
     RVinner := fun j => Minner m i j;
-    |} _ ).
-  reflexivity.
-Defined.
+  |}.
 
-Definition extract_col_unsafe (m: Matrix) (j: nat): {c: ColVec | CMeqbits c m}.
-Proof.
-  refine (exist _ {|
+Lemma extract_row_unsafe_bits: forall (m: Matrix) (i: nat), RMeqbits (extract_row_unsafe m i) m.
+Proof. reflexivity. Qed.
+
+Definition extract_col_unsafe (m: Matrix) (j: nat): ColVec :=
+  {|
     CVbits := Mbits m;
     CVinner := fun i => Minner m i j;
-    |} _ ).
-  reflexivity.
-Defined.
+  |}.
+
+Lemma extract_col_unsafe_bits: forall (m: Matrix) (j: nat), CMeqbits (extract_col_unsafe m j) m.
+Proof. reflexivity. Qed.
 
 Lemma extract_row_correct: forall
-  (m: Matrix) (r: RowVec) (i j: nat) (Hi Hi': _) (Hj: _) (Hr: _) (Hjr: _),
-  exist _ r Hr = extract_row m i Hi ->
-  RVget r j Hjr = m[[i Hi'|j Hj]].
+  (m: Matrix) (r: RowVec) (i j: nat) (Hi Hi': _) (Hj: _) (Hjr: _),
+  RVget (extract_row m i Hi) j Hjr = m[[i Hi'|j Hj]].
 Proof.
   unfold extract_row.
   intros.
-  inversion H.
   unfold RVget.
   unfold Mget.
-  rewrite H1.
   simpl.
   reflexivity.
 Qed.
 
 Lemma extract_col_correct: forall
-  (m: Matrix) (c: ColVec) (i j: nat) (Hi: _) (Hj Hj': _) (Hc: _) (Hic: _),
-  exist _ c Hc = extract_col m j Hj ->
-  CVget c i Hic = m[[i Hi|j Hj']].
+  (m: Matrix) (c: ColVec) (i j: nat) (Hi: _) (Hj Hj': _) (Hic: _),
+  CVget (extract_col m j Hj) i Hic = m[[i Hi|j Hj']].
 Proof.
   unfold extract_col.
   intros.
-  inversion H.
   unfold CVget.
   unfold Mget.
-  rewrite H1.
   simpl.
   reflexivity.
 Qed.
@@ -284,24 +278,21 @@ Qed.
 (* ============================================================================================== *)
 (* element-wise unary operation ================================================================= *)
 
-Definition Muop (uop: C -> C) (m: Matrix): {m': Matrix | MMeqbits m' m}.
-Proof.
-  refine ( exist _ {|
+Definition Muop (uop: C -> C) (m: Matrix): Matrix :=
+  {|
     Mbits := Mbits m;
     Minner := fun i j => uop (Minner m i j);
-    |} _ ).
-  reflexivity.
-Defined.
+  |}.
+
+Lemma Muop_bits: forall (uop: C -> C) (m: Matrix), MMeqbits (Muop uop m) m.
+Proof. reflexivity. Qed.
 
 Lemma Muop_correct: forall
-  (uop: C -> C) (m1 m2: Matrix) (i j: nat)
-  (Huop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
-  exist _ m2 Huop = Muop uop m1 ->
-  m2[[i H2i|j H2j]] = uop (m1[[i H1i|j H1j]]).
+  (uop: C -> C) (m: Matrix) (i j: nat)
+  (H1i: _) (H1j: _) (H2i: _) (H2j: _),
+  (Muop uop m)[[i H2i|j H2j]] = uop (m[[i H1i|j H1j]]).
 Proof.
   intros.
-  inversion H.
-  subst m2.
   unfold Mget.
   simpl.
   reflexivity.
@@ -310,52 +301,59 @@ Qed.
 (* ============================================================================================== *)
 (* opposite of a matrix ========================================================================= *)
 
-Definition Mopp (m: Matrix): {m': Matrix | MMeqbits m' m} := Muop Copp m.
+Definition Mopp (m: Matrix): Matrix := Muop Copp m.
+
+Lemma Mopp_bits: forall (m: Matrix), MMeqbits (Mopp m) m.
+Proof. apply Muop_bits. Qed.
 
 Lemma Mopp_correct: forall
-  (m1 m2: Matrix) (i j: nat)
-  (Huop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
-  exist _ m2 Huop = Mopp m1 ->
-  m2[[i H2i|j H2j]] = Copp (m1[[i H1i|j H1j]]).
-Proof.
-  apply Muop_correct.
-Qed.
+  (m: Matrix) (i j: nat)
+  (H1i: _) (H1j: _) (H2i: _) (H2j: _),
+  (Mopp m)[[i H2i|j H2j]] = Copp (m[[i H1i|j H1j]]).
+Proof. apply Muop_correct. Qed.
 
 (* ============================================================================================== *)
 (* scalar multiplication ======================================================================== *)
 
-Definition Msmul (s: C) (m: Matrix): {m': Matrix | MMeqbits m' m} := Muop (Cmult s) m.
+Definition Msmul (s: C) (m: Matrix): Matrix := Muop (Cmult s) m.
 
 Lemma Msuml_correct: forall
-  (s: C) (m1 m2: Matrix) (i j: nat)
-  (Huop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
-  exist _ m2 Huop = Msmul s m1 -> m2[[i H2i|j H2j]] = (Cmult s) (m1[[i H1i|j H1j]]).
-Proof.
-  intro s.
-  apply Muop_correct.
-Qed.
+  (s: C) (m: Matrix) (i j: nat)
+  (H1i: _) (H1j: _) (H2i: _) (H2j: _),
+  (Msmul s m)[[i H2i|j H2j]] = (Cmult s) (m[[i H1i|j H1j]]).
+Proof. intro s. apply Muop_correct. Qed.
 
 (* ============================================================================================== *)
 (* element-wise binary operation ================================================================ *)
 
-Definition Mbop (bop: C -> C -> C) (m1 m2: Matrix) (Hbits: MMeqbits m1 m2):
-  {m: Matrix| MMeqbits m m1}.
-Proof.
-  refine (exist _ {|
+Definition Mbop (bop: C -> C -> C) (m1 m2: Matrix) (Hbits: MMeqbits m1 m2): Matrix :=
+  {|
     Mbits := Mbits m1;
-    Minner := fun i j => bop (Minner m1 i j) (Minner m2 i j) |} _ ).
-  simpl. reflexivity.
-Defined.
+    Minner := fun i j => bop (Minner m1 i j) (Minner m2 i j)
+  |}.
+
+Lemma Mbop_bits_l: forall (bop: C -> C -> C) (m1 m2: Matrix) (Hbits: _),
+  MMeqbits m1 (Mbop bop m1 m2 Hbits).
+Proof. reflexivity. Qed.
+
+Lemma Mbop_bits_r: forall (bop: C -> C -> C) (m1 m2: Matrix) (Hbits: _),
+  MMeqbits m2 (Mbop bop m1 m2 Hbits).
+Proof.
+  intros.
+  unfold Mbop.
+  unfold MMeqbits in *.
+  simpl.
+  rewrite <- Hbits.
+  reflexivity.
+Qed.
 
 Lemma Mbop_correct: forall
   (bop: C -> C -> C) (m1 m2 m3: Matrix) (i j: nat)
-  (Hbits: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
-  exist _ m3 Hbop = Mbop bop m1 m2 Hbits ->
-  m3[[i H3i|j H3j]] = bop (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
+  (Hbits: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
+  (Mbop bop m1 m2 Hbits)[[i H3i|j H3j]] = bop (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
 Proof.
   unfold Mbop, Mget.
   intros.
-  inversion H.
   simpl.
   reflexivity.
 Qed.
@@ -365,93 +363,86 @@ Qed.
 
 Definition Mplus (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop Cplus m1 m2 Hbits.
 
+Lemma Mplus_bits_l: forall (m1 m2: Matrix) (Hbits: _), MMeqbits m1 (Mplus m1 m2 Hbits).
+Proof. apply Mbop_bits_l. Qed.
+
+Lemma Mplus_bits_r: forall (m1 m2: Matrix) (Hbits: _), MMeqbits m2 (Mplus m1 m2 Hbits).
+Proof. apply Mbop_bits_r. Qed.
+
 Lemma Mplus_correct: forall
   (m1 m2 m3: Matrix) (i j: nat)
-  (Hbits: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
-  exist _ m3 Hbop = Mplus m1 m2 Hbits ->
-  m3[[i H3i|j H3j]] = Cplus (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
-Proof.
-  apply Mbop_correct.
-Qed.
+  (Hbits: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
+  (Mplus m1 m2 Hbits)[[i H3i|j H3j]] = Cplus (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
+Proof. apply Mbop_correct. Qed.
 
 (* ============================================================================================== *)
 (* matrix subtraction =========================================================================== *)
 
 Definition Mminus (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop Cminus m1 m2 Hbits.
 
+Lemma Mminus_bits_l: forall (m1 m2: Matrix) (Hbits: _), MMeqbits m1 (Mminus m1 m2 Hbits).
+Proof. apply Mbop_bits_l. Qed.
+
+Lemma Mminus_bits_r: forall (m1 m2: Matrix) (Hbits: _), MMeqbits m2 (Mminus m1 m2 Hbits).
+Proof. apply Mbop_bits_r. Qed.
+
 Lemma Mminus_correct: forall
   (m1 m2 m3: Matrix) (i j: nat)
-  (Hbits: _) (Hbop: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
-  exist _ m3 Hbop = Mminus m1 m2 Hbits ->
-  m3[[i H3i|j H3j]] = Cminus (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
-Proof.
-  apply Mbop_correct.
-Qed.
+  (Hbits: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
+  (Mminus m1 m2 Hbits)[[i H3i|j H3j]] = Cminus (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
+Proof. apply Mbop_correct. Qed.
 
 (* ============================================================================================== *)
 (* matrix multiplication ======================================================================== *)
 
-Definition Mmult_inner (m1 m2: Matrix) (i j: nat): C.
-Proof.
-  destruct (extract_row_unsafe m1 i) as [r _].
-  destruct (extract_col_unsafe m2 j) as [c _].
-  refine (dot_product_suppl (RVinner r) (CVinner c) (RVsize r)).
-Defined.
+Definition Mmult_inner (m1 m2: Matrix) (i j: nat): C :=
+  dot_product_suppl
+    (RVinner (extract_row_unsafe m1 i))
+    (CVinner (extract_col_unsafe m2 j))
+    (Msize m1).
 
-Definition Mmult (m1 m2: Matrix) (H: MMeqbits m1 m2): {m: Matrix | MMeqbits m m1}.
-Proof.
-  refine(exist _ {|
+Definition Mmult (m1 m2: Matrix) (H: MMeqbits m1 m2): Matrix :=
+  {|
     Mbits := Mbits m1;
     Minner := fun i j => Mmult_inner m1 m2 i j;
-    |} _).
-  reflexivity.
-Defined.
+  |}.
 
-Lemma Mmult_correct: forall (m1 m2 m: Matrix) (r: RowVec) (c: ColVec) (i j: nat)
-  (Hi: _) (Hj: _) (H: _) (Hm: _) (Hmi: _) (Hmj: _) (Hr1: _) (Hc1: _) (Hrc: _),
-  exist _ m Hm = Mmult m1 m2 H ->
-  exist _ r Hr1 = extract_row m1 i Hi ->
-  exist _ c Hc1 = extract_col m2 j Hj ->
-  m[[i Hmi|j Hmj]] = dot_product r c Hrc.
+Lemma Mmult_bits_l: forall (m1 m2: Matrix) (H: _), MMeqbits (Mmult m1 m2 H) m1.
+Proof. reflexivity. Qed.
+
+Lemma Mmult_bits_r: forall (m1 m2: Matrix) (H: _), MMeqbits (Mmult m1 m2 H) m2.
 Proof.
   intros.
-  inversion H0.
-  inversion H1.
-  inversion H2.
+  unfold Mmult.
+  unfold MMeqbits in *.
+  simpl.
+  apply H.
+Qed.
+
+Lemma Mmult_correct: forall (m1 m2 m: Matrix) (r: RowVec) (c: ColVec) (i j: nat)
+  (Hi: _) (Hj: _) (H: _) (Hmi: _) (Hmj: _) (Hrc: _),
+  (Mmult m1 m2 H)[[i Hmi|j Hmj]] = dot_product (extract_row m1 i Hi) (extract_col m2 j Hj) Hrc.
+Proof.
+  intros.
   unfold Mget.
-  rewrite H4.
   unfold Mmult_inner.
   unfold dot_product.
-  rewrite H5.
-  rewrite H6.
   simpl.
   reflexivity.
 Qed.
 
 Lemma Mmult_assoc: forall (m1 m2 m3 m12 m12_3 m23 m1_23: Matrix)
-  (H12: _) (H12_3: _) (H23: _) (H1_23: _) (E12: _) (E12_3: _) (E23: _) (E1_23: _),
-  exist _ m12 E12 = Mmult m1 m2 H12 ->
-  exist _ m12_3 E12_3 = Mmult m12 m3 H12_3 ->
-  exist _ m23 E23 = Mmult m2 m3 H23 ->
-  exist _ m1_23 E1_23 = Mmult m1 m23 H1_23 ->
-  Mequal m12_3 m1_23.
+  (H12: _) (H12_3: _) (H23: _) (H1_23: _),
+  Mequal (Mmult (Mmult m1 m2 H12) m3 H12_3) (Mmult m1 (Mmult m2 m3 H23) H1_23).
 Proof.
   intros.
   unfold Mequal.
-  inversion H.
-  inversion H0.
-  inversion H1.
-  inversion H2.
   split.
   - unfold MMeqbits.
-    simpl.
-    rewrite H12_3.
-    symmetry.
-    apply (eq_trans H12 H23).
+    reflexivity.
   - unfold Mget.
     simpl.
-    rewrite H4.
-    rewrite H6.
+    unfold Mmult.
     unfold Mmult_inner.
     unfold extract_row_unsafe.
     unfold extract_col_unsafe.
@@ -463,7 +454,7 @@ Proof.
 Qed.
 
 (* Lemma Mmult_eq: forall (m1 m2 m3: Matrix) (H12: _) (H13: _),
-Mequal m2 m3 -> Mequal (Mmult m1 m2 H12).1 (Mmult m1 m3 H13).1.
+Mequal m2 m3 -> Mequal (Mmult m1 m2 H12) (Mmult m1 m3 H13).
 Proof.
   intros.
   split.
@@ -473,33 +464,34 @@ Proof.
 (* ============================================================================================== *)
 (* matrix-vector multiplication ================================================================= *)
 
-Definition MVmult_inner (m: Matrix) (c: ColVec) (i: nat): C.
-Proof.
-  destruct (extract_row_unsafe m i) as [r _].
-  apply (dot_product_suppl (RVinner r) (CVinner c) (CVsize c)).
-Defined.
+Definition MVmult_inner (m: Matrix) (c: ColVec) (i: nat): C :=
+  dot_product_suppl (RVinner (extract_row_unsafe m i)) (CVinner c) (CVsize c).
 
-Definition MVmult (m: Matrix) (c: ColVec) (H: MCeqbits m c): {c': ColVec | CCeqbits c c'}.
-Proof.
-  refine(exist _ {|
+Definition MVmult (m: Matrix) (c: ColVec) (H: MCeqbits m c): ColVec :=
+  {|
     CVbits := CVbits c;
     CVinner := fun i => MVmult_inner m c i;
-    |} _).
-  reflexivity.
-Defined.
+  |}.
 
-Lemma MVmult_correct: forall (m: Matrix) (r: RowVec) (c c': ColVec) (i: nat)
-  (Hi: _) (H: _) (Hc': _) (Hci: _) (Hr: _) (Hrc: _),
-  exist _ c' Hc' = MVmult m c H ->
-  exist _ r Hr = extract_row m i Hi ->
-  CVget c' i Hci = dot_product r c Hrc.
+Lemma MVmult_bits_l: forall (m: Matrix) (c: ColVec) (H: _), CMeqbits (MVmult m c H) m.
 Proof.
   intros.
-  inversion H0.
-  inversion H1.
+  unfold CMeqbits.
+  unfold MVmult.
+  simpl.
+  symmetry.
+  apply H.
+Qed.
+
+Lemma MVmult_bits_r (m: Matrix) (c: ColVec) (H: _): CCeqbits (MVmult m c H) c.
+Proof. reflexivity. Qed.
+
+Lemma MVmult_correct: forall (m: Matrix) (r: RowVec) (c c': ColVec) (i: nat)
+  (Hi: _) (H: _) (Hci: _) (Hrc: _),
+  CVget (MVmult m c H) i Hci = dot_product (extract_row m i Hi) c Hrc.
+Proof.
+  intros.
   unfold CVget, dot_product.
-  rewrite H3.
-  rewrite H4.
   unfold MVmult_inner.
   unfold RVsize.
   simpl.
@@ -508,73 +500,62 @@ Proof.
 Qed.
 
 Lemma MMVmult_assoc: forall (m1 m2 m12: Matrix) (c3 c23 c12_3 c1_23: ColVec)
-  (H12: _) (H12_3: _) (H23: _) (H1_23: _) (E12: _) (E12_3: _) (E23: _) (E1_23: _),
-  exist _ m12 E12 = Mmult m1 m2 H12 ->
-  exist _ c12_3 E12_3 = MVmult m12 c3 H12_3 ->
-  exist _ c23 E23 = MVmult m2 c3 H23 ->
-  exist _ c1_23 E1_23 = MVmult m1 c23 H1_23 ->
-  CVequal c12_3 c1_23.
+  (H12: _) (H12_3: _) (H23: _) (H1_23: _),
+  CVequal (MVmult (Mmult m1 m2 H12) c3 H12_3) (MVmult m1 (MVmult m2 c3 H23) H1_23).
 Proof.
   intros.
   unfold CVequal.
-  inversion H.
-  inversion H0.
-  inversion H1.
-  inversion H2.
   split.
   - unfold CCeqbits.
     simpl.
     rewrite <- H12_3.
-    rewrite E12.
-    apply H1_23.
+    reflexivity.
   - unfold CVget.
     simpl.
-    rewrite H4.
-    rewrite H6.
+    unfold Mmult.
+    unfold MVmult.
     unfold Mmult_inner.
     unfold MVmult_inner.
     unfold extract_row_unsafe.
     unfold CVsize.
     unfold RVsize.
+    unfold Msize.
     simpl in *.
     replace (CVbits c3) with (Mbits m1).
     apply dot_product_suppl_assoc.
-    rewrite <- H12_3.
-    rewrite E12.
-    reflexivity.
 Qed.
 
 (* ============================================================================================== *)
 (* vector-matrix multiplication ================================================================= *)
 
 
-Definition VMmult_inner (r: RowVec) (m: Matrix) (j: nat): C.
-Proof.
-  destruct (extract_col_unsafe m j) as [c _].
-  apply (dot_product_suppl (RVinner r) (CVinner c) (RVsize r)).
-Defined.
+Definition VMmult_inner (r: RowVec) (m: Matrix) (j: nat): C :=
+  dot_product_suppl (RVinner r) (CVinner (extract_col_unsafe m j)) (RVsize r).
 
-Definition VMmult (r: RowVec) (m: Matrix) (H: RMeqbits r m): {r': RowVec | RReqbits r r'}.
-Proof.
-  refine(exist _ {|
+Definition VMmult (r: RowVec) (m: Matrix) (H: RMeqbits r m): RowVec :=
+  {|
     RVbits := RVbits r;
     RVinner := fun j => VMmult_inner r m j;
-    |} _).
-  reflexivity.
-Defined.
+  |}.
 
-Lemma VMmult_correct: forall (m: Matrix) (r r': RowVec) (c: ColVec) (j: nat)
-  (Hj: _) (H: _) (Hr': _) (Hri: _) (Hc: _) (Hrc: _),
-  exist _ r' Hr' = VMmult r m H ->
-  exist _ c Hc = extract_col m j Hj ->
-  RVget r' j Hri = dot_product r c Hrc.
+Lemma VMmult_bits_l: forall (r: RowVec) (m: Matrix) (H: RMeqbits r m), RReqbits (VMmult r m H) r.
+Proof. reflexivity. Qed.
+
+Lemma VMmult_bits_r: forall (r: RowVec) (m: Matrix) (H: RMeqbits r m), RMeqbits (VMmult r m H) m.
 Proof.
   intros.
-  inversion H0.
-  inversion H1.
+  unfold RMeqbits.
+  unfold VMmult.
+  simpl.
+  apply H.
+Qed.
+
+Lemma VMmult_correct: forall (m: Matrix) (r r': RowVec) (c: ColVec) (j: nat)
+  (Hj: _) (H: _) (Hri: _) (Hrc: _),
+  RVget (VMmult r m H) j Hri = dot_product r (extract_col m j Hj) Hrc.
+Proof.
+  intros.
   unfold RVget, dot_product.
-  rewrite H3.
-  rewrite H4.
   unfold MVmult_inner.
   unfold RVsize.
   simpl.
@@ -582,31 +563,20 @@ Proof.
 Qed.
 
 Lemma VMMmult_assoc: forall (r1 r12 r12_3 r1_23: RowVec) (m3 m2 m23: Matrix)
-  (H12: _) (H12_3: _) (H23: _) (H1_23: _) (E12: _) (E12_3: _) (E23: _) (E1_23: _),
-  exist _ r12 E12 = VMmult r1 m2 H12 ->
-  exist _ r12_3 E12_3 = VMmult r12 m3 H12_3 ->
-  exist _ m23 E23 = Mmult m2 m3 H23 ->
-  exist _ r1_23 E1_23 = VMmult r1 m23 H1_23 ->
-  RVequal r12_3 r1_23.
+  (H12: _) (H12_3: _) (H23: _) (H1_23: _),
+  RVequal (VMmult (VMmult r1 m2 H12) m3 H12_3) (VMmult r1 (Mmult m2 m3 H23) H1_23).
 Proof.
   intros.
   unfold RVequal.
-  inversion H.
-  inversion H0.
-  inversion H1.
-  inversion H2.
   split.
   - unfold RReqbits.
     simpl.
     rewrite H12_3.
-    rewrite E12.
-    symmetry.
-    apply H12_3.
-  - unfold RVget.
-    simpl.
-    rewrite H4.
-    rewrite H6.
+    reflexivity.
+  - unfold RVget. simpl.
+    unfold Mmult.
     unfold Mmult_inner.
+    unfold VMmult.
     unfold VMmult_inner.
     unfold extract_col_unsafe.
     unfold CVsize.
@@ -616,170 +586,120 @@ Proof.
     apply dot_product_suppl_assoc.
 Qed.
 
+(* ============================================================================================== *)
 (* vector-vector multiplication (outer product) ================================================= *)
 
-Definition VVmult (c: ColVec) (r: RowVec) (H: CReqbits c r): {m: Matrix | CMeqbits c m}.
-Proof.
-  refine(exist _ {|
+Definition VVmult (c: ColVec) (r: RowVec) (H: CReqbits c r): Matrix :=
+  {|
     Mbits := CVbits c;
     Minner := fun i j => CVinner c i * RVinner r j;
-    |} _).
-  reflexivity.
-Defined.
+  |}.
 
 (* ============================================================================================== *)
 (* transpose of a matrix ======================================================================== *)
 
-Definition Mtranspose (m: Matrix): {m': Matrix| MMeqbits m m'}.
-Proof.
-  refine ( exist _ {|
+Definition Mtranspose (m: Matrix): Matrix :=
+  {|
     Mbits := Mbits m;
     Minner := fun i j => Minner m j i;
-    |} _ ).
-  reflexivity.
-Defined.
+  |}.
 
-Lemma Mtranspose_correct: forall (m mt: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _) (Hmt: _),
-  exist _ mt Hmt = Mtranspose m -> m[[i Hi|j Hj]] = mt[[j Hj'|i Hi']].
+Lemma Mtranspose_bits: forall (m: Matrix), MMeqbits (Mtranspose m) m.
+Proof. reflexivity. Qed.
+
+Lemma Mtranspose_correct: forall (m mt: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _),
+  m[[i Hi|j Hj]] = (Mtranspose m)[[j Hj'|i Hi']].
 Proof.
   unfold Mtranspose.
   unfold Mget.
   intros.
-  inversion H.
-  simpl.
   reflexivity.
 Qed.
 
 (* ============================================================================================== *)
 (* transpose of a vector ======================================================================== *)
 
-Definition RVtranspose (r: RowVec): {c: ColVec| CReqbits c r}.
-Proof.
-  refine ( exist _ {|
+Definition RVtranspose (r: RowVec): ColVec :=
+  {|
     CVbits := RVbits r;
     CVinner :=  RVinner r;
-    |} _ ).
-  reflexivity.
-Defined.
+  |}.
 
-Definition CVtranspose (c: ColVec): {r: RowVec| RCeqbits r c}.
-Proof.
-  refine ( exist _ {|
+Lemma RVtranspose_size: forall (r: RowVec), CReqbits (RVtranspose r) r.
+Proof. reflexivity. Qed.
+
+Definition CVtranspose (c: ColVec): RowVec :=
+  {|
     RVbits := CVbits c;
     RVinner :=  CVinner c;
-    |} _ ).
-  reflexivity.
-Defined.
+  |}.
+
+Lemma CVtranspose_size: forall (c: ColVec), RCeqbits (CVtranspose c) c.
+Proof. reflexivity. Qed.
 
 (* ============================================================================================== *)
 (* conjugate tranpose of a matrix =============================================================== *)
 
-Definition Mconjtrans (m: Matrix): {m': Matrix| MMeqbits m m'}.
-Proof.
-  refine ( exist _ {|
+Definition Mconjtrans (m: Matrix): Matrix :=
+  {|
     Mbits := Mbits m;
     Minner := fun i j => Cconj (Minner m j i);
-    |} _ ).
-  reflexivity.
-Defined.
+  |}.
 
-Lemma Mconjtrans_correct: forall (m mct: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _) (Hmt: _),
-  exist _ mct Hmt = Mconjtrans m -> mct[[i Hi|j Hj]] = Cconj(m[[j Hj'|i Hi']]).
+Lemma Mconjtrans_bits: forall (m: Matrix), MMeqbits (Mconjtrans m) m.
+Proof. reflexivity. Qed.
+
+Lemma Mconjtrans_correct: forall (m: Matrix) (i j: nat) (Hi: _) (Hi': _) (Hj: _) (Hj': _),
+  (Mconjtrans m)[[i Hi|j Hj]] = Cconj(m[[j Hj'|i Hi']]).
 Proof.
   unfold Mtranspose.
   unfold Mget.
   intros.
-  inversion H.
-  simpl.
   reflexivity.
 Qed.
 
-Lemma Mconjtrans_mult_suppl: forall (m1 m2 m1d m2d m12 m12d m2d1d: Matrix)
-  (H12: _) (H21: _) (Hm1d: _) (Hm2d: _) (Hm12: _) (Hm12d: _) (Hm2d1d: _),
-  exist _ m1d Hm1d = Mconjtrans m1 ->
-  exist _ m2d Hm2d = Mconjtrans m2 ->
-  exist _ m12 Hm12 = Mmult m1 m2 H12 ->
-  exist _ m12d Hm12d = Mconjtrans m12 ->
-  exist _ m2d1d Hm2d1d = Mmult m2d m1d H21 ->
-  Mequal m12d m2d1d.
+Lemma Mconjtrans_mult: forall (m1 m2: Matrix) (H12: _) (H21: _),
+  Mequal (Mconjtrans (Mmult m1 m2 H12)) (Mmult (Mconjtrans m2) (Mconjtrans m1) H21).
 Proof.
   intros.
   split.
   - unfold MMeqbits.
-    rewrite Hm2d1d.
-    rewrite <- Hm12d.
-    rewrite Hm12.
-    rewrite <- Hm2d.
+    repeat rewrite Mmult_bits_l.
+    repeat rewrite Mconjtrans_bits.
+    repeat rewrite Mmult_bits_l.
     apply H12.
   - unfold Mget.
-    inversion H2.
-    inversion H3.
-    simpl.
-    inversion H.
-    inversion H0.
-    inversion H1.
     simpl.
     unfold Mmult_inner.
     unfold extract_row_unsafe.
     unfold extract_col_unsafe.
-    simpl.
     unfold RVsize.
+    unfold Msize.
     simpl.
-    rewrite <- H12.
+    rewrite H12.
     apply dot_product_suppl_conj2.
-Qed.
-
-Lemma Mconjtrans_mult: forall (m1 m2: Matrix) (H12: _) (H12d: _),
-  Mequal (Mconjtrans (Mmult m1 m2 H12).1).1 (Mmult (Mconjtrans m2).1 (Mconjtrans m1).1 H12d).1.
-Proof.
-  intros.
-  unfold proj1_sig in *.
-  destruct (Mconjtrans m1) as [m1d Hm1d] eqn: Em1d.
-  destruct (Mconjtrans m2) as [m2d Hm2d] eqn: Em2d.
-  destruct (Mmult m1 m2 H12) as [m12 Hm12] eqn: Em12.
-  destruct (Mconjtrans m12) as [m12d Hm12d] eqn: Em12d.
-  assert (MMeqbits m2d m1d) as H21.
-  { unfold MMeqbits.
-    rewrite <- Hm1d.
-    rewrite <- Hm2d.
-    symmetry.
-    apply H12. }
-  destruct (Mmult m2d m1d H12d) as [m2d1d Hm2d1d] eqn: Em2d1d.
-  specialize (Mconjtrans_mult_suppl m1 m2 m1d m2d m12 m12d m2d1d) as Hsuppl.
-  specialize (Hsuppl H12 H21 Hm1d Hm2d Hm12 Hm12d Hm2d1d).
-  apply Hsuppl.
-  - symmetry.
-    apply Em1d.
-  - symmetry.
-    apply Em2d.
-  - symmetry.
-    apply Em12.
-  - symmetry.
-    apply Em12d.
-  - symmetry.
-    apply Em2d1d.
 Qed.
 
 (* ============================================================================================== *)
 (* conjugate transpose of a vector ============================================================== *)
 
-Definition RVconjtrans (r: RowVec): {c: ColVec| CReqbits c r}.
-Proof.
-  refine ( exist _ {|
+Definition RVconjtrans (r: RowVec): ColVec :=
+  {|
     CVbits := RVbits r;
     CVinner :=  fun i => Cconj (RVinner r i);
-    |} _ ).
-  reflexivity.
-Defined.
+  |}.
 
-Definition CVconjtrans (c: ColVec): {r: RowVec| RCeqbits r c}.
-Proof.
-  refine ( exist _ {|
+Lemma RVconjtrans_bits: forall (r: RowVec), CReqbits (RVconjtrans r) r.
+Proof. reflexivity. Qed.
+
+Definition CVconjtrans (c: ColVec): RowVec :=
+  {|
     RVbits := CVbits c;
     RVinner :=  fun i => Cconj (CVinner c i);
-    |} _ ).
-  reflexivity.
-Defined.
+  |}.
+
+Lemma CVconjtrans_bits: forall (c: ColVec), RCeqbits (CVconjtrans c) c.
+Proof. reflexivity. Qed.
 
 (* ============================================================================================== *)
 (* trace ======================================================================================== *)
@@ -796,14 +716,14 @@ Definition Mtrace (m: Matrix): C := Mtrace_suppl (Minner m) (Msize m).
 (* ============================================================================================== *)
 (* identity matrix ============================================================================== *)
 
-Definition eye (bits: nat): {m: Matrix | Mbits m = bits}.
-Proof.
-  refine (exist _ {|
+Definition eye (bits: nat): Matrix :=
+  {|
     Mbits := bits;
     Minner := fun i j => if i =? j then 1 else 0;
-    |} _).
-  reflexivity.
-Defined.
+  |}.
+
+Lemma eye_bits: forall (bits: nat), Mbits (eye bits) = bits.
+Proof. reflexivity. Qed.
 
 Fact Mmult_eye_r_suppl: forall (j l: nat) (f: nat -> C),
   j < l -> dot_product_suppl f (fun i0 => if i0 =? j then 1 else 0) l = f j.
@@ -824,11 +744,7 @@ Proof.
       apply Hl.
     + simpl.
       assert (l' = j) as Hj.
-      {
-        (* destruct (lt_eq_lt_dec j l') as [[H1|H2]|H3]. *)
-        destruct (lt_eq_lt_dec j l') as [Hj|Hj].
-        - destruct Hj as [Hj|Hj]. lia. lia.
-        - lia. }
+      { destruct (lt_eq_lt_dec j l') as [ [Hj|Hj]|Hj]. lia. lia. lia. }
       replace (l' =? j) with true.
       subst l'.
       assert (forall n, n >= j -> dot_product_suppl f (fun i0 : nat => if i0 =? n then 1 else 0) j = 0).
@@ -855,17 +771,17 @@ Proof.
       apply Hj.
 Qed.
 
-Fact Mmult_eye_l_suppl: forall (j l: nat) (f: nat -> C),
-  j < l -> dot_product_suppl (fun j0 => if j =? j0 then 1 else 0) f l = f j.
+Fact Mmult_eye_l_suppl: forall (i l: nat) (f: nat -> C),
+  i < l -> dot_product_suppl (fun j0 => if i =? j0 then 1 else 0) f l = f i.
 Proof.
   intros.
   induction l as [|l'].
   - intros.
     lia.
   - intros.
-    destruct (lt_dec j l') as [Hl|Hl].
+    destruct (lt_dec i l') as [Hl|Hl].
     + simpl.
-      assert (j =? l' = false).
+      assert (i =? l' = false).
       { apply Nat.eqb_neq. lia. }
       rewrite H0.
       rewrite Cmult_0_l.
@@ -873,30 +789,26 @@ Proof.
       apply IHl'.
       apply Hl.
     + simpl.
-      assert (l' = j) as Hj.
-      {
-        (* destruct (lt_eq_lt_dec j l') as [[H1|H2]|H3]. *)
-        destruct (lt_eq_lt_dec j l') as [Hj|Hj].
-        - destruct Hj as [Hj|Hj]. lia. lia.
-        - lia. }
-      replace (l' =? j) with true.
+      assert (l' = i) as Hj.
+      { destruct (lt_eq_lt_dec i l') as [ [Hj|Hj]|Hj]. lia. lia. lia. }
+      replace (l' =? i) with true.
       subst l'.
-      assert (forall n, n >= j -> dot_product_suppl (fun i0 : nat => if n =? i0 then 1 else 0) f j = 0).
+      assert (forall n, n >= i -> dot_product_suppl (fun i0 : nat => if n =? i0 then 1 else 0) f i = 0).
       { clear.
-        induction j as [|j'].
+        induction i as [|i'].
         - reflexivity.
         - intros.
           simpl.
-          replace (n =? j') with false.
+          replace (n =? i') with false.
           rewrite Cmult_0_l.
           rewrite Cplus_0_l.
-          apply IHj'.
+          apply IHi'.
           lia.
           symmetry.
           apply <- Nat.eqb_neq.
           lia. }
-      specialize H0 with j.
-      assert (dot_product_suppl (fun j0 : nat => if j =? j0 then 1 else 0) f j = 0).
+      specialize H0 with i.
+      assert (dot_product_suppl (fun j0 : nat => if i =? j0 then 1 else 0) f i = 0).
       { apply H0. lia. }
       rewrite H1.
       rewrite Nat.eqb_refl.
@@ -906,48 +818,40 @@ Proof.
       apply Hj.
 Qed.
 
-Lemma Mmult_eye_r: forall (m m' e: Matrix) (Hm': _) (He: _) (Hme: _),
-  exist _ e He = (eye (Mbits m)) ->
-  exist _ m' Hm' = Mmult m e Hme -> Mequal m' m.
+Lemma Mmult_eye_r: forall (m m' e: Matrix) (Hme: _), Mequal (Mmult m (eye (Mbits m)) Hme) m.
 Proof.
   unfold Mequal.
   intros.
-  inversion H.
-  inversion H0.
   split.
-  - apply Hm'.
+  - unfold MMeqbits.
+    rewrite Mmult_bits_r.
+    apply eye_bits.
   - unfold Mget.
-    rewrite H3.
+    unfold Mmult.
     unfold Mmult_inner.
-    rewrite H2.
-    unfold RVsize.
     simpl.
     apply Mmult_eye_r_suppl.
     apply Hj2.
 Qed.
 
-Lemma Mmult_eye_l: forall (m m' e: Matrix) (Hm': _) (He: _) (Hem: _),
-  exist _ e He = (eye (Mbits m)) ->
-  exist _ m' Hm' = Mmult e m Hem -> Mequal m' m.
+Lemma Mmult_eye_l: forall (m m' e: Matrix) (Hem: _), Mequal (Mmult (eye (Mbits m)) m Hem) m.
 Proof.
   unfold Mequal.
   intros.
-  inversion H.
-  inversion H0.
   split.
-  - apply eq_trans with (y := Mbits e).
-    apply Hm'.
-    apply Hem.
+  - unfold MMeqbits.
+    rewrite Mmult_bits_r.
+    apply eye_bits.
   - unfold Mget.
-    rewrite H3.
+    unfold Mmult.
     unfold Mmult_inner.
-    rewrite H2.
-    unfold RVsize.
     simpl.
-    specialize (Mmult_eye_l_suppl i (2 ^ Mbits m) (fun i0 => Minner m i0 j)).
-    intros.
-    apply H1 in Hi2.
-    rewrite Hi2.
+    rewrite Mmult_eye_l_suppl.
+    reflexivity.
+    replace (Msize (eye (Mbits m))) with (Msize m).
+    apply Hi2.
+    unfold Msize.
+    rewrite eye_bits.
     reflexivity.
 Qed.
 

@@ -11,28 +11,27 @@ Bind Scope C_scope with C.
 
 (* tensor product of matrices =================================================================== *)
 
-Definition TMproduct (m1 m2: Matrix): {m: Matrix | Mbits m = (Mbits m1 + Mbits m2)%nat}.
-Proof.
-  refine (exist _ {|
+Definition TMproduct (m1 m2: Matrix): Matrix :=
+  {|
     Mbits := Mbits m1 + Mbits m2;
     Minner := fun i j => Cmult (
       Minner m1 (i / Msize m2) (j / Msize m2)
     ) (
       Minner m2 (i mod Msize m2) (j mod Msize m2)
-    )|} _).
-    reflexivity.
-Defined.
+    )
+  |}.
+
+Lemma TMProduct_bits: forall (m1 m2: Matrix), Mbits (TMproduct m1 m2) = (Mbits m1 + Mbits m2)%nat.
+Proof. reflexivity. Qed.
 
 Property TMproduct_correct: forall
-  (m1 m2 mt: Matrix) (i j: nat) (Ht: _) (Hi: _) (Hj: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
-  exist _ mt Ht = TMproduct m1 m2 ->
-  mt[[i Hi|j Hj]] =
+  (m1 m2 mt: Matrix) (i j: nat) (Hi: _) (Hj: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
+  (TMproduct m1 m2)[[i Hi|j Hj]] =
   m1[[(i / Msize m2) H1i|(j / Msize m2) H1j]] * m2[[(i mod Msize m2) H2i|(j mod Msize m2) H2j]].
 Proof.
   unfold Mget. simpl.
   unfold TMproduct. simpl.
   intros.
-  inversion H.
   simpl.
   reflexivity.
 Qed.
@@ -40,29 +39,31 @@ Qed.
 (* ============================================================================================== *)
 (* tensor product of vectors ==================================================================== *)
 
-Definition TRVproduct (r1 r2: RowVec): {r: RowVec | RVbits r = (RVbits r1 + RVbits r2)%nat}.
-Proof.
-  refine (exist _ {|
+Definition TRVproduct (r1 r2: RowVec): RowVec :=
+  {|
     RVbits := RVbits r1 + RVbits r2;
     RVinner := fun j => Cmult (
       RVinner r1 (j / RVsize r2)
     ) (
       RVinner r2 (j mod RVsize r2)
-    )|} _).
-    reflexivity.
-Defined.
+    )
+  |}.
 
-Definition TCVproduct (c1 c2: ColVec): {c: ColVec | CVbits c = (CVbits c1 + CVbits c2)%nat}.
-Proof.
-  refine (exist _ {|
+Lemma TCVproduct_bits: forall (r1 r2: RowVec), RVbits (TRVproduct r1 r2) = (RVbits r1 + RVbits r2)%nat.
+Proof. reflexivity. Qed.
+
+Definition TCVproduct (c1 c2: ColVec): ColVec :=
+  {|
     CVbits := CVbits c1 + CVbits c2;
     CVinner := fun i => Cmult (
       CVinner c1 (i / CVsize c2)
     ) (
       CVinner c2 (i mod CVsize c2)
-    )|} _).
-    reflexivity.
-Defined.
+    )
+  |}.
+
+Lemma TRVproduct_bits: forall (c1 c2: ColVec), CVbits (TCVproduct c1 c2) = (CVbits c1 + CVbits c2)%nat.
+Proof. reflexivity. Qed.
 
 (* ============================================================================================== *)
 (* distributive property of tensor product ====================================================== *)

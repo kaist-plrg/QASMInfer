@@ -13,24 +13,19 @@ Open Scope T_scope.
 
 (* definition of unitary matrix ================================================================= *)
 
-Definition Qop_mmd (m: Matrix): Matrix.
-Proof.
-  destruct (Mconjtrans m) as [md Hmd].
-  destruct (Mmult m md Hmd) as [mmd Hmmd].
-  apply mmd.
-Defined.
+Definition Qop_mmd (m: Matrix): Matrix := Mmult m (Mconjtrans m) (Mconjtrans_bits m).
 
-Definition Qop_unitary (m: Matrix) := Mequal (Qop_mmd m) (eye (Mbits m)).1.
+Definition Qop_unitary (m: Matrix) := Mequal (Qop_mmd m) (eye (Mbits m)).
 
 Lemma Qop_unitary_mult_suppl: forall (m1 m2: Matrix) (H12: _) (H21: _) (H1221: _),
-  Mmult (Mmult m1 m2 H12).1 (Mmult (Mconjtrans m2).1 (Mconjtrans m1).1 H21).1 H1221 = eye (Mbits m1) ->
-  Qop_unitary (Mmult m1 m2 H12).1.
+  Mmult (Mmult m1 m2 H12) (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H1221 = eye (Mbits m1) ->
+  Qop_unitary (Mmult m1 m2 H12).
 Proof.
   intros.
   split.
   - unfold MMeqbits.
     reflexivity.
-  -
+  - unfold Qop_mmd.
 
 
 
