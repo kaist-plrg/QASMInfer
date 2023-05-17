@@ -2,7 +2,7 @@ Require Import Operator.
 
 Definition swap13: Matrix.
 Proof.
-  refine ((Qswap 3 0 2 _ _).1). lia. lia.
+  refine ((Qop_swap 3 0 2 _ _).1). lia. lia.
 Defined.
 
 Fact swap0_0: Minner swap13 0 0 = 1.

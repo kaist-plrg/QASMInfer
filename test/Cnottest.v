@@ -2,7 +2,7 @@ Require Import Operator.
 
 Definition cnot13: Matrix.
 Proof.
-  refine ((Qcnot 3 0 2 _ _ _).1). lia. lia. lia.
+  refine ((Qop_cnot 3 0 2 _ _ _).1). lia. lia. lia.
 Defined.
 
 Fact cnot0_0: Minner cnot13 0 0 = 1.

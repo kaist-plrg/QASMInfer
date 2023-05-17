@@ -253,6 +253,34 @@ Proof.
     intros. lca.
 Qed.
 
+Lemma dot_product_suppl_conj1: forall (l: nat) (f1 f2: nat -> C),
+  Cconj (dot_product_suppl f1 f2 l) =
+  dot_product_suppl (fun n => Cconj (f1 n)) (fun n => Cconj (f2 n)) l.
+Proof.
+  intros.
+  induction l as [|l'].
+  - simpl. lca.
+  - simpl.
+    rewrite Cconj_plus.
+    rewrite Cconj_mult.
+    rewrite IHl'.
+    reflexivity.
+Qed.
+
+Lemma dot_product_suppl_conj2: forall (l: nat) (f1 f2: nat -> C),
+  Cconj (dot_product_suppl f1 f2 l) =
+  dot_product_suppl (fun n => Cconj (f2 n)) (fun n => Cconj (f1 n)) l.
+Proof.
+  intros.
+  induction l as [|l'].
+  - simpl. lca.
+  - simpl.
+    rewrite Cconj_plus.
+    rewrite Cconj_mult.
+    rewrite IHl'.
+    lca.
+Qed.
+
 (* ============================================================================================== *)
 (* element-wise unary operation ================================================================= *)
 
@@ -433,6 +461,14 @@ Proof.
     rewrite H12.
     apply dot_product_suppl_assoc.
 Qed.
+
+(* Lemma Mmult_eq: forall (m1 m2 m3: Matrix) (H12: _) (H13: _),
+Mequal m2 m3 -> Mequal (Mmult m1 m2 H12).1 (Mmult m1 m3 H13).1.
+Proof.
+  intros.
+  split.
+  - Unfold  *)
+
 
 (* ============================================================================================== *)
 (* matrix-vector multiplication ================================================================= *)
@@ -656,6 +692,72 @@ Proof.
   inversion H.
   simpl.
   reflexivity.
+Qed.
+
+Lemma Mconjtrans_mult_suppl: forall (m1 m2 m1d m2d m12 m12d m2d1d: Matrix)
+  (H12: _) (H21: _) (Hm1d: _) (Hm2d: _) (Hm12: _) (Hm12d: _) (Hm2d1d: _),
+  exist _ m1d Hm1d = Mconjtrans m1 ->
+  exist _ m2d Hm2d = Mconjtrans m2 ->
+  exist _ m12 Hm12 = Mmult m1 m2 H12 ->
+  exist _ m12d Hm12d = Mconjtrans m12 ->
+  exist _ m2d1d Hm2d1d = Mmult m2d m1d H21 ->
+  Mequal m12d m2d1d.
+Proof.
+  intros.
+  split.
+  - unfold MMeqbits.
+    rewrite Hm2d1d.
+    rewrite <- Hm12d.
+    rewrite Hm12.
+    rewrite <- Hm2d.
+    apply H12.
+  - unfold Mget.
+    inversion H2.
+    inversion H3.
+    simpl.
+    inversion H.
+    inversion H0.
+    inversion H1.
+    simpl.
+    unfold Mmult_inner.
+    unfold extract_row_unsafe.
+    unfold extract_col_unsafe.
+    simpl.
+    unfold RVsize.
+    simpl.
+    rewrite <- H12.
+    apply dot_product_suppl_conj2.
+Qed.
+
+Lemma Mconjtrans_mult: forall (m1 m2: Matrix) (H12: _) (H12d: _),
+  Mequal (Mconjtrans (Mmult m1 m2 H12).1).1 (Mmult (Mconjtrans m2).1 (Mconjtrans m1).1 H12d).1.
+Proof.
+  intros.
+  unfold proj1_sig in *.
+  destruct (Mconjtrans m1) as [m1d Hm1d] eqn: Em1d.
+  destruct (Mconjtrans m2) as [m2d Hm2d] eqn: Em2d.
+  destruct (Mmult m1 m2 H12) as [m12 Hm12] eqn: Em12.
+  destruct (Mconjtrans m12) as [m12d Hm12d] eqn: Em12d.
+  assert (MMeqbits m2d m1d) as H21.
+  { unfold MMeqbits.
+    rewrite <- Hm1d.
+    rewrite <- Hm2d.
+    symmetry.
+    apply H12. }
+  destruct (Mmult m2d m1d H12d) as [m2d1d Hm2d1d] eqn: Em2d1d.
+  specialize (Mconjtrans_mult_suppl m1 m2 m1d m2d m12 m12d m2d1d) as Hsuppl.
+  specialize (Hsuppl H12 H21 Hm1d Hm2d Hm12 Hm12d Hm2d1d).
+  apply Hsuppl.
+  - symmetry.
+    apply Em1d.
+  - symmetry.
+    apply Em2d.
+  - symmetry.
+    apply Em12.
+  - symmetry.
+    apply Em12d.
+  - symmetry.
+    apply Em2d1d.
 Qed.
 
 (* ============================================================================================== *)

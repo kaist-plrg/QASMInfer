@@ -22,19 +22,24 @@ Definition NTC (n: nat): C := (INR n, 0).
 Coercion RTC : R >-> C.
 Coercion NTC : nat >-> C.
 
+Lemma c_proj_eq: forall (c1 c2: C),
+  fst c1 = fst c2 -> snd c1 = snd c2 -> c1 = c2.
+Proof.
+  intros c1 c2 H1 H2.
+  destruct c1, c2.
+  simpl in *.
+  subst.
+  reflexivity.
+Qed.
+
+Ltac lca := eapply c_proj_eq; simpl; lra.
+
 Definition Cplus (x y : C) : C := (fst x + fst y, snd x + snd y).
 Definition Copp (x : C) : C := (-fst x, -snd x).
 Definition Cminus (x y : C) : C := Cplus x (Copp y).
 Definition Cmult (x y : C) : C := (fst x * fst y - snd x * snd y, fst x * snd y + snd x * fst y).
 Definition Cinv (x : C) : C := (fst x / (fst x ^ 2 + snd x ^ 2), - snd x / (fst x ^ 2 + snd x ^ 2)).
 Definition Cdiv (x y : C) : C := Cmult x (Cinv y).
-
-(* Added exponentiation *)
-(* Fixpoint Cpow (c : C) (n : nat) : C :=
-  match n with
-  | 0%nat => 1
-  | S n' => Cmult c (Cpow c n')
-  end. *)
 
 Infix "+" := Cplus : C_scope.
 Notation "- x" := (Copp x) : C_scope.
@@ -64,6 +69,11 @@ Definition Cimag (z : C) : R := snd z.
 
 Definition Cconj (x : C) : C := (fst x, (- snd x)%R).
 
+Lemma Cconj_plus: forall (x1 x2: C), Cconj (x1 + x2) = Cconj x1 + Cconj x2.
+Proof. intros. lca. Qed.
+
+Lemma Cconj_mult: forall (x1 x2: C), Cconj (x1 * x2) = Cconj x1 * Cconj x2.
+Proof. intros. lca. Qed.
 
 Lemma RTC_inj: forall (x y: R),
   RTC x = RTC y -> x = y.
@@ -72,18 +82,6 @@ Proof.
   now apply (f_equal fst) in H.
 Qed.
 
-
-Lemma c_proj_eq: forall (c1 c2: C),
-  fst c1 = fst c2 -> snd c1 = snd c2 -> c1 = c2.
-Proof.
-  intros c1 c2 H1 H2.
-  destruct c1, c2.
-  simpl in *.
-  subst.
-  reflexivity.
-Qed.
-
-Ltac lca := eapply c_proj_eq; simpl; lra.
 
 Lemma Cplus_assoc : forall x y z: C, Cplus x (Cplus y z) = Cplus (Cplus x y) z.
 Proof. intros. lca. Qed.

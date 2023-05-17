@@ -11,6 +11,56 @@ Open Scope M_scope.
 Open Scope T_scope.
 
 
+(* definition of unitary matrix ================================================================= *)
+
+Definition Qop_mmd (m: Matrix): Matrix.
+Proof.
+  destruct (Mconjtrans m) as [md Hmd].
+  destruct (Mmult m md Hmd) as [mmd Hmmd].
+  apply mmd.
+Defined.
+
+Definition Qop_unitary (m: Matrix) := Mequal (Qop_mmd m) (eye (Mbits m)).1.
+
+Lemma Qop_unitary_mult_suppl: forall (m1 m2: Matrix) (H12: _) (H21: _) (H1221: _),
+  Mmult (Mmult m1 m2 H12).1 (Mmult (Mconjtrans m2).1 (Mconjtrans m1).1 H21).1 H1221 = eye (Mbits m1) ->
+  Qop_unitary (Mmult m1 m2 H12).1.
+Proof.
+  intros.
+  split.
+  - unfold MMeqbits.
+    reflexivity.
+  -
+
+
+
+
+Lemma Qop_unitary_mult: forall (m1 m2: Matrix) (H: _),
+  Qop_unitary m1 -> Qop_unitary m2 -> Qop_unitary (Mmult m1 m2 H).1.
+Proof.
+  unfold Qop_unitary.
+  intros.
+  split.
+  - reflexivity.
+  - unfold Qop_mmd in *.
+    unfold Mget in *.
+    unfold Mconjtrans in *.
+    unfold Mmult in *.
+    unfold Mequal in *.
+    simpl in *.
+    unfold Mmult_inner in *.
+    unfold extract_row_unsafe in *.
+    unfold extract_col_unsafe in *.
+    unfold RVsize in *.
+    unfold Msize in *.
+    unfold MMeqbits in *.
+    simpl in *.
+
+    simpl.
+    unfold Mequal in H0.
+    unfold
+
+(* ============================================================================================== *)
 (* single qubit rotation operators ============================================================== *)
 
 Local Open Scope R_scope.
@@ -62,7 +112,7 @@ Definition Qproj1: Matrix := {|
 (* ============================================================================================== *)
 (* generalization of single qubit operators ===================================================== *)
 
-Definition Qopsq (n t: nat) (op: Matrix)
+Definition Qop_sq (n t: nat) (op: Matrix)
   (Ht: t < n) (Hop: Mbits op = 1): {m: Matrix | Mbits m = n}.
 Proof.
   destruct (eye t) as [eye1 Heye1].
@@ -83,7 +133,7 @@ Qed.
 (* ============================================================================================== *)
 (* swap operator ================================================================================ *)
 
-Definition Qswap2: Matrix := {|
+Definition Qop_swap2: Matrix := {|
   Mbits := 2;
   Minner := fun i j => match i, j with
     | 0, 0 => 1
@@ -94,14 +144,14 @@ Definition Qswap2: Matrix := {|
     end;
   |}.
 
-(* Eval compute in (Minner Qswap2 1 2). *)
+(* Eval compute in (Minner Qop_swap2 1 2). *)
 
-Fixpoint Qswap1n (n: nat) (H: n > 1): {m: Matrix | Mbits m = n}.
+Fixpoint Qop_swap1n (n: nat) (H: n > 1): {m: Matrix | Mbits m = n}.
 Proof.
   destruct (lt_eq_lt_dec n 2) as [Hn|Hn].
   - destruct Hn.
     + lia.
-    + refine (exist _ Qswap2 _).
+    + refine (exist _ Qop_swap2 _).
       simpl. lia.
   - destruct n as [|n'].
     + lia.
@@ -109,9 +159,9 @@ Proof.
       * lia.
       * destruct (eye n'') as [eyen'' Heyen''].
         destruct (eye 1) as [eye1 Heye1].
-        destruct (TMproduct Qswap2 (eyen'')) as [swap12n H12].
+        destruct (TMproduct Qop_swap2 (eyen'')) as [swap12n H12].
         assert (n' > 1) as Hn' by lia.
-        destruct (Qswap1n n' Hn') as [swap1n' H1n'].
+        destruct (Qop_swap1n n' Hn') as [swap1n' H1n'].
         destruct (TMproduct eye1 swap1n') as [swap1n'n H1n'n].
         assert (MMeqbits swap12n swap1n'n) as H1.
         { unfold MMeqbits.
@@ -132,14 +182,14 @@ Proof.
         reflexivity.
 Defined.
 
-Definition Qswap (n q1 q2: nat) (H1: q1 < n) (H2: q2 < n): {m: Matrix | Mbits m = n}.
+Definition Qop_swap (n q1 q2: nat) (H1: q1 < n) (H2: q2 < n): {m: Matrix | Mbits m = n}.
 Proof.
   destruct (lt_eq_lt_dec q1 q2) as [H|H].
   - destruct H as [H|H].
     + destruct (eye q1) as [eye1 Heye1].
       destruct (eye (n - q2 - 1)) as [eye2 Heye2].
       assert (q2 - q1 + 1 > 1) as Hgt by lia.
-      destruct (Qswap1n (q2 - q1 + 1) Hgt) as [swap1n H1n].
+      destruct (Qop_swap1n (q2 - q1 + 1) Hgt) as [swap1n H1n].
       destruct (TMproduct eye1 swap1n) as [swapq1q2' Hq1q2'].
       destruct (TMproduct swapq1q2' eye2) as [swapq1q2 Hq1q2].
       refine (exist _ swapq1q2 _).
@@ -154,7 +204,7 @@ Proof.
   - destruct (eye q2) as [eye1 Heye1].
     destruct (eye (n - q1 - 1)) as [eye2 Heye2].
     assert (q1 - q2 + 1 > 1) as Hgt by lia.
-    destruct (Qswap1n (q1 - q2 + 1) Hgt) as [swap1n H1n].
+    destruct (Qop_swap1n (q1 - q2 + 1) Hgt) as [swap1n H1n].
     destruct (TMproduct eye1 swap1n) as [swapq1q2' Hq1q2'].
     destruct (TMproduct swapq1q2' eye2) as [swapq1q2 Hq1q2].
     refine (exist _ swapq1q2 _).
@@ -167,10 +217,10 @@ Proof.
     lia.
 Defined.
 
-Definition QswapOp (n q1 q2: nat) (op: Matrix)
+Definition Qop_swap_op (n q1 q2: nat) (op: Matrix)
   (H1: q1 < n) (H2: q2 < n) (Hop: Mbits op = n): {m: Matrix | Mbits m = n}.
 Proof.
-  destruct (Qswap n q1 q2 H1 H2) as [swapq1q2 Hq1q2].
+  destruct (Qop_swap n q1 q2 H1 H2) as [swapq1q2 Hq1q2].
   assert (MMeqbits swapq1q2 op) as Hswapop.
   { unfold MMeqbits. lia. }
   destruct (Mmult swapq1q2 op Hswapop) as [m' Hm'].
@@ -184,7 +234,7 @@ Defined.
 (* ============================================================================================== *)
 (* CNOT operator ================================================================================ *)
 
-Definition QcnotCT: Matrix := {|
+Definition Qop_cnot_ct: Matrix := {|
   Mbits := 2;
   Minner := fun i j => match i, j with
     | 0, 0 => 1
@@ -195,7 +245,7 @@ Definition QcnotCT: Matrix := {|
     end;
   |}.
 
-Definition QcnotTC: Matrix := {|
+Definition Qop_cnot_tc: Matrix := {|
   Mbits := 2;
   Minner := fun i j => match i, j with
     | 0, 1 => 1
@@ -206,10 +256,10 @@ Definition QcnotTC: Matrix := {|
     end;
   |}.
 
-Definition QcnotCTn (n: nat) (Hn: n >= 2): {m: Matrix | Mbits m = n}.
+Definition Qop_cnot_ct_n (n: nat) (Hn: n >= 2): {m: Matrix | Mbits m = n}.
 Proof.
   destruct (eye (n - 2)) as [eyen'' Heyen''].
-  destruct (TMproduct QcnotCT eyen'') as [m Hm].
+  destruct (TMproduct Qop_cnot_ct eyen'') as [m Hm].
   refine (exist _ m _).
   rewrite Hm.
   rewrite Heyen''.
@@ -217,10 +267,10 @@ Proof.
   lia.
 Defined.
 
-Definition QcnotTCn (n: nat) (Hn: n >= 2): {m: Matrix | Mbits m = n}.
+Definition Qop_cnot_tc_n (n: nat) (Hn: n >= 2): {m: Matrix | Mbits m = n}.
 Proof.
   destruct (eye (n - 2)) as [eyen'' Heyen''].
-  destruct (TMproduct QcnotTC eyen'') as [m Hm].
+  destruct (TMproduct Qop_cnot_tc eyen'') as [m Hm].
   refine (exist _ m _).
   rewrite Hm.
   rewrite Heyen''.
@@ -228,36 +278,36 @@ Proof.
   lia.
 Defined.
 
-Definition Qcnot (n qc qt: nat) (Hn: n >= 2) (Hc: qc < n) (Ht: qt < n): {m: Matrix | Mbits m = n}.
+Definition Qop_cnot (n qc qt: nat) (Hn: n >= 2) (Hc: qc < n) (Ht: qt < n): {m: Matrix | Mbits m = n}.
 Proof.
   assert (0 < n) as H0 by lia.
   assert (1 < n) as H1 by lia.
-  destruct (QcnotCTn n Hn) as [cnotctn Hctn].
-  destruct (QcnotTCn n Hn) as [cnottcn Htcn].
+  destruct (Qop_cnot_ct_n n Hn) as [cnotctn Hctn].
+  destruct (Qop_cnot_tc_n n Hn) as [cnottcn Htcn].
   (* qc = 0 *)
   { destruct (Nat.eq_dec qc 0) as [Hqc0|Hqc0].
     { destruct (Nat.eq_dec qt 1) as [Hqt1|Hqt1].
-      { apply (QcnotCTn n Hn). }
-      { apply (QswapOp n 1 qt cnotctn H1 Ht Hctn). } }
+      { apply (Qop_cnot_ct_n n Hn). }
+      { apply (Qop_swap_op n 1 qt cnotctn H1 Ht Hctn). } }
   (* qc = 1 *)
   { destruct (Nat.eq_dec qc 1) as [Hqc1|Hqc1].
     { destruct (Nat.eq_dec qt 0) as [Hqt0|Hqt0].
-      { apply (QcnotTCn n Hn). }
-      { apply (QswapOp n 0 qt cnottcn H0 Ht Htcn). } }
+      { apply (Qop_cnot_tc_n n Hn). }
+      { apply (Qop_swap_op n 0 qt cnottcn H0 Ht Htcn). } }
   (* qc = otherwise *)
   { (* qt = 0 *)
     { destruct (Nat.eq_dec qt 0) as [Hqt0|Hqt0].
-      { apply (QswapOp n 1 qc cnottcn H1 Hc Htcn). }
+      { apply (Qop_swap_op n 1 qc cnottcn H1 Hc Htcn). }
     (* qt = 1 *)
     { destruct (Nat.eq_dec qt 1) as [Hqt1|Hqt1].
-      { apply (QswapOp n 0 qc cnotctn H0 Hc Hctn). }
+      { apply (Qop_swap_op n 0 qc cnotctn H0 Hc Hctn). }
     (* qt = otherwise *)
-    { destruct (QswapOp n 0 qc cnotctn H0 Hc Hctn) as [m' Hm'].
-      apply (QswapOp n 1 qt m' H1 Ht Hm'). } } } } } }
+    { destruct (Qop_swap_op n 0 qc cnotctn H0 Hc Hctn) as [m' Hm'].
+      apply (Qop_swap_op n 1 qt m' H1 Ht Hm'). } } } } } }
 Defined.
 
 (* ============================================================================================== *)
 (* quantum qubit operator ======================================================================= *)
 
-(* Inductive Qoperator: nat -> Matrix -> Prop := *)
-(* | *)
+(* Inductive Qoperator: nat -> Matrix -> Prop :=
+| *)
