@@ -134,3 +134,234 @@ Add Ring CRing: C_Ring.
 
 Lemma Cplus_cancel_l: forall x y z: C, y = z -> x + y = x + z.
 Proof. intros. rewrite H. reflexivity. Qed.
+
+(* function sum ================================================================================= *)
+
+Fixpoint func_sum_suppl (f: nat -> C) (m n: nat): C :=
+  match n with
+  | O => O
+  | S n' => f (m + n')%nat + func_sum_suppl f m n'
+  end.
+
+Definition func_sum2 (f: nat -> C) (m n: nat): C := func_sum_suppl f m (n - m).
+
+Definition func_sum (f: nat -> C) (n: nat): C := func_sum2 f 0 n.
+
+Lemma func_sum2_split: forall (a b c: nat) (f: nat -> C),
+  (a <= b <= c)%nat -> func_sum2 f a c = func_sum2 f a b + func_sum2 f b c.
+Proof.
+  intros a b c.
+  revert a b.
+  unfold func_sum2.
+  induction c as [|c'].
+  - intros.
+    destruct H as [Hab Hbc].
+    destruct b as [|b'].
+    + destruct a as [|a'].
+      * simpl.
+        lca.
+      * lia.
+    + lia.
+  - intros.
+    destruct H as [Hab Hbc].
+    destruct (Nat.eq_dec b (S c')).
+    + subst b.
+      simpl.
+      replace (c' - c')%nat with O by lia.
+      simpl.
+      lca.
+    + assert (b <= c')%nat as Hbc'.
+      { apply le_lt_eq_dec in Hbc.
+        destruct Hbc.
+        - lia.
+        - lia. }
+      replace (S c' - a)%nat with (S (c' - a)).
+      replace (S c' - b)%nat with (S (c' - b)).
+      simpl.
+      rewrite IHc' with (b := b).
+      replace (a + (c' - a))%nat with c'.
+      replace (b + (c' - b))%nat with c'.
+      ring_simplify.
+      reflexivity.
+      lia. lia. lia. lia. lia.
+Qed.
+
+Lemma func_sum2_split_mult: forall (n m: nat) (f: nat -> C),
+  func_sum f (m + n * m) = func_sum2 f (n * m) (m + n * m) + func_sum f (n * m).
+Proof.
+  intros.
+  unfold func_sum.
+  ring_simplify.
+  rewrite func_sum2_split with (b := (n * m)%nat).
+  lca.
+  lia.
+Qed.
+
+Lemma func_sum2_split3: forall (n m k: nat) (f: nat -> C),
+  (n <= k < m)%nat ->
+  func_sum2 f n m = func_sum2 f n k + func_sum2 f k (1 + k) + func_sum2 f (1 + k) m.
+Proof.
+  intros.
+  rewrite func_sum2_split with (b := k).
+  rewrite func_sum2_split with (a := k) (b := (1 + k)%nat).
+  lca.
+  lia.
+  lia.
+Qed.
+
+Lemma func_sum_mod_suppl_l: forall (n m k i: nat) (f: nat -> C),
+  (m > O)%nat -> (i <= k mod m)%nat ->
+  func_sum_suppl (fun i : nat => if i mod m =? k mod m then f i else 0) (n * m) i = 0.
+Proof.
+  intros n m k i.
+  revert n m k.
+  induction i.
+  - intros.
+    reflexivity.
+  - intros.
+    simpl.
+    rewrite IHi.
+    replace ((n * m + i) mod m) with (i mod m).
+    assert (i < m)%nat.
+    { specialize (Nat.mod_bound_pos k m) as Hmod.
+      lia. }
+    assert (i mod m = i).
+    { apply Nat.mod_small.
+      apply H1. }
+    rewrite H2.
+    assert (i =? k mod m = false).
+    { apply <- Nat.eqb_neq.
+      lia. }
+    rewrite H3.
+    lca.
+    rewrite Nat.add_mod.
+    rewrite Nat.mul_mod.
+    rewrite Nat.mod_same.
+    rewrite Nat.mul_0_r.
+    rewrite Nat.mod_0_l.
+    simpl.
+    rewrite Nat.mod_small.
+    symmetry.
+    apply Nat.mod_small.
+    specialize (Nat.mod_bound_pos k m) as Hmod. lia.
+    specialize (Nat.mod_bound_pos k m) as Hmod. lia.
+    lia. lia. lia. lia. lia. lia.
+Qed.
+
+Lemma func_sum_mod_suppl_m: forall (n m k: nat) (f: nat -> C),
+  (m > O)%nat ->
+  func_sum_suppl (fun i : nat => if i mod m =? k mod m then f i else 0) (n * m + (k mod m)) 1 = f (n * m + k mod m)%nat.
+Proof.
+  intros.
+  simpl.
+  assert (k mod m mod m = k mod m).
+  { apply Nat.mod_small.
+    specialize (Nat.mod_bound_pos k m) as Hmod. lia. }
+  assert ((n * m + k mod m + 0) mod m =? k mod m = true).
+  { apply <- Nat.eqb_eq.
+    rewrite Nat.add_0_r.
+    rewrite Nat.add_mod.
+    rewrite Nat.mul_mod.
+    rewrite Nat.mod_same.
+    rewrite Nat.mul_0_r.
+    rewrite Nat.mod_0_l.
+    simpl.
+    repeat rewrite H0.
+    reflexivity.
+    lia.
+    lia.
+    lia.
+    lia. }
+  rewrite H1.
+  rewrite Nat.add_0_r.
+  lca.
+Qed.
+
+Lemma func_sum_mod_suppl_r: forall (n m k i: nat) (f: nat -> C),
+  (m > O)%nat -> (i <= m - (k mod m) - 1)%nat ->
+  func_sum_suppl (fun i : nat => if i mod m =? k mod m then f i else 0) (1 + (n * m + k mod m)) i = O.
+Proof.
+  intros n m k i.
+  revert n m k.
+  induction i.
+  - intros.
+    reflexivity.
+  - intros.
+    simpl.
+    simpl in IHi.
+    rewrite IHi.
+    assert ((k mod m + 1 + i) < m)%nat by lia.
+    assert ((n * m + k mod m + 1 + i) mod m =? k mod m = false).
+    assert ((k mod m + 1 + i) mod m = (k mod m + 1 + i)%nat).
+    { apply Nat.mod_small.
+      apply H1. }
+    { apply <- Nat.eqb_neq.
+      replace (n * m + k mod m + 1 + i)%nat with (n * m + (k mod m + 1 + i))%nat by lia.
+      rewrite Nat.add_mod.
+      rewrite Nat.mul_mod.
+      rewrite Nat.mod_same.
+      rewrite Nat.mul_0_r.
+      rewrite Nat.mod_0_l.
+      simpl.
+      repeat rewrite H2.
+      lia.
+      lia.
+      lia.
+      lia.
+      lia. }
+    replace (S (n * m + k mod m + i)) with (n * m + k mod m + 1 + i)%nat by lia.
+    rewrite H2.
+    lca.
+    lia.
+    lia.
+Qed.
+
+
+Lemma func_sum_mod: forall (n m k: nat) (f: nat -> C),
+  m <> O ->
+  func_sum (fun i => if i mod m =? k mod m then f i else 0) (n * m) =
+  func_sum (fun i => f (i * m + k mod m)%nat) n.
+Proof.
+  intros.
+  unfold func_sum.
+  unfold func_sum2.
+  repeat rewrite Nat.sub_0_r.
+  induction n.
+  - intros.
+    reflexivity.
+  - intros.
+    simpl.
+    rewrite <- IHn.
+    specialize (func_sum2_split_mult n m)as Hs.
+    unfold func_sum in Hs.
+    unfold func_sum2 in Hs.
+    repeat rewrite Nat.sub_0_r in Hs.
+    rewrite Hs.
+    ring_simplify.
+    replace (m + n * m - n * m)%nat with m by lia.
+    replace (
+      func_sum_suppl (fun i : nat => if i mod m =? k mod m then f i else 0) (n * m) m
+    ) with (f (n * m + k mod m)%nat).
+    lca.
+    specialize (func_sum2_split3 (n * m) (n * m + m) (n * m + k mod m) (fun i : nat => if i mod m =? k mod m then f i else 0))as Hs3.
+    unfold func_sum in Hs3.
+    unfold func_sum2 in Hs3.
+    replace (n * m + m - n * m)%nat with m in Hs3 by lia.
+    rewrite Hs3.
+    replace (n * m + k mod m - n * m)%nat with (k mod m) by lia.
+    replace (1 + (n * m + k mod m) - (n * m + k mod m))%nat with 1%nat by lia.
+    replace (n * m + m - (1 + (n * m + k mod m)))%nat with (m - (k mod m) - 1)%nat by lia.
+    rewrite func_sum_mod_suppl_l.
+    rewrite func_sum_mod_suppl_m.
+    rewrite func_sum_mod_suppl_r.
+    lca.
+    lia.
+    lia.
+    lia.
+    lia.
+    lia.
+    specialize (Nat.mod_bound_pos k m) as Hbound.
+    lia.
+Qed.
+
+(* ============================================================================================== *)

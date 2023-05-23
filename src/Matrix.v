@@ -292,6 +292,87 @@ Proof.
     lia.
 Qed.
 
+Fact dot_product_suppl_mod_suppl2: forall (l1 l2 j: nat) (f1 f2: nat -> C),
+  l2 <> 0 ->
+  dot_product_suppl f1 (fun i => if i mod l2 =? j mod l2 then f2 i else 0) (l1 * l2) =
+  dot_product_suppl (fun i => f1 (i * l2)%nat) (fun i => f2 (i * l2)%nat) l1.
+Proof.
+  intros.
+  induction l1 as [|l1'].
+  - simpl. reflexivity.
+  - simpl.
+
+Fact dot_product_suppl_mod_suppl1: forall (l1 l2 j: nat) (f1 f2: nat -> C),
+  l2 <> 0 ->
+  f1 j * f2 j + dot_product_suppl f1 (fun i0 => f2 i0 * (if i0 mod l2 =? j mod l2 then 1 else 0)) (l1 * l2) =
+  dot_product_suppl f1 (fun i0 => f2 i0 * (if i0 mod l2 =? j mod l2 then 1 else 0)) (l2 + l1 * l2)%nat.
+Proof.
+  intros.
+
+
+Lemma dot_product_suppl_mod: forall (l1 l2 j: nat) (f1 f2 f3: nat -> C),
+  l2 <> 0 ->
+  dot_product_suppl f1 f3 l1 * f2 (j mod l2) =
+  dot_product_suppl
+    (fun j0 => f1 (j0 / l2)%nat * f2 (j0 mod l2))
+    (fun i0 => f3 (i0 / l2)%nat * (if i0 mod l2 =? j mod l2 then 1 else 0))
+    (l1 * l2).
+Proof.
+  intros.
+  induction l1 as [|l1'].
+  - simpl. lca.
+  - simpl.
+    ring_simplify.
+    rewrite IHl1'.
+    simpl.
+    destruct l2 as [|l2'].
+    + contradiction.
+    + induction l2' as [|l2''].
+      * simpl.
+        rewrite divmode_fst_n0m0.
+        ring_simplify.
+        replace (l1' * 1 + 0)%nat with l1' by lia.
+        lca.
+      *
+       simpl in *.
+
+
+
+
+
+
+  destruct l2 as [|l2'].
+  - contradiction.
+  - induction l2' as [|l2''].
+    + simpl.
+      rewrite dot_product_suppl_scale_l with
+        (l := (l1 * 1)%nat)
+        (c := f2 0)
+        (f1 := (fun j0 : nat => f1 (fst (Nat.divmod j0 0 0 0)) * f2 0))
+        (f2 := (fun j0 : nat => f1 (fst (Nat.divmod j0 0 0 0)))).
+      simpl.
+      assert (f1 = (fun j0 : nat => f1 (fst (Nat.divmod j0 0 0 0)))) as Hf1.
+      { apply functional_extensionality.
+        intros.
+        rewrite divmode_fst_n0m0.
+        replace (x + 0)%nat with x by lia.
+        reflexivity. }
+      rewrite <- Hf1.
+      assert (f3 = (fun i0 : nat => f3 (fst (Nat.divmod i0 0 0 0)) * 1)) as Hf3.
+      { apply functional_extensionality.
+        intros.
+        rewrite divmode_fst_n0m0.
+        replace (x + 0)%nat with x by lia.
+        lca. }
+      rewrite <- Hf3.
+      replace (l1 * 1)%nat with l1 by lia.
+      lca.
+      intros.
+      lca.
+    +
+
+
+
 (* ============================================================================================== *)
 (* element-wise unary operation ================================================================= *)
 
@@ -906,16 +987,6 @@ Proof.
       repeat rewrite eye_bits in *.
       reflexivity.
 Qed.
-
-(* ============================================================================================== *)
-(* tactic of simplifying bits =================================================================== *)
-
-Ltac simpl_bits :=
-  unfold MMeqbits in *;
-  unfold Msize in *;
-  repeat rewrite Mmult_bits_l in *;
-  repeat rewrite Mconjtrans_bits in *;
-  repeat rewrite eye_bits in *.
 
 (* ============================================================================================== *)
 (* ring ========================================================================================= *)

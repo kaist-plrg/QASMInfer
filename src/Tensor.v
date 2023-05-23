@@ -66,7 +66,50 @@ Lemma TRVproduct_bits: forall (c1 c2: ColVec), CVbits (TCVproduct c1 c2) = (CVbi
 Proof. reflexivity. Qed.
 
 (* ============================================================================================== *)
+(* tactic of simplifying bits =================================================================== *)
+
+Ltac simpl_bits :=
+  unfold MMeqbits in *;
+  unfold Msize in *;
+  repeat rewrite Mmult_bits_l in *;
+  repeat rewrite Mconjtrans_bits in *;
+  repeat rewrite eye_bits in *;
+  repeat rewrite TMProduct_bits in *.
+
+(* ============================================================================================== *)
 (* distributive property of tensor product ====================================================== *)
+
+Lemma Tproduct_dist: forall
+  (m1 m2 m3: Matrix) (H12: _) (H1234: _),
+  TMproduct (Mmult m1 m3 H12) m2 = Mmult (TMproduct m1 m2) (TMproduct m3 (eye (Mbits m2))) H1234.
+Proof.
+  intros.
+  apply Mequal.
+  - repeat simpl_bits.
+    lia.
+  - intros.
+    unfold Mmult.
+    unfold Mmult_unsafe.
+    unfold Mmult_inner.
+    unfold TMproduct.
+    repeat simpl_bits.
+    simpl.
+    pose (is := i / 2 ^ Mbits m2).
+    pose (ir := i mod 2 ^ Mbits m2).
+    pose (js := j / 2 ^ Mbits m2).
+    pose (jr := j mod 2 ^ Mbits m2).
+    replace (i / (2 ^ Mbits m2)) with is.
+    replace (i mod 2 ^ Mbits m2) with ir.
+    replace (j / 2 ^ Mbits m2) with js.
+    replace (j mod 2 ^ Mbits m2) with jr.
+
+    assert ((2 ^ Mbits m2)%nat <> 0) as Hnz by apply pow_2_nonzero.
+    specialize (Nat.div_mod i (2 ^ Mbits m2) Hnz) as Hidm.
+    specialize (Nat.div_mod j (2 ^ Mbits m2) Hnz) as Hjdm.
+    rewrite Hidm.
+    rewrite Hjdm.
+    replace ((2 ^ Mbits m2 * (i / 2 ^ Mbits m2) + i mod 2 ^ Mbits m2) / Msize m2) with (i /
+    simpl.
 
 (* Fact Tproduct_dist_suppl: forall (m1c m2r m3r m3c m4r m4c i j: nat) (f1 f2 f3 f4: nat -> nat -> C),
   m1c = m2r -> m3c = m4r ->

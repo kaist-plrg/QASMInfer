@@ -24,6 +24,24 @@ Proof.
   lia.
 Qed.
 
+Lemma pow_2_nonzero: forall n, Nat.pow 2 n <> 0.
+Proof.
+  induction n as [|n'].
+  - simpl. lia.
+  - simpl. lia.
+Qed.
+
+Lemma divmode_fst_n0m0: forall n m, fst (Nat.divmod n 0 m 0) = n + m.
+Proof.
+  induction n as [|n'].
+  - simpl. lia.
+  - simpl.
+    intros.
+    rewrite IHn'.
+    simpl.
+    lia.
+Qed.
+
 (* ============================================================================================== *)
 (* useful tactics =============================================================================== *)
 
