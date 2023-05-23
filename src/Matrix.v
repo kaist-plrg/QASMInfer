@@ -1,5 +1,5 @@
 Require Export Complex.
-Require Import FunctionalExtensionality.
+Require Export FunctionalExtensionality.
 Import ListNotations.
 
 Declare Scope M_scope.
@@ -138,23 +138,39 @@ Proof.
   reflexivity.
 Qed.
 
-Fixpoint dot_product_suppl (r c: nat -> C) (idx: nat): C.
-Proof.
-  destruct idx as [|idx'].
-  - exact O.
-  - apply (r idx' * c idx' + dot_product_suppl r c idx').
-Defined.
+Definition dot_product_suppl (r c: nat -> C) (idx: nat): C :=
+  func_sum (fun i => r i * c i) idx.
+
+Ltac dps_unfold :=
+  unfold dot_product_suppl;
+  unfold func_sum;
+  unfold func_sum2;
+  repeat rewrite Nat.sub_0_r.
 
 Definition dot_product (r: RowVec) (c: ColVec) (Hrc: RCeqbits r c): C :=
   dot_product_suppl (RVinner r) (CVinner c) (RVsize r).
+
+Lemma func_sum_suppl_scale: forall (n m: nat) (c: C) (f1 f2: nat -> C),
+  (forall i, f1 i = c * f2 i) -> func_sum_suppl f1 n m = c * func_sum_suppl f2 n m.
+Proof.
+  intros.
+  induction m as [|m'].
+  - lca.
+  - simpl.
+    rewrite IHm'.
+    rewrite H.
+    lca.
+Qed.
 
 Lemma dot_product_suppl_scale_l: forall (l: nat) (c: C) (f1 f2 f: nat -> C),
   (forall n, f1 n = c * f2 n) -> dot_product_suppl f1 f l = c * dot_product_suppl f2 f l.
 Proof.
   intros.
+  dps_unfold.
   induction l as [|l'].
   - lca.
-  - simpl.
+  - unfold dot_product_suppl.
+    simpl.
     rewrite IHl'.
     rewrite H.
     lca.
@@ -164,6 +180,7 @@ Lemma dot_product_suppl_scale_r: forall (l: nat) (c: C) (f1 f2 f: nat -> C),
   (forall n, f1 n = c * f2 n) -> dot_product_suppl f f1 l = c * dot_product_suppl f f2 l.
 Proof.
   intros.
+  dps_unfold.
   induction l as [|l'].
   - lca.
   - simpl.
@@ -176,6 +193,7 @@ Lemma dot_product_suppl_comm: forall (l: nat) (f1 f2: nat -> C),
   dot_product_suppl f1 f2 l = dot_product_suppl f2 f1 l.
 Proof.
   intros.
+  dps_unfold.
   induction l as [|l'].
   - reflexivity.
   - simpl.
@@ -183,10 +201,23 @@ Proof.
     lca.
 Qed.
 
+Lemma func_sum_suppl_dist: forall (n m: nat) (f1 f2 f12: nat -> C),
+  (forall i, f12 i = f1 i + f2 i) -> func_sum_suppl f12 n m = func_sum_suppl f1 n m + func_sum_suppl f2 n m.
+Proof.
+  intros.
+  induction m as [|m'].
+  - lca.
+  - simpl.
+    rewrite IHm'.
+    rewrite H.
+    lca.
+Qed.
+
 Lemma dot_product_suppl_dist_l: forall (l: nat) (f f1 f2 f12: nat -> C),
   (forall n, f12 n = f1 n + f2 n) -> dot_product_suppl f12 f l = dot_product_suppl f1 f l + dot_product_suppl f2 f l.
 Proof.
   intros.
+  dps_unfold.
   induction l as [|l'].
   - simpl. lca.
   - simpl.
@@ -200,6 +231,7 @@ Lemma dot_product_suppl_dist_r: forall (l: nat) (f f1 f2 f12: nat -> C),
   (forall n, f12 n = f1 n + f2 n) -> dot_product_suppl f f12 l = dot_product_suppl f f1 l + dot_product_suppl f f2 l.
 Proof.
   intros.
+  dps_unfold.
   induction l as [|l'].
   - simpl. lca.
   - simpl.
@@ -214,29 +246,30 @@ Lemma dot_product_suppl_assoc: forall (l: nat) (f1 f3: nat -> C) (f2: nat -> nat
   dot_product_suppl f1 (fun i0 => dot_product_suppl (fun j0 => f2 i0 j0) f3 l) l.
 Proof.
   intros.
+  dps_unfold.
   induction l as [|l'].
   - reflexivity.
   - simpl.
-    specialize dot_product_suppl_dist_l with
-      (f := f3)
-      (f1 := fun j0 => f1 l' * f2 l' j0)
-      (f2 := fun j0 => dot_product_suppl f1 (fun i0 : nat => f2 i0 j0) l')
-      (f12 := fun j0 : nat => f1 l' * f2 l' j0 + dot_product_suppl f1 (fun i0 : nat => f2 i0 j0) l') as Hdist1.
-    specialize dot_product_suppl_dist_r with
-      (f := f1)
-      (f1 := fun i0 => f2 i0 l' * f3 l')
-      (f2 := fun i0 => dot_product_suppl (fun j0 : nat => f2 i0 j0) f3 l')
-      (f12 := fun i0 : nat => f2 i0 l' * f3 l' + dot_product_suppl (fun j0 : nat => f2 i0 j0) f3 l') as Hdist2.
+    specialize func_sum_suppl_dist with
+      (f1 := fun i => (f1 l' * f2 l' i) * f3 i)
+      (f2 := fun i => (func_sum_suppl (fun i0 : nat => f1 i0 * f2 i0 i) 0 l') * f3 i)
+      (f12 := fun i => (f1 l' * f2 l' i + func_sum_suppl (fun i0 : nat => f1 i0 * f2 i0 i) 0 l') * f3 i)
+      as Hdist1.
+    specialize func_sum_suppl_dist with
+      (f1 := fun i => f1 i * (f2 i l' * f3 l'))
+      (f2 := fun i => f1 i * func_sum_suppl (fun i0 : nat => f2 i i0 * f3 i0) 0 l')
+      (f12 := fun i => f1 i * (f2 i l' * f3 l' + func_sum_suppl (fun i0 : nat => f2 i i0 * f3 i0) 0 l'))
+      as Hdist2.
     rewrite Hdist1.
     rewrite Hdist2.
     rewrite IHl'.
-    specialize dot_product_suppl_scale_l with
-    (f1 := fun j0 : nat => f1 l' * f2 l' j0)
-    (f2 := fun j0 : nat => f2 l' j0)
+    specialize func_sum_suppl_scale with
+    (f1 := fun i : nat => f1 l' * f2 l' i * f3 i)
+    (f2 := fun i : nat => f2 l' i * f3 i)
     (c := f1 l') as Hscale1.
-    specialize dot_product_suppl_scale_r with
-    (f1 := fun i0 : nat => f2 i0 l' * f3 l')
-    (f2 := fun i0 : nat => f2 i0 l')
+    specialize func_sum_suppl_scale with
+    (f1 := fun i => f1 i * (f2 i l' * f3 l'))
+    (f2 := fun i => f1 i * f2 i l')
     (c := f3 l') as Hscale2.
     rewrite Hscale1.
     rewrite Hscale2.
@@ -253,6 +286,7 @@ Lemma dot_product_suppl_conj1: forall (l: nat) (f1 f2: nat -> C),
   dot_product_suppl (fun n => Cconj (f1 n)) (fun n => Cconj (f2 n)) l.
 Proof.
   intros.
+  dps_unfold.
   induction l as [|l'].
   - simpl. lca.
   - simpl.
@@ -267,6 +301,7 @@ Lemma dot_product_suppl_conj2: forall (l: nat) (f1 f2: nat -> C),
   dot_product_suppl (fun n => Cconj (f2 n)) (fun n => Cconj (f1 n)) l.
 Proof.
   intros.
+  dps_unfold.
   induction l as [|l'].
   - simpl. lca.
   - simpl.
@@ -280,6 +315,7 @@ Lemma dot_product_suppl_f_r: forall (l: nat) (f1 f2 f3: nat -> C),
   (forall n, n < l -> f2 n = f3 n) -> dot_product_suppl f1 f2 l = dot_product_suppl f1 f3 l.
 Proof.
   intros.
+  dps_unfold.
   induction l as [|l'].
   - reflexivity.
   - simpl.
@@ -291,87 +327,6 @@ Proof.
     apply H.
     lia.
 Qed.
-
-Fact dot_product_suppl_mod_suppl2: forall (l1 l2 j: nat) (f1 f2: nat -> C),
-  l2 <> 0 ->
-  dot_product_suppl f1 (fun i => if i mod l2 =? j mod l2 then f2 i else 0) (l1 * l2) =
-  dot_product_suppl (fun i => f1 (i * l2)%nat) (fun i => f2 (i * l2)%nat) l1.
-Proof.
-  intros.
-  induction l1 as [|l1'].
-  - simpl. reflexivity.
-  - simpl.
-
-Fact dot_product_suppl_mod_suppl1: forall (l1 l2 j: nat) (f1 f2: nat -> C),
-  l2 <> 0 ->
-  f1 j * f2 j + dot_product_suppl f1 (fun i0 => f2 i0 * (if i0 mod l2 =? j mod l2 then 1 else 0)) (l1 * l2) =
-  dot_product_suppl f1 (fun i0 => f2 i0 * (if i0 mod l2 =? j mod l2 then 1 else 0)) (l2 + l1 * l2)%nat.
-Proof.
-  intros.
-
-
-Lemma dot_product_suppl_mod: forall (l1 l2 j: nat) (f1 f2 f3: nat -> C),
-  l2 <> 0 ->
-  dot_product_suppl f1 f3 l1 * f2 (j mod l2) =
-  dot_product_suppl
-    (fun j0 => f1 (j0 / l2)%nat * f2 (j0 mod l2))
-    (fun i0 => f3 (i0 / l2)%nat * (if i0 mod l2 =? j mod l2 then 1 else 0))
-    (l1 * l2).
-Proof.
-  intros.
-  induction l1 as [|l1'].
-  - simpl. lca.
-  - simpl.
-    ring_simplify.
-    rewrite IHl1'.
-    simpl.
-    destruct l2 as [|l2'].
-    + contradiction.
-    + induction l2' as [|l2''].
-      * simpl.
-        rewrite divmode_fst_n0m0.
-        ring_simplify.
-        replace (l1' * 1 + 0)%nat with l1' by lia.
-        lca.
-      *
-       simpl in *.
-
-
-
-
-
-
-  destruct l2 as [|l2'].
-  - contradiction.
-  - induction l2' as [|l2''].
-    + simpl.
-      rewrite dot_product_suppl_scale_l with
-        (l := (l1 * 1)%nat)
-        (c := f2 0)
-        (f1 := (fun j0 : nat => f1 (fst (Nat.divmod j0 0 0 0)) * f2 0))
-        (f2 := (fun j0 : nat => f1 (fst (Nat.divmod j0 0 0 0)))).
-      simpl.
-      assert (f1 = (fun j0 : nat => f1 (fst (Nat.divmod j0 0 0 0)))) as Hf1.
-      { apply functional_extensionality.
-        intros.
-        rewrite divmode_fst_n0m0.
-        replace (x + 0)%nat with x by lia.
-        reflexivity. }
-      rewrite <- Hf1.
-      assert (f3 = (fun i0 : nat => f3 (fst (Nat.divmod i0 0 0 0)) * 1)) as Hf3.
-      { apply functional_extensionality.
-        intros.
-        rewrite divmode_fst_n0m0.
-        replace (x + 0)%nat with x by lia.
-        lca. }
-      rewrite <- Hf3.
-      replace (l1 * 1)%nat with l1 by lia.
-      lca.
-      intros.
-      lca.
-    +
-
-
 
 (* ============================================================================================== *)
 (* element-wise unary operation ================================================================= *)
@@ -855,6 +810,7 @@ Fact Mmult_eye_r_suppl: forall (j l: nat) (f: nat -> C),
   j < l -> dot_product_suppl f (fun i0 => if i0 =? j then 1 else 0) l = f j.
 Proof.
   intros.
+  dps_unfold.
   induction l as [|l'].
   - intros.
     lia.
@@ -873,7 +829,7 @@ Proof.
       { destruct (lt_eq_lt_dec j l') as [ [Hj|Hj]|Hj]. lia. lia. lia. }
       replace (l' =? j) with true.
       subst l'.
-      assert (forall n, n >= j -> dot_product_suppl f (fun i0 : nat => if i0 =? n then 1 else 0) j = 0).
+      assert (forall n, n >= j -> func_sum_suppl (fun i : nat => f i * (if i =? n then 1 else 0)) 0 j = 0).
       { clear.
         induction j as [|j'].
         - reflexivity.
@@ -888,7 +844,7 @@ Proof.
           apply <- Nat.eqb_neq.
           lia. }
       specialize H0 with j.
-      assert (dot_product_suppl f (fun i0 : nat => if i0 =? j then 1 else 0) j = 0).
+      assert (func_sum_suppl (fun i : nat => f i * (if i =? j then 1 else 0)) 0 j = 0).
       { apply H0. lia. }
       rewrite H1.
       lca.
@@ -901,6 +857,7 @@ Fact Mmult_eye_l_suppl: forall (i l: nat) (f: nat -> C),
   i < l -> dot_product_suppl (fun j0 => if i =? j0 then 1 else 0) f l = f i.
 Proof.
   intros.
+  dps_unfold.
   induction l as [|l'].
   - intros.
     lia.
@@ -919,7 +876,7 @@ Proof.
       { destruct (lt_eq_lt_dec i l') as [ [Hj|Hj]|Hj]. lia. lia. lia. }
       replace (l' =? i) with true.
       subst l'.
-      assert (forall n, n >= i -> dot_product_suppl (fun i0 : nat => if n =? i0 then 1 else 0) f i = 0).
+      assert (forall n, n >= i -> func_sum_suppl (fun i0 : nat => (if n =? i0 then 1 else 0) * f i0) 0 i = 0).
       { clear.
         induction i as [|i'].
         - reflexivity.
@@ -934,7 +891,7 @@ Proof.
           apply <- Nat.eqb_neq.
           lia. }
       specialize H0 with i.
-      assert (dot_product_suppl (fun j0 : nat => if i =? j0 then 1 else 0) f i = 0).
+      assert (func_sum_suppl (fun i0 : nat => (if i =? i0 then 1 else 0) * f i0) 0 i = 0).
       { apply H0. lia. }
       rewrite H1.
       rewrite Nat.eqb_refl.

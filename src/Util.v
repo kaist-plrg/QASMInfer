@@ -24,7 +24,7 @@ Proof.
   lia.
 Qed.
 
-Lemma pow_2_nonzero: forall n, Nat.pow 2 n <> 0.
+Lemma pow_2_nonzero: forall n, Nat.pow 2 n > 0.
 Proof.
   induction n as [|n'].
   - simpl. lia.
