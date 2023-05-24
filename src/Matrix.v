@@ -150,18 +150,6 @@ Ltac dps_unfold :=
 Definition dot_product (r: RowVec) (c: ColVec) (Hrc: RCeqbits r c): C :=
   dot_product_suppl (RVinner r) (CVinner c) (RVsize r).
 
-Lemma func_sum_suppl_scale: forall (n m: nat) (c: C) (f1 f2: nat -> C),
-  (forall i, f1 i = c * f2 i) -> func_sum_suppl f1 n m = c * func_sum_suppl f2 n m.
-Proof.
-  intros.
-  induction m as [|m'].
-  - lca.
-  - simpl.
-    rewrite IHm'.
-    rewrite H.
-    lca.
-Qed.
-
 Lemma dot_product_suppl_scale_l: forall (l: nat) (c: C) (f1 f2 f: nat -> C),
   (forall n, f1 n = c * f2 n) -> dot_product_suppl f1 f l = c * dot_product_suppl f2 f l.
 Proof.
@@ -464,6 +452,9 @@ Definition Mmult_unsafe (m1 m2: Matrix) : Matrix :=
   |}.
 
 Definition Mmult (m1 m2: Matrix) (H: MMeqbits m1 m2): Matrix := Mmult_unsafe m1 m2.
+
+Lemma Mmult_unsafe_bits_l: forall (m1 m2: Matrix), MMeqbits (Mmult_unsafe m1 m2) m1.
+Proof. reflexivity. Qed.
 
 Lemma Mmult_bits_l: forall (m1 m2: Matrix) (H: _), MMeqbits (Mmult m1 m2 H) m1.
 Proof. reflexivity. Qed.

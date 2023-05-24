@@ -29,7 +29,7 @@ Proof.
   reflexivity.
   simpl_bits.
   reflexivity.
-Qed
+Qed.
 
 Lemma Qop_unitary_mult_suppl: forall (m1 m2: Matrix) (H12: _) (H21: _) (H1221: _),
   Mmult (Mmult m1 m2 H12) (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H1221 = eye (Mbits m1) ->
@@ -41,7 +41,6 @@ Proof.
     reflexivity.
   - intros.
     specialize (Mconjtrans_mult m1 m2 H12 H21) as Hd.
-    unfold Qop_mmd in *.
     unfold Mmult in *.
     rewrite Hd.
     simpl in *.
@@ -124,7 +123,6 @@ Proof.
       reflexivity. }
     rewrite H4.
     unfold Qop_unitary in *.
-    unfold Qop_mmd in *.
     assert (MMeqbits m1 (Mmult (eye (Mbits m2)) (Mconjtrans m1) H22_1)) as H1e1.
     { simpl_bits. apply H. }
     assert (
@@ -143,6 +141,12 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma Qop_unitary_TMprod: forall (m1 m2: Matrix),
+  Qop_unitary m1 -> Qop_unitary m2 -> Qop_unitary (TMproduct m1 m2).
+Proof.
+  intros.
+  unfold Qop_unitary, Mmult.
+  rewrite TMproduct_Mconjtrans.
 (* ============================================================================================== *)
 (* single qubit rotation operators ============================================================== *)
 
@@ -159,7 +163,6 @@ Lemma Qop_ry_unitary: forall (theta: R), Qop_unitary (Qop_ry theta).
 Proof.
   intros.
   unfold Qop_unitary.
-  unfold Qop_mmd.
   simpl.
   unfold Mmult.
   unfold Qop_ry.
@@ -218,7 +221,6 @@ Lemma Qop_rz_unitary: forall (theta: R), Qop_unitary (Qop_rz theta).
 Proof.
   intros.
   unfold Qop_unitary.
-  unfold Qop_mmd.
   simpl.
   unfold Mmult.
   unfold Qop_ry.
@@ -321,6 +323,8 @@ Proof.
   repeat simpl_bits.
   lia.
 Qed.
+
+Lemma Qop_sq_unitary: forall (n t: nat) (op: Matrix) (Ht: _) (Hop: _), Qop_unitary (Qop_sq n t
 
 (* ============================================================================================== *)
 (* swap operator ================================================================================ *)

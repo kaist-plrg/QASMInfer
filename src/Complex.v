@@ -147,6 +147,37 @@ Definition func_sum2 (f: nat -> C) (m n: nat): C := func_sum_suppl f m (n - m).
 
 Definition func_sum (f: nat -> C) (n: nat): C := func_sum2 f 0 n.
 
+Lemma func_sum_suppl_scale: forall (n m: nat) (c: C) (f1 f2: nat -> C),
+  (forall i, f1 i = c * f2 i) -> func_sum_suppl f1 n m = c * func_sum_suppl f2 n m.
+Proof.
+  intros.
+  induction m as [|m'].
+  - lca.
+  - simpl.
+    rewrite IHm'.
+    rewrite H.
+    lca.
+Qed.
+
+Lemma func_sum_f: forall (f1 f2: nat -> C) (n: nat),
+  (forall i, (i < n)%nat -> f1 i = f2 i) -> func_sum f1 n = func_sum f2 n.
+Proof.
+  intros.
+  unfold func_sum.
+  unfold func_sum2.
+  repeat rewrite Nat.sub_0_r.
+  induction n.
+  - reflexivity.
+  - simpl.
+    rewrite IHn.
+    rewrite H.
+    reflexivity.
+    lia.
+    intros.
+    apply H.
+    lia.
+Qed.
+
 Lemma func_sum2_split: forall (a b c: nat) (f: nat -> C),
   (a <= b <= c)%nat -> func_sum2 f a c = func_sum2 f a b + func_sum2 f b c.
 Proof.
@@ -316,7 +347,6 @@ Proof.
     lia.
 Qed.
 
-
 Lemma func_sum_mod: forall (n m k: nat) (f: nat -> C),
   m <> O ->
   func_sum (fun i => if i mod m =? k mod m then f i else 0) (n * m) =
@@ -362,6 +392,118 @@ Proof.
     lia.
     specialize (Nat.mod_bound_pos k m) as Hbound.
     lia.
+Qed.
+
+Lemma func_sum_div_suppl_l: forall (n m k i: nat) (f: nat -> C),
+  m <> O ->
+  (k < n * m)%nat ->
+  (i <= k / m * m)%nat ->
+  func_sum2 (fun i : nat => if i / m =? k / m then f i else 0) 0 i = 0.
+Proof.
+  intros.
+  unfold func_sum2.
+  rewrite Nat.sub_0_r.
+  induction i.
+  - simpl.
+    lca.
+  - simpl.
+    rewrite IHi by lia.
+    assert (i < m * (k / m))%nat as Hdiv by lia.
+    apply Nat.div_lt_upper_bound in Hdiv.
+    replace (i / m =? k / m) with false.
+    lca.
+    symmetry.
+    apply Nat.eqb_neq.
+    lia.
+    lia.
+Qed.
+
+Lemma func_sum_div_suppl_m: forall (n m k i: nat) (f: nat -> C),
+  m <> O ->
+  (k < n * m)%nat ->
+  (i <= m)%nat ->
+  func_sum2 (fun i : nat => if i / m =? k / m then f i else 0) (k / m * m) (i + k / m * m) =
+  func_sum2 (fun i : nat => f (k / m * m + i)%nat) 0 i.
+Proof.
+  intros.
+  unfold func_sum2.
+  rewrite Nat.sub_0_r.
+  replace (i + k / m * m - k / m * m)%nat with i by lia.
+  induction i.
+  - reflexivity.
+  - simpl.
+    rewrite IHi.
+    replace ((k / m * m + i) / m =? k / m) with true.
+    reflexivity.
+    symmetry.
+    apply Nat.eqb_eq.
+    rewrite Nat.div_add_l.
+    replace (i / m)%nat with O.
+    lia.
+    symmetry.
+    apply Nat.div_small.
+    lia.
+    lia.
+    lia.
+Qed.
+
+Lemma func_sum_div_suppl_r: forall (n m k i: nat) (f: nat -> C),
+  m <> O ->
+  (k < n * m)%nat ->
+  (i <= (n * m - (m + k / m * m)))%nat ->
+  func_sum_suppl (fun i : nat => if i / m =? k / m then f i else 0) (m + k / m * m) i = 0.
+Proof.
+  intros.
+  induction i.
+  - reflexivity.
+  - simpl.
+    rewrite IHi by lia.
+    replace ((m + k / m * m + i) / m =? k / m) with false.
+    lca.
+    symmetry.
+    apply Nat.eqb_neq.
+    replace (m + k / m * m + i)%nat with (k / m * m + (1 * m + i))%nat by lia.
+    repeat rewrite Nat.div_add_l.
+    lia.
+    lia.
+    lia.
+Qed.
+
+Lemma func_sum_div: forall (n m k: nat) (f: nat -> C),
+  m <> O ->
+  (k < n * m)%nat ->
+  func_sum (fun i => if i / m =? k / m then f i else 0) (n * m) =
+  func_sum (fun i => f ((k / m) * m + i)%nat) m.
+Proof.
+  intros.
+  unfold func_sum.
+  repeat rewrite Nat.sub_0_r.
+  rewrite func_sum2_split with (a := O) (b := (k / m * m)%nat) (c := (n * m)%nat).
+  rewrite func_sum2_split with (a := (k / m * m)%nat) (b := (m + k / m * m)%nat).
+  rewrite func_sum_div_suppl_l with (n := n).
+  rewrite func_sum_div_suppl_m with (n := n).
+  unfold func_sum2.
+  rewrite func_sum_div_suppl_r with (n := n).
+  lca.
+  lia.
+  lia.
+  lia.
+  lia.
+  lia.
+  lia.
+  lia.
+  lia.
+  lia.
+  split.
+  lia.
+  replace (n * m)%nat with (m * n)%nat in H0 by lia.
+  apply Nat.div_lt_upper_bound in H0.
+  nia.
+  lia.
+  replace (n * m)%nat with (m * n)%nat in H0 by lia.
+  apply Nat.div_lt_upper_bound in H0.
+  nia.
+  lia.
 Qed.
 
 (* ============================================================================================== *)

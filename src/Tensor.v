@@ -71,15 +71,34 @@ Proof. reflexivity. Qed.
 Ltac simpl_bits :=
   unfold MMeqbits in *;
   unfold Msize in *;
+  repeat rewrite Mmult_unsafe_bits_l in *;
   repeat rewrite Mmult_bits_l in *;
   repeat rewrite Mconjtrans_bits in *;
   repeat rewrite eye_bits in *;
   repeat rewrite TMProduct_bits in *.
 
 (* ============================================================================================== *)
-(* distributive property of tensor product ====================================================== *)
+(* relation between conjugate transpose and tensor product ====================================== *)
 
-Lemma Tproduct_dist_ll: forall
+Lemma TMproduct_Mconjtrans: forall (m1 m2: Matrix),
+  Mconjtrans (TMproduct m1 m2) = TMproduct (Mconjtrans m1) (Mconjtrans m2).
+Proof.
+  intros.
+  unfold Mconjtrans, TMproduct.
+  simpl.
+  apply Mequal.
+  - reflexivity.
+  - unfold Msize, Cconj.
+    simpl.
+    rewrite Nat.pow_add_r.
+    intros.
+    lca.
+Qed.
+
+(* ============================================================================================== *)
+(* relation between matrix multiplication and tensor product ==================================== *)
+
+Lemma TMproduct_mult_l: forall
   (m1 m2 m3: Matrix) (H12: _) (H1234: _),
   TMproduct (Mmult m1 m3 H12) m2 = Mmult (TMproduct m1 m2) (TMproduct m3 (eye (Mbits m2))) H1234.
 Proof.
@@ -167,6 +186,144 @@ Proof.
       unfold l1. reflexivity.
       symmetry.
       apply Nat.pow_add_r.
+Qed.
+
+Lemma TMproduct_mult_r: forall
+  (m1 m2 m3: Matrix) (H12: _) (H1234: _),
+  TMproduct m1 (Mmult m2 m3 H12) = Mmult (TMproduct m1 m2) (TMproduct (eye (Mbits m1)) m3) H1234.
+Proof.
+  intros.
+  apply Mequal.
+  - repeat simpl_bits.
+    lia.
+  - intros.
+    unfold Mmult.
+    unfold Mmult_unsafe.
+    unfold Mmult_inner.
+    unfold TMproduct.
+    repeat simpl_bits.
+    simpl.
+    repeat rewrite <- H12.
+    unfold dot_product_suppl.
+    replace (2 ^ (Mbits m1 + Mbits m2))%nat with (2 ^ (Mbits m1) * 2 ^ (Mbits m2))%nat.
+    pose (l1 := (2 ^ Mbits m1)%nat).
+    pose (l2 := (2 ^ Mbits m2)%nat).
+    replace (2 ^ Mbits m1)%nat with l1.
+    replace (2 ^ Mbits m2)%nat with l2.
+    replace (fun i0 : nat =>
+      Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
+      ((if i0 / l2 =? j / l2 then 1 else 0) * Minner m3 (i0 mod l2) (j mod l2))) with
+      (fun i0 : nat => (if i0 / l2 =? j / l2 then
+      Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
+      Minner m3 (i0 mod l2) (j mod l2) else 0)).
+    rewrite func_sum_div.
+    rewrite func_sum_f with
+      (f1 := (fun i0 : nat =>
+      Minner m1 (i / l2) ((j / l2 * l2 + i0) / l2) *
+      Minner m2 (i mod l2) ((j / l2 * l2 + i0) mod l2) *
+      Minner m3 ((j / l2 * l2 + i0) mod l2) (j mod l2)))
+      (f2 := (fun i0 : nat =>
+      Minner m1 (i / l2) (j / l2) *
+      Minner m2 (i mod l2) i0 *
+      Minner m3 i0 (j mod l2))).
+    unfold func_sum.
+    unfold func_sum2.
+    repeat rewrite Nat.sub_0_r.
+    symmetry.
+    apply func_sum_suppl_scale.
+    intros.
+    lca.
+    intros.
+    replace ((j / l2 * l2 + i0) mod l2) with i0.
+    replace ((j / l2 * l2 + i0) / l2)%nat with (j / l2)%nat.
+    reflexivity.
+    rewrite Nat.div_add_l.
+    replace (i0 / l2)%nat with O.
+    lia.
+    rewrite Nat.div_small.
+    lia.
+    lia.
+    lia.
+    rewrite Nat.add_mod.
+    rewrite Nat.mul_mod.
+    rewrite Nat.mod_same.
+    rewrite Nat.mul_0_r.
+    rewrite Nat.mod_0_l.
+    simpl.
+    repeat rewrite Nat.mod_small.
+    reflexivity.
+    lia.
+    lia.
+    lia.
+    lia.
+    lia.
+    lia.
+    lia.
+    specialize (pow_2_nonzero (Mbits m2)) as Hpow.
+    lia.
+    rewrite Nat.pow_add_r in H0.
+    lia.
+    apply functional_extensionality.
+    intros.
+    destruct (x / l2 =? j / l2).
+    lca.
+    lca.
+    lia.
+    lia.
+    symmetry.
+    apply Nat.pow_add_r.
+Qed.
+
+Lemma TMproduct_mult: forall
+  (m1 m2 m3 m4: Matrix) (H13: _) (H24: _) (H1234: _),
+  TMproduct (Mmult m1 m3 H13) (Mmult m2 m4 H24) = Mmult (TMproduct m1 m2) (TMproduct m3 m4) H1234.
+Proof.
+  intros.
+  unfold Mmult.
+  assert (
+    TMproduct m3 m4 =
+    Mmult_unsafe (TMproduct m3 (eye (Mbits m4))) (TMproduct (eye (Mbits m3)) m4)
+    ) as H34.
+  { specialize TMproduct_mult_r as Hpr.
+    unfold Mmult in Hpr.
+    rewrite <- Hpr.
+    specialize Mmult_eye_l as Heyel.
+    unfold Mmult in Heyel.
+    rewrite Heyel.
+    reflexivity.
+    simpl_bits.
+    reflexivity.
+    simpl_bits.
+    reflexivity.
+    repeat simpl_bits.
+    reflexivity. }
+  rewrite H34.
+  specialize Mmult_assoc as Hmassoc.
+  unfold Mmult in Hmassoc.
+  rewrite <- Hmassoc.
+  specialize TMproduct_mult_l as Hpl.
+  unfold Mmult in Hpl.
+  rewrite <- H24.
+  rewrite <- Hpl.
+  specialize TMproduct_mult_r as Hpr.
+  unfold Mmult in Hpr.
+  replace (Mbits m3) with (Mbits (Mmult_unsafe m1 m3)).
+  rewrite <- Hpr.
+  reflexivity.
+  apply H24.
+  repeat simpl_bits.
+  lia.
+  apply H13.
+  repeat simpl_bits.
+  lia.
+  repeat simpl_bits.
+  lia.
+  repeat simpl_bits.
+  lia.
+  repeat simpl_bits.
+  lia.
+  repeat simpl_bits.
+  lia.
 Qed.
 
 (* ============================================================================================== *)
