@@ -141,6 +141,58 @@ Definition Qop_ry (theta: R): Matrix := {|
     else if j =? 0 then           sin (theta / 2) else   cos (theta / 2);
   |}.
 
+Lemma Qop_ry_unitary: forall (theta: R), Qop_unitary (Qop_ry theta).
+Proof.
+  intros.
+  unfold Qop_unitary.
+  unfold Qop_mmd.
+  simpl.
+  unfold Mmult.
+  unfold Qop_ry.
+  unfold Mconjtrans.
+  unfold Mmult_unsafe.
+  unfold eye.
+  apply Mequal.
+  - reflexivity.
+  - unfold Mmult_inner.
+    repeat simpl_bits.
+    simpl.
+    intros.
+    dps_unfold.
+    unfold Cconj.
+    destruct i as [|i].
+      + destruct j as [|j].
+        * simpl.
+          unfold Cmult.
+          unfold Cplus.
+          simpl_tri.
+          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          unfold Rsqr in Hsc.
+          lca.
+        * simpl.
+          unfold Cmult.
+          unfold Cplus.
+          simpl_tri.
+          lca.
+      + destruct j as [|j].
+        * simpl.
+          unfold Cmult.
+          unfold Cplus.
+          simpl_tri.
+          lca.
+        * assert (i = 0%nat) by lia.
+          assert (j = 0%nat) by lia.
+          subst i j.
+          simpl.
+          unfold Cmult.
+          unfold Cplus.
+          simpl_tri.
+          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          unfold Rsqr in Hsc.
+          lca.
+Qed.
+
+
 Definition Qop_rz (theta: R): Matrix := {|
   Mbits := 1;
   Minner := fun i j =>
@@ -148,14 +200,71 @@ Definition Qop_rz (theta: R): Matrix := {|
     else if j =? 0 then                     0           else Cexp (0, theta / 2);
   |}.
 
+Lemma Qop_rz_unitary: forall (theta: R), Qop_unitary (Qop_rz theta).
+Proof.
+  intros.
+  unfold Qop_unitary.
+  unfold Qop_mmd.
+  simpl.
+  unfold Mmult.
+  unfold Qop_ry.
+  unfold Mconjtrans.
+  unfold Mmult_unsafe.
+  unfold eye.
+  apply Mequal.
+  - reflexivity.
+  - unfold Mmult_inner.
+    repeat simpl_bits.
+    simpl.
+    intros.
+    dps_unfold.
+    unfold Cconj.
+    destruct i as [|i].
+      + destruct j as [|j].
+        * simpl.
+          unfold Cmult.
+          unfold Cplus.
+          repeat simpl_tri.
+          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          unfold Rsqr in Hsc.
+          lca.
+        * simpl.
+          unfold Cmult.
+          unfold Cplus.
+          simpl_tri.
+          lca.
+      + destruct j as [|j].
+        * simpl.
+          unfold Cmult.
+          unfold Cplus.
+          simpl_tri.
+          lca.
+        * assert (i = 0%nat) by lia.
+          assert (j = 0%nat) by lia.
+          subst i j.
+          simpl.
+          unfold Cmult.
+          unfold Cplus.
+          repeat simpl_tri.
+          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          unfold Rsqr in Hsc.
+          lca.
+Qed.
+
 Definition Qop_rot (theta phi lambda: R): Matrix.
 Proof.
-  assert (MMeqbits (Qop_rz phi) (Qop_ry theta)) by reflexivity.
-  destruct (Mmult (Qop_rz phi) (Qop_ry theta) H) as [rzy Hzy].
-  assert (MMeqbits rzy (Qop_rz lambda)) by apply Hzy.
-  destruct (Mmult rzy (Qop_rz lambda) H0) as [rzyz Hzyz].
-  exact rzyz.
+  refine (Mmult (Mmult (Qop_rz phi) (Qop_ry theta) _) (Qop_rz lambda) _).
+  Unshelve.
+  - simpl_bits.
+    reflexivity.
+  - simpl_bits.
+    reflexivity.
 Defined.
+
+Lemma Qop_rot_unitary: forall (theta phi lambda: R), Qop_unitary (Qop_rot theta phi lambda).
+Proof.
+  Abort.
+
 
 Local Close Scope R_scope.
 

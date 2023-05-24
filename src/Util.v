@@ -52,6 +52,27 @@ Ltac simpl_left :=
         replace (lhs = rhs) with (lhs' = rhs) by (f_equal; reflexivity)
   end.
 
+Ltac simpl_tri :=
+  simpl;
+  repeat rewrite exp_0;
+  repeat rewrite Ropp_0;
+  repeat rewrite Ropp_mult_distr_l;
+  repeat rewrite Ropp_mult_distr_r;
+  repeat rewrite Rmult_0_r;
+  repeat rewrite Rmult_0_l;
+  repeat rewrite Rmult_1_l;
+  repeat rewrite Rmult_1_r;
+  repeat rewrite Rplus_0_r;
+  repeat rewrite Rplus_0_l;
+  repeat rewrite Rminus_0_r;
+  repeat rewrite <- Ropp_mult_distr_l;
+  repeat rewrite <- Ropp_mult_distr_r;
+  repeat rewrite Ropp_involutive;
+  unfold Rdiv;
+  repeat rewrite Ropp_mult_distr_l_reverse;
+  repeat rewrite sin_neg;
+  repeat rewrite cos_neg.
+
 (* ============================================================================================== *)
 (* useful notations ============================================================================= *)
 

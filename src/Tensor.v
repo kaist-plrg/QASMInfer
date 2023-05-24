@@ -79,7 +79,7 @@ Ltac simpl_bits :=
 (* ============================================================================================== *)
 (* distributive property of tensor product ====================================================== *)
 
-Lemma Tproduct_dist: forall
+Lemma Tproduct_dist_ll: forall
   (m1 m2 m3: Matrix) (H12: _) (H1234: _),
   TMproduct (Mmult m1 m3 H12) m2 = Mmult (TMproduct m1 m2) (TMproduct m3 (eye (Mbits m2))) H1234.
 Proof.
