@@ -145,8 +145,26 @@ Lemma Qop_unitary_TMprod: forall (m1 m2: Matrix),
   Qop_unitary m1 -> Qop_unitary m2 -> Qop_unitary (TMproduct m1 m2).
 Proof.
   intros.
-  unfold Qop_unitary, Mmult.
+  unfold Qop_unitary, Mmult in *.
   rewrite TMproduct_Mconjtrans.
+  specialize TMproduct_mult as Htp.
+  unfold Mmult in *.
+  rewrite <- Htp.
+  rewrite H.
+  rewrite H0.
+  rewrite TMproduct_eye.
+  replace (Mbits m1 + Mbits m2)%nat with (Mbits (TMproduct m1 m2)).
+  reflexivity.
+  simpl_bits.
+  reflexivity.
+  simpl_bits.
+  reflexivity.
+  simpl_bits.
+  reflexivity.
+  repeat simpl_bits.
+  reflexivity.
+Qed.
+
 (* ============================================================================================== *)
 (* single qubit rotation operators ============================================================== *)
 

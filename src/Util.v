@@ -7,6 +7,7 @@ Require Export List.
 Require Export Coq.Logic.ProofIrrelevance.
 Require Export Coq.Logic.PropExtensionality.
 Import ListNotations.
+Require Import Classical_Prop.
 
 Open Scope nat_scope.
 Open Scope bool_scope.
@@ -40,6 +41,38 @@ Proof.
     rewrite IHn'.
     simpl.
     lia.
+Qed.
+
+Lemma eq_iff_div_and_mod : forall i j n : nat, n <> 0 ->
+  (i = j) <-> (i / n = j / n /\ i mod n = j mod n).
+Proof.
+  intros i j n Hn.
+  split.
+  - intros H.
+    rewrite H.
+    split; reflexivity.
+  - intros [Hdiv Hmod].
+    rewrite (Nat.div_mod i n Hn).
+    rewrite  (Nat.div_mod j n Hn).
+    rewrite Hdiv, Hmod.
+    reflexivity.
+Qed.
+
+Lemma neq_iff_div_or_mod : forall i j n : nat, n <> 0 ->
+  (i <> j) <-> (i / n <> j / n \/ i mod n <> j mod n).
+Proof.
+  intros i j n Hn.
+  split.
+  - intros H.
+    apply Decidable.not_and. apply classic.
+    unfold not.
+    intros.
+    apply <- eq_iff_div_and_mod in H0.
+    lia.
+    lia.
+  - intros [Hdiv | Hmod].
+    + intros H. rewrite H in Hdiv. lia.
+    + intros H. rewrite H in Hmod. lia.
 Qed.
 
 (* ============================================================================================== *)

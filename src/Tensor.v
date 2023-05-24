@@ -327,5 +327,47 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
+(* tensor product of identity matrices ========================================================== *)
+
+Lemma TMproduct_eye: forall (n m: nat), TMproduct (eye n) (eye m) = eye (n + m).
+Proof.
+  intros.
+  apply Mequal.
+  - repeat simpl_bits.
+    reflexivity.
+  - intros.
+    unfold Minner, TMproduct, eye.
+    simpl.
+    unfold Msize.
+    simpl.
+    destruct (i =? j) eqn: E.
+    + apply Nat.eqb_eq in E.
+      replace (i / 2 ^ m =? j / 2 ^ m) with true.
+      replace (i mod 2 ^ m =? j mod 2 ^ m) with true.
+      lca.
+      symmetry.
+      apply Nat.eqb_eq.
+      rewrite E.
+      reflexivity.
+      symmetry.
+      apply Nat.eqb_eq.
+      rewrite E.
+      reflexivity.
+    + repeat simpl_bits.
+      rewrite Nat.pow_add_r in *.
+      apply Nat.eqb_neq in E.
+      specialize (neq_iff_div_or_mod i j (2 ^ m)) as Hneq.
+      eapply Hneq in E.
+      destruct E as [Ediv|Emod].
+      * apply <- Nat.eqb_neq in Ediv.
+        rewrite Ediv.
+        lca.
+      * apply <- Nat.eqb_neq in Emod.
+        rewrite Emod.
+        lca.
+      * lia.
+Qed.
+
+(* ============================================================================================== *)
 
 (* Definition trace, partial trace *)
