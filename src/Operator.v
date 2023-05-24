@@ -13,9 +13,23 @@ Open Scope T_scope.
 
 (* definition of unitary matrix ================================================================= *)
 
-Definition Qop_mmd (m: Matrix): Matrix := Mmult m (Mconjtrans m) (Mconjtrans_bits m).
+Definition Qop_unitary (m: Matrix) := Mmult m (Mconjtrans m) (Mconjtrans_bits m) = eye (Mbits m).
 
-Definition Qop_unitary (m: Matrix) := Qop_mmd m = eye (Mbits m).
+Lemma Qop_eye_unitary: forall (bits: nat), Qop_unitary (eye bits).
+Proof.
+  intros.
+  unfold Qop_unitary, Mmult.
+  rewrite eye_conjtrans.
+  specialize (Mmult_eye_l (eye bits)) as Heye.
+  unfold Mmult in Heye.
+  replace (Mbits (eye bits)) with bits in *.
+  rewrite Heye.
+  reflexivity.
+  simpl_bits.
+  reflexivity.
+  simpl_bits.
+  reflexivity.
+Qed
 
 Lemma Qop_unitary_mult_suppl: forall (m1 m2: Matrix) (H12: _) (H21: _) (H1221: _),
   Mmult (Mmult m1 m2 H12) (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H1221 = eye (Mbits m1) ->
@@ -298,21 +312,14 @@ Definition Qproj1: Matrix := {|
 (* generalization of single qubit operators ===================================================== *)
 
 Definition Qop_sq (n t: nat) (op: Matrix)
-  (Ht: t < n) (Hop: Mbits op = 1): {m: Matrix | Mbits m = n}.
+  (Ht: t < n) (Hop: Mbits op = 1): Matrix := TMproduct (TMproduct (eye t) op) (eye (n - t - 1)).
+
+Lemma Qop_sq_bits: forall (n t: nat) (op: Matrix) (Ht: _) (Hop: _), Mbits (Qop_sq n t op Ht Hop) = n.
 Proof.
-  destruct (eye t) as [eye1 Heye1].
-  destruct (eye (n - t - 1)) as [eye2 Heye2].
-  destruct (TMproduct eye1 op) as [m' Hm'].
-  destruct (TMproduct m' eye2) as [m Hm].
-  refine (exist _ m _).
-  rewrite Hm.
-  rewrite Hm'.
-  rewrite Heye1.
-  rewrite Heye2.
-  rewrite Hop.
-  replace ((t + 1 + (n - t - 1))%nat) with (((n - t - 1) + 1 + t)%nat) by lia.
-  repeat rewrite Nat.sub_add.
-  reflexivity. lia. lia.
+  intros.
+  unfold Qop_sq.
+  repeat simpl_bits.
+  lia.
 Qed.
 
 (* ============================================================================================== *)

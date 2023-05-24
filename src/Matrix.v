@@ -806,6 +806,28 @@ Definition eye (bits: nat): Matrix :=
 Lemma eye_bits: forall (bits: nat), Mbits (eye bits) = bits.
 Proof. reflexivity. Qed.
 
+Lemma eye_conjtrans: forall (bits: nat), Mconjtrans (eye bits) = eye bits.
+Proof.
+  intros.
+  unfold eye, Mconjtrans.
+  simpl.
+  apply Mequal.
+  - reflexivity.
+  - unfold Msize, Cconj.
+    simpl.
+    intros.
+    apply c_proj_eq.
+    + simpl.
+      rewrite Nat.eqb_sym.
+      reflexivity.
+    + rewrite Nat.eqb_sym.
+      unfold NTC.
+      simpl.
+      destruct (i =? j).
+      * simpl. lra.
+      * simpl. lra.
+Qed.
+
 Fact Mmult_eye_r_suppl: forall (j l: nat) (f: nat -> C),
   j < l -> dot_product_suppl f (fun i0 => if i0 =? j then 1 else 0) l = f j.
 Proof.
