@@ -263,8 +263,15 @@ Defined.
 
 Lemma Qop_rot_unitary: forall (theta phi lambda: R), Qop_unitary (Qop_rot theta phi lambda).
 Proof.
-  Abort.
-
+  intros.
+  unfold Qop_unitary.
+  apply Qop_unitary_mult.
+  unfold Qop_unitary.
+  apply Qop_unitary_mult.
+  apply Qop_rz_unitary.
+  apply Qop_ry_unitary.
+  apply Qop_rz_unitary.
+Qed.
 
 Local Close Scope R_scope.
 
