@@ -392,7 +392,137 @@ Definition Qop_swap2: Matrix := {|
     end;
   |}.
 
-(* Lemma Qop_swap2_unitary *)
+Lemma Qop_swap2_unitary: Qop_unitary Qop_swap2.
+Proof.
+  intros.
+  unfold Qop_unitary.
+  simpl.
+  unfold Mmult.
+  unfold Qop_ry.
+  unfold Mconjtrans.
+  unfold Mmult_unsafe.
+  unfold eye.
+  apply Mequal.
+  - reflexivity.
+  - unfold Mmult_inner.
+    repeat simpl_bits.
+    simpl.
+    intros.
+    dps_unfold.
+    unfold Cconj.
+    destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
+      + simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + assert (j = 0%nat) by lia.
+        subst j.
+        simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + assert (j = 0%nat) by lia.
+        subst j.
+        simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + assert (j = 0%nat) by lia.
+        subst j.
+        simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + assert (i = 0%nat) by lia.
+        subst i.
+        simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + assert (i = 0%nat) by lia.
+        subst i.
+        simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + assert (i = 0%nat) by lia.
+        subst i.
+        simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+      + assert (i = 0%nat) by lia.
+        assert (j = 0%nat) by lia.
+        subst i j.
+        simpl.
+        unfold Cmult.
+        simpl.
+        unfold Cplus.
+        repeat simpl_tri.
+        lca.
+Qed.
 
 (* Eval compute in (Minner Qop_swap2 1 2). *)
 
