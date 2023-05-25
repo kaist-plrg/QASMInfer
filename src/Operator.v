@@ -445,19 +445,6 @@ Proof.
       subst i j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
 Qed.
 
-(* Definition Qop_swap2_n (n: nat): Matrix := match n with
-  | O | S O => eye n
-  | S (S n') => TMproduct Qop_swap2 (eye n')
-end.
-
-Lemma Qop_swap2_n_bits: forall (n: nat), Mbits (Qop_swap2_n n) = n.
-Proof.
-  destruct n as [|[|n] ].
-  - reflexivity.
-  - reflexivity.
-  - reflexivity.
-Qed. *)
-
 Fixpoint Qop_swap1n_suppl (n'': nat): Matrix := match n'' with
   | O => Qop_swap2
   | S n''' => (Mmult_unsafe
@@ -473,24 +460,6 @@ Proof.
   - reflexivity.
   - reflexivity.
 Qed.
-
-(* Definition Qop_swap1n_unsafe (n: nat): Matrix.
-Proof.
-  destruct n as [|n'] eqn: En.
-  exact (eye 0).
-  destruct n' as [|n''] eqn: En'.
-  exact (eye 1).
-  exact (Qop_swap1n_suppl n'').
-Defined.
-
-Lemma Qop_swap1n_unsafe_bits: forall (n: nat), Mbits (Qop_swap1n_unsafe n) = n.
-Proof.
-  destruct n as [|[|[|n ] ] ].
-  - reflexivity.
-  - reflexivity.
-  - reflexivity.
-  - reflexivity.
-Qed. *)
 
 Definition Qop_swap1n (n: nat) (H: n > 1): Matrix.
 Proof.
@@ -649,6 +618,86 @@ Definition Qop_cnot_tc: Matrix := {|
     | _, _ => 0
     end;
   |}.
+
+Lemma Qop_cnot_ct_unitary: Qop_unitary Qop_cnot_ct.
+Proof.
+  intros.
+  unfold Qop_unitary.
+  simpl.
+  unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye.
+  apply Mequal.
+  - reflexivity.
+  - unfold Mmult_inner.
+    repeat simpl_bits.
+    simpl.
+    intros.
+    dps_unfold.
+    unfold Cconj.
+    destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (j = 0%nat) by lia.
+      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (j = 0%nat) by lia.
+      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (j = 0%nat) by lia.
+      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia.
+      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia.
+      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia.
+      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia. assert (j = 0%nat) by lia.
+      subst i j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+Qed.
+
+Lemma Qop_cnot_tc_unitary: Qop_unitary Qop_cnot_tc.
+Proof.
+  intros.
+  unfold Qop_unitary.
+  simpl.
+  unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye.
+  apply Mequal.
+  - reflexivity.
+  - unfold Mmult_inner.
+    repeat simpl_bits.
+    simpl.
+    intros.
+    dps_unfold.
+    unfold Cconj.
+    destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (j = 0%nat) by lia.
+      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (j = 0%nat) by lia.
+      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (j = 0%nat) by lia.
+      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia.
+      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia.
+      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia.
+      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia. assert (j = 0%nat) by lia.
+      subst i j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+Qed.
 
 Definition Qop_cnot_ct_n (n: nat) (Hn: n >= 2): {m: Matrix | Mbits m = n}.
 Proof.
