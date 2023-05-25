@@ -295,6 +295,12 @@ Proof.
     reflexivity.
 Defined.
 
+Lemma Qop_rot_bits: forall (theta phi lambda: R), Mbits (Qop_rot theta phi lambda) = 1%nat.
+Proof.
+  intros.
+  reflexivity.
+Qed.
+
 Lemma Qop_rot_unitary: forall (theta phi lambda: R), Qop_unitary (Qop_rot theta phi lambda).
 Proof.
   intros.
@@ -342,7 +348,35 @@ Proof.
   lia.
 Qed.
 
-Lemma Qop_sq_unitary: forall (n t: nat) (op: Matrix) (Ht: _) (Hop: _), Qop_unitary (Qop_sq n t
+Lemma Qop_sq_unitary: forall (n t: nat) (op: Matrix) (Ht: _) (Hop: _), Qop_unitary op -> Qop_unitary (Qop_sq n t op Ht Hop).
+Proof.
+  intros.
+  unfold Qop_unitary, Qop_sq in *.
+  simpl.
+  unfold Mmult.
+  repeat rewrite TMproduct_Mconjtrans.
+  specialize TMproduct_mult as Htm.
+  specialize Qop_eye_unitary as Heye.
+  unfold Qop_unitary, Mmult in *.
+  repeat rewrite <- Htm.
+  repeat rewrite Heye.
+  rewrite H.
+  repeat rewrite TMproduct_eye.
+  simpl_bits.
+  reflexivity.
+  simpl_bits.
+  reflexivity.
+  simpl_bits.
+  reflexivity.
+  simpl_bits.
+  reflexivity.
+  simpl_bits.
+  reflexivity.
+  simpl_bits.
+  reflexivity.
+  simpl_bits.
+  reflexivity.
+Qed.
 
 (* ============================================================================================== *)
 (* swap operator ================================================================================ *)
@@ -357,6 +391,8 @@ Definition Qop_swap2: Matrix := {|
     | _, _ => 0
     end;
   |}.
+
+(* Lemma Qop_swap2_unitary *)
 
 (* Eval compute in (Minner Qop_swap2 1 2). *)
 
