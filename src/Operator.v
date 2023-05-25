@@ -544,54 +544,86 @@ Proof.
       apply Qop_eye_unitary.
 Qed.
 
-Definition Qop_swap (n q1 q2: nat) (H1: q1 < n) (H2: q2 < n): {m: Matrix | Mbits m = n}.
+Definition Qop_swap (n q1 q2: nat) (H1: q1 < n) (H2: q2 < n): Matrix.
 Proof.
-  destruct (lt_eq_lt_dec q1 q2) as [H|H].
-  - destruct H as [H|H].
-    + destruct (eye q1) as [eye1 Heye1].
-      destruct (eye (n - q2 - 1)) as [eye2 Heye2].
-      assert (q2 - q1 + 1 > 1) as Hgt by lia.
-      destruct (Qop_swap1n (q2 - q1 + 1) Hgt) as [swap1n H1n].
-      destruct (TMproduct eye1 swap1n) as [swapq1q2' Hq1q2'].
-      destruct (TMproduct swapq1q2' eye2) as [swapq1q2 Hq1q2].
-      refine (exist _ swapq1q2 _).
-      rewrite Hq1q2.
-      rewrite Hq1q2'.
-      rewrite Heye1.
-      rewrite Heye2.
-      rewrite H1n.
-      ring_simplify.
-      lia.
-    + apply (eye n).
-  - destruct (eye q2) as [eye1 Heye1].
-    destruct (eye (n - q1 - 1)) as [eye2 Heye2].
-    assert (q1 - q2 + 1 > 1) as Hgt by lia.
-    destruct (Qop_swap1n (q1 - q2 + 1) Hgt) as [swap1n H1n].
-    destruct (TMproduct eye1 swap1n) as [swapq1q2' Hq1q2'].
-    destruct (TMproduct swapq1q2' eye2) as [swapq1q2 Hq1q2].
-    refine (exist _ swapq1q2 _).
-    rewrite Hq1q2.
-    rewrite Hq1q2'.
-    rewrite Heye1.
-    rewrite Heye2.
-    rewrite H1n.
-    ring_simplify.
-    lia.
+  destruct (lt_eq_lt_dec q1 q2) as [ [H|H]|H].
+  - assert (q2 - q1 + 1 > 1) as Hgt by lia.
+    exact (TMproduct (TMproduct (eye q1) (Qop_swap1n (q2 - q1 + 1) Hgt)) (eye (n - q2 - 1))).
+  - apply (eye n).
+  - assert (q1 - q2 + 1 > 1) as Hgt by lia.
+    apply (TMproduct (TMproduct (eye q2) (Qop_swap1n (q1 - q2 + 1) Hgt)) (eye (n - q1 - 1))).
 Defined.
 
-Definition Qop_swap_op (n q1 q2: nat) (op: Matrix)
-  (H1: q1 < n) (H2: q2 < n) (Hop: Mbits op = n): {m: Matrix | Mbits m = n}.
+Lemma Qop_swap_bits: forall (n q1 q2: nat) (H1: _) (H2: _), Mbits (Qop_swap n q1 q2 H1 H2) = n.
 Proof.
-  destruct (Qop_swap n q1 q2 H1 H2) as [swapq1q2 Hq1q2].
-  assert (MMeqbits swapq1q2 op) as Hswapop.
-  { unfold MMeqbits. lia. }
-  destruct (Mmult swapq1q2 op Hswapop) as [m' Hm'].
-  destruct (Mmult m' swapq1q2 Hm') as [m Hm].
-  refine (exist _ m _).
-  rewrite Hm.
-  rewrite Hm'.
-  apply Hq1q2.
+  intros.
+  unfold Qop_swap.
+  destruct (lt_eq_lt_dec q1 q2) as [ [H|H]|H].
+  - simpl.
+    rewrite Qop_swap1n_bits.
+    lia.
+  - reflexivity.
+  - simpl.
+    rewrite Qop_swap1n_bits.
+    lia.
+Qed.
+
+Lemma Qop_swap_unitary: forall (n q1 q2: nat) (H1: _) (H2: _), Qop_unitary (Qop_swap n q1 q2 H1 H2).
+Proof.
+  intros.
+  unfold Qop_swap.
+  destruct (lt_eq_lt_dec q1 q2) as [ [H|H]|H].
+  - simpl.
+    repeat apply Qop_unitary_TMprod.
+    apply Qop_eye_unitary.
+    apply Qop_swap1n_unitary.
+    apply Qop_eye_unitary.
+  - apply Qop_eye_unitary.
+  - simpl.
+    repeat apply Qop_unitary_TMprod.
+    apply Qop_eye_unitary.
+    apply Qop_swap1n_unitary.
+    apply Qop_eye_unitary.
+Qed.
+
+Definition Qop_swap_op (n q1 q2: nat) (op: Matrix)
+  (H1: q1 < n) (H2: q2 < n) (Hop: Mbits op = n): Matrix.
+Proof.
+  assert (MMeqbits (Qop_swap n q1 q2 H1 H2) op) as Hswapop.
+  { unfold MMeqbits.
+    rewrite Qop_swap_bits.
+    lia. }
+  assert (MMeqbits (Mmult (Qop_swap n q1 q2 H1 H2) op Hswapop) (Qop_swap n q1 q2 H1 H2)) as Hm'.
+  { simpl_bits.
+    reflexivity. }
+  exact (Mmult (Mmult (Qop_swap n q1 q2 H1 H2) op Hswapop) (Qop_swap n q1 q2 H1 H2) Hm').
 Defined.
+
+Lemma Qop_swap_op_bits: forall (n q1 q2: nat) (op: Matrix) (H1: _) (H2: _) (Hop: _),
+  Mbits (Qop_swap_op n q1 q2 op H1 H2 Hop) = n.
+Proof.
+  intros.
+  unfold Qop_swap_op, Mmult.
+  simpl_bits.
+  apply Qop_swap_bits.
+Qed.
+
+Lemma Qop_swap_op_unitary: forall (n q1 q2: nat) (op: Matrix) (H1: _) (H2: _) (Hop: _),
+  Qop_unitary op -> Qop_unitary (Qop_swap_op n q1 q2 op H1 H2 Hop).
+Proof.
+  intros.
+  unfold Qop_swap_op, Mmult.
+  repeat apply Qop_unitary_mult_unsafe.
+  simpl_bits.
+  reflexivity.
+  unfold MMeqbits.
+  rewrite Qop_swap_bits.
+  symmetry.
+  apply Hop.
+  apply Qop_swap_unitary.
+  apply H.
+  apply Qop_swap_unitary.
+Qed.
 
 (* ============================================================================================== *)
 (* CNOT operator ================================================================================ *)
