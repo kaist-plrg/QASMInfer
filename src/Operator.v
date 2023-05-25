@@ -141,6 +141,15 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma Qop_unitary_mult_unsafe: forall (m1 m2: Matrix),
+  MMeqbits m1 m2 -> Qop_unitary m1 -> Qop_unitary m2 -> Qop_unitary (Mmult_unsafe m1 m2).
+Proof.
+  intros m1 m2.
+  specialize Qop_unitary_mult as Hm.
+  unfold Mmult in Hm.
+  apply Hm.
+Qed.
+
 Lemma Qop_unitary_TMprod: forall (m1 m2: Matrix),
   Qop_unitary m1 -> Qop_unitary m2 -> Qop_unitary (TMproduct m1 m2).
 Proof.
@@ -411,156 +420,129 @@ Proof.
     dps_unfold.
     unfold Cconj.
     destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
-      + simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + assert (j = 0%nat) by lia.
-        subst j.
-        simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + assert (j = 0%nat) by lia.
-        subst j.
-        simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + assert (j = 0%nat) by lia.
-        subst j.
-        simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + assert (i = 0%nat) by lia.
-        subst i.
-        simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + assert (i = 0%nat) by lia.
-        subst i.
-        simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + assert (i = 0%nat) by lia.
-        subst i.
-        simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
-      + assert (i = 0%nat) by lia.
-        assert (j = 0%nat) by lia.
-        subst i j.
-        simpl.
-        unfold Cmult.
-        simpl.
-        unfold Cplus.
-        repeat simpl_tri.
-        lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (j = 0%nat) by lia.
+      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (j = 0%nat) by lia.
+      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (j = 0%nat) by lia.
+      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia.
+      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia.
+      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia.
+      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+    + assert (i = 0%nat) by lia. assert (j = 0%nat) by lia.
+      subst i j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
 Qed.
 
-(* Eval compute in (Minner Qop_swap2 1 2). *)
+(* Definition Qop_swap2_n (n: nat): Matrix := match n with
+  | O | S O => eye n
+  | S (S n') => TMproduct Qop_swap2 (eye n')
+end.
 
-Fixpoint Qop_swap1n (n: nat) (H: n > 1): {m: Matrix | Mbits m = n}.
+Lemma Qop_swap2_n_bits: forall (n: nat), Mbits (Qop_swap2_n n) = n.
 Proof.
-  destruct (lt_eq_lt_dec n 2) as [Hn|Hn].
-  - destruct Hn.
-    + lia.
-    + refine (exist _ Qop_swap2 _).
-      simpl. lia.
-  - destruct n as [|n'].
-    + lia.
-    + destruct n' as [|n''] eqn: Hn'n''.
-      * lia.
-      * destruct (eye n'') as [eyen'' Heyen''].
-        destruct (eye 1) as [eye1 Heye1].
-        destruct (TMproduct Qop_swap2 (eyen'')) as [swap12n H12].
-        assert (n' > 1) as Hn' by lia.
-        destruct (Qop_swap1n n' Hn') as [swap1n' H1n'].
-        destruct (TMproduct eye1 swap1n') as [swap1n'n H1n'n].
-        assert (MMeqbits swap12n swap1n'n) as H1.
-        { unfold MMeqbits.
-          rewrite H1n'n.
-          rewrite H12.
-          rewrite Heyen''.
-          rewrite H1n'.
-          rewrite Heye1.
-          simpl.
-          lia. }
-        destruct (Mmult swap12n swap1n'n H1) as [m' Hm'].
-        destruct (Mmult m' swap12n Hm') as [m Hm].
-        refine (exist _ m _).
-        rewrite Hm.
-        rewrite Hm'.
-        rewrite H12.
-        rewrite Heyen''.
-        reflexivity.
+  destruct n as [|[|n] ].
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
+Qed. *)
+
+Fixpoint Qop_swap1n_suppl (n'': nat): Matrix := match n'' with
+  | O => Qop_swap2
+  | S n''' => (Mmult_unsafe
+      (Mmult_unsafe
+        (TMproduct Qop_swap2 (eye n''))
+        (TMproduct (eye 1) (Qop_swap1n_suppl n''')))
+      (TMproduct Qop_swap2 (eye n'')))
+end.
+
+Lemma Qop_swap1n_suppl_bits: forall (n'': nat), Mbits (Qop_swap1n_suppl n'') = (2 + n'')%nat.
+Proof.
+  destruct n'' as [|n'''].
+  - reflexivity.
+  - reflexivity.
+Qed.
+
+(* Definition Qop_swap1n_unsafe (n: nat): Matrix.
+Proof.
+  destruct n as [|n'] eqn: En.
+  exact (eye 0).
+  destruct n' as [|n''] eqn: En'.
+  exact (eye 1).
+  exact (Qop_swap1n_suppl n'').
 Defined.
+
+Lemma Qop_swap1n_unsafe_bits: forall (n: nat), Mbits (Qop_swap1n_unsafe n) = n.
+Proof.
+  destruct n as [|[|[|n ] ] ].
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
+Qed. *)
+
+Definition Qop_swap1n (n: nat) (H: n > 1): Matrix.
+Proof.
+  destruct n as [|n'] eqn: En.
+  exact (eye 0).
+  destruct n' as [|n''] eqn: En'.
+  exact (eye 1).
+  exact (Qop_swap1n_suppl n'').
+Defined.
+
+Lemma Qop_swap1n_bits: forall (n: nat) (H: _), Mbits (Qop_swap1n n H) = n.
+Proof.
+  destruct n as [|[|[|n ] ] ].
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
+Qed.
+
+Lemma Qop_swap1n_unitary: forall (n: nat) (H: _), Qop_unitary (Qop_swap1n n H).
+Proof.
+  unfold Qop_swap1n.
+  destruct n as [|[|n] ].
+  - lia.
+  - lia.
+  - induction n.
+    + intros.
+      simpl.
+      apply Qop_swap2_unitary.
+    + assert (S (S n) > 1) as Hssn by lia.
+      specialize (IHn Hssn).
+      intros.
+      unfold Mmult.
+      simpl in *.
+      apply Qop_unitary_mult_unsafe.
+      simpl_bits.
+      reflexivity.
+      apply Qop_unitary_mult_unsafe.
+      simpl_bits.
+      simpl.
+      rewrite Qop_swap1n_suppl_bits.
+      reflexivity.
+      apply Qop_unitary_TMprod.
+      apply Qop_swap2_unitary.
+      apply Qop_eye_unitary.
+      apply Qop_unitary_TMprod.
+      apply Qop_eye_unitary.
+      apply IHn.
+      apply Qop_unitary_TMprod.
+      apply Qop_swap2_unitary.
+      apply Qop_eye_unitary.
+Qed.
 
 Definition Qop_swap (n q1 q2: nat) (H1: q1 < n) (H2: q2 < n): {m: Matrix | Mbits m = n}.
 Proof.
