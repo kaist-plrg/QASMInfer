@@ -715,6 +715,17 @@ Proof.
   - reflexivity.
 Qed.
 
+Lemma Qop_cnot_ct_n_unitary: forall (n: nat), Qop_unitary (Qop_cnot_ct_n n).
+Proof.
+  unfold Qop_cnot_ct_n.
+  destruct n as [|[|n''] ].
+  - apply Qop_eye_unitary.
+  - apply Qop_eye_unitary.
+  - apply Qop_unitary_TMprod.
+    apply Qop_cnot_ct_unitary.
+    apply Qop_eye_unitary.
+Qed.
+
 Definition Qop_cnot_tc_n (n: nat): Matrix.
 Proof.
   destruct n as [|[|n''] ].
@@ -729,6 +740,17 @@ Proof.
   - reflexivity.
   - reflexivity.
   - reflexivity.
+Qed.
+
+Lemma Qop_cnot_tc_n_unitary: forall (n: nat), Qop_unitary (Qop_cnot_tc_n n).
+Proof.
+  unfold Qop_cnot_tc_n.
+  destruct n as [|[|n''] ].
+  - apply Qop_eye_unitary.
+  - apply Qop_eye_unitary.
+  - apply Qop_unitary_TMprod.
+    apply Qop_cnot_tc_unitary.
+    apply Qop_eye_unitary.
 Qed.
 
 Definition Qop_cnot (n qc qt: nat) (Hn: n >= 2) (Hc: qc < n) (Ht: qt < n): Matrix.
@@ -783,6 +805,36 @@ Proof.
       { apply Qop_swap_op_bits. }
     (* qt = otherwise *)
     { apply Qop_swap_op_bits. } } } } } }
+Qed.
+
+Lemma Qop_cnot_unitary: forall (n qc qt: nat) (Hn: _) (Hc: _) (Ht: _),
+  Qop_unitary (Qop_cnot n qc qt Hn Hc Ht).
+Proof.
+  intros.
+  unfold Qop_cnot.
+  { destruct (Nat.eq_dec qc 0) as [Hqc0|Hqc0].
+    { destruct (Nat.eq_dec qt 1) as [Hqt1|Hqt1].
+      { apply Qop_cnot_ct_n_unitary. }
+      { apply Qop_swap_op_unitary.
+        apply Qop_cnot_ct_n_unitary. } }
+  (* qc = 1 *)
+  { destruct (Nat.eq_dec qc 1) as [Hqc1|Hqc1].
+    { destruct (Nat.eq_dec qt 0) as [Hqt0|Hqt0].
+      { apply Qop_cnot_tc_n_unitary. }
+      { apply Qop_swap_op_unitary.
+        apply Qop_cnot_tc_n_unitary. } }
+  (* qc = otherwise *)
+  { (* qt = 0 *)
+    { destruct (Nat.eq_dec qt 0) as [Hqt0|Hqt0].
+      { apply Qop_swap_op_unitary.
+        apply Qop_cnot_tc_n_unitary. }
+    (* qt = 1 *)
+    { destruct (Nat.eq_dec qt 1) as [Hqt1|Hqt1].
+      { apply Qop_swap_op_unitary.
+        apply Qop_cnot_ct_n_unitary. }
+    (* qt = otherwise *)
+    { repeat apply Qop_swap_op_unitary.
+      apply Qop_cnot_ct_n_unitary. } } } } } }
 Qed.
 
 (* ============================================================================================== *)
