@@ -699,55 +699,91 @@ Proof.
       subst i j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
 Qed.
 
-Definition Qop_cnot_ct_n (n: nat) (Hn: n >= 2): {m: Matrix | Mbits m = n}.
+Definition Qop_cnot_ct_n (n: nat): Matrix.
 Proof.
-  destruct (eye (n - 2)) as [eyen'' Heyen''].
-  destruct (TMproduct Qop_cnot_ct eyen'') as [m Hm].
-  refine (exist _ m _).
-  rewrite Hm.
-  rewrite Heyen''.
-  simpl.
-  lia.
+  destruct n as [|[|n''] ].
+  - exact (eye 0).
+  - exact (eye 1).
+  - exact (TMproduct Qop_cnot_ct (eye n'')).
 Defined.
 
-Definition Qop_cnot_tc_n (n: nat) (Hn: n >= 2): {m: Matrix | Mbits m = n}.
+Lemma Qop_cnot_ct_n_bits: forall (n: nat), Mbits (Qop_cnot_ct_n n) = n.
 Proof.
-  destruct (eye (n - 2)) as [eyen'' Heyen''].
-  destruct (TMproduct Qop_cnot_tc eyen'') as [m Hm].
-  refine (exist _ m _).
-  rewrite Hm.
-  rewrite Heyen''.
-  simpl.
-  lia.
+  destruct n as [|[|n''] ].
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
+Qed.
+
+Definition Qop_cnot_tc_n (n: nat): Matrix.
+Proof.
+  destruct n as [|[|n''] ].
+  - exact (eye 0).
+  - exact (eye 1).
+  - exact (TMproduct Qop_cnot_tc (eye n'')).
 Defined.
 
-Definition Qop_cnot (n qc qt: nat) (Hn: n >= 2) (Hc: qc < n) (Ht: qt < n): {m: Matrix | Mbits m = n}.
+Lemma Qop_cnot_tc_n_bits: forall (n: nat), Mbits (Qop_cnot_tc_n n) = n.
+Proof.
+  destruct n as [|[|n''] ].
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
+Qed.
+
+Definition Qop_cnot (n qc qt: nat) (Hn: n >= 2) (Hc: qc < n) (Ht: qt < n): Matrix.
 Proof.
   assert (0 < n) as H0 by lia.
   assert (1 < n) as H1 by lia.
-  destruct (Qop_cnot_ct_n n Hn) as [cnotctn Hctn].
-  destruct (Qop_cnot_tc_n n Hn) as [cnottcn Htcn].
-  (* qc = 0 *)
   { destruct (Nat.eq_dec qc 0) as [Hqc0|Hqc0].
     { destruct (Nat.eq_dec qt 1) as [Hqt1|Hqt1].
-      { apply (Qop_cnot_ct_n n Hn). }
-      { apply (Qop_swap_op n 1 qt cnotctn H1 Ht Hctn). } }
+      { apply (Qop_cnot_ct_n n). }
+      { apply (Qop_swap_op n 1 qt (Qop_cnot_ct_n n) H1 Ht (Qop_cnot_ct_n_bits n)). } }
   (* qc = 1 *)
   { destruct (Nat.eq_dec qc 1) as [Hqc1|Hqc1].
     { destruct (Nat.eq_dec qt 0) as [Hqt0|Hqt0].
-      { apply (Qop_cnot_tc_n n Hn). }
-      { apply (Qop_swap_op n 0 qt cnottcn H0 Ht Htcn). } }
+      { apply (Qop_cnot_tc_n n). }
+      { apply (Qop_swap_op n 0 qt (Qop_cnot_tc_n n) H0 Ht (Qop_cnot_tc_n_bits n)). } }
   (* qc = otherwise *)
   { (* qt = 0 *)
     { destruct (Nat.eq_dec qt 0) as [Hqt0|Hqt0].
-      { apply (Qop_swap_op n 1 qc cnottcn H1 Hc Htcn). }
+      { apply (Qop_swap_op n 1 qc (Qop_cnot_tc_n n) H1 Hc (Qop_cnot_tc_n_bits n)). }
     (* qt = 1 *)
     { destruct (Nat.eq_dec qt 1) as [Hqt1|Hqt1].
-      { apply (Qop_swap_op n 0 qc cnotctn H0 Hc Hctn). }
+      { apply (Qop_swap_op n 0 qc (Qop_cnot_ct_n n) H0 Hc (Qop_cnot_ct_n_bits n)). }
     (* qt = otherwise *)
-    { destruct (Qop_swap_op n 0 qc cnotctn H0 Hc Hctn) as [m' Hm'].
-      apply (Qop_swap_op n 1 qt m' H1 Ht Hm'). } } } } } }
+    { refine (
+        Qop_swap_op n 1 qt (
+          Qop_swap_op n 0 qc ( Qop_cnot_ct_n n) H0 Hc (Qop_cnot_ct_n_bits n)) H1 Ht _
+          ).
+      apply Qop_swap_op_bits.
+    } } } } } }
 Defined.
+
+Lemma Qop_cnot_bits: forall (n qc qt: nat) (Hn: _) (Hc: _) (Ht: _),
+  Mbits (Qop_cnot n qc qt Hn Hc Ht) = n.
+Proof.
+  intros.
+  unfold Qop_cnot.
+  { destruct (Nat.eq_dec qc 0) as [Hqc0|Hqc0].
+    { destruct (Nat.eq_dec qt 1) as [Hqt1|Hqt1].
+      { apply Qop_cnot_ct_n_bits. }
+      { apply Qop_swap_op_bits. } }
+  (* qc = 1 *)
+  { destruct (Nat.eq_dec qc 1) as [Hqc1|Hqc1].
+    { destruct (Nat.eq_dec qt 0) as [Hqt0|Hqt0].
+      { apply Qop_cnot_tc_n_bits. }
+      { apply Qop_swap_op_bits. } }
+  (* qc = otherwise *)
+  { (* qt = 0 *)
+    { destruct (Nat.eq_dec qt 0) as [Hqt0|Hqt0].
+      { apply Qop_swap_op_bits. }
+    (* qt = 1 *)
+    { destruct (Nat.eq_dec qt 1) as [Hqt1|Hqt1].
+      { apply Qop_swap_op_bits. }
+    (* qt = otherwise *)
+    { apply Qop_swap_op_bits. } } } } } }
+Qed.
 
 (* ============================================================================================== *)
 (* quantum qubit operator ======================================================================= *)
