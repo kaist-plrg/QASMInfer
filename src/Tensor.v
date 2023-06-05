@@ -69,8 +69,14 @@ Proof. reflexivity. Qed.
 (* tactic of simplifying bits =================================================================== *)
 
 Ltac simpl_bits :=
-  unfold MMeqbits in *;
-  unfold Msize in *;
+  unfold MMeqbits, MCeqbits, MReqbits in *;
+  unfold RMeqbits, RCeqbits, RReqbits in *;
+  unfold CMeqbits, CCeqbits, CReqbits in *;
+  unfold Msize, RVsize, CVsize in *;
+  repeat rewrite MVmult_bits_l in *;
+  repeat rewrite VMmult_bits_r in *;
+  repeat rewrite CVconjtrans_bits in *;
+  repeat rewrite RVconjtrans_bits in *;
   repeat rewrite Mmult_unsafe_bits_l in *;
   repeat rewrite Mmult_bits_l in *;
   repeat rewrite Mconjtrans_bits in *;

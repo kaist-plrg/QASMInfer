@@ -18,7 +18,7 @@ Lemma Qst_normalized_unitary: forall (qst: ColVec) (qop: Matrix) (Heq: _),
   Qst_normalized qst -> Qop_unitary qop -> Qst_normalized (MVmult qop qst Heq).
 Proof.
   unfold Qst_normalized, dot_product.
-  intros.
+  intros qst qop Heq H [Hl Hr].
   assert (RMeqbits (CVconjtrans qst) (Mconjtrans qop)) as H2.
   { unfold RMeqbits.
     rewrite CVconjtrans_bits.
@@ -30,12 +30,17 @@ Proof.
   unfold dot_product in Hassoc.
   erewrite Hassoc.
   erewrite <- MMVmult_assoc.
-  unfold Qop_unitary in H0.
-  rewrite VM
-  unfold MVmult.
-  simpl.
-
-
+  specialize MVmult_eye as Hmveye.
+  unfold Qop_unitary_l, Qop_unitary_r, Mmult, MVmult in *.
+  rewrite Hr.
+  replace (Mbits qop) with (CVbits qst).
+  rewrite Hmveye.
+  apply H.
+  all: simpl_bits; lia.
+  Unshelve.
+  1-2: simpl_bits; reflexivity.
+  simpl_bits. lia.
+Qed.
 
 (* ============================================================================================== *)
 (* base single qubit state ====================================================================== *)
@@ -44,7 +49,11 @@ Definition Qst_0: ColVec := {| CVbits := 1; CVinner := fun i => i |}.
 
 Definition Qst_1: ColVec := {| CVbits := 1; CVinner := fun i => 1 - i |}.
 
-(* Lemma Qst_0_normalized *)
+Lemma Qst_0_normalized: Qst_normalized Qst_0.
+Proof. lca. Qed.
+
+Lemma Qst_1_normalized: Qst_normalized Qst_1.
+Proof. lca. Qed.
 
 (* ============================================================================================== *)
 (* qubit state ================================================================================== *)

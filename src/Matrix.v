@@ -511,11 +511,13 @@ Qed.
 Definition MVmult_inner (m: Matrix) (c: ColVec) (i: nat): C :=
   dot_product_suppl (RVinner (extract_row_unsafe m i)) (CVinner c) (CVsize c).
 
-Definition MVmult (m: Matrix) (c: ColVec) (H: MCeqbits m c): ColVec :=
+Definition MVmult_unsafe (m: Matrix) (c: ColVec): ColVec :=
   {|
     CVbits := CVbits c;
     CVinner := fun i => MVmult_inner m c i;
   |}.
+
+Definition MVmult (m: Matrix) (c: ColVec) (H: MCeqbits m c): ColVec := MVmult_unsafe m c.
 
 Lemma MVmult_bits_l: forall (m: Matrix) (c: ColVec) (H: _), CMeqbits (MVmult m c H) m.
 Proof.
@@ -556,14 +558,8 @@ Proof.
   - intros.
     unfold CVget.
     simpl.
-    unfold Mmult.
-    unfold MVmult.
-    unfold Mmult_inner.
-    unfold MVmult_inner.
-    unfold extract_row_unsafe.
-    unfold CVsize.
-    unfold RVsize.
-    unfold Msize.
+    unfold Mmult, MVmult, MVmult_unsafe, Mmult_inner, MVmult_inner, extract_row_unsafe,
+      CVsize, RVsize, Msize.
     simpl in *.
     replace (CVbits c3) with (Mbits m1).
     apply dot_product_suppl_assoc.
@@ -576,11 +572,13 @@ Qed.
 Definition VMmult_inner (r: RowVec) (m: Matrix) (j: nat): C :=
   dot_product_suppl (RVinner r) (CVinner (extract_col_unsafe m j)) (RVsize r).
 
-Definition VMmult (r: RowVec) (m: Matrix) (H: RMeqbits r m): RowVec :=
+Definition VMmult_unsafe (r: RowVec) (m: Matrix): RowVec :=
   {|
     RVbits := RVbits r;
     RVinner := fun j => VMmult_inner r m j;
   |}.
+
+Definition VMmult (r: RowVec) (m: Matrix) (H: RMeqbits r m): RowVec := VMmult_unsafe r m.
 
 Lemma VMmult_bits_l: forall (r: RowVec) (m: Matrix) (H: RMeqbits r m), RReqbits (VMmult r m H) r.
 Proof. reflexivity. Qed.
@@ -588,8 +586,7 @@ Proof. reflexivity. Qed.
 Lemma VMmult_bits_r: forall (r: RowVec) (m: Matrix) (H: RMeqbits r m), RMeqbits (VMmult r m H) m.
 Proof.
   intros.
-  unfold RMeqbits.
-  unfold VMmult.
+  unfold RMeqbits, VMmult.
   simpl.
   apply H.
 Qed.
@@ -599,9 +596,7 @@ Lemma VMmult_correct: forall (m: Matrix) (r r': RowVec) (c: ColVec) (j: nat)
   RVget (VMmult r m H) j Hri = dot_product r (extract_col m j Hj) Hrc.
 Proof.
   intros.
-  unfold RVget, dot_product.
-  unfold MVmult_inner.
-  unfold RVsize.
+  unfold RVget, dot_product, MVmult_inner, RVsize.
   simpl.
   reflexivity.
 Qed.
@@ -618,13 +613,7 @@ Proof.
     reflexivity.
   - intros.
     unfold RVget. simpl.
-    unfold Mmult.
-    unfold Mmult_inner.
-    unfold VMmult.
-    unfold VMmult_inner.
-    unfold extract_col_unsafe.
-    unfold CVsize.
-    unfold RVsize.
+    repeat unfold Mmult, Mmult_inner, VMmult, VMmult_inner, VMmult_unsafe, extract_col_unsafe, CVsize, RVsize.
     simpl in *.
     replace (RVbits r1) with (Mbits m2).
     apply dot_product_suppl_assoc.
@@ -953,9 +942,7 @@ Proof.
     rewrite Mmult_bits_r.
     apply eye_bits.
   - intros.
-    unfold Mget.
-    unfold Mmult.
-    unfold Mmult_inner.
+    unfold Mget, Mmult, Mmult_inner.
     simpl.
     apply Mmult_eye_r_suppl.
     apply H0.
@@ -969,10 +956,7 @@ Proof.
     rewrite Mmult_bits_r.
     apply eye_bits.
   - intros.
-    unfold Mget.
-    unfold Mmult.
-    unfold Mmult_unsafe.
-    unfold Mmult_inner.
+    unfold Mget, Mmult, Mmult_unsafe, Mmult_inner.
     simpl.
     rewrite Mmult_eye_l_suppl.
     reflexivity.
@@ -987,6 +971,30 @@ Proof.
       repeat rewrite Mconjtrans_bits in *;
       repeat rewrite eye_bits in *.
       reflexivity.
+Qed.
+
+Lemma MVmult_eye: forall (c: ColVec) (Hec: _), MVmult (eye (CVbits c)) c Hec = c.
+Proof.
+  intros.
+  apply CVequal.
+  - apply MVmult_bits_r.
+  - intros.
+    unfold MVmult, MVmult_unsafe, MVmult_inner.
+    simpl.
+    apply Mmult_eye_l_suppl.
+    lia.
+Qed.
+
+Lemma VMmult_eye: forall (r: RowVec) (Hre: _), VMmult r (eye (RVbits r)) Hre = r.
+Proof.
+  intros.
+  apply RVequal.
+  - apply VMmult_bits_l.
+  - intros.
+    unfold VMmult, VMmult_unsafe, VMmult_inner.
+    simpl.
+    apply Mmult_eye_r_suppl.
+    lia.
 Qed.
 
 (* ============================================================================================== *)
