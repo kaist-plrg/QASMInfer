@@ -58,50 +58,11 @@ Proof. lca. Qed.
 (* ============================================================================================== *)
 (* qubit state ================================================================================== *)
 
-(* Inductive Qstate: nat -> ColVec -> Prop :=
-| Qstate_base_0: Qstate 0 Q0
-| Qstate_base_1: Qstate 0 Q1. *)
-
-(* ============================================================================================== *)
-(* fundamental qubit states ===================================================================== *)
-
-(* Definition Qstate_0: {q: Qstate | bits_qst q = 1}.
-Proof.
-  refine (exist _ {|
-    bits_qst := 1;
-    inner_qst := {|
-      rows := 2;
-      cols := 1;
-      inner := fun i j => i; (* 0 j -> 0, 1 j -> 1 *)
-      |}
-    |} _).
-  Unshelve.
-  reflexivity. lia. lia. reflexivity. reflexivity.
-  intros. simpl.
-  unfold Mmult_inner.
-  simpl.
-  unfold dot_product.
-  lca.
-Defined.
-
-Definition Qstate_1: {q: Qstate | bits_qst q = 1}.
-Proof.
-  refine ( exist _ {|
-    bits_qst := 1;
-    inner_qst := {|
-      rows := 2;
-      cols := 1;
-      inner := fun i j => 1 - i; (* 0 j -> 1, 1 j -> 0 *)
-      |}
-    |} _).
-  Unshelve.
-  reflexivity. lia. lia. reflexivity. reflexivity.
-  intros. simpl.
-  unfold Mmult_inner.
-  simpl.
-  unfold dot_product.
-  lca.
-Defined. *)
+Inductive Qstate: nat -> ColVec -> Prop :=
+| Qstate_base_0: Qstate 1 Qst_0
+| Qstate_base_1: Qstate 1 Qst_1
+| Qstate_multi_qubit (n1 n2: nat) (qst1 qst2: ColVec):
+    Qstate n1 qst1 -> Qstate n2 qst2 -> Qstate (n1 + n2) (TCVproduct qst1 qst2).
 
 (* qubit state product ========================================================================== *)
 (* ============================================================================================== *)

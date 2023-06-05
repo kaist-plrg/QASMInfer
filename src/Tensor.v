@@ -49,7 +49,7 @@ Definition TRVproduct (r1 r2: RowVec): RowVec :=
     )
   |}.
 
-Lemma TCVproduct_bits: forall (r1 r2: RowVec), RVbits (TRVproduct r1 r2) = (RVbits r1 + RVbits r2)%nat.
+Lemma TRVproduct_bits: forall (r1 r2: RowVec), RVbits (TRVproduct r1 r2) = (RVbits r1 + RVbits r2)%nat.
 Proof. reflexivity. Qed.
 
 Definition TCVproduct (c1 c2: ColVec): ColVec :=
@@ -62,7 +62,7 @@ Definition TCVproduct (c1 c2: ColVec): ColVec :=
     )
   |}.
 
-Lemma TRVproduct_bits: forall (c1 c2: ColVec), CVbits (TCVproduct c1 c2) = (CVbits c1 + CVbits c2)%nat.
+Lemma TCVproduct_bits: forall (c1 c2: ColVec), CVbits (TCVproduct c1 c2) = (CVbits c1 + CVbits c2)%nat.
 Proof. reflexivity. Qed.
 
 (* ============================================================================================== *)
