@@ -207,8 +207,7 @@ Proof.
     + assert (b <= c')%nat as Hbc'.
       { apply le_lt_eq_dec in Hbc.
         destruct Hbc.
-        - lia.
-        - lia. }
+        all: lia. }
       replace (S c' - a)%nat with (S (c' - a)).
       replace (S c' - b)%nat with (S (c' - b)).
       simpl.
@@ -217,7 +216,7 @@ Proof.
       replace (b + (c' - b))%nat with c'.
       ring_simplify.
       reflexivity.
-      lia. lia. lia. lia. lia.
+      all: lia.
 Qed.
 
 Lemma func_sum2_split_mult: forall (n m: nat) (f: nat -> C),
@@ -239,8 +238,7 @@ Proof.
   rewrite func_sum2_split with (b := k).
   rewrite func_sum2_split with (a := k) (b := (1 + k)%nat).
   lca.
-  lia.
-  lia.
+  all: lia.
 Qed.
 
 Lemma func_sum_mod_suppl_l: forall (n m k i: nat) (f: nat -> C),
@@ -277,9 +275,8 @@ Proof.
     rewrite Nat.mod_small.
     symmetry.
     apply Nat.mod_small.
-    specialize (Nat.mod_bound_pos k m) as Hmod. lia.
-    specialize (Nat.mod_bound_pos k m) as Hmod. lia.
-    lia. lia. lia. lia. lia. lia.
+    1-2: specialize (Nat.mod_bound_pos k m) as Hmod; lia.
+    all: lia.
 Qed.
 
 Lemma func_sum_mod_suppl_m: forall (n m k: nat) (f: nat -> C),
@@ -301,11 +298,7 @@ Proof.
     rewrite Nat.mod_0_l.
     simpl.
     repeat rewrite H0.
-    reflexivity.
-    lia.
-    lia.
-    lia.
-    lia. }
+    all: lia. }
   rewrite H1.
   rewrite Nat.add_0_r.
   lca.
@@ -338,16 +331,11 @@ Proof.
       rewrite Nat.mod_0_l.
       simpl.
       repeat rewrite H2.
-      lia.
-      lia.
-      lia.
-      lia.
-      lia. }
+      all: lia. }
     replace (S (n * m + k mod m + i)) with (n * m + k mod m + 1 + i)%nat by lia.
     rewrite H2.
     lca.
-    lia.
-    lia.
+    all: lia.
 Qed.
 
 Lemma func_sum_mod: forall (n m k: nat) (f: nat -> C),
@@ -388,11 +376,7 @@ Proof.
     rewrite func_sum_mod_suppl_m.
     rewrite func_sum_mod_suppl_r.
     lca.
-    lia.
-    lia.
-    lia.
-    lia.
-    lia.
+    1-5: lia.
     specialize (Nat.mod_bound_pos k m) as Hbound.
     lia.
 Qed.
@@ -417,8 +401,7 @@ Proof.
     lca.
     symmetry.
     apply Nat.eqb_neq.
-    lia.
-    lia.
+    all: lia.
 Qed.
 
 Lemma func_sum_div_suppl_m: forall (n m k i: nat) (f: nat -> C),
@@ -445,9 +428,7 @@ Proof.
     lia.
     symmetry.
     apply Nat.div_small.
-    lia.
-    lia.
-    lia.
+    all :lia.
 Qed.
 
 Lemma func_sum_div_suppl_r: forall (n m k i: nat) (f: nat -> C),
@@ -467,9 +448,7 @@ Proof.
     apply Nat.eqb_neq.
     replace (m + k / m * m + i)%nat with (k / m * m + (1 * m + i))%nat by lia.
     repeat rewrite Nat.div_add_l.
-    lia.
-    lia.
-    lia.
+    all: lia.
 Qed.
 
 Lemma func_sum_div: forall (n m k: nat) (f: nat -> C),
@@ -488,25 +467,58 @@ Proof.
   unfold func_sum2.
   rewrite func_sum_div_suppl_r with (n := n).
   lca.
-  lia.
-  lia.
-  lia.
-  lia.
-  lia.
-  lia.
-  lia.
-  lia.
-  lia.
+  1-9: lia.
   split.
   lia.
-  replace (n * m)%nat with (m * n)%nat in H0 by lia.
-  apply Nat.div_lt_upper_bound in H0.
+  all: replace (n * m)%nat with (m * n)%nat in H0 by lia;
+  apply Nat.div_lt_upper_bound in H0;
   nia.
-  lia.
-  replace (n * m)%nat with (m * n)%nat in H0 by lia.
-  apply Nat.div_lt_upper_bound in H0.
-  nia.
-  lia.
+Qed.
+
+Lemma func_sum_dist_suppl: forall (n1 n2 i: nat) (f1 f2: nat -> C),
+  n2 <> O ->
+  (i <= n2)%nat ->
+  func_sum_suppl (fun i : nat => f1 (i / n2)%nat * f2 (i mod n2)) (n1 * n2) i =
+  func_sum_suppl f2 0 i * f1 n1.
+Proof.
+  intros.
+  induction i as [|i].
+  - lca.
+  - simpl.
+    rewrite IHi.
+    rewrite Nat.div_add_l.
+    rewrite Nat.add_mod.
+    rewrite Nat.mul_mod.
+    rewrite Nat.mod_same.
+    rewrite Nat.div_small.
+    rewrite Nat.mul_0_r.
+    rewrite Nat.add_0_r.
+    rewrite Nat.mod_0_l.
+    simpl.
+    repeat rewrite Nat.mod_small.
+    lca.
+    all: lia.
+Qed.
+
+Lemma func_sum_dist: forall (n1 n2: nat) (f1 f2: nat -> C),
+  n2 <> O ->
+  func_sum (fun i => f1 (i / n2)%nat * f2 (i mod n2)) (n1 * n2) = func_sum f1 n1 * func_sum f2 n2.
+Proof.
+  intros.
+  induction n1 as [|n1].
+  - lca.
+  - simpl.
+    rewrite func_sum2_split_mult.
+    rewrite IHn1.
+    unfold func_sum, func_sum2.
+    simpl.
+    ring_simplify.
+    replace (n2 + n1 * n2 - n1 * n2)%nat with n2 by lia.
+    repeat rewrite Nat.sub_0_r.
+    ring_simplify.
+    rewrite func_sum_dist_suppl.
+    lca.
+    all: lia.
 Qed.
 
 (* ============================================================================================== *)

@@ -81,6 +81,8 @@ Ltac simpl_bits :=
   repeat rewrite Mmult_bits_l in *;
   repeat rewrite Mconjtrans_bits in *;
   repeat rewrite eye_bits in *;
+  repeat rewrite TRVproduct_bits in *;
+  repeat rewrite TCVproduct_bits in *;
   repeat rewrite TMProduct_bits in *.
 
 (* ============================================================================================== *)
@@ -324,7 +326,39 @@ Qed.
 (* ============================================================================================== *)
 (* relation between dot product and tensor product ============================================== *)
 
-
+Lemma TVproduct_dot_product: forall (r1 r2: RowVec) (c1 c2: ColVec) (H1212: _) (H11: _) (H22: _),
+  dot_product (TRVproduct r1 r2) (TCVproduct c1 c2) H1212 = (dot_product r1 c1 H11) * (dot_product r2 c2 H22).
+Proof.
+  intros.
+  unfold dot_product, dot_product_unsafe, TCVproduct, dot_product_suppl.
+  simpl_bits.
+  simpl.
+  simpl_bits.
+  repeat rewrite H11.
+  repeat rewrite H22.
+  replace
+    (fun i : nat =>
+      RVinner r1 (i / 2 ^ CVbits c2) * RVinner r2 (i mod 2 ^ CVbits c2) *
+      (CVinner c1 (i / 2 ^ CVbits c2) * CVinner c2 (i mod 2 ^ CVbits c2))) with
+    (fun i : nat =>
+      (fun j => (RVinner r1 j * CVinner c1 j)) (i / 2 ^ CVbits c2)%nat *
+      (fun j => (RVinner r2 j * CVinner c2 j)) (i mod 2 ^ CVbits c2) ).
+  replace (2 ^ (CVbits c1 + CVbits c2))%nat with (2 ^ CVbits c1 * 2 ^ CVbits c2)%nat.
+  specialize (
+    func_sum_dist (2 ^ CVbits c1) (2 ^ CVbits c2)
+    (fun j => (RVinner r1 j * CVinner c1 j))
+    (fun j => (RVinner r2 j * CVinner c2 j))
+  ) as Hdist.
+  simpl in Hdist.
+  apply Hdist.
+  specialize (pow_2_nonzero (CVbits c2)) as Hnz.
+  lia.
+  rewrite <- Nat.pow_add_r.
+  reflexivity.
+  apply functional_extensionality.
+  intros.
+  lca.
+Qed.
 
 (* ============================================================================================== *)
 (* tensor product of identity matrices ========================================================== *)
