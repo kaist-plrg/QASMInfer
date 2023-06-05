@@ -840,5 +840,20 @@ Qed.
 (* ============================================================================================== *)
 (* quantum qubit operator ======================================================================= *)
 
-(* Inductive Qoperator: nat -> Matrix -> Prop :=
-| *)
+Inductive Qoperator: nat -> Matrix -> Prop :=
+| Qoperator_single (n t: nat) (theta phi lambda: R) (H1: _) (H2: _): Qoperator n (Qop_sq n t (Qop_rot theta phi lambda) H1 H2)
+| Qoperator_cnot (n qc qt: nat) (Hn: _) (Hc: _) (Ht: _): Qoperator n (Qop_cnot n qc qt Hn Hc Ht)
+| Qoperator_seq (n: nat) (Qop1 Qop2: Matrix) (Heq: _): Qoperator n Qop1 -> Qoperator n Qop2 -> Qoperator n (Mmult Qop1 Qop2 Heq).
+
+Lemma Qoperator_unitary: forall (n: nat) (qop: Matrix),
+  Qoperator n qop -> Qop_unitary qop.
+Proof.
+  intros.
+  induction H.
+  - apply Qop_sq_unitary.
+    apply Qop_rot_unitary.
+  - apply Qop_cnot_unitary.
+  - apply Qop_unitary_mult.
+    apply IHQoperator1.
+    apply IHQoperator2.
+Qed.
