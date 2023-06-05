@@ -13,27 +13,49 @@ Open Scope T_scope.
 
 (* definition of unitary matrix ================================================================= *)
 
-Definition Qop_unitary (m: Matrix) := Mmult m (Mconjtrans m) (Mconjtrans_bits m) = eye (Mbits m).
+Definition Qop_unitary_l (m: Matrix) := Mmult m (Mconjtrans m) (Mconjtrans_bits m) = eye (Mbits m).
+Definition Qop_unitary_r (m: Matrix) := Mmult (Mconjtrans m) m (Mconjtrans_bits m) = eye (Mbits m).
+
+Definition Qop_unitary (m: Matrix) := Qop_unitary_l m /\ Qop_unitary_r m.
+
+
+(* Lemma Qop_unitary_conjtrans: forall (m: Matrix), Qop_unitary m -> Qop_unitary (Mconjtrans m).
+Proof.
+  intros.
+  destruct H as [H1 H2].
+  unfold Qop_unitary in *.
+  unfold Mmult, Mconjtrans in *; simpl.
+  split.
+  - rewrite <- H1.
+    apply Mequal.
+    + reflexivity.
+    + intros.
+      unfold Mmult_unsafe, Mmult_inner, Msize in *.
+      simpl in *.
+      replace (fun i0 : nat => Cconj (Cconj (Minner m i0 j))) with (fun i0 : nat => Minner m i0 j).
+      unfold eye in H1.
+      inversion H1.
+      apply <- functional_extensionality in H4.
+      rewrite Cconj_twice. *)
+
+
 
 Lemma Qop_eye_unitary: forall (bits: nat), Qop_unitary (eye bits).
 Proof.
   intros.
-  unfold Qop_unitary, Mmult.
+  unfold Qop_unitary, Qop_unitary_l, Qop_unitary_r, Mmult.
   rewrite eye_conjtrans.
   specialize (Mmult_eye_l (eye bits)) as Heye.
   unfold Mmult in Heye.
   replace (Mbits (eye bits)) with bits in *.
   rewrite Heye.
-  reflexivity.
-  simpl_bits.
-  reflexivity.
-  simpl_bits.
-  reflexivity.
+  split.
+  all: simpl_bits; reflexivity.
 Qed.
 
-Lemma Qop_unitary_mult_suppl: forall (m1 m2: Matrix) (H12: _) (H21: _) (H1221: _),
+Lemma Qop_unitary_mult_suppl_l: forall (m1 m2: Matrix) (H12: _) (H21: _) (H1221: _),
   Mmult (Mmult m1 m2 H12) (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H1221 = eye (Mbits m1) ->
-  Qop_unitary (Mmult m1 m2 H12).
+  Qop_unitary_l (Mmult m1 m2 H12).
 Proof.
   intros.
   apply Mequal.
@@ -52,10 +74,31 @@ Proof.
     apply H3.
 Qed.
 
+Lemma Qop_unitary_mult_suppl_r: forall (m1 m2: Matrix) (H12: _) (H21: _) (H1221: _),
+  Mmult (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) (Mmult m1 m2 H12) H1221 = eye (Mbits m1) ->
+  Qop_unitary_r (Mmult m1 m2 H12).
+Proof.
+  intros.
+  apply Mequal.
+  - unfold MMeqbits.
+    reflexivity.
+  - intros.
+    specialize (Mconjtrans_mult m1 m2 H12 H21) as Hd.
+    unfold Mmult in *.
+    rewrite Hd.
+    simpl in *.
+    unfold eye in H.
+    inversion H.
+    assert (forall f g: nat -> nat -> C, f = g -> f i j = g i j) as Hfeq.
+    { intros. rewrite H2. reflexivity. }
+    apply Hfeq in H4.
+    apply H4.
+Qed.
+
 Lemma Qop_unitary_mult: forall (m1 m2: Matrix) (H: _),
   Qop_unitary m1 -> Qop_unitary m2 -> Qop_unitary (Mmult m1 m2 H).
 Proof.
-  intros.
+  intros m1 m2 H [H1l H1r] [H2l H2r].
   assert (MMeqbits (Mconjtrans m2) (Mconjtrans m1)) as H21.
   { unfold MMeqbits.
     repeat rewrite Mconjtrans_bits.
@@ -66,79 +109,59 @@ Proof.
     repeat rewrite Mmult_bits_l.
     rewrite Mconjtrans_bits.
     apply H. }
-  apply (Qop_unitary_mult_suppl m1 m2 H H21 H1221).
-  apply Mequal.
-  - unfold MMeqbits.
-    repeat rewrite Mmult_bits_l.
-    apply eye_bits.
-  - intros.
-    simpl_bits.
-    unfold Mget.
-    assert (MMeqbits m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21)) as H23.
-    { unfold MMeqbits.
-      repeat rewrite Mmult_bits_l.
-      rewrite Mconjtrans_bits.
-      reflexivity. }
-    assert (MMeqbits m1 (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23)) as H1_23.
-    { unfold MMeqbits.
-      repeat rewrite Mmult_bits_l.
-      apply H. }
-    specialize
-      (Mmult_assoc m1 m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H H1221 H23 H1_23)
-      as Hassoc.
-    rewrite Hassoc.
-    assert (MMeqbits (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1)) as H22_1.
-    { unfold MMeqbits.
-      repeat rewrite Mmult_bits_l.
-      rewrite Mconjtrans_bits.
-      symmetry.
-      apply H. }
-    assert (MMeqbits m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21)) as H2_21.
-    { unfold MMeqbits.
+  split.
+  - apply (Qop_unitary_mult_suppl_l m1 m2 H H21 H1221).
+    apply Mequal.
+    + simpl_bits.
+      reflexivity.
+    + intros.
       simpl_bits.
-      reflexivity. }
-    assert (
-      (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23) =
-      (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1)) as Hassoc2.
-    { apply Mequal.
-      - unfold MMeqbits.
-        simpl_bits.
-        reflexivity.
-      - intros.
-        unfold Mget.
-        simpl_bits.
-        specialize
-          (Mmult_assoc m2 (Mconjtrans m2) (Mconjtrans m1) (Mconjtrans_bits m2) H22_1 H21 H23)
-          as Hassoc2.
-        rewrite Hassoc2.
-        reflexivity.
-    }
-    assert (MMeqbits m1 (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1)) as H1_22_1.
-    { simpl_bits. apply H. }
-    assert (
-      Mmult m1 (Mmult m2 (Mmult (Mconjtrans m2) (Mconjtrans m1) H21) H23) H1_23 =
-      Mmult m1 (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1) H1_22_1).
-    { unfold Mmult in *.
-      rewrite Hassoc2.
-      reflexivity. }
-    rewrite H4.
-    unfold Qop_unitary in *.
-    assert (MMeqbits m1 (Mmult (eye (Mbits m2)) (Mconjtrans m1) H22_1)) as H1e1.
-    { simpl_bits. apply H. }
-    assert (
-      Mmult m1 (Mmult (Mmult m2 (Mconjtrans m2) (Mconjtrans_bits m2)) (Mconjtrans m1) H22_1) H1_22_1 =
-      Mmult m1 (Mmult (eye (Mbits m2)) (Mconjtrans m1) H22_1) H1e1).
-    { unfold Mmult in *.
-      rewrite H1.
-      reflexivity. }
-    rewrite H5.
-    specialize (Mmult_eye_l (Mconjtrans m1) (Mconjtrans_bits m1)) as Heye.
-    simpl_bits.
-    unfold Mmult in *.
-    rewrite H in Heye.
-    rewrite Heye.
-    rewrite H0.
-    reflexivity.
+      erewrite Mmult_assoc.
+      specialize (Mmult_assoc m2) as Hassoc.
+      specialize Mmult_eye_l as Heye.
+      unfold Qop_unitary_l in *.
+      unfold Mmult in *.
+      erewrite <- Hassoc.
+      rewrite H2l.
+      replace (Mbits m2) with (Mbits (Mconjtrans m1)).
+      erewrite Heye.
+      rewrite H1l.
+      reflexivity.
+      all: simpl_bits; lia.
+  - eapply (Qop_unitary_mult_suppl_r m1 m2 H H21).
+    apply Mequal.
+    + simpl_bits.
+      apply H21.
+    + intros.
+      simpl_bits.
+      erewrite Mmult_assoc.
+      specialize (Mmult_assoc (Mconjtrans m1)) as Hassoc.
+      specialize Mmult_eye_l as Heye.
+      unfold Qop_unitary_r in *.
+      unfold Mmult in *.
+      erewrite <- Hassoc.
+      rewrite H1r.
+      rewrite H.
+      erewrite Heye.
+      rewrite H2r.
+      reflexivity.
+      all: simpl_bits; lia.
+      Unshelve.
+      simpl_bits.
+      reflexivity.
+      repeat simpl_bits.
+      unfold Mmult.
+      rewrite Mmult_unsafe_bits_l.
+      apply H.
+      simpl_bits.
+      apply H21.
+      simpl_bits.
+      reflexivity.
+      simpl_bits.
+      unfold Mmult.
+      rewrite Mmult_unsafe_bits_l.
+      simpl_bits.
+      apply H21.
 Qed.
 
 Lemma Qop_unitary_mult_unsafe: forall (m1 m2: Matrix),
@@ -153,25 +176,20 @@ Qed.
 Lemma Qop_unitary_TMprod: forall (m1 m2: Matrix),
   Qop_unitary m1 -> Qop_unitary m2 -> Qop_unitary (TMproduct m1 m2).
 Proof.
-  intros.
-  unfold Qop_unitary, Mmult in *.
+  intros m1 m2 [H1l H1r] [H2l H2r].
+  unfold Qop_unitary, Qop_unitary_l, Qop_unitary_r, Mmult in *.
   rewrite TMproduct_Mconjtrans.
   specialize TMproduct_mult as Htp.
   unfold Mmult in *.
-  rewrite <- Htp.
-  rewrite H.
-  rewrite H0.
-  rewrite TMproduct_eye.
-  replace (Mbits m1 + Mbits m2)%nat with (Mbits (TMproduct m1 m2)).
-  reflexivity.
+  repeat rewrite <- Htp.
+  rewrite H1l.
+  rewrite H1r.
+  rewrite H2l.
+  rewrite H2r.
+  repeat rewrite TMproduct_eye.
   simpl_bits.
-  reflexivity.
-  simpl_bits.
-  reflexivity.
-  simpl_bits.
-  reflexivity.
-  repeat simpl_bits.
-  reflexivity.
+  split.
+  all: repeat simpl_bits; reflexivity.
 Qed.
 
 (* ============================================================================================== *)
@@ -189,53 +207,75 @@ Definition Qop_ry (theta: R): Matrix := {|
 Lemma Qop_ry_unitary: forall (theta: R), Qop_unitary (Qop_ry theta).
 Proof.
   intros.
-  unfold Qop_unitary.
+  unfold Qop_unitary, Qop_unitary_l, Qop_unitary_r.
   simpl.
-  unfold Mmult.
-  unfold Qop_ry.
-  unfold Mconjtrans.
-  unfold Mmult_unsafe.
-  unfold eye.
-  apply Mequal.
-  - reflexivity.
-  - unfold Mmult_inner.
-    repeat simpl_bits.
-    simpl.
-    intros.
-    dps_unfold.
-    unfold Cconj.
-    destruct i as [|i].
-      + destruct j as [|j].
-        * simpl.
-          unfold Cmult.
-          unfold Cplus.
+  unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye; simpl.
+  split.
+  { apply Mequal.
+    - reflexivity.
+    - unfold Mmult_inner.
+      repeat simpl_bits.
+      simpl.
+      intros.
+      dps_unfold.
+      unfold Cconj.
+      destruct i as [|i], j as [|j].
+        + simpl.
+          unfold Cmult, Cplus.
           simpl_tri.
           specialize (sin2_cos2 (theta / 2)) as Hsc.
           unfold Rsqr in Hsc.
           lca.
-        * simpl.
-          unfold Cmult.
-          unfold Cplus.
+        + simpl.
+          unfold Cmult, Cplus.
           simpl_tri.
           lca.
-      + destruct j as [|j].
-        * simpl.
-          unfold Cmult.
-          unfold Cplus.
+        + simpl.
+          unfold Cmult, Cplus.
           simpl_tri.
           lca.
-        * assert (i = 0%nat) by lia.
+        + assert (i = 0%nat) by lia.
           assert (j = 0%nat) by lia.
           subst i j.
           simpl.
-          unfold Cmult.
-          unfold Cplus.
+          unfold Cmult, Cplus.
+          simpl_tri.
+          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          unfold Rsqr in Hsc.
+          lca. }
+  { apply Mequal.
+    - reflexivity.
+    - unfold Mmult_inner.
+      repeat simpl_bits.
+      simpl.
+      intros.
+      dps_unfold.
+      unfold Cconj.
+      destruct i as [|i], j as [|j].
+        + simpl.
+          unfold Cmult, Cplus.
           simpl_tri.
           specialize (sin2_cos2 (theta / 2)) as Hsc.
           unfold Rsqr in Hsc.
           lca.
+        + simpl.
+          unfold Cmult, Cplus.
+          simpl_tri.
+          lca.
+        + simpl.
+          unfold Cmult, Cplus.
+          simpl_tri.
+          lca.
+        + assert (i = 0%nat) by lia.
+          assert (j = 0%nat) by lia.
+          subst i j.
+          simpl.
+          unfold Cmult, Cplus.
+          simpl_tri.
+          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          unfold Rsqr in Hsc.
+          lca. }
 Qed.
-
 
 Definition Qop_rz (theta: R): Matrix := {|
   Mbits := 1;
@@ -247,51 +287,66 @@ Definition Qop_rz (theta: R): Matrix := {|
 Lemma Qop_rz_unitary: forall (theta: R), Qop_unitary (Qop_rz theta).
 Proof.
   intros.
-  unfold Qop_unitary.
+  unfold Qop_unitary, Qop_unitary_l, Qop_unitary_r.
   simpl.
-  unfold Mmult.
-  unfold Qop_ry.
-  unfold Mconjtrans.
-  unfold Mmult_unsafe.
-  unfold eye.
-  apply Mequal.
-  - reflexivity.
-  - unfold Mmult_inner.
-    repeat simpl_bits.
-    simpl.
-    intros.
-    dps_unfold.
-    unfold Cconj.
-    destruct i as [|i].
-      + destruct j as [|j].
-        * simpl.
-          unfold Cmult.
-          unfold Cplus.
+  unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye.
+  split.
+  { apply Mequal.
+    - reflexivity.
+    - unfold Mmult_inner.
+      repeat simpl_bits.
+      simpl.
+      intros.
+      dps_unfold.
+      unfold Cconj.
+      destruct i as [|i], j as [|j].
+        + unfold Cmult, Cplus.
           repeat simpl_tri.
           specialize (sin2_cos2 (theta / 2)) as Hsc.
           unfold Rsqr in Hsc.
           lca.
-        * simpl.
-          unfold Cmult.
-          unfold Cplus.
+        + unfold Cmult, Cplus.
           simpl_tri.
           lca.
-      + destruct j as [|j].
-        * simpl.
-          unfold Cmult.
-          unfold Cplus.
+        + unfold Cmult, Cplus.
           simpl_tri.
           lca.
-        * assert (i = 0%nat) by lia.
+        + assert (i = 0%nat) by lia.
           assert (j = 0%nat) by lia.
           subst i j.
-          simpl.
-          unfold Cmult.
-          unfold Cplus.
+          unfold Cmult, Cplus.
+          repeat simpl_tri.
+          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          unfold Rsqr in Hsc.
+          lca. }
+  { apply Mequal.
+    - reflexivity.
+    - unfold Mmult_inner.
+      repeat simpl_bits.
+      simpl.
+      intros.
+      dps_unfold.
+      unfold Cconj.
+      destruct i as [|i], j as [|j].
+        + unfold Cmult, Cplus.
           repeat simpl_tri.
           specialize (sin2_cos2 (theta / 2)) as Hsc.
           unfold Rsqr in Hsc.
           lca.
+        + unfold Cmult, Cplus.
+          simpl_tri.
+          lca.
+        + unfold Cmult, Cplus.
+          simpl_tri.
+          lca.
+        + assert (i = 0%nat) by lia.
+          assert (j = 0%nat) by lia.
+          subst i j.
+          unfold Cmult, Cplus.
+          repeat simpl_tri.
+          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          unfold Rsqr in Hsc.
+          lca. }
 Qed.
 
 Definition Qop_rot (theta phi lambda: R): Matrix.
@@ -359,32 +414,25 @@ Qed.
 
 Lemma Qop_sq_unitary: forall (n t: nat) (op: Matrix) (Ht: _) (Hop: _), Qop_unitary op -> Qop_unitary (Qop_sq n t op Ht Hop).
 Proof.
-  intros.
-  unfold Qop_unitary, Qop_sq in *.
+  intros n t op Ht Hop [H1 H2].
+  unfold Qop_unitary, Qop_unitary_l, Qop_unitary_r, Qop_sq in *.
   simpl.
   unfold Mmult.
   repeat rewrite TMproduct_Mconjtrans.
   specialize TMproduct_mult as Htm.
   specialize Qop_eye_unitary as Heye.
+  specialize Mmult_eye_l as Heyel.
+  specialize Mmult_eye_r as Heyer.
   unfold Qop_unitary, Mmult in *.
   repeat rewrite <- Htm.
-  repeat rewrite Heye.
-  rewrite H.
+  rewrite H1.
+  rewrite H2.
+  repeat rewrite Heyer.
+  repeat rewrite eye_conjtrans.
+  repeat rewrite Heyer.
   repeat rewrite TMproduct_eye.
-  simpl_bits.
-  reflexivity.
-  simpl_bits.
-  reflexivity.
-  simpl_bits.
-  reflexivity.
-  simpl_bits.
-  reflexivity.
-  simpl_bits.
-  reflexivity.
-  simpl_bits.
-  reflexivity.
-  simpl_bits.
-  reflexivity.
+  split; reflexivity.
+  all: simpl_bits; reflexivity.
 Qed.
 
 (* ============================================================================================== *)
@@ -404,45 +452,38 @@ Definition Qop_swap2: Matrix := {|
 Lemma Qop_swap2_unitary: Qop_unitary Qop_swap2.
 Proof.
   intros.
-  unfold Qop_unitary.
+  unfold Qop_unitary, Qop_unitary_l, Qop_unitary_r.
   simpl.
-  unfold Mmult.
-  unfold Qop_ry.
-  unfold Mconjtrans.
-  unfold Mmult_unsafe.
-  unfold eye.
-  apply Mequal.
-  - reflexivity.
-  - unfold Mmult_inner.
-    repeat simpl_bits.
-    simpl.
-    intros.
-    dps_unfold.
-    unfold Cconj.
-    destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (j = 0%nat) by lia.
-      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (j = 0%nat) by lia.
-      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (j = 0%nat) by lia.
-      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia.
-      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia.
-      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia.
-      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia. assert (j = 0%nat) by lia.
-      subst i j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+  unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye.
+  split.
+  { apply Mequal.
+    - reflexivity.
+    - unfold Mmult_inner.
+      repeat simpl_bits.
+      simpl.
+      intros.
+      dps_unfold.
+      unfold Cconj.
+      destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
+      1-3,5-7,9-11: simpl; unfold Cmult; simpl; unfold Cplus; repeat simpl_tri; lca.
+      1-3: assert (j = 0%nat) by lia; subst j; unfold Cmult; unfold Cplus; simpl; repeat simpl_tri; lca.
+      1-3: assert (i = 0%nat) by lia; subst i; unfold Cmult; unfold Cplus; simpl; repeat simpl_tri; lca.
+      assert (i = 0%nat) by lia; assert (j = 0%nat) by lia.
+      subst i j. unfold Cmult; unfold Cplus; simpl. repeat simpl_tri. lca. }
+  { apply Mequal.
+    - reflexivity.
+    - unfold Mmult_inner.
+      repeat simpl_bits.
+      simpl.
+      intros.
+      dps_unfold.
+      unfold Cconj.
+      destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
+      1-3,5-7,9-11: simpl; unfold Cmult; simpl; unfold Cplus; repeat simpl_tri; lca.
+      1-3: assert (j = 0%nat) by lia; subst j; unfold Cmult; unfold Cplus; simpl; repeat simpl_tri; lca.
+      1-3: assert (i = 0%nat) by lia; subst i; unfold Cmult; unfold Cplus; simpl; repeat simpl_tri; lca.
+      assert (i = 0%nat) by lia; assert (j = 0%nat) by lia.
+      subst i j. unfold Cmult; unfold Cplus; simpl. repeat simpl_tri. lca. }
 Qed.
 
 Fixpoint Qop_swap1n_suppl (n'': nat): Matrix := match n'' with
@@ -622,41 +663,38 @@ Definition Qop_cnot_tc: Matrix := {|
 Lemma Qop_cnot_ct_unitary: Qop_unitary Qop_cnot_ct.
 Proof.
   intros.
-  unfold Qop_unitary.
+  unfold Qop_unitary, Qop_unitary_l, Qop_unitary_r.
   simpl.
   unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye.
-  apply Mequal.
-  - reflexivity.
-  - unfold Mmult_inner.
-    repeat simpl_bits.
-    simpl.
-    intros.
-    dps_unfold.
-    unfold Cconj.
-    destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (j = 0%nat) by lia.
-      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (j = 0%nat) by lia.
-      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (j = 0%nat) by lia.
-      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia.
-      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia.
-      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia.
-      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia. assert (j = 0%nat) by lia.
-      subst i j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+  split.
+  { apply Mequal.
+    - reflexivity.
+    - unfold Mmult_inner.
+      repeat simpl_bits.
+      simpl.
+      intros.
+      dps_unfold.
+      unfold Cconj.
+      destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
+      1-3,5-7,9-11: unfold Cmult, Cplus; repeat simpl_tri; lca.
+      1-3: assert (j = 0%nat) by lia; subst j; unfold Cmult, Cplus; simpl; repeat simpl_tri; lca.
+      1-3: assert (i = 0%nat) by lia; subst i; unfold Cmult, Cplus; simpl; repeat simpl_tri; lca.
+      assert (i = 0%nat) by lia; assert (j = 0%nat) by lia.
+      subst i j. unfold Cmult, Cplus. repeat simpl_tri. lca. }
+  { apply Mequal.
+    - reflexivity.
+    - unfold Mmult_inner.
+      repeat simpl_bits.
+      simpl.
+      intros.
+      dps_unfold.
+      unfold Cconj.
+      destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
+      1-3,5-7,9-11: unfold Cmult, Cplus; repeat simpl_tri; lca.
+      1-3: assert (j = 0%nat) by lia; subst j; unfold Cmult, Cplus; simpl; repeat simpl_tri; lca.
+      1-3: assert (i = 0%nat) by lia; subst i; unfold Cmult, Cplus; simpl; repeat simpl_tri; lca.
+      assert (i = 0%nat) by lia; assert (j = 0%nat) by lia.
+      subst i j. unfold Cmult, Cplus. repeat simpl_tri. lca. }
 Qed.
 
 Lemma Qop_cnot_tc_unitary: Qop_unitary Qop_cnot_tc.
@@ -665,38 +703,35 @@ Proof.
   unfold Qop_unitary.
   simpl.
   unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye.
-  apply Mequal.
-  - reflexivity.
-  - unfold Mmult_inner.
-    repeat simpl_bits.
-    simpl.
-    intros.
-    dps_unfold.
-    unfold Cconj.
-    destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (j = 0%nat) by lia.
-      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (j = 0%nat) by lia.
-      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (j = 0%nat) by lia.
-      subst j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia.
-      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia.
-      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia.
-      subst i. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
-    + assert (i = 0%nat) by lia. assert (j = 0%nat) by lia.
-      subst i j. simpl. unfold Cmult. simpl. unfold Cplus. repeat simpl_tri. lca.
+  split.
+  { apply Mequal.
+    - reflexivity.
+    - unfold Mmult_inner.
+      repeat simpl_bits.
+      simpl.
+      intros.
+      dps_unfold.
+      unfold Cconj.
+      destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
+      1-3,5-7,9-11: unfold Cmult, Cplus; repeat simpl_tri; lca.
+      1-3: assert (j = 0%nat) by lia; subst j; unfold Cmult, Cplus; simpl; repeat simpl_tri; lca.
+      1-3: assert (i = 0%nat) by lia; subst i; unfold Cmult, Cplus; simpl; repeat simpl_tri; lca.
+      assert (i = 0%nat) by lia; assert (j = 0%nat) by lia.
+      subst i j. unfold Cmult, Cplus. repeat simpl_tri. lca. }
+  { apply Mequal.
+    - reflexivity.
+    - unfold Mmult_inner.
+      repeat simpl_bits.
+      simpl.
+      intros.
+      dps_unfold.
+      unfold Cconj.
+      destruct i as [|[|[|i] ] ], j as [|[|[|j] ] ].
+      1-3,5-7,9-11: unfold Cmult, Cplus; repeat simpl_tri; lca.
+      1-3: assert (j = 0%nat) by lia; subst j; unfold Cmult, Cplus; simpl; repeat simpl_tri; lca.
+      1-3: assert (i = 0%nat) by lia; subst i; unfold Cmult, Cplus; simpl; repeat simpl_tri; lca.
+      assert (i = 0%nat) by lia; assert (j = 0%nat) by lia.
+      subst i j. unfold Cmult, Cplus. repeat simpl_tri. lca. }
 Qed.
 
 Definition Qop_cnot_ct_n (n: nat): Matrix.
@@ -857,3 +892,4 @@ Proof.
     apply IHQoperator1.
     apply IHQoperator2.
 Qed.
+

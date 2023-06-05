@@ -10,11 +10,36 @@ Bind Scope C_scope with C.
 Open Scope M_scope.
 Open Scope T_scope.
 
+(* normalized qubit state ======================================================================= *)
+
+Definition Qst_normalized (qst: ColVec) := dot_product (CVconjtrans qst) (qst) (CVconjtrans_bits qst) = 1.
+
+Lemma Qst_normalized_unitary: forall (qst: ColVec) (qop: Matrix) (Heq: _),
+  Qst_normalized qst -> Qst_normalized (MVmult qop qst Heq).
+Proof.
+  unfold Qst_normalized, dot_product.
+  intros.
+  assert (RMeqbits (CVconjtrans qst) (Mconjtrans qop)) as H2.
+  { unfold RMeqbits.
+    rewrite CVconjtrans_bits.
+    simpl_bits.
+    symmetry.
+    apply Heq. }
+  rewrite CVconjtrans_mult with (H2 := H2).
+  rewrite VM
+  unfold MVmult.
+  simpl.
+
+
+
+(* ============================================================================================== *)
 (* base single qubit state ====================================================================== *)
 
-Definition Q0: ColVec := {| CVbits := 1; CVinner := fun i => i |}.
+Definition Qst_0: ColVec := {| CVbits := 1; CVinner := fun i => i |}.
 
-Definition Q1: ColVec := {| CVbits := 1; CVinner := fun i => 1 - i |}.
+Definition Qst_1: ColVec := {| CVbits := 1; CVinner := fun i => 1 - i |}.
+
+(* Lemma Qst_0_normalized *)
 
 (* ============================================================================================== *)
 (* qubit state ================================================================================== *)

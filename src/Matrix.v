@@ -69,11 +69,11 @@ Axiom Mequal: forall (m1 m2: Matrix),
 (* ============================================================================================== *)
 (* equality of two vectors ====================================================================== *)
 
-Definition RVequal (r1 r2: RowVec): Prop := forall (j: nat) (Hj1: _) (Hj2: _),
-  (RReqbits r1 r2) /\ (RVget r1 j Hj1 = RVget r2 j Hj2).
+Axiom RVequal: forall (r1 r2: RowVec),
+  RVbits r1 = RVbits r2 -> (forall i, i < RVsize r1 -> i < RVsize r2 -> RVinner r1 i = RVinner r2 i) -> r1 = r2.
 
-Definition CVequal (c1 c2: ColVec): Prop := forall (i: nat) (Hi1: _) (Hi2: _),
-  (CCeqbits c1 c2) /\ (CVget c1 i Hi1 = CVget c2 i Hi2).
+Axiom CVequal: forall (c1 c2: ColVec),
+  CVbits c1 = CVbits c2 -> (forall i, i < CVsize c1 -> i < CVsize c2 -> CVinner c1 i = CVinner c2 i) -> c1 = c2.
 
 (* ============================================================================================== *)
 (* extract row and column vectors from a matrix ================================================= *)
@@ -146,9 +146,6 @@ Ltac dps_unfold :=
   unfold func_sum;
   unfold func_sum2;
   repeat rewrite Nat.sub_0_r.
-
-Definition dot_product (r: RowVec) (c: ColVec) (Hrc: RCeqbits r c): C :=
-  dot_product_suppl (RVinner r) (CVinner c) (RVsize r).
 
 Lemma dot_product_suppl_scale_l: forall (l: nat) (c: C) (f1 f2 f: nat -> C),
   (forall n, f1 n = c * f2 n) -> dot_product_suppl f1 f l = c * dot_product_suppl f2 f l.
@@ -315,6 +312,11 @@ Proof.
     apply H.
     lia.
 Qed.
+
+Definition dot_product_unsafe (r: RowVec) (c: ColVec): C :=
+  dot_product_suppl (RVinner r) (CVinner c) (RVsize r).
+
+Definition dot_product (r: RowVec) (c: ColVec) (Hrc: RCeqbits r c): C := dot_product_unsafe r c.
 
 (* ============================================================================================== *)
 (* element-wise unary operation ================================================================= *)
@@ -503,35 +505,6 @@ Proof.
     apply dot_product_suppl_assoc.
 Qed.
 
-(* Lemma Mmult_eq: forall (m1 m2 m3: Matrix) (H12: _) (H13: _),
-Mequal m2 m3 -> Mequal (Mmult m1 m2 H12) (Mmult m1 m3 H13).
-Proof.
-  intros.
-  split.
-  - unfold MMeqbits.
-    repeat rewrite Mmult_bits_l.
-    reflexivity.
-  - intros.
-    destruct H.
-    unfold Mget in *.
-    unfold Mmult.
-    unfold Mmult_inner.
-    simpl.
-    apply dot_product_suppl_f_r.
-    intros.
-    unfold MMeqbits in *.
-    unfold Msize in *.
-    rewrite Mmult_bits_r in *.
-    apply H0.
-    rewrite <- H12.
-    apply H1.
-    rewrite <- H13.
-    apply H1.
-    lia.
-    lia.
-Qed. *)
-
-
 (* ============================================================================================== *)
 (* matrix-vector multiplication ================================================================= *)
 
@@ -563,25 +536,25 @@ Lemma MVmult_correct: forall (m: Matrix) (r: RowVec) (c c': ColVec) (i: nat)
 Proof.
   intros.
   unfold CVget, dot_product.
-  unfold MVmult_inner.
+  unfold MVmult_inner, dot_product_unsafe.
   unfold RVsize.
   simpl.
   rewrite H.
   reflexivity.
 Qed.
 
-Lemma MMVmult_assoc: forall (m1 m2 m12: Matrix) (c3 c23 c12_3 c1_23: ColVec)
+Lemma MMVmult_assoc: forall (m1 m2: Matrix) (c3: ColVec)
   (H12: _) (H12_3: _) (H23: _) (H1_23: _),
-  CVequal (MVmult (Mmult m1 m2 H12) c3 H12_3) (MVmult m1 (MVmult m2 c3 H23) H1_23).
+  MVmult (Mmult m1 m2 H12) c3 H12_3 = MVmult m1 (MVmult m2 c3 H23) H1_23.
 Proof.
   intros.
-  unfold CVequal.
-  split.
+  apply CVequal.
   - unfold CCeqbits.
     simpl.
     rewrite <- H12_3.
     reflexivity.
-  - unfold CVget.
+  - intros.
+    unfold CVget.
     simpl.
     unfold Mmult.
     unfold MVmult.
@@ -633,18 +606,18 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma VMMmult_assoc: forall (r1 r12 r12_3 r1_23: RowVec) (m3 m2 m23: Matrix)
+Lemma VMMmult_assoc: forall (r1: RowVec) (m3 m2: Matrix)
   (H12: _) (H12_3: _) (H23: _) (H1_23: _),
-  RVequal (VMmult (VMmult r1 m2 H12) m3 H12_3) (VMmult r1 (Mmult m2 m3 H23) H1_23).
+  VMmult (VMmult r1 m2 H12) m3 H12_3 = VMmult r1 (Mmult m2 m3 H23) H1_23.
 Proof.
   intros.
-  unfold RVequal.
-  split.
+  apply RVequal.
   - unfold RReqbits.
     simpl.
     rewrite H12_3.
     reflexivity.
-  - unfold RVget. simpl.
+  - intros.
+    unfold RVget. simpl.
     unfold Mmult.
     unfold Mmult_inner.
     unfold VMmult.
@@ -655,6 +628,19 @@ Proof.
     simpl in *.
     replace (RVbits r1) with (Mbits m2).
     apply dot_product_suppl_assoc.
+Qed.
+
+Lemma dot_product_Mmult_assoc: forall (r: RowVec) (m: Matrix) (c: ColVec) (Hrm: _) (H1: _) (Hmc: _) (H2: _),
+  dot_product (VMmult r m Hrm) c H1 = dot_product r (MVmult m c Hmc) H2.
+Proof.
+  intros.
+  unfold VMmult, MVmult, dot_product.
+  unfold dot_product_unsafe, RVsize; simpl.
+  unfold VMmult_inner, MVmult_inner; simpl.
+  unfold RVsize, CVsize.
+  repeat rewrite Hrm.
+  repeat rewrite <- Hmc.
+  apply dot_product_suppl_assoc.
 Qed.
 
 (* ============================================================================================== *)
@@ -752,6 +738,17 @@ Proof.
     apply dot_product_suppl_conj2.
 Qed.
 
+Lemma Mconjtrans_twice: forall (m: Matrix),
+  Mconjtrans (Mconjtrans m) = m.
+Proof.
+  intros.
+  apply Mequal.
+  - reflexivity.
+  - intros.
+    unfold Mconjtrans, Minner.
+    apply Cconj_twice.
+Qed.
+
 (* ============================================================================================== *)
 (* conjugate transpose of a vector ============================================================== *)
 
@@ -764,6 +761,23 @@ Definition RVconjtrans (r: RowVec): ColVec :=
 Lemma RVconjtrans_bits: forall (r: RowVec), CReqbits (RVconjtrans r) r.
 Proof. reflexivity. Qed.
 
+Lemma RVconjtrans_mult: forall (r: RowVec) (m: Matrix) (H1: _) (H2: _),
+  RVconjtrans (VMmult r m H1) = MVmult (Mconjtrans m) (RVconjtrans r) H2.
+Proof.
+  intros.
+  apply CVequal.
+  - simpl.
+    reflexivity.
+  - intros.
+    simpl.
+    unfold MVmult_inner, VMmult_inner, RVconjtrans, Mconjtrans.
+    simpl.
+    unfold CVsize, RVsize.
+    simpl.
+    rewrite dot_product_suppl_comm.
+    apply dot_product_suppl_conj1.
+Qed.
+
 Definition CVconjtrans (c: ColVec): RowVec :=
   {|
     RVbits := CVbits c;
@@ -772,6 +786,23 @@ Definition CVconjtrans (c: ColVec): RowVec :=
 
 Lemma CVconjtrans_bits: forall (c: ColVec), RCeqbits (CVconjtrans c) c.
 Proof. reflexivity. Qed.
+
+Lemma CVconjtrans_mult: forall (m: Matrix) (c: ColVec) (H1: _) (H2: _),
+  CVconjtrans (MVmult m c H1) = VMmult (CVconjtrans c) (Mconjtrans m) H2.
+Proof.
+  intros.
+  apply RVequal.
+  - simpl.
+    reflexivity.
+  - intros.
+    simpl.
+    unfold MVmult_inner, VMmult_inner, CVconjtrans, Mconjtrans.
+    simpl.
+    unfold CVsize, RVsize.
+    simpl.
+    rewrite dot_product_suppl_comm.
+    apply dot_product_suppl_conj1.
+Qed.
 
 (* ============================================================================================== *)
 (* trace ======================================================================================== *)

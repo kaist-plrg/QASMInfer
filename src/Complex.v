@@ -75,6 +75,9 @@ Proof. intros. lca. Qed.
 Lemma Cconj_mult: forall (x1 x2: C), Cconj (x1 * x2) = Cconj x1 * Cconj x2.
 Proof. intros. lca. Qed.
 
+Lemma Cconj_twice: forall (x: C), Cconj (Cconj x) = x.
+Proof. intros. lca. Qed.
+
 Lemma RTC_inj: forall (x y: R),
   RTC x = RTC y -> x = y.
 Proof.
