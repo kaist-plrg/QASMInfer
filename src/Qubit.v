@@ -1,4 +1,4 @@
-Require Export Tensor.
+Require Export Operator.
 Import ListNotations.
 
 Declare Scope Qst_scope.
@@ -15,7 +15,7 @@ Open Scope T_scope.
 Definition Qst_normalized (qst: ColVec) := dot_product (CVconjtrans qst) (qst) (CVconjtrans_bits qst) = 1.
 
 Lemma Qst_normalized_unitary: forall (qst: ColVec) (qop: Matrix) (Heq: _),
-  Qst_normalized qst -> Qst_normalized (MVmult qop qst Heq).
+  Qst_normalized qst -> Qop_unitary qop -> Qst_normalized (MVmult qop qst Heq).
 Proof.
   unfold Qst_normalized, dot_product.
   intros.
@@ -26,6 +26,11 @@ Proof.
     symmetry.
     apply Heq. }
   rewrite CVconjtrans_mult with (H2 := H2).
+  specialize dot_product_Mmult_assoc as Hassoc.
+  unfold dot_product in Hassoc.
+  erewrite Hassoc.
+  erewrite <- MMVmult_assoc.
+  unfold Qop_unitary in H0.
   rewrite VM
   unfold MVmult.
   simpl.

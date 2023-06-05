@@ -19,26 +19,18 @@ Definition Qop_unitary_r (m: Matrix) := Mmult (Mconjtrans m) m (Mconjtrans_bits 
 Definition Qop_unitary (m: Matrix) := Qop_unitary_l m /\ Qop_unitary_r m.
 
 
-(* Lemma Qop_unitary_conjtrans: forall (m: Matrix), Qop_unitary m -> Qop_unitary (Mconjtrans m).
+Lemma Qop_unitary_conjtrans: forall (m: Matrix), Qop_unitary m -> Qop_unitary (Mconjtrans m).
 Proof.
   intros.
   destruct H as [H1 H2].
-  unfold Qop_unitary in *.
-  unfold Mmult, Mconjtrans in *; simpl.
+  unfold Qop_unitary, Qop_unitary_l, Qop_unitary_r, Mmult in *.
+  simpl_bits.
   split.
-  - rewrite <- H1.
-    apply Mequal.
-    + reflexivity.
-    + intros.
-      unfold Mmult_unsafe, Mmult_inner, Msize in *.
-      simpl in *.
-      replace (fun i0 : nat => Cconj (Cconj (Minner m i0 j))) with (fun i0 : nat => Minner m i0 j).
-      unfold eye in H1.
-      inversion H1.
-      apply <- functional_extensionality in H4.
-      rewrite Cconj_twice. *)
-
-
+  - rewrite Mconjtrans_twice.
+    apply H2.
+  - rewrite Mconjtrans_twice.
+    apply H1.
+Qed.
 
 Lemma Qop_eye_unitary: forall (bits: nat), Qop_unitary (eye bits).
 Proof.
