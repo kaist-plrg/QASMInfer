@@ -101,6 +101,34 @@ Proof.
     lca.
 Qed.
 
+Lemma TRVproduct_RVconjtrans: forall (r1 r2: RowVec),
+  RVconjtrans (TRVproduct r1 r2) = TCVproduct (RVconjtrans r1) (RVconjtrans r2).
+Proof.
+  intros.
+  unfold RVconjtrans, TRVproduct.
+  simpl.
+  apply CVequal.
+  - reflexivity.
+  - repeat (simpl_bits; simpl).
+    unfold Cconj.
+    intros.
+    lca.
+Qed.
+
+Lemma TCVproduct_CVconjtrans: forall (c1 c2: ColVec),
+  CVconjtrans (TCVproduct c1 c2) = TRVproduct (CVconjtrans c1) (CVconjtrans c2).
+Proof.
+  intros.
+  unfold CVconjtrans, TCVproduct.
+  simpl.
+  apply RVequal.
+  - reflexivity.
+  - repeat (simpl_bits; simpl).
+    unfold Cconj.
+    intros.
+    lca.
+Qed.
+
 (* ============================================================================================== *)
 (* relation between matrix multiplication and tensor product ==================================== *)
 
@@ -113,10 +141,7 @@ Proof.
   - repeat simpl_bits.
     lia.
   - intros.
-    unfold Mmult.
-    unfold Mmult_unsafe.
-    unfold Mmult_inner.
-    unfold TMproduct.
+    unfold Mmult, Mmult_unsafe, Mmult_inner, TMproduct.
     repeat simpl_bits.
     simpl.
     unfold dot_product_suppl.
@@ -172,22 +197,18 @@ Proof.
         specialize (Nat.mod_bound_pos j l2 Hj Hl2) as Hmod. lia. }
       repeat rewrite Hmod.
       reflexivity.
-      unfold l2. specialize (pow_2_nonzero (Mbits m2)) as Hmm2. lia.
-      unfold l2. specialize (pow_2_nonzero (Mbits m2)) as Hmm2. lia.
-      unfold l2. specialize (pow_2_nonzero (Mbits m2)) as Hmm2. lia.
-      unfold l2. specialize (pow_2_nonzero (Mbits m2)) as Hmm2. lia.
+      1-4: unfold l2; specialize (pow_2_nonzero (Mbits m2)) as Hmm2; lia.
       rewrite Nat.div_add_l.
       rewrite Nat.div_small.
       lia.
       apply Nat.mod_bound_pos.
       lia.
       unfold l2. apply pow_2_nonzero.
-      unfold l2. specialize (pow_2_nonzero (Mbits m2)) as Hmm2. lia.
-      unfold l2. specialize (pow_2_nonzero (Mbits m2)) as Hmm2. lia.
+      1-2: unfold l2; specialize (pow_2_nonzero (Mbits m2)) as Hmm2; lia.
       apply functional_extensionality.
       intros.
       destruct (x mod l2 =? j mod l2).
-      lca. lca.
+      1-2: lca.
       unfold l2. reflexivity.
       unfold l1. reflexivity.
       symmetry.
@@ -203,10 +224,7 @@ Proof.
   - repeat simpl_bits.
     lia.
   - intros.
-    unfold Mmult.
-    unfold Mmult_unsafe.
-    unfold Mmult_inner.
-    unfold TMproduct.
+    unfold Mmult, Mmult_unsafe, Mmult_inner, TMproduct.
     repeat simpl_bits.
     simpl.
     repeat rewrite <- H12.
@@ -247,9 +265,7 @@ Proof.
     replace (i0 / l2)%nat with O.
     lia.
     rewrite Nat.div_small.
-    lia.
-    lia.
-    lia.
+    1-3: lia.
     rewrite Nat.add_mod.
     rewrite Nat.mul_mod.
     rewrite Nat.mod_same.
@@ -257,14 +273,7 @@ Proof.
     rewrite Nat.mod_0_l.
     simpl.
     repeat rewrite Nat.mod_small.
-    reflexivity.
-    lia.
-    lia.
-    lia.
-    lia.
-    lia.
-    lia.
-    lia.
+    1-8: lia.
     specialize (pow_2_nonzero (Mbits m2)) as Hpow.
     lia.
     rewrite Nat.pow_add_r in H0.
@@ -272,10 +281,8 @@ Proof.
     apply functional_extensionality.
     intros.
     destruct (x / l2 =? j / l2).
-    lca.
-    lca.
-    lia.
-    lia.
+    1-2: lca.
+    1-2: lia.
     symmetry.
     apply Nat.pow_add_r.
 Qed.
@@ -296,13 +303,7 @@ Proof.
     specialize Mmult_eye_l as Heyel.
     unfold Mmult in Heyel.
     rewrite Heyel.
-    reflexivity.
-    simpl_bits.
-    reflexivity.
-    simpl_bits.
-    reflexivity.
-    repeat simpl_bits.
-    reflexivity. }
+    all: repeat simpl_bits; reflexivity. }
   rewrite H34.
   specialize Mmult_assoc as Hmassoc.
   unfold Mmult in Hmassoc.
@@ -317,20 +318,13 @@ Proof.
   rewrite <- Hpr.
   reflexivity.
   apply H24.
-  repeat simpl_bits.
-  lia.
-  apply H13.
-  repeat simpl_bits.
-  lia.
-  repeat simpl_bits.
-  lia.
-  repeat simpl_bits.
-  lia.
-  repeat simpl_bits.
-  lia.
-  repeat simpl_bits.
-  lia.
+  all: repeat simpl_bits; lia.
 Qed.
+
+(* ============================================================================================== *)
+(* relation between dot product and tensor product ============================================== *)
+
+
 
 (* ============================================================================================== *)
 (* tensor product of identity matrices ========================================================== *)
