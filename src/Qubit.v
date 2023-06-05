@@ -42,6 +42,20 @@ Proof.
   simpl_bits. lia.
 Qed.
 
+Lemma Qst_normalized_TCVproduct: forall (qst1 qst2: ColVec),
+  Qst_normalized qst1 -> Qst_normalized qst2 -> Qst_normalized (TCVproduct qst1 qst2).
+Proof.
+  intros.
+  specialize TVproduct_dot_product as Hdot.
+  unfold Qst_normalized, dot_product in *.
+  rewrite TCVproduct_CVconjtrans.
+  rewrite Hdot.
+  rewrite H.
+  rewrite H0.
+  lca.
+  all: repeat simpl_bits; reflexivity.
+Qed.
+
 (* ============================================================================================== *)
 (* base single qubit state ====================================================================== *)
 
