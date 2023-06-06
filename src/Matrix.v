@@ -1,5 +1,4 @@
 Require Export Complex.
-Require Export FunctionalExtensionality.
 Import ListNotations.
 
 Declare Scope M_scope.
@@ -796,14 +795,17 @@ Qed.
 (* ============================================================================================== *)
 (* trace ======================================================================================== *)
 
-Fixpoint Mtrace_suppl (m: nat -> nat -> C) (idx: nat): C.
-Proof.
-  destruct idx as [|idx'].
-  - exact O.
-  - apply (m idx' idx' + Mtrace_suppl m idx').
-Defined.
+Definition Mtrace (m: Matrix): C := func_sum (fun i => Minner m i i) (Msize m).
 
-Definition Mtrace (m: Matrix): C := Mtrace_suppl (Minner m) (Msize m).
+Lemma Mtrace_Mmult_comm: forall (m1 m2: Matrix) (H1: _) (H2: _),
+  Mtrace (Mmult m1 m2 H1) = Mtrace (Mmult m2 m1 H2).
+Proof.
+  intros.
+  unfold Mmult, Mmult_unsafe, Mmult_inner, dot_product_suppl, Mtrace, Msize in *.
+  repeat rewrite H1.
+  simpl.
+  apply func_sum_comm.
+Qed.
 
 (* ============================================================================================== *)
 (* identity matrix ============================================================================== *)

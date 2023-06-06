@@ -1,4 +1,5 @@
 Require Export Util.
+Require Export FunctionalExtensionality.
 
 Declare Scope C_scope.
 Open Scope nat_scope.
@@ -152,6 +153,19 @@ Definition func_sum (f: nat -> C) (n: nat): C := func_sum2 f 0 n.
 
 Lemma func_sum_suppl_scale: forall (n m: nat) (c: C) (f1 f2: nat -> C),
   (forall i, f1 i = c * f2 i) -> func_sum_suppl f1 n m = c * func_sum_suppl f2 n m.
+Proof.
+  intros.
+  induction m as [|m'].
+  - lca.
+  - simpl.
+    rewrite IHm'.
+    rewrite H.
+    lca.
+Qed.
+
+Lemma func_sum_suppl_add: forall (n m: nat) (f12 f1 f2: nat -> C),
+  (forall i, f12 i = f1 i + f2 i) ->
+  func_sum_suppl f12 n m = func_sum_suppl f1 n m + func_sum_suppl f2 n m.
 Proof.
   intros.
   induction m as [|m'].
@@ -519,6 +533,33 @@ Proof.
     rewrite func_sum_dist_suppl.
     lca.
     all: lia.
+Qed.
+
+Lemma func_sum_comm: forall (l: nat) (f1 f2: nat -> nat -> C),
+  func_sum (fun i : nat => func_sum (fun j : nat => f1 i j * f2 j i) l) l =
+  func_sum (fun i : nat => func_sum (fun j : nat => f2 i j * f1 j i) l) l.
+Proof.
+  intros.
+  induction l.
+  - reflexivity.
+  - unfold func_sum, func_sum2 in *.
+    simpl in *.
+    repeat rewrite Nat.sub_0_r in *.
+    rewrite func_sum_suppl_add with
+    (f12 := (fun i => f1 i l * f2 l i + func_sum_suppl (fun j : nat => f1 i j * f2 j i) 0 l))
+    (f1 := fun i => f1 i l * f2 l i)
+    (f2 := fun i => func_sum_suppl (fun j : nat => f1 i j * f2 j i) 0 l).
+    rewrite func_sum_suppl_add with
+    (f12 := (fun i => f2 i l * f1 l i + func_sum_suppl (fun j : nat => f2 i j * f1 j i) 0 l))
+    (f1 := fun i => f2 i l * f1 l i)
+    (f2 := fun i => func_sum_suppl (fun j : nat => f2 i j * f1 j i) 0 l).
+    rewrite IHl.
+    ring_simplify.
+    replace (fun i : nat => f2 l i * f1 i l) with (fun i : nat => f1 i l * f2 l i).
+    replace (fun j : nat => f1 l j * f2 j l) with (fun i : nat => f2 i l * f1 l i).
+    lca.
+    1-2:apply functional_extensionality; intros; lca.
+    1-2:intros; lca.
 Qed.
 
 (* ============================================================================================== *)

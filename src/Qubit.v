@@ -12,7 +12,8 @@ Open Scope T_scope.
 
 (* normalized qubit state ======================================================================= *)
 
-Definition Qst_normalized (qst: ColVec) := dot_product (CVconjtrans qst) (qst) (CVconjtrans_bits qst) = 1.
+Definition Qst_normalized (qst: ColVec) :=
+  dot_product (CVconjtrans qst) (qst) (CVconjtrans_bits qst) = 1.
 
 Lemma Qst_normalized_unitary: forall (qst: ColVec) (qop: Matrix) (Heq: _),
   Qst_normalized qst -> Qop_unitary qop -> Qst_normalized (MVmult qop qst Heq).
@@ -77,6 +78,7 @@ Inductive Qstate: nat -> ColVec -> Prop :=
 | Qstate_base_1: Qstate 1 Qst_1
 | Qstate_multi_qubit (n1 n2: nat) (qst1 qst2: ColVec):
     Qstate n1 qst1 -> Qstate n2 qst2 -> Qstate (n1 + n2) (TCVproduct qst1 qst2).
+(* | Qstate_op (n: nat) (qst: ColVec): Qstate n qst -> Qstate n ( *)
 
 (* qubit state product ========================================================================== *)
 (* ============================================================================================== *)

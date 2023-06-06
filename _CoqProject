@@ -1,5 +1,6 @@
 -R src QuantumCoq
 src/Complex.v
+src/Density.v
 src/Main.v
 src/Matrix.v
 src/Operator.v
