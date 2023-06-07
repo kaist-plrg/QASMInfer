@@ -21,7 +21,7 @@ Definition TMproduct (m1 m2: Matrix): Matrix :=
     )
   |}.
 
-Lemma TMProduct_bits: forall (m1 m2: Matrix), Mbits (TMproduct m1 m2) = (Mbits m1 + Mbits m2)%nat.
+Lemma TMproduct_bits: forall (m1 m2: Matrix), Mbits (TMproduct m1 m2) = (Mbits m1 + Mbits m2)%nat.
 Proof. reflexivity. Qed.
 
 Property TMproduct_correct: forall
@@ -79,11 +79,14 @@ Ltac simpl_bits :=
   repeat rewrite RVconjtrans_bits in *;
   repeat rewrite Mmult_unsafe_bits_l in *;
   repeat rewrite Mmult_bits_l in *;
+  repeat rewrite Mplus_bits_l in *;
+  repeat rewrite Mminus_bits_l in *;
+  repeat rewrite Mbop_unsafe_bits_l in *;
   repeat rewrite Mconjtrans_bits in *;
   repeat rewrite eye_bits in *;
   repeat rewrite TRVproduct_bits in *;
   repeat rewrite TCVproduct_bits in *;
-  repeat rewrite TMProduct_bits in *.
+  repeat rewrite TMproduct_bits in *.
 
 (* ============================================================================================== *)
 (* relation between conjugate transpose and tensor product ====================================== *)
@@ -128,6 +131,36 @@ Proof.
   - repeat (simpl_bits; simpl).
     unfold Cconj.
     intros.
+    lca.
+Qed.
+
+(* ============================================================================================== *)
+(* relation between matric addition and tensor product ========================================== *)
+
+Lemma TMproduct_plus_l: forall (m1 m2 m3: Matrix) (H12: _) (H1323: _),
+  Mplus (TMproduct m1 m3) (TMproduct m2 m3) H1323 = TMproduct (Mplus m1 m2 H12) m3.
+Proof.
+  intros.
+  apply Mequal.
+  - repeat simpl_bits.
+    reflexivity.
+  - intros.
+    unfold Mplus, TMproduct.
+    lca.
+Qed.
+
+Lemma TMproduct_plus_r: forall (m1 m2 m3: Matrix) (H12: _) (H3132: _),
+  Mplus (TMproduct m3 m1) (TMproduct m3 m2) H3132 = TMproduct m3 (Mplus m1 m2 H12).
+Proof.
+  intros.
+  apply Mequal.
+  - repeat simpl_bits.
+    reflexivity.
+  - intros.
+    unfold Mplus, TMproduct.
+    simpl_bits.
+    simpl.
+    repeat rewrite H12.
     lca.
 Qed.
 

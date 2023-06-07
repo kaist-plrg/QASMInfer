@@ -437,6 +437,31 @@ Definition Qproj0_n_t (n t: nat) (Ht: t < n) := Qop_sq n t Qproj0 Ht Qproj0_bits
 
 Definition Qproj1_n_t (n t: nat) (Ht: t < n) := Qop_sq n t Qproj1 Ht Qproj1_bits.
 
+Lemma Qproj0_n_t_bits: forall (n t: nat) (Ht: _), Mbits (Qproj0_n_t n t Ht) = n.
+Proof.
+  intros.
+  unfold Qproj0_n_t.
+  apply Qop_sq_bits.
+Qed.
+
+Lemma Qproj1_n_t_bits: forall (n t: nat) (Ht: _), Mbits (Qproj1_n_t n t Ht) = n.
+Proof.
+  intros.
+  unfold Qproj1_n_t.
+  apply Qop_sq_bits.
+Qed.
+
+Lemma Qproj_n_sum_eye: forall (n t: nat) (Ht: _) (H01: _),
+  Mplus (Qproj0_n_t n t Ht) (Qproj1_n_t n t Ht) H01 = eye n.
+Proof.
+  induction n.
+  - intros. lia.
+  - intros.
+    specialize IHn with (t := t).
+    unfold Qproj0_n_t, Qproj1_n_t, Qop_sq in *.
+
+
+
 (* ============================================================================================== *)
 (* swap operator ================================================================================ *)
 

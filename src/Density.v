@@ -66,9 +66,15 @@ Lemma Den_1_normalized: Den_normalized Den_1.
 Proof. lca. Qed.
 
 (* ============================================================================================== *)
+(* probability ================================================================================== *)
+
+Definition Den_prob (den: Matrix) (proj: Matrix) (H: MMeqbits den proj): R :=
+  Creal (Mtrace (Mmult den proj H)).
+
+(* ============================================================================================== *)
 (* measurement ================================================================================== *)
 
-Definition Den_measure (n t: nat) (den: Matrix) (Ht: t < n) (Hd: Mbits den = n): Matrix.
+Definition Den_measure (den: Matrix) (n t: nat)  (Ht: t < n) (Hd: Mbits den = n): Matrix.
 Proof.
   refine (
     Mplus (
@@ -83,7 +89,25 @@ Proof.
   ).
   Unshelve.
   all: simpl_bits; simpl; lia.
-Qed.
+Defined.
+
+(* projection on 01001001.. is a projection on single  real: i.e. self-adjoint
+Definition Den_measure_op (den proj op: Matrix) (H: MMeqbits den op) (H2: MMeqbits proj den): Matrix.
+Proof.
+  refine (
+    Mplus (
+      Mmult ( Mmult
+      proj den _) proj
+      _
+    ) (
+      Mmult ( Mmult
+      (Mminus (eye (Mbits proj)) proj _) den _) (Mminus (eye (Mbits proj)) proj _)
+      _
+    ) _
+  ).
+  Unshelve.
+  all: simpl_bits; simpl; lia.
+Qed. *)
 
 (* ============================================================================================== *)
 (* density matrix =============================================================================== *)
@@ -98,7 +122,10 @@ Inductive DensityMatrix: nat -> Matrix -> Prop :=
 | DensityMatrix_unitary (n: nat) (den uop: Matrix) (H1: _) (H2: _):
   DensityMatrix n den ->
   Qop_unitary uop ->
-  DensityMatrix n (Mmult (Mmult uop den H1) (Mconjtrans uop) H2).
+  DensityMatrix n (Mmult (Mmult uop den H1) (Mconjtrans uop) H2)
+| DensityMatrix_measure (den: Matrix) (n t: nat) (Ht: _) (Hd: _):
+  DensityMatrix n den ->
+  DensityMatrix n (Den_measure den n t Ht Hd).
 
 (* ============================================================================================== *)
 (* normalization of density matrices ============================================================ *)
@@ -126,6 +153,8 @@ Proof.
     Unshelve.
     1-3: simpl_bits; reflexivity.
     simpl_bits; lia.
+  - unfold Den_normalized, Den_measure, Mmult, Mplus.
+
 Qed.
 
 (* ============================================================================================== *)

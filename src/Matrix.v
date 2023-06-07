@@ -374,15 +374,19 @@ Definition Mbop_unsafe (bop: C -> C -> C) (m1 m2: Matrix): Matrix :=
     Minner := fun i j => bop (Minner m1 i j) (Minner m2 i j)
   |}.
 
+Lemma Mbop_unsafe_bits_l: forall (bop: C -> C -> C) (m1 m2: Matrix),
+  MMeqbits (Mbop_unsafe bop m1 m2) m1.
+Proof. reflexivity. Qed.
+
 Definition Mbop (bop: C -> C -> C) (m1 m2: Matrix) (Hbits: MMeqbits m1 m2): Matrix :=
   Mbop_unsafe bop m1 m2.
 
 Lemma Mbop_bits_l: forall (bop: C -> C -> C) (m1 m2: Matrix) (Hbits: _),
-  MMeqbits m1 (Mbop bop m1 m2 Hbits).
+  MMeqbits (Mbop bop m1 m2 Hbits) m1.
 Proof. reflexivity. Qed.
 
 Lemma Mbop_bits_r: forall (bop: C -> C -> C) (m1 m2: Matrix) (Hbits: _),
-  MMeqbits m2 (Mbop bop m1 m2 Hbits).
+  MMeqbits (Mbop bop m1 m2 Hbits) m2.
 Proof.
   intros.
   unfold Mbop.
@@ -408,10 +412,10 @@ Qed.
 
 Definition Mplus (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop_unsafe Cplus m1 m2.
 
-Lemma Mplus_bits_l: forall (m1 m2: Matrix) (Hbits: _), MMeqbits m1 (Mplus m1 m2 Hbits).
+Lemma Mplus_bits_l: forall (m1 m2: Matrix) (Hbits: _), MMeqbits (Mplus m1 m2 Hbits) m1.
 Proof. apply Mbop_bits_l. Qed.
 
-Lemma Mplus_bits_r: forall (m1 m2: Matrix) (Hbits: _), MMeqbits m2 (Mplus m1 m2 Hbits).
+Lemma Mplus_bits_r: forall (m1 m2: Matrix) (Hbits: _), MMeqbits (Mplus m1 m2 Hbits) m2.
 Proof. apply Mbop_bits_r. Qed.
 
 Lemma Mplus_correct: forall
@@ -425,10 +429,10 @@ Proof. apply Mbop_correct. Qed.
 
 Definition Mminus (m1 m2: Matrix) (Hbits: MMeqbits m1 m2) := Mbop_unsafe Cminus m1 m2.
 
-Lemma Mminus_bits_l: forall (m1 m2: Matrix) (Hbits: _), MMeqbits m1 (Mminus m1 m2 Hbits).
+Lemma Mminus_bits_l: forall (m1 m2: Matrix) (Hbits: _), MMeqbits (Mminus m1 m2 Hbits) m1.
 Proof. apply Mbop_bits_l. Qed.
 
-Lemma Mminus_bits_r: forall (m1 m2: Matrix) (Hbits: _), MMeqbits m2 (Mminus m1 m2 Hbits).
+Lemma Mminus_bits_r: forall (m1 m2: Matrix) (Hbits: _), MMeqbits (Mminus m1 m2 Hbits) m2.
 Proof. apply Mbop_bits_r. Qed.
 
 Lemma Mminus_correct: forall
@@ -805,6 +809,18 @@ Proof.
   repeat rewrite H1.
   simpl.
   apply func_sum_comm.
+Qed.
+
+Lemma Mtrace_Mplus_dist: forall (m1 m2: Matrix) (H: _),
+  Mtrace (Mplus m1 m2 H) = Mtrace m1 + Mtrace m2.
+Proof.
+  intros.
+  unfold Mplus, Mbop_unsafe, Mtrace, Msize, func_sum, func_sum2 in *.
+  repeat rewrite Nat.sub_0_r.
+  repeat rewrite H.
+  simpl.
+  apply func_sum_suppl_add.
+  reflexivity.
 Qed.
 
 (* ============================================================================================== *)
