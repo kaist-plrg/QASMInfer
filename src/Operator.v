@@ -433,6 +433,29 @@ Proof. reflexivity. Qed.
 Fact Qproj1_bits: Mbits Qproj1 = 1.
 Proof. reflexivity. Qed.
 
+Lemma Qproj_sum_eye: forall H, Mplus Qproj0 Qproj1 H = eye 1.
+Proof.
+  intros.
+  apply Mequal.
+  - simpl_bits.
+    reflexivity.
+  - intros.
+    simpl_bits.
+    simpl in *.
+    unfold Mplus, Mbop_unsafe, Qproj0, Qproj1, eye.
+    simpl.
+    destruct i as [|i], j as [|j].
+    + lca.
+    + lca.
+    + assert (i = 0) by lia.
+      subst i.
+      lca.
+    + assert (i = 0) by lia.
+      assert (j = 0) by lia.
+      subst i j.
+      lca.
+Qed.
+
 Definition Qproj0_n_t (n t: nat) (Ht: t < n) := Qop_sq n t Qproj0 Ht Qproj0_bits.
 
 Definition Qproj1_n_t (n t: nat) (Ht: t < n) := Qop_sq n t Qproj1 Ht Qproj1_bits.
@@ -454,13 +477,17 @@ Qed.
 Lemma Qproj_n_sum_eye: forall (n t: nat) (Ht: _) (H01: _),
   Mplus (Qproj0_n_t n t Ht) (Qproj1_n_t n t Ht) H01 = eye n.
 Proof.
-  induction n.
-  - intros. lia.
-  - intros.
-    specialize IHn with (t := t).
-    unfold Qproj0_n_t, Qproj1_n_t, Qop_sq in *.
-
-
+  intros.
+  unfold Qproj0_n_t, Qproj1_n_t, Qop_sq in *.
+  erewrite TMproduct_plus_l.
+  erewrite TMproduct_plus_r.
+  rewrite Qproj_sum_eye.
+  repeat rewrite TMproduct_eye.
+  replace (t + 1 + (n - t - 1))%nat with n by lia.
+  reflexivity.
+  Unshelve.
+  all: repeat simpl_bits; reflexivity.
+Qed.
 
 (* ============================================================================================== *)
 (* swap operator ================================================================================ *)
