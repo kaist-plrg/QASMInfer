@@ -153,8 +153,35 @@ Proof.
     Unshelve.
     1-3: simpl_bits; reflexivity.
     simpl_bits; lia.
-  - unfold Den_normalized, Den_measure, Mmult, Mplus.
-
+    simpl_bits. lia.
+  - specialize Qproj_eye_minus_0n as Hproj.
+    specialize Mtrace_Mplus_dist as Htraceplus.
+    specialize Mtrace_Mminus_dist as Htraceminus.
+    specialize Mmult_dist_minus_l as Hdml.
+    specialize Mmult_dist_minus_r as Hdmr.
+    specialize Mmult_assoc as Hma.
+    specialize Mtrace_Mmult_comm as Htmc.
+    specialize Mmult_eye_r as Heyer.
+    specialize Mmult_eye_l as Heyel.
+    specialize Qproj0_n_t_mult as Hpm.
+    unfold Den_normalized, Den_measure, Mmult, Mplus, Mminus in *.
+    rewrite Hproj.
+    repeat rewrite Hdml.
+    repeat rewrite Hdmr.
+    repeat rewrite Hma.
+    repeat rewrite Heyer.
+    repeat rewrite Heyel.
+    repeat rewrite Htraceplus.
+    repeat rewrite Htraceminus.
+    rewrite <- Hma.
+    rewrite Htmc.
+    rewrite <- Hma.
+    rewrite Hpm.
+    ring_simplify.
+    rewrite Htmc.
+    rewrite IHDensityMatrix.
+    lca.
+    all: repeat simpl_bits; repeat rewrite Qproj0_n_t_bits; lia.
 Qed.
 
 (* ============================================================================================== *)

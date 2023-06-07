@@ -197,7 +197,7 @@ Proof.
     lca.
 Qed.
 
-Lemma dot_product_suppl_dist_l: forall (l: nat) (f f1 f2 f12: nat -> C),
+Lemma dot_product_suppl_plus_l: forall (l: nat) (f f1 f2 f12: nat -> C),
   (forall n, f12 n = f1 n + f2 n) -> dot_product_suppl f12 f l = dot_product_suppl f1 f l + dot_product_suppl f2 f l.
 Proof.
   intros.
@@ -211,8 +211,36 @@ Proof.
     lca.
 Qed.
 
-Lemma dot_product_suppl_dist_r: forall (l: nat) (f f1 f2 f12: nat -> C),
+Lemma dot_product_suppl_plus_r: forall (l: nat) (f f1 f2 f12: nat -> C),
   (forall n, f12 n = f1 n + f2 n) -> dot_product_suppl f f12 l = dot_product_suppl f f1 l + dot_product_suppl f f2 l.
+Proof.
+  intros.
+  dps_unfold.
+  induction l as [|l'].
+  - simpl. lca.
+  - simpl.
+    ring_simplify.
+    rewrite IHl'.
+    rewrite H.
+    lca.
+Qed.
+
+Lemma dot_product_suppl_minus_l: forall (l: nat) (f f1 f2 f12: nat -> C),
+  (forall n, f12 n = f1 n - f2 n) -> dot_product_suppl f12 f l = dot_product_suppl f1 f l - dot_product_suppl f2 f l.
+Proof.
+  intros.
+  dps_unfold.
+  induction l as [|l'].
+  - simpl. lca.
+  - simpl.
+    ring_simplify.
+    rewrite IHl'.
+    rewrite H.
+    lca.
+Qed.
+
+Lemma dot_product_suppl_minus_r: forall (l: nat) (f f1 f2 f12: nat -> C),
+  (forall n, f12 n = f1 n - f2 n) -> dot_product_suppl f f12 l = dot_product_suppl f f1 l - dot_product_suppl f f2 l.
 Proof.
   intros.
   dps_unfold.
@@ -570,6 +598,70 @@ Proof.
     apply dot_product_suppl_assoc.
 Qed.
 
+Lemma Mmult_dist_plus_l: forall (m1 m2 m3: Matrix) (H12: _) (H12_3: _) (H13: _) (H23: _) (H1323: _),
+  (Mmult (Mplus m1 m2 H12) m3 H12_3) = Mplus (Mmult m1 m3 H13) (Mmult m2 m3 H23) H1323.
+Proof.
+  intros.
+  apply Mequal.
+  - repeat (repeat rewrite Mmult_bits_l; repeat rewrite Mplus_bits_l).
+    reflexivity.
+  - intros.
+    unfold Mmult, Mmult_unsafe, Mmult_inner, Mplus, Mbop_unsafe, Msize.
+    simpl.
+    repeat rewrite H12.
+    apply dot_product_suppl_plus_l.
+    intros.
+    lca.
+Qed.
+
+Lemma Mmult_dist_plus_r: forall (m1 m2 m3: Matrix) (H23: _) (H1_23: _) (H12: _) (H13: _) (H1213: _),
+  (Mmult m1 (Mplus m2 m3 H23) H1_23) = Mplus (Mmult m1 m2 H12) (Mmult m1 m3 H13) H1213.
+Proof.
+  intros.
+  apply Mequal.
+  - repeat (repeat rewrite Mmult_bits_l; repeat rewrite Mplus_bits_l).
+    reflexivity.
+  - intros.
+    unfold Mmult, Mmult_unsafe, Mmult_inner, Mplus, Mbop_unsafe, Msize.
+    simpl.
+    repeat rewrite H12.
+    apply dot_product_suppl_plus_r.
+    intros.
+    lca.
+Qed.
+
+Lemma Mmult_dist_minus_l: forall (m1 m2 m3: Matrix) (H12: _) (H12_3: _) (H13: _) (H23: _) (H1323: _),
+  (Mmult (Mminus m1 m2 H12) m3 H12_3) = Mminus (Mmult m1 m3 H13) (Mmult m2 m3 H23) H1323.
+Proof.
+  intros.
+  apply Mequal.
+  - repeat (repeat rewrite Mmult_bits_l; repeat rewrite Mplus_bits_l).
+    reflexivity.
+  - intros.
+    unfold Mmult, Mmult_unsafe, Mmult_inner, Mminus, Mbop_unsafe, Msize.
+    simpl.
+    repeat rewrite H12.
+    apply dot_product_suppl_minus_l.
+    intros.
+    lca.
+Qed.
+
+Lemma Mmult_dist_minus_r: forall (m1 m2 m3: Matrix) (H23: _) (H1_23: _) (H12: _) (H13: _) (H1213: _),
+  (Mmult m1 (Mminus m2 m3 H23) H1_23) = Mminus (Mmult m1 m2 H12) (Mmult m1 m3 H13) H1213.
+Proof.
+  intros.
+  apply Mequal.
+  - repeat (repeat rewrite Mmult_bits_l; repeat rewrite Mplus_bits_l).
+    reflexivity.
+  - intros.
+    unfold Mmult, Mmult_unsafe, Mmult_inner, Mminus, Mbop_unsafe, Msize.
+    simpl.
+    repeat rewrite H12.
+    apply dot_product_suppl_minus_r.
+    intros.
+    lca.
+Qed.
+
 (* ============================================================================================== *)
 (* matrix-vector multiplication ================================================================= *)
 
@@ -885,6 +977,18 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma Mtrace_Mminus_dist: forall (m1 m2: Matrix) (H: _),
+  Mtrace (Mminus m1 m2 H) = Mtrace m1 - Mtrace m2.
+Proof.
+  intros.
+  unfold Mminus, Mbop_unsafe, Mtrace, Msize, func_sum, func_sum2 in *.
+  repeat rewrite Nat.sub_0_r.
+  repeat rewrite H.
+  simpl.
+  apply func_sum_suppl_sub.
+  reflexivity.
+Qed.
+
 (* ============================================================================================== *)
 (* identity matrix ============================================================================== *)
 
@@ -1014,21 +1118,24 @@ Proof.
       apply Hj.
 Qed.
 
-Lemma Mmult_eye_r: forall (m: Matrix) (Hme: _),Mmult m (eye (Mbits m)) Hme = m.
+Lemma Mmult_eye_r: forall (m: Matrix) (n: nat) (Hme: _),
+  n = Mbits m -> Mmult m (eye n) Hme = m.
 Proof.
   intros.
   apply Mequal.
   - unfold MMeqbits.
     rewrite Mmult_bits_r.
-    apply eye_bits.
+    rewrite eye_bits.
+    lia.
   - intros.
     unfold Mget, Mmult, Mmult_inner.
     simpl.
     apply Mmult_eye_r_suppl.
-    apply H0.
+    apply H1.
 Qed.
 
-Lemma Mmult_eye_l: forall (m: Matrix) (Hem: _), Mmult (eye (Mbits m)) m Hem = m.
+Lemma Mmult_eye_l: forall (m: Matrix) (n: nat) (Hem: _),
+  n = Mbits m -> Mmult (eye n) m Hem = m.
 Proof.
   intros.
   apply Mequal.
@@ -1045,7 +1152,7 @@ Proof.
       repeat rewrite Mmult_bits_l in *;
       repeat rewrite Mconjtrans_bits in *;
       repeat rewrite eye_bits in *.
-      apply H.
+      apply H0.
     + unfold Msize in *;
       repeat rewrite Mmult_bits_l in *;
       repeat rewrite Mconjtrans_bits in *;

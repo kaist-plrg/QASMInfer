@@ -176,6 +176,19 @@ Proof.
     lca.
 Qed.
 
+Lemma func_sum_suppl_sub: forall (n m: nat) (f12 f1 f2: nat -> C),
+  (forall i, f12 i = f1 i - f2 i) ->
+  func_sum_suppl f12 n m = func_sum_suppl f1 n m - func_sum_suppl f2 n m.
+Proof.
+  intros.
+  induction m as [|m'].
+  - lca.
+  - simpl.
+    rewrite IHm'.
+    rewrite H.
+    lca.
+Qed.
+
 Lemma func_sum_f: forall (f1 f2: nat -> C) (n: nat),
   (forall i, (i < n)%nat -> f1 i = f2 i) -> func_sum f1 n = func_sum f2 n.
 Proof.

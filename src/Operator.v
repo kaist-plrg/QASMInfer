@@ -433,6 +433,44 @@ Proof. reflexivity. Qed.
 Fact Qproj1_bits: Mbits Qproj1 = 1.
 Proof. reflexivity. Qed.
 
+Lemma Qproj0_mult: forall H, Mmult Qproj0 Qproj0 H = Qproj0.
+Proof.
+  intros.
+  apply Mequal.
+  - simpl_bits.
+    reflexivity.
+  - intros.
+    simpl_bits.
+    unfold Mmult, Mmult_unsafe, Mmult_inner.
+    dps_unfold.
+    simpl.
+    rewrite Cmult_0_r.
+    destruct i as [|i], j as [|j].
+    all: lca.
+Qed.
+
+Lemma Qproj1_mult: forall H, Mmult Qproj1 Qproj1 H = Qproj1.
+Proof.
+  intros.
+  apply Mequal.
+  - simpl_bits.
+    reflexivity.
+  - intros.
+    simpl_bits.
+    unfold Mmult, Mmult_unsafe, Mmult_inner.
+    dps_unfold.
+    simpl in *.
+    rewrite Cmult_0_r.
+    destruct i as [|i], j as [|j].
+    lca.
+    assert (j = 0) by lia; lca.
+    assert (i = 0) by lia; subst i; lca.
+    assert (i = 0) by lia.
+    assert (j = 0) by lia.
+    subst i j.
+    lca.
+Qed.
+
 Lemma Qproj_sum_eye: forall H, Mplus Qproj0 Qproj1 H = eye 1.
 Proof.
   intros.
@@ -472,6 +510,19 @@ Proof.
   intros.
   unfold Qproj1_n_t.
   apply Qop_sq_bits.
+Qed.
+
+Lemma Qproj0_n_t_mult: forall (n t: nat) (Ht: _) (H: _),
+  Mmult (Qproj0_n_t n t Ht) (Qproj0_n_t n t Ht) H = (Qproj0_n_t n t Ht).
+Proof.
+  intros.
+  unfold Qproj0_n_t, Qproj1_n_t, Qop_sq in *.
+  repeat erewrite <- TMproduct_mult.
+  repeat rewrite Mmult_eye_r.
+  rewrite Qproj0_mult.
+  reflexivity.
+  Unshelve.
+  all: simpl_bits; reflexivity.
 Qed.
 
 Lemma Qproj_n_sum_eye: forall (n t: nat) (Ht: _) (H01: _),
