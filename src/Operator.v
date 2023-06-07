@@ -11,7 +11,37 @@ Open Scope M_scope.
 Open Scope T_scope.
 
 
-(* definition of unitary matrix ================================================================= *)
+(* definition of Hermitian operation ============================================================ *)
+
+Definition Qop_Hermitian (m: Matrix) := Mconjtrans m = m.
+
+Lemma TMproduct_Hermitian: forall (m1 m2: Matrix),
+  Qop_Hermitian m1 -> Qop_Hermitian m2 -> Qop_Hermitian (TMproduct m1 m2).
+Proof.
+  intros.
+  unfold Qop_Hermitian.
+  rewrite TMproduct_Mconjtrans.
+  rewrite H.
+  rewrite H0.
+  reflexivity.
+Qed.
+
+Lemma Qop_Hermitian_eye: forall (n: nat), Qop_Hermitian (eye n).
+Proof.
+  unfold Qop_Hermitian, eye.
+  intros.
+  apply Mequal.
+  - reflexivity.
+  - simpl_bits.
+    simpl.
+    intros.
+    rewrite Nat.eqb_sym.
+    destruct (i =? j).
+    all: lca.
+Qed.
+
+(* ============================================================================================== *)
+(* definition of unitary operation ============================================================== *)
 
 Definition Qop_unitary_l (m: Matrix) := Mmult m (Mconjtrans m) (Mconjtrans_bits m) = eye (Mbits m).
 Definition Qop_unitary_r (m: Matrix) := Mmult (Mconjtrans m) m (Mconjtrans_bits m) = eye (Mbits m).
@@ -32,7 +62,7 @@ Proof.
     apply H1.
 Qed.
 
-Lemma Qop_eye_unitary: forall (bits: nat), Qop_unitary (eye bits).
+Lemma Qop_unitary_eye: forall (bits: nat), Qop_unitary (eye bits).
 Proof.
   intros.
   unfold Qop_unitary, Qop_unitary_l, Qop_unitary_r, Mmult.
@@ -393,7 +423,7 @@ Proof.
   unfold Mmult.
   repeat rewrite TMproduct_Mconjtrans.
   specialize TMproduct_mult as Htm.
-  specialize Qop_eye_unitary as Heye.
+  specialize Qop_unitary_eye as Heye.
   specialize Mmult_eye_l as Heyel.
   specialize Mmult_eye_r as Heyer.
   unfold Qop_unitary, Mmult in *.
@@ -494,6 +524,36 @@ Proof.
       lca.
 Qed.
 
+Lemma Qproj0_Hermitian: Qop_Hermitian Qproj0.
+Proof.
+  unfold Qop_Hermitian, Mconjtrans, Qproj0.
+  simpl.
+  apply Mequal.
+  - reflexivity.
+  - simpl_bits.
+    simpl.
+    intros.
+    destruct i as [|i], j as [|j].
+    all: lca.
+Qed.
+
+Lemma Qproj1_Hermitian: Qop_Hermitian Qproj1.
+Proof.
+  unfold Qop_Hermitian, Mconjtrans, Qproj1.
+  simpl.
+  apply Mequal.
+  - reflexivity.
+  - simpl_bits.
+    simpl.
+    intros.
+    destruct i as [|i], j as [|j].
+    lca.
+    assert (j = 0) by lia; subst j; lca.
+    assert (i = 0) by lia; subst i; lca.
+    assert (j = 0) by lia; subst j;
+    assert (i = 0) by lia; subst i; lca.
+Qed.
+
 Definition Qproj0_n_t (n t: nat) (Ht: t < n) := Qop_sq n t Qproj0 Ht Qproj0_bits.
 
 Definition Qproj1_n_t (n t: nat) (Ht: t < n) := Qop_sq n t Qproj1 Ht Qproj1_bits.
@@ -549,6 +609,28 @@ Proof.
   eapply Qproj_n_sum_eye.
   Unshelve.
   all: simpl_bits; reflexivity.
+Qed.
+
+Lemma Qproj0_n_t_Hermitian: forall (n t: nat) (Ht: _), Qop_Hermitian (Qproj0_n_t n t Ht).
+Proof.
+  intros.
+  specialize Qproj0_Hermitian as H0.
+  unfold Qop_Hermitian, Qproj0_n_t, Qop_sq in *.
+  repeat rewrite TMproduct_Mconjtrans.
+  repeat rewrite Qop_Hermitian_eye.
+  rewrite H0.
+  reflexivity.
+Qed.
+
+Lemma Qproj1_n_t_Hermitian: forall (n t: nat) (Ht: _), Qop_Hermitian (Qproj1_n_t n t Ht).
+Proof.
+  intros.
+  specialize Qproj1_Hermitian as H1.
+  unfold Qop_Hermitian, Qproj1_n_t, Qop_sq in *.
+  repeat rewrite TMproduct_Mconjtrans.
+  repeat rewrite Qop_Hermitian_eye.
+  rewrite H1.
+  reflexivity.
 Qed.
 
 (* ============================================================================================== *)
@@ -661,13 +743,13 @@ Proof.
       reflexivity.
       apply Qop_unitary_TMprod.
       apply Qop_swap2_unitary.
-      apply Qop_eye_unitary.
+      apply Qop_unitary_eye.
       apply Qop_unitary_TMprod.
-      apply Qop_eye_unitary.
+      apply Qop_unitary_eye.
       apply IHn.
       apply Qop_unitary_TMprod.
       apply Qop_swap2_unitary.
-      apply Qop_eye_unitary.
+      apply Qop_unitary_eye.
 Qed.
 
 Definition Qop_swap (n q1 q2: nat) (H1: q1 < n) (H2: q2 < n): Matrix.
@@ -701,15 +783,15 @@ Proof.
   destruct (lt_eq_lt_dec q1 q2) as [ [H|H]|H].
   - simpl.
     repeat apply Qop_unitary_TMprod.
-    apply Qop_eye_unitary.
+    apply Qop_unitary_eye.
     apply Qop_swap1n_unitary.
-    apply Qop_eye_unitary.
-  - apply Qop_eye_unitary.
+    apply Qop_unitary_eye.
+  - apply Qop_unitary_eye.
   - simpl.
     repeat apply Qop_unitary_TMprod.
-    apply Qop_eye_unitary.
+    apply Qop_unitary_eye.
     apply Qop_swap1n_unitary.
-    apply Qop_eye_unitary.
+    apply Qop_unitary_eye.
 Qed.
 
 Definition Qop_swap_op (n q1 q2: nat) (op: Matrix)
@@ -870,11 +952,11 @@ Lemma Qop_cnot_ct_n_unitary: forall (n: nat), Qop_unitary (Qop_cnot_ct_n n).
 Proof.
   unfold Qop_cnot_ct_n.
   destruct n as [|[|n''] ].
-  - apply Qop_eye_unitary.
-  - apply Qop_eye_unitary.
+  - apply Qop_unitary_eye.
+  - apply Qop_unitary_eye.
   - apply Qop_unitary_TMprod.
     apply Qop_cnot_ct_unitary.
-    apply Qop_eye_unitary.
+    apply Qop_unitary_eye.
 Qed.
 
 Definition Qop_cnot_tc_n (n: nat): Matrix.
@@ -897,11 +979,11 @@ Lemma Qop_cnot_tc_n_unitary: forall (n: nat), Qop_unitary (Qop_cnot_tc_n n).
 Proof.
   unfold Qop_cnot_tc_n.
   destruct n as [|[|n''] ].
-  - apply Qop_eye_unitary.
-  - apply Qop_eye_unitary.
+  - apply Qop_unitary_eye.
+  - apply Qop_unitary_eye.
   - apply Qop_unitary_TMprod.
     apply Qop_cnot_tc_unitary.
-    apply Qop_eye_unitary.
+    apply Qop_unitary_eye.
 Qed.
 
 Definition Qop_cnot (n qc qt: nat) (Hn: n >= 2) (Hc: qc < n) (Ht: qt < n): Matrix.

@@ -59,6 +59,34 @@ Definition Den_1: Matrix :=
     end;
   |}.
 
+Lemma Den_0_Hermitian: Qop_Hermitian Den_0.
+Proof.
+  apply Mequal.
+  - simpl_bits.
+    reflexivity.
+  - intros.
+    unfold Mconjtrans, Den_0.
+    simpl.
+    destruct i as [|i], j as [|j].
+    all: lca.
+Qed.
+
+Lemma Den_1_Hermitian: Qop_Hermitian Den_1.
+Proof.
+  apply Mequal.
+  - simpl_bits.
+    reflexivity.
+  - intros.
+    unfold Mconjtrans, Den_1, Msize in *.
+    simpl in *.
+    destruct i as [|i], j as [|j].
+    lca.
+    assert (j = 0) by lia; subst j; lca.
+    assert (i = 0) by lia; subst i; lca.
+    assert (j = 0) by lia; subst j;
+    assert (i = 0) by lia; subst i; lca.
+Qed.
+
 Lemma Den_0_normalized: Den_normalized Den_0.
 Proof. lca. Qed.
 
@@ -128,7 +156,46 @@ Inductive DensityMatrix: nat -> Matrix -> Prop :=
   DensityMatrix n (Den_measure den n t Ht Hd).
 
 (* ============================================================================================== *)
-(* normalization of density matrices ============================================================ *)
+(* density matrices are Hermitian =============================================================== *)
+
+Lemma DensityMatrix_Hermitian: forall (n: nat) (den: Matrix),
+  DensityMatrix n den -> Qop_Hermitian den.
+Proof.
+  intros.
+  induction H.
+  - apply Den_0_Hermitian.
+  - apply Den_1_Hermitian.
+  - apply TMproduct_Hermitian.
+    apply IHDensityMatrix1.
+    apply IHDensityMatrix2.
+  - unfold Qop_Hermitian.
+    specialize Mconjtrans_mult as Hconjtrans.
+    specialize Mmult_assoc as Hassoc.
+    unfold Mmult in *.
+    repeat rewrite Hconjtrans.
+    rewrite IHDensityMatrix.
+    rewrite Mconjtrans_twice.
+    rewrite Hassoc.
+    reflexivity.
+    all: simpl_bits; lia.
+  - specialize Mconjtrans_plus as Hconjplus.
+    specialize Mconjtrans_mult as Hconjmult.
+    specialize Mmult_assoc as Hassoc.
+    unfold Qop_Hermitian, Den_measure, Mmult, Mplus in *.
+    rewrite Hconjplus.
+    repeat rewrite Hconjmult.
+    repeat rewrite TMproduct_Mconjtrans.
+    repeat rewrite Qop_Hermitian_eye.
+    rewrite Qproj0_n_t_Hermitian.
+    rewrite Qproj1_n_t_Hermitian.
+    rewrite IHDensityMatrix.
+    repeat rewrite Hassoc.
+    reflexivity.
+    all: repeat simpl_bits; repeat rewrite Qproj0_n_t_bits; repeat rewrite Qproj1_n_t_bits; lia.
+Qed.
+
+(* ============================================================================================== *)
+(* density matrices are normalized ============================================================== *)
 
 Lemma DensityMatrix_normalized: forall (n: nat) (den: Matrix),
   DensityMatrix n den -> Den_normalized den.

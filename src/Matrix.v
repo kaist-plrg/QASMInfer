@@ -861,6 +861,20 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma Mconjtrans_plus: forall (m1 m2: Matrix) (H12: _) (H21: _),
+  Mconjtrans (Mplus m1 m2 H12) = Mplus (Mconjtrans m1) (Mconjtrans m2) H21.
+Proof.
+  intros.
+  apply Mequal.
+  - repeat rewrite Mconjtrans_bits.
+    repeat rewrite Mplus_bits_l.
+    symmetry.
+    apply Mconjtrans_bits.
+  - simpl.
+    intros.
+    apply Cconj_plus.
+Qed.
+
 Lemma Mconjtrans_mult: forall (m1 m2: Matrix) (H12: _) (H21: _),
   Mconjtrans (Mmult m1 m2 H12) = Mmult (Mconjtrans m2) (Mconjtrans m1) H21.
 Proof.
