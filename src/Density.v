@@ -66,7 +66,26 @@ Lemma Den_1_normalized: Den_normalized Den_1.
 Proof. lca. Qed.
 
 (* ============================================================================================== *)
+(* measurement ================================================================================== *)
 
+Definition Den_measure (n t: nat) (den: Matrix) (Ht: t < n) (Hd: Mbits den = n): Matrix.
+Proof.
+  refine (
+    Mplus (
+      Mmult (
+        Mmult (Qproj0_n_t n t Ht) den _
+      ) (Qproj0_n_t n t Ht) _
+    ) (
+      Mmult (
+        Mmult (Qproj1_n_t n t Ht) den _
+      ) (Qproj1_n_t n t Ht) _
+    ) _
+  ).
+  Unshelve.
+  all: simpl_bits; simpl; lia.
+Qed.
+
+(* ============================================================================================== *)
 (* density matrix =============================================================================== *)
 
 Inductive DensityMatrix: nat -> Matrix -> Prop :=

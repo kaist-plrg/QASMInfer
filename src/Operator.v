@@ -372,25 +372,6 @@ Qed.
 Local Close Scope R_scope.
 
 (* ============================================================================================== *)
-(* single qubit projection operators ============================================================ *)
-
-Definition Qproj0: Matrix := {|
-  Mbits := 1;
-  Minner := fun i j => match i, j with
-    | 0, 0 => 1
-    | _, _ => 0
-    end;
-  |}.
-
-Definition Qproj1: Matrix := {|
-  Mbits := 1;
-  Minner := fun i j => match i, j with
-    | 1, 1 => 1
-    | _, _ => 0
-    end;
-  |}.
-
-(* ============================================================================================== *)
 (* generalization of single qubit operators ===================================================== *)
 
 Definition Qop_sq (n t: nat) (op: Matrix)
@@ -426,6 +407,35 @@ Proof.
   split; reflexivity.
   all: simpl_bits; reflexivity.
 Qed.
+
+(* ============================================================================================== *)
+(* projection operators ========================================================================= *)
+
+Definition Qproj0: Matrix := {|
+  Mbits := 1;
+  Minner := fun i j => match i, j with
+    | 0, 0 => 1
+    | _, _ => 0
+    end;
+  |}.
+
+Definition Qproj1: Matrix := {|
+  Mbits := 1;
+  Minner := fun i j => match i, j with
+    | 1, 1 => 1
+    | _, _ => 0
+    end;
+  |}.
+
+Fact Qproj0_bits: Mbits Qproj0 = 1.
+Proof. reflexivity. Qed.
+
+Fact Qproj1_bits: Mbits Qproj1 = 1.
+Proof. reflexivity. Qed.
+
+Definition Qproj0_n_t (n t: nat) (Ht: t < n) := Qop_sq n t Qproj0 Ht Qproj0_bits.
+
+Definition Qproj1_n_t (n t: nat) (Ht: t < n) := Qop_sq n t Qproj1 Ht Qproj1_bits.
 
 (* ============================================================================================== *)
 (* swap operator ================================================================================ *)
