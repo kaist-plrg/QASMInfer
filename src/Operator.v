@@ -489,6 +489,17 @@ Proof.
   all: repeat simpl_bits; reflexivity.
 Qed.
 
+Lemma Qproj_eye_minus_0n: forall (n t: nat) (Ht: _) (Hminus: _),
+  Qproj1_n_t n t Ht = Mminus (eye n) (Qproj0_n_t n t Ht) Hminus.
+Proof.
+  intros.
+  eapply Mplus_Mminus_eq_l.
+  erewrite Mplus_comm.
+  eapply Qproj_n_sum_eye.
+  Unshelve.
+  all: simpl_bits; reflexivity.
+Qed.
+
 (* ============================================================================================== *)
 (* swap operator ================================================================================ *)
 

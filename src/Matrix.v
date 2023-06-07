@@ -424,6 +424,17 @@ Lemma Mplus_correct: forall
   (Mplus m1 m2 Hbits)[[i H3i|j H3j]] = Cplus (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
 Proof. apply Mbop_correct. Qed.
 
+Lemma Mplus_comm: forall (m1 m2: Matrix) (H1: _) (H2: _), Mplus m1 m2 H1 = Mplus m2 m1 H2.
+Proof.
+  intros.
+  apply Mequal.
+  - repeat rewrite Mplus_bits_l.
+    apply H1.
+  - unfold Mplus, Mbop_unsafe.
+    intros.
+    lca.
+Qed.
+
 (* ============================================================================================== *)
 (* matrix subtraction =========================================================================== *)
 
@@ -440,6 +451,57 @@ Lemma Mminus_correct: forall
   (Hbits: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
   (Mminus m1 m2 Hbits)[[i H3i|j H3j]] = Cminus (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
 Proof. apply Mbop_correct. Qed.
+
+Lemma Mplus_Mminus_eq_l: forall (m1 m2 m3: Matrix) (H12: _) (H32: _),
+  Mplus m1 m2 H12 = m3 <-> m1 = Mminus m3 m2 H32.
+Proof.
+  split.
+  - intros.
+    apply Mequal.
+    + rewrite Mminus_bits_r.
+      apply H12.
+    + intros.
+      unfold Mplus, Mminus, Mbop_unsafe in *.
+      subst m3.
+      simpl in *.
+      lca.
+  - intros.
+    apply Mequal.
+    + rewrite Mplus_bits_r.
+      symmetry.
+      apply H32.
+    + intros.
+      unfold Mplus, Mminus, Mbop_unsafe in *.
+      subst m1.
+      simpl in *.
+      lca.
+Qed.
+
+Lemma Mplus_Mminus_eq_r: forall (m1 m2 m3: Matrix) (H12: _) (H31: _),
+  Mplus m1 m2 H12 = m3 <-> m2 = Mminus m3 m1 H31.
+Proof.
+  split.
+  - intros.
+    apply Mequal.
+    + rewrite Mminus_bits_r.
+      symmetry.
+      apply H12.
+    + intros.
+      unfold Mplus, Mminus, Mbop_unsafe in *.
+      subst m3.
+      simpl in *.
+      lca.
+  - intros.
+    apply Mequal.
+    + rewrite Mplus_bits_l.
+      symmetry.
+      apply H31.
+    + intros.
+      unfold Mplus, Mminus, Mbop_unsafe in *.
+      subst m2.
+      simpl in *.
+      lca.
+Qed.
 
 (* ============================================================================================== *)
 (* matrix multiplication ======================================================================== *)
