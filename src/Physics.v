@@ -70,3 +70,59 @@ Theorem Measurement_Probability: forall rho projection Hbits,
 Proof.
   reflexivity.
 Qed.
+
+
+
+(*
+  # Projection Postulate
+  ( Mathematics of Quantum Computing (Wolfgang Scherer): 45 )
+  If the quantum system is initially described by the state \rho, and then the
+  measurement of the observable A yields the eigenvalue \lambda of A, then this
+  measurement has effected the following change of state
+
+  after measurement : \frac { P_\lambda \rho P_lambda } { tr ( \rho P_\lambda ) }.
+
+  ( From Classical to Quantum Shannon Theory (mark M. Wilde): 159 )
+  Using the born rule, the above can be interpreted as the state produced by
+  performing the measurement but not recording which outcome occurred.
+
+  after measurement : \sum_\lambda { P_\lambda rho P_lambda }.
+
+  * In the quantum computing case, a measurement is done in the computational
+  * basis: 0 or 1. Therefore, in a measurement of some target qubit, there are
+  * two possible projection operators:
+  * (Qproj0_n_t num_bits target_bit Ht) and (Qproj1_n_t num_bits target_bit Ht).
+
+ *)
+Theorem Projection_Postulate: forall rho num_bits target_bit Ht Hbits,
+  Den_measure rho num_bits target_bit Ht Hbits =
+  Mbop_unsafe Cplus (
+      Mmult_unsafe (
+        Mmult_unsafe (Qproj0_n_t num_bits target_bit Ht) rho
+      ) (Qproj0_n_t num_bits target_bit Ht)
+    ) (
+      Mmult_unsafe (
+        Mmult_unsafe (Qproj1_n_t num_bits target_bit Ht) rho
+      ) (Qproj1_n_t num_bits target_bit Ht)
+    ).
+Proof.
+  reflexivity.
+Qed.
+
+
+
+(*
+  # Time Evolution ( Mathematics of Quantum Computing (Wolfgang Scherer): 45 )
+  Any time evolution of a quantum system that is not caused by a measurement is
+  described as an evolution of states given by a unitary time evolution operator
+  acting on the density operator as
+
+  \rho ( t ) = U \rho U^*.
+ *)
+Theorem Time_Evolution: forall num_bits  rho uop Hbits1 Hbits2,
+  DensityMatrix num_bits rho ->
+  Qop_unitary uop ->
+  DensityMatrix num_bits (Mmult (Mmult uop rho Hbits1) (Mconjtrans uop) Hbits2).
+Proof.
+  apply DensityMatrix_unitary.
+Qed.
