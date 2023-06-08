@@ -41,6 +41,12 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
+(* definition of positive operation ============================================================= *)
+
+Definition Qop_positive (m: Matrix) :=
+  forall c Hmc Hd, Cge0 (dot_product (CVconjtrans c) (MVmult m c Hmc) Hd).
+
+(* ============================================================================================== *)
 (* definition of unitary operation ============================================================== *)
 
 Definition Qop_unitary_l (m: Matrix) := Mmult m (Mconjtrans m) (Mconjtrans_bits m) = eye (Mbits m).

@@ -87,6 +87,96 @@ Proof.
     assert (i = 0) by lia; subst i; lca.
 Qed.
 
+Lemma Den_0_positive: Qop_positive Den_0.
+Proof.
+  assert (CReqbits Qst_0 (CVconjtrans Qst_0)) as Hcr by reflexivity.
+  assert (Den_0 = VVmult Qst_0 (CVconjtrans Qst_0) Hcr) as Hden.
+  { apply Mequal.
+    - reflexivity.
+    - intros.
+      simpl_bits.
+      unfold VVmult, VVmult_unsafe, Den_0 in *.
+      simpl in *.
+      destruct i, j.
+      lca.
+      assert (j = 0) by lia; subst j; lca.
+      assert (i = 0) by lia; subst i; lca.
+      assert (j = 0) by lia; subst j;
+      assert (i = 0) by lia; subst i; lca. }
+  rewrite Hden.
+  unfold Qop_positive.
+  intros.
+  specialize dot_product_conjtrans as Hconj.
+  unfold MVmult, VVmult, dot_product.
+  simpl_bits.
+  assert (
+    dot_product_unsafe (CVconjtrans c) (MVmult_unsafe (VVmult_unsafe Qst_0 (CVconjtrans Qst_0)) c) =
+    dot_product_unsafe (CVconjtrans c) Qst_0 * dot_product_unsafe (CVconjtrans Qst_0) c
+  ) as Hassoc.
+  { unfold dot_product_unsafe, CVconjtrans, MVmult_unsafe, MVmult_inner, VVmult_unsafe.
+    dps_unfold.
+    simpl_bits.
+    repeat rewrite Hd.
+    simpl.
+    lca. }
+  unfold dot_product in *.
+  rewrite Hassoc.
+  replace c with (RVconjtrans (CVconjtrans c)).
+  rewrite <- Hconj.
+  rewrite CRVconjtrans_twice.
+  apply Cconj_mult_ge0.
+  rewrite CVconjtrans_bits; lia.
+  rewrite RVconjtrans_bits.
+  repeat rewrite CVconjtrans_bits.
+  lia.
+  apply CRVconjtrans_twice.
+Qed.
+
+Lemma Den_1_positive: Qop_positive Den_1.
+Proof.
+  assert (CReqbits Qst_1 (CVconjtrans Qst_1)) as Hcr by reflexivity.
+  assert (Den_1 = VVmult Qst_1 (CVconjtrans Qst_1) Hcr) as Hden.
+  { apply Mequal.
+    - reflexivity.
+    - intros.
+      simpl_bits.
+      unfold VVmult, VVmult_unsafe, Den_0 in *.
+      simpl in *.
+      destruct i, j.
+      lca.
+      assert (j = 0) by lia; subst j; lca.
+      assert (i = 0) by lia; subst i; lca.
+      assert (j = 0) by lia; subst j;
+      assert (i = 0) by lia; subst i; lca. }
+  rewrite Hden.
+  unfold Qop_positive.
+  intros.
+  specialize dot_product_conjtrans as Hconj.
+  unfold MVmult, VVmult, dot_product.
+  simpl_bits.
+  assert (
+    dot_product_unsafe (CVconjtrans c) (MVmult_unsafe (VVmult_unsafe Qst_1 (CVconjtrans Qst_1)) c) =
+    dot_product_unsafe (CVconjtrans c) Qst_1 * dot_product_unsafe (CVconjtrans Qst_1) c
+  ) as Hassoc.
+  { unfold dot_product_unsafe, CVconjtrans, MVmult_unsafe, MVmult_inner, VVmult_unsafe.
+    dps_unfold.
+    simpl_bits.
+    repeat rewrite Hd.
+    simpl.
+    lca. }
+  unfold dot_product in *.
+  rewrite Hassoc.
+  replace c with (RVconjtrans (CVconjtrans c)).
+  rewrite <- Hconj.
+  rewrite CRVconjtrans_twice.
+  apply Cconj_mult_ge0.
+  rewrite CVconjtrans_bits; lia.
+  rewrite RVconjtrans_bits.
+  repeat rewrite CVconjtrans_bits.
+  lia.
+  apply CRVconjtrans_twice.
+Qed.
+
 Lemma Den_0_normalized: Den_normalized Den_0.
 Proof. lca. Qed.
 

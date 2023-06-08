@@ -60,9 +60,9 @@ Qed.
 (* ============================================================================================== *)
 (* base single qubit state ====================================================================== *)
 
-Definition Qst_0: ColVec := {| CVbits := 1; CVinner := fun i => i |}.
+Definition Qst_0: ColVec := {| CVbits := 1; CVinner := fun i => 1 - i |}.
 
-Definition Qst_1: ColVec := {| CVbits := 1; CVinner := fun i => 1 - i |}.
+Definition Qst_1: ColVec := {| CVbits := 1; CVinner := fun i => i |}.
 
 Lemma Qst_0_normalized: Qst_normalized Qst_0.
 Proof. lca. Qed.

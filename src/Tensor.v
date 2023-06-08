@@ -75,6 +75,7 @@ Ltac simpl_bits :=
   unfold Msize, RVsize, CVsize in *;
   repeat rewrite MVmult_bits_l in *;
   repeat rewrite VMmult_bits_r in *;
+  repeat rewrite VVmult_bits_l in *;
   repeat rewrite CVconjtrans_bits in *;
   repeat rewrite RVconjtrans_bits in *;
   repeat rewrite Mmult_unsafe_bits_l in *;

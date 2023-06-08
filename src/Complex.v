@@ -79,6 +79,20 @@ Proof. intros. lca. Qed.
 Lemma Cconj_twice: forall (x: C), Cconj (Cconj x) = x.
 Proof. intros. lca. Qed.
 
+Definition Cge0 (x: C) := Creal x >= 0 /\ Cimag x = 0.
+
+Lemma Cconj_mult_ge0: forall (x: C), Cge0 (x * Cconj x).
+Proof.
+  intros.
+  split.
+  - unfold Creal, Cconj, Cmult.
+    simpl.
+    nra.
+  - unfold Creal, Cconj, Cmult.
+    simpl.
+    nra.
+Qed.
+
 Lemma RTC_inj: forall (x y: R),
   RTC x = RTC y -> x = y.
 Proof.

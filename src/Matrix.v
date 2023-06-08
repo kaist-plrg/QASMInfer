@@ -340,6 +340,29 @@ Proof.
     lia.
 Qed.
 
+Lemma dot_product_suppl_ge0: forall (l: nat) (f: nat -> C),
+  Cge0 (dot_product_suppl (fun i => Cconj (f i)) f l).
+Proof.
+  intros.
+  dps_unfold.
+  split.
+  - induction l.
+    + simpl.
+      lra.
+    + simpl in *.
+      apply Rle_ge.
+      apply Rplus_le_le_0_compat.
+      * nra.
+      * apply Rge_le.
+        apply IHl.
+  - induction l.
+    + simpl.
+      lra.
+    + simpl in *.
+      unfold Cimag in IHl.
+      lra.
+Qed.
+
 Definition dot_product_unsafe (r: RowVec) (c: ColVec): C :=
   dot_product_suppl (RVinner r) (CVinner c) (RVsize r).
 
@@ -792,11 +815,23 @@ Qed.
 (* ============================================================================================== *)
 (* vector-vector multiplication (outer product) ================================================= *)
 
-Definition VVmult (c: ColVec) (r: RowVec) (H: CReqbits c r): Matrix :=
+Definition VVmult_unsafe (c: ColVec) (r: RowVec): Matrix :=
   {|
     Mbits := CVbits c;
     Minner := fun i j => CVinner c i * RVinner r j;
   |}.
+
+Definition VVmult (c: ColVec) (r: RowVec) (H: CReqbits c r): Matrix := VVmult_unsafe c r.
+
+Lemma VVmult_bits_l: forall (c: ColVec) (r: RowVec) (H: _), MCeqbits (VVmult c r H) c.
+Proof. reflexivity. Qed.
+
+Lemma VVmult_bits_r: forall (c: ColVec) (r: RowVec) (H: _), MReqbits (VVmult c r H) r.
+Proof.
+  intros.
+  simpl.
+  apply H.
+Qed.
 
 (* ============================================================================================== *)
 (* transpose of a matrix ======================================================================== *)
@@ -962,6 +997,50 @@ Proof.
     simpl.
     rewrite dot_product_suppl_comm.
     apply dot_product_suppl_conj1.
+Qed.
+
+Lemma CRVconjtrans_twice: forall (c: ColVec), RVconjtrans (CVconjtrans c) = c.
+Proof.
+  intros.
+  apply CVequal.
+  - rewrite RVconjtrans_bits.
+    apply CVconjtrans_bits.
+  - intros.
+    unfold RVconjtrans, CVconjtrans.
+    simpl.
+    apply Cconj_twice.
+Qed.
+
+Lemma RCVconjtrans_twice: forall (r: RowVec), CVconjtrans (RVconjtrans r) = r.
+Proof.
+  intros.
+  apply RVequal.
+  - rewrite CVconjtrans_bits.
+    apply RVconjtrans_bits.
+  - intros.
+    unfold RVconjtrans, CVconjtrans.
+    simpl.
+    apply Cconj_twice.
+Qed.
+
+Lemma CVconjtrans_ge0: forall (c: ColVec) (H: _), Cge0 (dot_product (CVconjtrans c) c H).
+Proof.
+  intros.
+  unfold dot_product, dot_product_unsafe, CVconjtrans, RVsize.
+  simpl.
+  apply dot_product_suppl_ge0.
+Qed.
+
+Lemma dot_product_conjtrans: forall (r: RowVec) (c: ColVec) (H1: _) (H2: _),
+  Cconj (dot_product r c H1) = dot_product (CVconjtrans c) (RVconjtrans r) H2.
+Proof.
+  intros.
+  unfold dot_product, dot_product_unsafe, RVsize, RVconjtrans, CVconjtrans.
+  repeat rewrite CVconjtrans_bits.
+  simpl.
+  repeat rewrite H1.
+  rewrite dot_product_suppl_conj2.
+  reflexivity.
 Qed.
 
 (* ============================================================================================== *)
