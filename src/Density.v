@@ -277,6 +277,57 @@ Proof.
     all: repeat simpl_bits; reflexivity.
 Qed.
 
+Lemma InitialDensityMatrix_positive: forall (n: nat) (den: Matrix),
+  InitialDensityMatrix n den -> Qop_positive den.
+Proof.
+  intros.
+  apply InitialDensityMatrix_pure in H.
+  destruct H as [qst [Hqst H] ].
+  specialize dot_product_conjtrans as Hconj.
+  unfold Qop_positive, dot_product, MVmult.
+  intros.
+  rewrite H.
+  assert (
+    dot_product_unsafe (CVconjtrans c) (MVmult_unsafe (VVmult qst (CVconjtrans qst) Hqst) c) =
+    dot_product_unsafe (CVconjtrans c) qst * dot_product_unsafe (CVconjtrans qst) c
+  ) as Hassoc.
+  { unfold MVmult_unsafe, MVmult_inner, dot_product_unsafe, RVsize.
+    simpl_bits.
+    simpl.
+    replace (
+      (fun i : nat => dot_product_suppl (fun j : nat => CVinner qst i * Cconj (CVinner qst j)) (CVinner c) (2 ^ CVbits c))
+    ) with (
+      (fun i : nat => CVinner qst i * dot_product_suppl (fun j : nat => Cconj (CVinner qst j)) (CVinner c) (2 ^ CVbits c))
+    ).
+    rewrite dot_product_suppl_scale_r with
+      (f2 := (fun i : nat => CVinner qst i))
+      (c := dot_product_suppl (fun j : nat => Cconj (CVinner qst j)) (CVinner c) (2 ^ CVbits c)).
+    replace (CVbits qst) with (CVbits c).
+    ring_simplify.
+    reflexivity.
+    specialize VVmult_bits_l as Hvvb.
+    apply f_equal with (f:= Mbits) in H.
+    simpl_bits.
+    lia.
+    intros.
+    lca.
+    apply functional_extensionality.
+    intros.
+    symmetry.
+    apply dot_product_suppl_scale_l.
+    intros.
+    lca. }
+  rewrite Hassoc.
+  replace c with (RVconjtrans (CVconjtrans c)).
+  unfold dot_product in Hconj.
+  rewrite <- Hconj.
+  rewrite CRVconjtrans_twice.
+  apply Cconj_mult_ge0.
+  apply f_equal with (f:= Mbits) in H; repeat simpl_bits; lia.
+  apply f_equal with (f:= Mbits) in H; repeat simpl_bits; lia.
+  apply CRVconjtrans_twice.
+Qed.
+
 (* ============================================================================================== *)
 (* density matrix =============================================================================== *)
 
