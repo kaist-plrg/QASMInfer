@@ -46,6 +46,50 @@ Qed.
 Definition Qop_positive (m: Matrix) :=
   forall c Hmc Hd, Cge0 (dot_product (CVconjtrans c) (MVmult m c Hmc) Hd).
 
+Lemma Qop_positive_plus: forall (m1 m2: Matrix) (H: _),
+  Qop_positive m1 -> Qop_positive m2 -> Qop_positive (Mplus m1 m2 H).
+Proof.
+  repeat unfold
+    Qop_positive, CVconjtrans,
+    dot_product, dot_product_unsafe,
+    Mplus, Mbop_unsafe,
+    MVmult, MVmult_unsafe, MVmult_inner,
+    RVsize, CVsize in *.
+  simpl_bits.
+  simpl.
+  intros.
+  replace (
+    fun i : nat => dot_product_suppl (fun j : nat => Minner m1 i j + Minner m2 i j) (CVinner c) (2 ^ CVbits c)
+  ) with (
+    fun i : nat => dot_product_suppl (fun j : nat => Minner m1 i j) (CVinner c) (2 ^ CVbits c)
+                 + dot_product_suppl (fun j : nat => Minner m2 i j) (CVinner c) (2 ^ CVbits c)
+  ).
+  rewrite dot_product_suppl_plus_r with
+  (f12 := fun i : nat =>
+      dot_product_suppl (fun j : nat => Minner m1 i j) (CVinner c) (2 ^ CVbits c) +
+      dot_product_suppl (fun j : nat => Minner m2 i j) (CVinner c) (2 ^ CVbits c))
+  (f1  := fun i : nat =>
+      dot_product_suppl (fun j : nat => Minner m1 i j) (CVinner c) (2 ^ CVbits c))
+  (f2 := fun i : nat =>
+      dot_product_suppl (fun j : nat => Minner m2 i j) (CVinner c) (2 ^ CVbits c)).
+  apply Cge0_plus.
+  apply H0.
+  1-2: lia.
+  apply H1.
+  1-2: lia.
+  intros.
+  lca.
+  apply functional_extensionality.
+  intros i.
+  rewrite dot_product_suppl_plus_l with
+  (f12 := fun j : nat => Minner m1 i j + Minner m2 i j)
+  (f1 := fun j : nat => Minner m1 i j)
+  (f2 := fun j : nat => Minner m2 i j).
+  lca.
+  intros.
+  lca.
+Qed.
+
 (* ============================================================================================== *)
 (* definition of unitary operation ============================================================== *)
 

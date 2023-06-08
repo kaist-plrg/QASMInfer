@@ -217,6 +217,15 @@ Proof.
   all: simpl_bits; simpl; lia.
 Defined.
 
+Lemma Den_measure_bits: forall (den: Matrix) (n t: nat) (Ht: _) (Hd: _),
+  Mbits (Den_measure den n t Ht Hd) = n.
+Proof.
+  intros.
+  unfold Den_measure, Mmult, Mplus, Mbop_unsafe, Mmult_unsafe.
+  simpl.
+  lia.
+Qed.
+
 (* projection on 01001001.. is a projection on single  real: i.e. self-adjoint
 Definition Den_measure_op (den proj op: Matrix) (H: MMeqbits den op) (H2: MMeqbits proj den): Matrix.
 Proof.
@@ -384,14 +393,79 @@ Qed.
 (* ============================================================================================== *)
 (* density matrices are positive ================================================================ *)
 
-(* Lemma DensityMatrix_positive: forall (n: nat) (den: Matrix),
+Lemma DensityMatrix_positive: forall (n: nat) (den: Matrix),
   DensityMatrix n den -> Qop_positive den.
 Proof.
   intros.
   induction H.
-  - apply Den_0_positive.
-  - apply Den_1_positive.
-  - *)
+  - eapply InitialDensityMatrix_positive.
+    apply H.
+  - unfold Qop_positive in *.
+    intros.
+    specialize Mmult_assoc as Hma.
+    specialize MMVmult_assoc as Hva.
+    specialize VMVmult_assoc as Hvva.
+    specialize CVconjtrans_mult as Hccm.
+    unfold MVmult, VMmult, Mmult, dot_product.
+    repeat simpl_bits.
+    unfold MVmult, VMmult, Mmult, dot_product in *.
+    rewrite Hma.
+    repeat rewrite Hva.
+    rewrite Hvva.
+    replace uop with (Mconjtrans (Mconjtrans uop)).
+    rewrite <- Hccm.
+    rewrite Mconjtrans_twice.
+    apply IHDensityMatrix.
+    unfold MVmult_unsafe.
+    simpl.
+    lia.
+    simpl_bits.
+    unfold MVmult_unsafe.
+    reflexivity.
+    1-2: simpl_bits; lia.
+    apply Mconjtrans_twice.
+    all: unfold MVmult_unsafe; simpl; simpl_bits; lia.
+  - specialize Qop_positive_plus as Hplus.
+    specialize Mmult_assoc as Hma.
+    specialize MMVmult_assoc as Hva.
+    specialize VMVmult_assoc as Hvva.
+    specialize CVconjtrans_mult as Hccm.
+    unfold Qop_positive in *.
+    intros.
+    simpl_bits.
+    unfold Den_measure, Mmult, Mplus, VMmult, MVmult, dot_product in *.
+    simpl_bits.
+    apply Hplus.
+    unfold Mmult_unsafe; simpl; lia.
+    intros.
+    repeat rewrite Hva.
+    rewrite Hvva.
+    replace
+      (VMmult_unsafe (CVconjtrans c0) (Qproj0_n_t n t Ht)) with
+      (VMmult_unsafe (CVconjtrans c0) (Mconjtrans (Qproj0_n_t n t Ht))).
+    rewrite <- Hccm.
+    apply IHDensityMatrix.
+    1-4: unfold MVmult_unsafe, VMmult_unsafe in *; simpl_bits; simpl in *; lia.
+    replace (Mconjtrans (Qproj0_n_t n t Ht)) with (Qproj0_n_t n t Ht).
+    reflexivity.
+    symmetry.
+    apply Qproj0_n_t_Hermitian.
+    1-12: unfold MVmult_unsafe, VMmult_unsafe in *; simpl_bits; simpl in *; lia.
+    intros.
+    repeat rewrite Hva.
+    rewrite Hvva.
+    replace
+      (VMmult_unsafe (CVconjtrans c0) (Qproj1_n_t n t Ht)) with
+      (VMmult_unsafe (CVconjtrans c0) (Mconjtrans (Qproj1_n_t n t Ht))).
+    rewrite <- Hccm.
+    apply IHDensityMatrix.
+    1-4: unfold MVmult_unsafe, VMmult_unsafe in *; simpl_bits; simpl in *; lia.
+    replace (Mconjtrans (Qproj1_n_t n t Ht)) with (Qproj1_n_t n t Ht).
+    reflexivity.
+    symmetry.
+    apply Qproj1_n_t_Hermitian.
+    all: unfold MVmult_unsafe, VMmult_unsafe in *; simpl_bits; simpl in *; lia.
+Qed.
 
 (* ============================================================================================== *)
 (* density matrices are normalized ============================================================== *)

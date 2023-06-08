@@ -745,6 +745,9 @@ Proof.
     apply dot_product_suppl_assoc.
 Qed.
 
+(* Lemma MVmult_dist: forall (m1 m2: Matrix) (c: ColVec) H Hm12c Hm1c Hm2c,
+  MVmult (Mplus m1 m2 H) c Hm12c = Mplus (MVmult m1 c Hm1c) (MVmult m2 c Hm2c). *)
+
 (* ============================================================================================== *)
 (* vector-matrix multiplication ================================================================= *)
 
@@ -810,6 +813,60 @@ Proof.
   repeat rewrite Hrm.
   repeat rewrite <- Hmc.
   apply dot_product_suppl_assoc.
+Qed.
+
+Lemma VMVmult_assoc: forall
+  (m: Matrix) (r: RowVec) (c: ColVec) (Hmc: _) (Hr_mc: _) (Hrm: _) (Hrm_c: _),
+  dot_product r (MVmult m c Hmc) Hr_mc = dot_product (VMmult r m Hrm) c Hrm_c.
+Proof.
+  intros.
+  unfold MVmult, VMmult, dot_product, dot_product_unsafe, MVmult_unsafe, VMmult_unsafe,
+    VMmult_inner, MVmult_inner, RVsize, CVsize.
+  simpl.
+  unfold dot_product_suppl.
+  repeat rewrite <- Hmc.
+  repeat rewrite Hrm.
+  replace (
+    (fun i => RVinner r i * func_sum (fun i0 => Minner m i i0 * CVinner c i0) (2 ^ Mbits m))
+  ) with (
+    (fun i => func_sum (fun i0 => RVinner r i * Minner m i i0 * CVinner c i0) (2 ^ Mbits m))
+  ).
+  replace (
+    (fun i => func_sum (fun i0 => RVinner r i0 * Minner m i0 i) (2 ^ Mbits m) * CVinner c i)
+  ) with (
+    (fun i => func_sum (fun i0 => RVinner r i0 * Minner m i0 i * CVinner c i) (2 ^ Mbits m))
+  ).
+  rewrite func_sum_comm.
+  replace (
+    (fun i => func_sum (fun j => CVinner c i * (RVinner r j * Minner m j i)) (2 ^ Mbits m))
+  ) with (
+    (fun i => func_sum (fun i0 => RVinner r i0 * Minner m i0 i * CVinner c i) (2 ^ Mbits m))
+  ).
+  reflexivity.
+  apply functional_extensionality.
+  intros i.
+  replace (
+    fun i0 : nat => RVinner r i0 * Minner m i0 i * CVinner c i
+  ) with (
+    fun j : nat => CVinner c i * (RVinner r j * Minner m j i)
+  ).
+  reflexivity.
+  apply functional_extensionality.
+  intros.
+  lca.
+  apply functional_extensionality.
+  intros.
+  rewrite Cmult_comm.
+  unfold func_sum, func_sum2.
+  apply func_sum_suppl_scale.
+  intros.
+  lca.
+  apply functional_extensionality.
+  intros.
+  unfold func_sum, func_sum2.
+  apply func_sum_suppl_scale.
+  intros.
+  lca.
 Qed.
 
 (* ============================================================================================== *)
@@ -1055,7 +1112,7 @@ Proof.
   unfold Mmult, Mmult_unsafe, Mmult_inner, dot_product_suppl, Mtrace, Msize in *.
   repeat rewrite H1.
   simpl.
-  apply func_sum_comm.
+  apply func_sum_comm_mat.
 Qed.
 
 Lemma Mtrace_Mplus_dist: forall (m1 m2: Matrix) (H: _),

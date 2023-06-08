@@ -81,6 +81,15 @@ Proof. intros. lca. Qed.
 
 Definition Cge0 (x: C) := Creal x >= 0 /\ Cimag x = 0.
 
+Lemma Cge0_plus: forall x y, Cge0 x -> Cge0 y -> Cge0 (x + y).
+Proof.
+  intros x y [Hx1 Hx2] [Hy1 Hy2].
+  unfold Cge0, Creal, Cimag in *.
+  split.
+  - simpl. lra.
+  - simpl. lra.
+Qed.
+
 Lemma Cconj_mult_ge0: forall (x: C), Cge0 (x * Cconj x).
 Proof.
   intros.
@@ -562,9 +571,9 @@ Proof.
     all: lia.
 Qed.
 
-Lemma func_sum_comm: forall (l: nat) (f1 f2: nat -> nat -> C),
-  func_sum (fun i : nat => func_sum (fun j : nat => f1 i j * f2 j i) l) l =
-  func_sum (fun i : nat => func_sum (fun j : nat => f2 i j * f1 j i) l) l.
+Lemma func_sum_comm: forall (l: nat) (f: nat -> nat -> C),
+  func_sum (fun i : nat => func_sum (fun j : nat => f i j) l) l =
+  func_sum (fun i : nat => func_sum (fun j : nat => f j i) l) l.
 Proof.
   intros.
   induction l.
@@ -573,20 +582,38 @@ Proof.
     simpl in *.
     repeat rewrite Nat.sub_0_r in *.
     rewrite func_sum_suppl_add with
-    (f12 := (fun i => f1 i l * f2 l i + func_sum_suppl (fun j : nat => f1 i j * f2 j i) 0 l))
-    (f1 := fun i => f1 i l * f2 l i)
-    (f2 := fun i => func_sum_suppl (fun j : nat => f1 i j * f2 j i) 0 l).
+    (f12 := (fun i : nat => f i l + func_sum_suppl (fun j : nat => f i j) 0 l))
+    (f1 := fun i => f i l)
+    (f2 := (fun i : nat => func_sum_suppl (fun j : nat => f i j) 0 l)).
     rewrite func_sum_suppl_add with
-    (f12 := (fun i => f2 i l * f1 l i + func_sum_suppl (fun j : nat => f2 i j * f1 j i) 0 l))
-    (f1 := fun i => f2 i l * f1 l i)
-    (f2 := fun i => func_sum_suppl (fun j : nat => f2 i j * f1 j i) 0 l).
+    (f12 := (fun i : nat => f l i + func_sum_suppl (fun j : nat => f j i) 0 l))
+    (f1 := fun i => f l i)
+    (f2 := (fun i : nat => func_sum_suppl (fun j : nat => f j i) 0 l)).
     rewrite IHl.
-    ring_simplify.
-    replace (fun i : nat => f2 l i * f1 i l) with (fun i : nat => f1 i l * f2 l i).
-    replace (fun j : nat => f1 l j * f2 j l) with (fun i : nat => f2 i l * f1 l i).
     lca.
-    1-2:apply functional_extensionality; intros; lca.
-    1-2:intros; lca.
+    intros. lca.
+    intros. lca.
+Qed.
+
+Lemma func_sum_comm_mat: forall (l: nat) (f1 f2: nat -> nat -> C),
+  func_sum (fun i : nat => func_sum (fun j : nat => f1 i j * f2 j i) l) l =
+  func_sum (fun i : nat => func_sum (fun j : nat => f2 i j * f1 j i) l) l.
+Proof.
+  intros.
+  specialize func_sum_comm with (f := fun i j => f1 i j * f2 j i) as Hcomm.
+  replace (
+    fun i : nat => func_sum (fun j : nat => f2 i j * f1 j i) l
+  ) with (
+    fun i : nat => func_sum (fun j : nat => f1 j i * f2 i j) l
+  ).
+  apply Hcomm.
+  apply functional_extensionality.
+  intros.
+  replace (fun j : nat => f2 x j * f1 j x) with (fun j : nat => f1 j x * f2 x j).
+  reflexivity.
+  apply functional_extensionality.
+  intros.
+  lca.
 Qed.
 
 (* ============================================================================================== *)
