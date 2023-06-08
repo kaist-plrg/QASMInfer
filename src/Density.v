@@ -197,6 +197,9 @@ Proof. lca. Qed.
 Definition Den_prob (den: Matrix) (proj: Matrix) (H: MMeqbits den proj): R :=
   Creal (Mtrace (Mmult den proj H)).
 
+Definition Den_expect (den observable: Matrix) (H: MMeqbits den observable) :=
+  Mtrace (Mmult den observable H).
+
 (* ============================================================================================== *)
 (* measurement ================================================================================== *)
 
