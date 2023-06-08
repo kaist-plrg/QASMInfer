@@ -65,6 +65,38 @@ Definition TCVproduct (c1 c2: ColVec): ColVec :=
 Lemma TCVproduct_bits: forall (c1 c2: ColVec), CVbits (TCVproduct c1 c2) = (CVbits c1 + CVbits c2)%nat.
 Proof. reflexivity. Qed.
 
+Lemma TRVproduct_conjtrans: forall (r1 r2: RowVec),
+  RVconjtrans (TRVproduct r1 r2) = TCVproduct (RVconjtrans r1) (RVconjtrans r2).
+Proof.
+  intros.
+  apply CVequal.
+  - rewrite RVconjtrans_bits.
+    rewrite TRVproduct_bits.
+    rewrite TCVproduct_bits.
+    repeat rewrite RVconjtrans_bits.
+    reflexivity.
+  - intros.
+    unfold RVconjtrans, TCVproduct, TRVproduct, RVsize, CVsize.
+    simpl.
+    apply Cconj_mult.
+Qed.
+
+Lemma TCVproduct_conjtrans: forall (c1 c2: ColVec),
+  CVconjtrans (TCVproduct c1 c2) = TRVproduct (CVconjtrans c1) (CVconjtrans c2).
+Proof.
+  intros.
+  apply RVequal.
+  - rewrite CVconjtrans_bits.
+    rewrite TCVproduct_bits.
+    rewrite TRVproduct_bits.
+    repeat rewrite CVconjtrans_bits.
+    reflexivity.
+  - intros.
+    unfold CVconjtrans, TCVproduct, TRVproduct, RVsize, CVsize.
+    simpl.
+    apply Cconj_mult.
+Qed.
+
 (* ============================================================================================== *)
 (* tactic of simplifying bits =================================================================== *)
 
@@ -392,6 +424,28 @@ Proof.
   apply functional_extensionality.
   intros.
   lca.
+Qed.
+
+(* ============================================================================================== *)
+(* relation between outer product and tensor product ============================================ *)
+
+Lemma TMVproduct_mult: forall (r1 r2: RowVec) (c1 c2: ColVec) (H1212: _) (H1: _) (H2: _),
+  VVmult (TCVproduct c1 c2) (TRVproduct r1 r2) H1212 =
+  TMproduct (VVmult c1 r1 H1) (VVmult c2 r2 H2).
+Proof.
+  unfold VVmult, TCVproduct, TRVproduct, TMproduct.
+  simpl_bits.
+  simpl.
+  intros.
+  apply Mequal.
+  - reflexivity.
+  - unfold Msize.
+    simpl.
+    intros.
+    ring_simplify.
+    repeat rewrite H1.
+    repeat rewrite H2.
+    reflexivity.
 Qed.
 
 (* ============================================================================================== *)
