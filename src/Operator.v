@@ -44,7 +44,7 @@ Qed.
 (* definition of positive operation ============================================================= *)
 
 Definition Qop_positive (m: Matrix) :=
-  forall c Hmc Hd, Cge0 (dot_product (CVconjtrans c) (MVmult m c Hmc) Hd).
+  forall c Hmc Hd, Cge_0 (dot_product (CVconjtrans c) (MVmult m c Hmc) Hd).
 
 Lemma Qop_positive_plus: forall (m1 m2: Matrix) (H: _),
   Qop_positive m1 -> Qop_positive m2 -> Qop_positive (Mplus m1 m2 H).
@@ -72,7 +72,7 @@ Proof.
       dot_product_suppl (fun j : nat => Minner m1 i j) (CVinner c) (2 ^ CVbits c))
   (f2 := fun i : nat =>
       dot_product_suppl (fun j : nat => Minner m2 i j) (CVinner c) (2 ^ CVbits c)).
-  apply Cge0_plus.
+  apply Cge_0_plus.
   apply H0.
   1-2: lia.
   apply H1.

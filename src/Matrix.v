@@ -341,7 +341,7 @@ Proof.
 Qed.
 
 Lemma dot_product_suppl_ge0: forall (l: nat) (f: nat -> C),
-  Cge0 (dot_product_suppl (fun i => Cconj (f i)) f l).
+  Cge_0 (dot_product_suppl (fun i => Cconj (f i)) f l).
 Proof.
   intros.
   dps_unfold.
@@ -1080,7 +1080,7 @@ Proof.
     apply Cconj_twice.
 Qed.
 
-Lemma CVconjtrans_ge0: forall (c: ColVec) (H: _), Cge0 (dot_product (CVconjtrans c) c H).
+Lemma CVconjtrans_ge0: forall (c: ColVec) (H: _), Cge_0 (dot_product (CVconjtrans c) c H).
 Proof.
   intros.
   unfold dot_product, dot_product_unsafe, CVconjtrans, RVsize.

@@ -79,18 +79,18 @@ Proof. intros. lca. Qed.
 Lemma Cconj_twice: forall (x: C), Cconj (Cconj x) = x.
 Proof. intros. lca. Qed.
 
-Definition Cge0 (x: C) := Creal x >= 0 /\ Cimag x = 0.
+Definition Cge_0 (x: C) := Creal x >= 0 /\ Cimag x = 0.
 
-Lemma Cge0_plus: forall x y, Cge0 x -> Cge0 y -> Cge0 (x + y).
+Lemma Cge_0_plus: forall x y, Cge_0 x -> Cge_0 y -> Cge_0 (x + y).
 Proof.
   intros x y [Hx1 Hx2] [Hy1 Hy2].
-  unfold Cge0, Creal, Cimag in *.
+  unfold Cge_0, Creal, Cimag in *.
   split.
   - simpl. lra.
   - simpl. lra.
 Qed.
 
-Lemma Cconj_mult_ge0: forall (x: C), Cge0 (x * Cconj x).
+Lemma Cconj_mult_ge0: forall (x: C), Cge_0 (x * Cconj x).
 Proof.
   intros.
   split.
