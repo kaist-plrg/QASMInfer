@@ -1,9 +1,9 @@
--R src QuantumCoq
-src/Complex.v
-src/Density.v
-src/Matrix.v
-src/Operator.v
-src/Physics.v
-src/Qubit.v
-src/Tensor.v
-src/Util.v
+-R src/coq QuantumCoq
+src/coq/Complex.v
+src/coq/Density.v
+src/coq/Matrix.v
+src/coq/Operator.v
+src/coq/Physics.v
+src/coq/Qubit.v
+src/coq/Tensor.v
+src/coq/Util.v
