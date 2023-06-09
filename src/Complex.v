@@ -162,7 +162,7 @@ Add Ring CRing: C_Ring.
 Lemma Cplus_cancel_l: forall x y z: C, y = z -> x + y = x + z.
 Proof. intros. rewrite H. reflexivity. Qed.
 
-(* function sum ================================================================================= *)
+(* nat -> C functin sum ========================================================================= *)
 
 Fixpoint func_sum_suppl (f: nat -> C) (m n: nat): C :=
   match n with

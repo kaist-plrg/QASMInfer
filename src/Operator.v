@@ -65,13 +65,13 @@ Proof.
                  + dot_product_suppl (fun j : nat => Minner m2 i j) (CVinner c) (2 ^ CVbits c)
   ).
   rewrite dot_product_suppl_plus_r with
-  (f12 := fun i : nat =>
-      dot_product_suppl (fun j : nat => Minner m1 i j) (CVinner c) (2 ^ CVbits c) +
-      dot_product_suppl (fun j : nat => Minner m2 i j) (CVinner c) (2 ^ CVbits c))
-  (f1  := fun i : nat =>
-      dot_product_suppl (fun j : nat => Minner m1 i j) (CVinner c) (2 ^ CVbits c))
-  (f2 := fun i : nat =>
-      dot_product_suppl (fun j : nat => Minner m2 i j) (CVinner c) (2 ^ CVbits c)).
+    (f12 := fun i : nat =>
+        dot_product_suppl (fun j : nat => Minner m1 i j) (CVinner c) (2 ^ CVbits c) +
+        dot_product_suppl (fun j : nat => Minner m2 i j) (CVinner c) (2 ^ CVbits c))
+    (f1  := fun i : nat =>
+        dot_product_suppl (fun j : nat => Minner m1 i j) (CVinner c) (2 ^ CVbits c))
+    (f2 := fun i : nat =>
+        dot_product_suppl (fun j : nat => Minner m2 i j) (CVinner c) (2 ^ CVbits c)).
   apply Cge_0_plus.
   apply H0.
   1-2: lia.
@@ -82,9 +82,9 @@ Proof.
   apply functional_extensionality.
   intros i.
   rewrite dot_product_suppl_plus_l with
-  (f12 := fun j : nat => Minner m1 i j + Minner m2 i j)
-  (f1 := fun j : nat => Minner m1 i j)
-  (f2 := fun j : nat => Minner m2 i j).
+    (f12 := fun j : nat => Minner m1 i j + Minner m2 i j)
+    (f1 := fun j : nat => Minner m1 i j)
+    (f2 := fun j : nat => Minner m2 i j).
   lca.
   intros.
   lca.

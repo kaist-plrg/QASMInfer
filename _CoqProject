@@ -1,12 +1,9 @@
 -R src QuantumCoq
 src/Complex.v
 src/Density.v
-src/Main.v
 src/Matrix.v
 src/Operator.v
 src/Physics.v
 src/Qubit.v
 src/Tensor.v
 src/Util.v
-test/Swaptest.v
-test/Cnottest.v
