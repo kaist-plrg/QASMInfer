@@ -1,7 +1,7 @@
 # Verified QASM Interpreter
 
 First theoretical quantum computing simulator
-* that can simulate all OpenQASM 2.0 circuits (measurements don't have to be at end of the circuit).
+* that can simulate all OpenQASM 2.0 circuits (measurements don't have to be at the end of the circuit).
 * whose quantum mechanical consistency is verified via Coq.
 
 
