@@ -1,5 +1,4 @@
 Require Import Density.
-Require Import Extraction.
 
 Declare Scope Physics_scope.
 Open Scope nat_scope.

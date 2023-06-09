@@ -192,6 +192,12 @@ Lemma Den_1_normalized: Den_normalized Den_1.
 Proof. lca. Qed.
 
 (* ============================================================================================== *)
+(* apply uop to density matrix ================================================================== *)
+
+Definition Den_unitary (den uop: Matrix) (H1: _) (H2: _) :=
+  (Mmult (Mmult uop den H1) (Mconjtrans uop) H2).
+
+(* ============================================================================================== *)
 (* probability ================================================================================== *)
 
 Definition Den_prob (den: Matrix) (proj: Matrix) (H: MMeqbits den proj): R :=
@@ -230,13 +236,15 @@ Proof.
 Qed.
 
 (* projection on 01001001.. is a projection on single  real: i.e. self-adjoint *)
-Definition Den_measure_op (den proj op: Matrix) (H: MMeqbits den op) (H2: MMeqbits proj den): Matrix.
+Definition Den_proj_uop (den proj uop: Matrix) (H: MMeqbits den uop) (H2: MMeqbits proj den): Matrix.
 Proof.
   refine (
     Mplus (
-      Mmult ( Mmult
-      proj den _) proj
-      _
+      Den_unitary (
+        Mmult ( Mmult
+        proj den _) proj
+        _
+      ) uop _ _
     ) (
       Mmult ( Mmult
       (Mminus (eye (Mbits proj)) proj _) den _) (Mminus (eye (Mbits proj)) proj _)
@@ -366,7 +374,7 @@ Inductive DensityMatrix: nat -> Matrix -> Prop :=
 | DensityMatrix_unitary (n: nat) (den uop: Matrix) (H1: _) (H2: _):
   DensityMatrix n den ->
   Qop_unitary uop ->
-  DensityMatrix n (Mmult (Mmult uop den H1) (Mconjtrans uop) H2)
+  DensityMatrix n (Den_unitary den uop H1 H2)
 | DensityMatrix_measure (den: Matrix) (n t: nat) (Ht: _) (Hd: _):
   DensityMatrix n den ->
   DensityMatrix n (Den_measure den n t Ht Hd).
@@ -395,7 +403,7 @@ Proof.
     + apply TMproduct_Hermitian.
       apply IHInitialDensityMatrix1.
       apply IHInitialDensityMatrix2.
-  - unfold Qop_Hermitian.
+  - unfold Qop_Hermitian, Den_unitary.
     specialize Mconjtrans_mult as Hconjtrans.
     specialize Mmult_assoc as Hassoc.
     unfold Mmult in *.
@@ -431,7 +439,7 @@ Proof.
   induction H.
   - eapply InitialDensityMatrix_positive.
     apply H.
-  - unfold Qop_positive in *.
+  - unfold Qop_positive, Den_unitary in *.
     intros.
     specialize Mmult_assoc as Hma.
     specialize MMVmult_assoc as Hva.
@@ -514,7 +522,7 @@ Proof.
     + apply TMproduct_normalized.
       apply IHInitialDensityMatrix1.
       apply IHInitialDensityMatrix2.
-  - unfold Den_normalized.
+  - unfold Den_normalized, Den_unitary.
     erewrite Mtrace_Mmult_comm.
     erewrite <- Mmult_assoc.
     destruct H0 as [Hu1 Hu2].
