@@ -229,7 +229,7 @@ Proof.
   lia.
 Qed.
 
-(* projection on 01001001.. is a projection on single  real: i.e. self-adjoint
+(* projection on 01001001.. is a projection on single  real: i.e. self-adjoint *)
 Definition Den_measure_op (den proj op: Matrix) (H: MMeqbits den op) (H2: MMeqbits proj den): Matrix.
 Proof.
   refine (
@@ -245,12 +245,13 @@ Proof.
   ).
   Unshelve.
   all: simpl_bits; simpl; lia.
-Qed. *)
+Qed.
 
 (* ============================================================================================== *)
 (* density matrix at the initial state ========================================================== *)
 
 Inductive InitialDensityMatrix: nat -> Matrix -> Prop :=
+| DensityMatrix_empty: InitialDensityMatrix 0 (eye 0)
 | DensityMatrix_0: InitialDensityMatrix 1 Den_0
 | DensityMatrix_1: InitialDensityMatrix 1 Den_1
 | DensityMatrix_TMproduct (n1 n2: nat) (den1 den2: Matrix):
@@ -265,6 +266,23 @@ Lemma InitialDensityMatrix_pure: forall (n: nat) (den: Matrix),
 Proof.
   intros.
   induction H.
+  - exists {| CVbits := 0; CVinner := fun _ => 1 |}.
+    assert (CReqbits
+      {| CVbits := 0; CVinner := fun _ : nat => 1 |}
+      (CVconjtrans {| CVbits := 0; CVinner := fun _ : nat => 0 |})) as H0.
+    { simpl_bits; reflexivity. }
+    exists H0.
+    unfold eye, VVmult, VVmult_unsafe, CVconjtrans.
+    simpl.
+    apply Mequal.
+    + reflexivity.
+    + intros.
+      simpl_bits.
+      simpl in *.
+      assert (i = 0) by lia; subst i.
+      assert (j = 0) by lia; subst j.
+      simpl.
+      lca.
   - exists Qst_0.
     assert (CReqbits Qst_0 (CVconjtrans Qst_0)) as He by reflexivity.
     exists He.
@@ -362,6 +380,16 @@ Proof.
   intros.
   induction H.
   - induction H.
+    + unfold Qop_Hermitian, eye, Mconjtrans.
+      apply Mequal.
+      * reflexivity.
+      * intros.
+        simpl_bits.
+        simpl in *.
+        assert (i = 0) by lia; subst i.
+        assert (j = 0) by lia; subst j.
+        simpl.
+        lca.
     + apply Den_0_Hermitian.
     + apply Den_1_Hermitian.
     + apply TMproduct_Hermitian.
@@ -479,6 +507,8 @@ Proof.
   intros.
   induction H.
   - induction H.
+    + unfold Den_normalized, eye, Mtrace, func_sum, func_sum2, func_sum_suppl.
+      lca.
     + apply Den_0_normalized.
     + apply Den_1_normalized.
     + apply TMproduct_normalized.
@@ -526,6 +556,38 @@ Proof.
     rewrite IHDensityMatrix.
     lca.
     all: repeat simpl_bits; repeat rewrite Qproj0_n_t_bits; lia.
+Qed.
+
+(* ============================================================================================== *)
+(* QASM 2.0 density matrix initialzation (zeros) ================================================ *)
+
+Fixpoint Den_0_init (n: nat): Matrix :=
+  match n with
+  | O => eye O
+  | S n' => TMproduct Den_0 (Den_0_init n')
+  end.
+
+Lemma Den_0_init_bits: forall n, Mbits (Den_0_init n) = n.
+Proof.
+  induction n.
+  - reflexivity.
+  - simpl.
+    rewrite IHn.
+    reflexivity.
+Qed.
+
+Lemma Den_0_init_DensityMatrix: forall n, DensityMatrix n (Den_0_init n).
+Proof.
+  intros.
+  apply DensityMatrix_init.
+  induction n.
+  - simpl.
+    apply DensityMatrix_empty.
+  - simpl.
+    replace (S n) with (1 + n)%nat by lia.
+    apply DensityMatrix_TMproduct.
+    apply DensityMatrix_0.
+    apply IHn.
 Qed.
 
 (* ============================================================================================== *)
