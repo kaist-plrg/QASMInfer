@@ -14,7 +14,7 @@ make
 ## Source Files
 ```
  src
- ├── Util.v         # for utility
+ ├── Util.v         # for utilities
  ├── Complex.v      # for complex numbers
  ├── Matrix.v       # for complex matrices
  ├── Tensor.v       # for tensor product operations
