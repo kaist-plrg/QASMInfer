@@ -250,11 +250,11 @@ Proof.
       replace ((x * l2 + j mod l2) / l2)%nat with x.
       replace ((x * l2 + j mod l2) mod l2) with (j mod l2).
       reflexivity.
-      rewrite Nat.add_mod.
-      rewrite Nat.mul_mod.
-      rewrite Nat.mod_same.
+      rewrite Nat.Div0.add_mod.
+      rewrite Nat.Div0.mul_mod.
+      rewrite Nat.Div0.mod_same.
       rewrite Nat.mul_0_r.
-      rewrite Nat.mod_0_l.
+      rewrite Nat.Div0.mod_0_l.
       simpl.
       assert (l2 > 0) as Hl2.
       { unfold l2.
@@ -265,14 +265,10 @@ Proof.
         specialize (Nat.mod_bound_pos j l2 Hj Hl2) as Hmod. lia. }
       repeat rewrite Hmod.
       reflexivity.
-      1-4: unfold l2; specialize (pow_2_nonzero (Mbits m2)) as Hmm2; lia.
       rewrite Nat.div_add_l.
       rewrite Nat.div_small.
-      lia.
-      apply Nat.mod_bound_pos.
-      lia.
-      unfold l2. apply pow_2_nonzero.
-      1-2: unfold l2; specialize (pow_2_nonzero (Mbits m2)) as Hmm2; lia.
+      2: apply Nat.mod_bound_pos.
+      1-5: unfold l2; specialize (pow_2_nonzero (Mbits m2)) as Hmm2; lia.
       apply functional_extensionality.
       intros.
       destruct (x mod l2 =? j mod l2).
@@ -334,14 +330,14 @@ Proof.
     lia.
     rewrite Nat.div_small.
     1-3: lia.
-    rewrite Nat.add_mod.
-    rewrite Nat.mul_mod.
-    rewrite Nat.mod_same.
+    rewrite Nat.Div0.add_mod.
+    rewrite Nat.Div0.mul_mod.
+    rewrite Nat.Div0.mod_same.
     rewrite Nat.mul_0_r.
-    rewrite Nat.mod_0_l.
+    rewrite Nat.Div0.mod_0_l.
     simpl.
     repeat rewrite Nat.mod_small.
-    1-8: lia.
+    1-4: nia.
     specialize (pow_2_nonzero (Mbits m2)) as Hpow.
     lia.
     rewrite Nat.pow_add_r in H0.

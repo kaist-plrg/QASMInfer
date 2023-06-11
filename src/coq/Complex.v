@@ -1,4 +1,5 @@
 Require Export Util.
+Require Export NDiv0.
 Require Export FunctionalExtensionality.
 
 Declare Scope C_scope.
@@ -57,7 +58,7 @@ Definition Carg (x : C) : R := atan2 (fst x) (snd x).
 Definition Cexp (x : C): C :=
   let r := fst x in
   let theta := snd x in
-  (exp r) * ((cos theta) + (0, sin theta)).
+  (exp r) * ((cos theta) + (R0, sin theta)).
 
 Definition Cln (x: C): C := (ln (Cabs x), Carg x).
 
@@ -316,11 +317,11 @@ Proof.
       lia. }
     rewrite H3.
     lca.
-    rewrite Nat.add_mod.
-    rewrite Nat.mul_mod.
-    rewrite Nat.mod_same.
+    rewrite Nat.Div0.add_mod.
+    rewrite Nat.Div0.mul_mod.
+    rewrite Nat.Div0.mod_same.
     rewrite Nat.mul_0_r.
-    rewrite Nat.mod_0_l.
+    rewrite Nat.Div0.mod_0_l.
     simpl.
     rewrite Nat.mod_small.
     symmetry.
@@ -341,11 +342,11 @@ Proof.
   assert ((n * m + k mod m + 0) mod m =? k mod m = true).
   { apply <- Nat.eqb_eq.
     rewrite Nat.add_0_r.
-    rewrite Nat.add_mod.
-    rewrite Nat.mul_mod.
-    rewrite Nat.mod_same.
+    rewrite Nat.Div0.add_mod.
+    rewrite Nat.Div0.mul_mod.
+    rewrite Nat.Div0.mod_same.
     rewrite Nat.mul_0_r.
-    rewrite Nat.mod_0_l.
+    rewrite Nat.Div0.mod_0_l.
     simpl.
     repeat rewrite H0.
     all: lia. }
@@ -374,11 +375,11 @@ Proof.
       apply H1. }
     { apply <- Nat.eqb_neq.
       replace (n * m + k mod m + 1 + i)%nat with (n * m + (k mod m + 1 + i))%nat by lia.
-      rewrite Nat.add_mod.
-      rewrite Nat.mul_mod.
-      rewrite Nat.mod_same.
+      rewrite Nat.Div0.add_mod.
+      rewrite Nat.Div0.mul_mod.
+      rewrite Nat.Div0.mod_same.
       rewrite Nat.mul_0_r.
-      rewrite Nat.mod_0_l.
+      rewrite Nat.Div0.mod_0_l.
       simpl.
       repeat rewrite H2.
       all: lia. }
@@ -446,7 +447,7 @@ Proof.
   - simpl.
     rewrite IHi by lia.
     assert (i < m * (k / m))%nat as Hdiv by lia.
-    apply Nat.div_lt_upper_bound in Hdiv.
+    apply Nat.Div0.div_lt_upper_bound in Hdiv.
     replace (i / m =? k / m) with false.
     lca.
     symmetry.
@@ -521,7 +522,7 @@ Proof.
   split.
   lia.
   all: replace (n * m)%nat with (m * n)%nat in H0 by lia;
-  apply Nat.div_lt_upper_bound in H0;
+  apply Nat.Div0.div_lt_upper_bound in H0;
   nia.
 Qed.
 
@@ -537,13 +538,13 @@ Proof.
   - simpl.
     rewrite IHi.
     rewrite Nat.div_add_l.
-    rewrite Nat.add_mod.
-    rewrite Nat.mul_mod.
-    rewrite Nat.mod_same.
+    rewrite Nat.Div0.add_mod.
+    rewrite Nat.Div0.mul_mod.
+    rewrite Nat.Div0.mod_same.
     rewrite Nat.div_small.
     rewrite Nat.mul_0_r.
     rewrite Nat.add_0_r.
-    rewrite Nat.mod_0_l.
+    rewrite Nat.Div0.mod_0_l.
     simpl.
     repeat rewrite Nat.mod_small.
     lca.

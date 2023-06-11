@@ -272,8 +272,8 @@ Local Open Scope R_scope.
 Definition Qop_ry (theta: R): Matrix := {|
   Mbits := 1;
   Minner := fun i j =>
-    if i =? 0 then if j =? 0 then cos (theta / 2) else - sin (theta / 2)
-    else if j =? 0 then           sin (theta / 2) else   cos (theta / 2);
+    if i =? 0 then if j =? 0 then cos (theta / 2%R) else - sin (theta / 2%R)
+    else if j =? 0 then           sin (theta / 2%R) else   cos (theta / 2%R);
   |}.
 
 Lemma Qop_ry_unitary: forall (theta: R), Qop_unitary (Qop_ry theta).
@@ -352,8 +352,8 @@ Qed.
 Definition Qop_rz (theta: R): Matrix := {|
   Mbits := 1;
   Minner := fun i j =>
-    if i =? 0 then if j =? 0 then Cexp (0, - theta / 2) else          0
-    else if j =? 0 then                     0           else Cexp (0, theta / 2);
+    if i =? 0 then if j =? 0 then Cexp (0%R, - theta / 2) else          0%R
+    else if j =? 0 then                     0%R           else Cexp (0%R, theta / 2);
   |}.
 
 Lemma Qop_rz_unitary: forall (theta: R), Qop_unitary (Qop_rz theta).
@@ -374,8 +374,9 @@ Proof.
       destruct i as [|i], j as [|j].
         + unfold Cmult, Cplus.
           repeat simpl_tri.
-          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          specialize (sin2_cos2 (theta / 2%R)) as Hsc.
           unfold Rsqr in Hsc.
+          simpl.
           lca.
         + unfold Cmult, Cplus.
           simpl_tri.
@@ -388,7 +389,7 @@ Proof.
           subst i j.
           unfold Cmult, Cplus.
           repeat simpl_tri.
-          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          specialize (sin2_cos2 (theta / 2%R)) as Hsc.
           unfold Rsqr in Hsc.
           lca. }
   { apply Mequal.
@@ -402,7 +403,7 @@ Proof.
       destruct i as [|i], j as [|j].
         + unfold Cmult, Cplus.
           repeat simpl_tri.
-          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          specialize (sin2_cos2 (theta / 2%R)) as Hsc.
           unfold Rsqr in Hsc.
           lca.
         + unfold Cmult, Cplus.
@@ -416,7 +417,7 @@ Proof.
           subst i j.
           unfold Cmult, Cplus.
           repeat simpl_tri.
-          specialize (sin2_cos2 (theta / 2)) as Hsc.
+          specialize (sin2_cos2 (theta / 2%R)) as Hsc.
           unfold Rsqr in Hsc.
           lca. }
 Qed.

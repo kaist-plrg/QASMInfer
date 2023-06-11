@@ -1,5 +1,6 @@
 Require Export Bool.
 Require Export Arith.
+Require Export NDiv0.
 Require Export Reals.
 Require Export Reals.Rtrigo_facts.
 Require Export Psatz.
