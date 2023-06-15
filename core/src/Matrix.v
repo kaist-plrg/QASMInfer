@@ -16,7 +16,9 @@ Record Matrix: Type := {
   Minner: nat -> nat -> C;
 }.
 
-Definition Msize (m: Matrix): nat := Nat.pow 2 (Mbits m).
+Definition pow_2 n := Nat.pow 2 n.
+
+Definition Msize (m: Matrix): nat := pow_2 (Mbits m).
 
 Definition MMeqbits (m1 m2: Matrix): Prop := Mbits m1 = Mbits m2.
 
@@ -33,8 +35,8 @@ Record ColVec: Type := {
   CVinner: nat -> C;
 }.
 
-Definition RVsize (r: RowVec): nat := Nat.pow 2 (RVbits r).
-Definition CVsize (c: ColVec): nat := Nat.pow 2 (CVbits c).
+Definition RVsize (r: RowVec): nat := pow_2 (RVbits r).
+Definition CVsize (c: ColVec): nat := pow_2 (CVbits c).
 
 Definition MReqbits (m: Matrix) (r: RowVec): Prop := Mbits m = RVbits r.
 Definition RMeqbits (r: RowVec) (m: Matrix) : Prop := RVbits r = Mbits m.
@@ -821,7 +823,7 @@ Lemma VMVmult_assoc: forall
 Proof.
   intros.
   unfold MVmult, VMmult, dot_product, dot_product_unsafe, MVmult_unsafe, VMmult_unsafe,
-    VMmult_inner, MVmult_inner, RVsize, CVsize.
+    VMmult_inner, MVmult_inner, RVsize, CVsize, pow_2.
   simpl.
   unfold dot_product_suppl.
   repeat rewrite <- Hmc.

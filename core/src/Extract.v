@@ -3,36 +3,27 @@ Require Import Extraction.
 Require ExtrOcamlNatInt.
 Require ExtrOcamlZInt.
 
+Extraction Blacklist add.
+
 (* Set Extraction Flag 2031. *)
 
-Extract Inlined Constant C => "float * float".
-
+Extract Inlined Constant Init.Nat.add => "(+)".
 Extract Inlined Constant Nat.add => "(+)".
 Extract Inlined Constant Nat.sub => "(fun n m -> Stdlib.max 0 (n-m))".
 Extract Inlined Constant Nat.mul => "( * )".
 Extract Inlined Constant Nat.div => "(/)".
 Extract Inlined Constant Nat.modulo => "(mod)".
+Extract Inlined Constant pow_2 => "(fun n -> Int.shift_left 1 n)".
 
 Extract Constant Pos.succ => "Stdlib.succ".
 
-Extract Constant Reals.ClassicalDedekindReals.DReal => "float".
+Extract Inlined Constant Reals.ClassicalDedekindReals.DReal => "float".
 Extract Inductive Reals.Cauchy.ConstructiveCauchyReals.CReal => "float"
   [ "(fun seq scale => seq scale)" ]
   "(fun f creal -> f (creal.seq) (creal.scale))".
 
-Extract Inlined Constant RbaseSymbolsImpl.Rabst => "fun x -> x".
-Extract Inlined Constant RbaseSymbolsImpl.Rrepr => "fun x -> x".
+Extract Inlined Constant IZR => "float_of_int".
 
-Extract Constant IZR => "float_of_int".
-
-Extract Constant RbaseSymbolsSig.R => "".
-
-(* Extract Constant RbaseSymbolsImpl.Rabst => "failwith ""Should not use Rabst""".
-Extraction Inline RbaseSymbolsImpl.Rabst.
-Extract Constant RbaseSymbolsImpl.Rrepr => "failwith ""Should not use Rrepr""".
-Extraction Inline RbaseSymbolsImpl.Rrepr. *)
-
-(* Extract Constant RbaseSymbolsSig => "float". *)
 Extract Inlined Constant RbaseSymbolsImpl.R => "float".
 Extract Inlined Constant RbaseSymbolsImpl.R0 => "0.0".
 Extract Inlined Constant RbaseSymbolsImpl.R1 => "1.0".
@@ -42,13 +33,23 @@ Extract Inlined Constant RbaseSymbolsImpl.Ropp => "Stdlib.(~-.)".
 Extract Inlined Constant Rminus => "Stdlib.(-.)".
 Extract Inlined Constant RinvImpl.Rinv => "fun x -> 1.0 /. x".
 Extract Inlined Constant Rdiv => "Stdlib.(/.)".
+Extract Inlined Constant RbaseSymbolsImpl.Rabst => "fun x -> x".
+Extract Inlined Constant RbaseSymbolsImpl.Rrepr => "fun x -> x".
 
-Extract Constant RTC => "fun x -> (x, 0.0)".
-Extract Constant NTC => "fun n -> (float_of_int n, 0.0)".
+Extract Constant RTC => "fun x -> {re=x; im=0.0}".
+Extract Constant RTIm => "fun y -> {re=0.0; im=y}".
+Extract Constant NTC => "fun n -> {re=float_of_int n; im=0.0}".
 
 Extract Inlined Constant sin => "Stdlib.sin".
 Extract Inlined Constant cos => "Stdlib.cos".
 Extract Inlined Constant atan2 => "Stdlib.atan2".
 Extract Inlined Constant exp => "Stdlib.exp".
 
-Extraction "../qasm/lib/quantum_core.ml" Qop_rot Qop_cnot Den_0_init Den_measure Den_unitary Den_proj_uop.
+Extract Inlined Constant C => "Complex.t".
+Extract Inlined Constant Cplus => "Complex.add".
+Extract Inlined Constant Cminus => "Complex.sub".
+Extract Inlined Constant Cmult => "Complex.mul".
+Extract Inlined Constant Cconj => "Complex.conj".
+Extract Inlined Constant Creal => "(fun x -> x.re)".
+
+Extraction "../qasm/lib/quantum_core.ml" Qop_rot Qop_cnot Den_0_init Den_unitary Den_measure Den_prob.

@@ -104,7 +104,7 @@ Ltac simpl_bits :=
   unfold MMeqbits, MCeqbits, MReqbits in *;
   unfold RMeqbits, RCeqbits, RReqbits in *;
   unfold CMeqbits, CCeqbits, CReqbits in *;
-  unfold Msize, RVsize, CVsize in *;
+  unfold Msize, RVsize, CVsize, pow_2 in *;
   repeat rewrite MVmult_bits_l in *;
   repeat rewrite VMmult_bits_r in *;
   repeat rewrite VVmult_bits_l in *;
@@ -132,7 +132,7 @@ Proof.
   simpl.
   apply Mequal.
   - reflexivity.
-  - unfold Msize, Cconj.
+  - unfold Msize, pow_2, Cconj.
     simpl.
     rewrite Nat.pow_add_r.
     intros.
@@ -456,7 +456,7 @@ Proof.
   - intros.
     unfold Minner, TMproduct, eye.
     simpl.
-    unfold Msize.
+    unfold Msize, pow_2.
     simpl.
     destruct (i =? j) eqn: E.
     + apply Nat.eqb_eq in E.

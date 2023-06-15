@@ -1,3 +1,4 @@
+open Complex
 
 type __ = Obj.t
 let __ = let rec f _ = Obj.repr f in Obj.repr f
@@ -21,11 +22,6 @@ type 'a sig0 = 'a
   (* singleton inductive, whose constructor was exist *)
 
 
-
-module Coq__1 = struct
- (** val add : int -> int -> int **)let rec add = (+)
-end
-include Coq__1
 
 (** val sub : int -> int -> int **)
 
@@ -275,7 +271,7 @@ module Coq_Pos =
   (** val ggcd : int -> int -> int * (int * int) **)
 
   let ggcd a b =
-    ggcdn (Coq__1.add (size_nat a) (size_nat b)) a b
+    ggcdn ((+) (size_nat a) (size_nat b)) a b
 
   (** val iter_op : ('a1 -> 'a1 -> 'a1) -> int -> 'a1 -> 'a1 **)
 
@@ -290,7 +286,7 @@ module Coq_Pos =
   (** val to_nat : int -> int **)
 
   let to_nat x =
-    iter_op Coq__1.add x (Stdlib.Int.succ 0)
+    iter_op (+) x (Stdlib.Int.succ 0)
 
   (** val of_nat : int -> int **)
 
@@ -536,8 +532,6 @@ module Z =
 
 type q = { qnum : int; qden : int }
 
-type dReal = float
-
 module type RbaseSymbolsSig =
  sig
   type coq_R
@@ -602,10 +596,6 @@ module RbaseSymbolsImpl =
     __
  end
 
-(** val iZR : int -> float **)
-
-let iZR = float_of_int
-
 module type RinvSig =
  sig
   val coq_Rinv : float -> float
@@ -621,78 +611,54 @@ module RinvImpl =
 
 
 
-(** val rTC : float -> float * float **)
+(** val rTC : float -> Complex.t **)
 
-let rTC = fun x -> (x, 0.0)
+let rTC = fun x -> {re=x; im=0.0}
 
-(** val nTC : int -> float * float **)
+(** val rTIm : float -> Complex.t **)
 
-let nTC = fun n -> (float_of_int n, 0.0)
+let rTIm = fun y -> {re=0.0; im=y}
 
-(** val cplus : float * float -> float * float -> float * float **)
+(** val nTC : int -> Complex.t **)
 
-let cplus x y =
-  ((Stdlib.(+.) (fst x) (fst y)), (Stdlib.(+.) (snd x) (snd y)))
+let nTC = fun n -> {re=float_of_int n; im=0.0}
 
-(** val copp : float * float -> float * float **)
-
-let copp x =
-  ((Stdlib.(~-.) (fst x)), (Stdlib.(~-.) (snd x)))
-
-(** val cminus : float * float -> float * float -> float * float **)
-
-let cminus x y =
-  cplus x (copp y)
-
-(** val cmult : float * float -> float * float -> float * float **)
-
-let cmult x y =
-  ((Stdlib.(-.) (Stdlib.( *. ) (fst x) (fst y))
-     (Stdlib.( *. ) (snd x) (snd y))),
-    (Stdlib.(+.) (Stdlib.( *. ) (fst x) (snd y))
-      (Stdlib.( *. ) (snd x) (fst y))))
-
-(** val cexp : float * float -> float * float **)
+(** val cexp : Complex.t -> Complex.t **)
 
 let cexp x =
+  let r = fst x in
   let theta = snd x in
-  cmult (rTC (Stdlib.exp (fst x)))
-    (cplus (rTC (Stdlib.cos theta)) (0.0, (Stdlib.sin theta)))
+  Complex.mul (rTC (Stdlib.exp r))
+    (Complex.add (rTC (Stdlib.cos theta)) (rTIm (Stdlib.sin theta)))
 
-(** val cconj : float * float -> float * float **)
-
-let cconj x =
-  ((fst x), (Stdlib.(~-.) (snd x)))
-
-(** val func_sum_suppl :
-    (int -> float * float) -> int -> int -> float * float **)
+(** val func_sum_suppl : (int -> Complex.t) -> int -> int -> Complex.t **)
 
 let rec func_sum_suppl f m n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> nTC 0)
-    (fun n' -> cplus (f (add m n')) (func_sum_suppl f m n'))
+    (fun n' -> Complex.add (f ((+) m n')) (func_sum_suppl f m n'))
     n
 
-(** val func_sum2 : (int -> float * float) -> int -> int -> float * float **)
+(** val func_sum2 : (int -> Complex.t) -> int -> int -> Complex.t **)
 
 let func_sum2 f m n =
   func_sum_suppl f m (sub n m)
 
-(** val func_sum : (int -> float * float) -> int -> float * float **)
+(** val func_sum : (int -> Complex.t) -> int -> Complex.t **)
 
 let func_sum f n =
   func_sum2 f 0 n
 
-type matrix = { mbits : int; minner : (int -> int -> float * float) }
+type matrix = { mbits : int; minner : (int -> int -> Complex.t) }
 
 (** val msize : matrix -> int **)
 
 let msize m =
-  Nat.pow (Stdlib.Int.succ (Stdlib.Int.succ 0)) m.mbits
+  (fun n -> Int.shift_left 1 n) m.mbits
 
-type rowVec = { rVbits : int; rVinner : (int -> float * float) }
+type rowVec = { rVbits : int; rVinner : (int -> Complex.t) }
 
-type colVec = { cVbits : int; cVinner : (int -> float * float) }
+type colVec = { cVbits : int; cVinner : (int -> Complex.t) }
 
 (** val extract_row_unsafe : matrix -> int -> rowVec **)
 
@@ -705,14 +671,13 @@ let extract_col_unsafe m j =
   { cVbits = m.mbits; cVinner = (fun i -> m.minner i j) }
 
 (** val dot_product_suppl :
-    (int -> float * float) -> (int -> float * float) -> int -> float * float **)
+    (int -> Complex.t) -> (int -> Complex.t) -> int -> Complex.t **)
 
 let dot_product_suppl r c idx =
-  func_sum (fun i -> cmult (r i) (c i)) idx
+  func_sum (fun i -> Complex.mul (r i) (c i)) idx
 
 (** val mbop_unsafe :
-    (float * float -> float * float -> float * float) -> matrix -> matrix ->
-    matrix **)
+    (Complex.t -> Complex.t -> Complex.t) -> matrix -> matrix -> matrix **)
 
 let mbop_unsafe bop m1 m2 =
   { mbits = m1.mbits; minner = (fun i j ->
@@ -721,14 +686,9 @@ let mbop_unsafe bop m1 m2 =
 (** val mplus : matrix -> matrix -> matrix **)
 
 let mplus m1 m2 =
-  mbop_unsafe cplus m1 m2
+  mbop_unsafe Complex.add m1 m2
 
-(** val mminus : matrix -> matrix -> matrix **)
-
-let mminus m1 m2 =
-  mbop_unsafe cminus m1 m2
-
-(** val mmult_inner : matrix -> matrix -> int -> int -> float * float **)
+(** val mmult_inner : matrix -> matrix -> int -> int -> Complex.t **)
 
 let mmult_inner m1 m2 i j =
   dot_product_suppl (extract_row_unsafe m1 i).rVinner
@@ -747,7 +707,12 @@ let mmult =
 (** val mconjtrans : matrix -> matrix **)
 
 let mconjtrans m =
-  { mbits = m.mbits; minner = (fun i j -> cconj (m.minner j i)) }
+  { mbits = m.mbits; minner = (fun i j -> Complex.conj (m.minner j i)) }
+
+(** val mtrace : matrix -> Complex.t **)
+
+let mtrace m =
+  func_sum (fun i -> m.minner i i) (msize m)
 
 (** val eye : int -> matrix **)
 
@@ -758,8 +723,8 @@ let eye bits =
 (** val tMproduct : matrix -> matrix -> matrix **)
 
 let tMproduct m1 m2 =
-  { mbits = (add m1.mbits m2.mbits); minner = (fun i j ->
-    cmult (m1.minner ((/) i (msize m2)) ((/) j (msize m2)))
+  { mbits = ((+) m1.mbits m2.mbits); minner = (fun i j ->
+    Complex.mul (m1.minner ((/) i (msize m2)) ((/) j (msize m2)))
       (m2.minner ((mod) i (msize m2)) ((mod) j (msize m2)))) }
 
 (** val qop_ry : float -> matrix **)
@@ -768,13 +733,20 @@ let qop_ry theta =
   { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
     if (=) i 0
     then if (=) j 0
-         then rTC (Stdlib.cos (Stdlib.(/.) theta (iZR ((fun p->2*p) 1))))
+         then rTC
+                (Stdlib.cos
+                  (Stdlib.(/.) theta (float_of_int ((fun p->2*p) 1))))
          else rTC
                 (Stdlib.(~-.)
-                  (Stdlib.sin (Stdlib.(/.) theta (iZR ((fun p->2*p) 1)))))
+                  (Stdlib.sin
+                    (Stdlib.(/.) theta (float_of_int ((fun p->2*p) 1)))))
     else if (=) j 0
-         then rTC (Stdlib.sin (Stdlib.(/.) theta (iZR ((fun p->2*p) 1))))
-         else rTC (Stdlib.cos (Stdlib.(/.) theta (iZR ((fun p->2*p) 1))))) }
+         then rTC
+                (Stdlib.sin
+                  (Stdlib.(/.) theta (float_of_int ((fun p->2*p) 1))))
+         else rTC
+                (Stdlib.cos
+                  (Stdlib.(/.) theta (float_of_int ((fun p->2*p) 1))))) }
 
 (** val qop_rz : float -> matrix **)
 
@@ -782,12 +754,14 @@ let qop_rz theta =
   { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
     if (=) i 0
     then if (=) j 0
-         then cexp ((iZR 0),
-                (Stdlib.(/.) (Stdlib.(~-.) theta) (iZR ((fun p->2*p) 1))))
-         else rTC (iZR 0)
+         then cexp ((float_of_int 0),
+                (Stdlib.(/.) (Stdlib.(~-.) theta)
+                  (float_of_int ((fun p->2*p) 1))))
+         else rTC (float_of_int 0)
     else if (=) j 0
-         then rTC (iZR 0)
-         else cexp ((iZR 0), (Stdlib.(/.) theta (iZR ((fun p->2*p) 1))))) }
+         then rTC (float_of_int 0)
+         else cexp ((float_of_int 0),
+                (Stdlib.(/.) theta (float_of_int ((fun p->2*p) 1))))) }
 
 (** val qop_rot : float -> float -> float -> matrix **)
 
@@ -931,18 +905,19 @@ let qop_swap1n n =
 (** val qop_swap : int -> int -> int -> matrix **)
 
 let qop_swap n q1 q2 =
-  match lt_eq_lt_dec q1 q2 with
-  | Some a ->
-    if a
-    then tMproduct
-           (tMproduct (eye q1)
-             (qop_swap1n (add (sub q2 q1) (Stdlib.Int.succ 0))))
-           (eye (sub (sub n q2) (Stdlib.Int.succ 0)))
-    else eye n
-  | None ->
-    tMproduct
-      (tMproduct (eye q2) (qop_swap1n (add (sub q1 q2) (Stdlib.Int.succ 0))))
-      (eye (sub (sub n q1) (Stdlib.Int.succ 0)))
+  let s = lt_eq_lt_dec q1 q2 in
+  (match s with
+   | Some a ->
+     if a
+     then tMproduct
+            (tMproduct (eye q1)
+              (qop_swap1n ((+) (sub q2 q1) (Stdlib.Int.succ 0))))
+            (eye (sub (sub n q2) (Stdlib.Int.succ 0)))
+     else eye n
+   | None ->
+     tMproduct
+       (tMproduct (eye q2) (qop_swap1n ((+) (sub q1 q2) (Stdlib.Int.succ 0))))
+       (eye (sub (sub n q1) (Stdlib.Int.succ 0))))
 
 (** val qop_swap_op : int -> int -> int -> matrix -> matrix **)
 
@@ -1098,17 +1073,23 @@ let qop_cnot_tc_n n =
 (** val qop_cnot : int -> int -> int -> matrix **)
 
 let qop_cnot n qc qt =
-  if (=) qc 0
-  then if (=) qt (Stdlib.Int.succ 0)
+  let s = (=) qc 0 in
+  if s
+  then let s0 = (=) qt (Stdlib.Int.succ 0) in
+       if s0
        then qop_cnot_ct_n n
        else qop_swap_op n (Stdlib.Int.succ 0) qt (qop_cnot_ct_n n)
-  else if (=) qc (Stdlib.Int.succ 0)
-       then if (=) qt 0
+  else let s0 = (=) qc (Stdlib.Int.succ 0) in
+       if s0
+       then let s1 = (=) qt 0 in
+            if s1
             then qop_cnot_tc_n n
             else qop_swap_op n 0 qt (qop_cnot_tc_n n)
-       else if (=) qt 0
+       else let s1 = (=) qt 0 in
+            if s1
             then qop_swap_op n (Stdlib.Int.succ 0) qc (qop_cnot_tc_n n)
-            else if (=) qt (Stdlib.Int.succ 0)
+            else let s2 = (=) qt (Stdlib.Int.succ 0) in
+                 if s2
                  then qop_swap_op n 0 qc (qop_cnot_ct_n n)
                  else qop_swap_op n (Stdlib.Int.succ 0) qt
                         (qop_swap_op n 0 qc (qop_cnot_ct_n n))
@@ -1131,6 +1112,11 @@ let den_0 =
 let den_unitary den uop =
   mmult (mmult uop den) (mconjtrans uop)
 
+(** val den_prob : matrix -> matrix -> float **)
+
+let den_prob den proj =
+  (fun x -> x.re) (mtrace (mmult den proj))
+
 (** val den_measure_2 : matrix -> int -> int -> (matrix * matrix) **)
 
 let den_measure_2 den n t =
@@ -1140,14 +1126,7 @@ let den_measure_2 den n t =
 (** val den_measure : matrix -> int -> int -> matrix **)
 
 let den_measure den n t =
-  let (a, b) = den_measure_2 den n t in mplus a b
-
-(** val den_proj_uop : matrix -> matrix -> matrix -> matrix **)
-
-let den_proj_uop den proj uop =
-  mplus (den_unitary (mmult (mmult proj den) proj) uop)
-    (mmult (mmult (mminus (eye proj.mbits) proj) den)
-      (mminus (eye proj.mbits) proj))
+  let s = den_measure_2 den n t in let (a, b) = s in mplus a b
 
 (** val den_0_init : int -> matrix **)
 

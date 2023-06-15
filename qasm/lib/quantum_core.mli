@@ -15,8 +15,6 @@ type 'a sig0 = 'a
 
 
 
-val add : int -> int -> int
-
 val sub : int -> int -> int
 
 module Nat :
@@ -156,65 +154,62 @@ module type RbaseSymbolsSig =
   val coq_Ropp : coq_R -> coq_R
  end
 
-val iZR : int -> float
+module RbaseSymbolsImpl :
+ RbaseSymbolsSig
 
 module type RinvSig =
  sig
   val coq_Rinv : float -> float
  end
 
-val rTC : float -> float * float
+module RinvImpl :
+ RinvSig
 
-val nTC : int -> float * float
 
-val cplus : float * float -> float * float -> float * float
 
-val copp : float * float -> float * float
+val rTC : float -> Complex.t
 
-val cminus : float * float -> float * float -> float * float
+val rTIm : float -> Complex.t
 
-val cmult : float * float -> float * float -> float * float
+val nTC : int -> Complex.t
 
-val cexp : float * float -> float * float
+val cexp : Complex.t -> Complex.t
 
-val cconj : float * float -> float * float
+val func_sum_suppl : (int -> Complex.t) -> int -> int -> Complex.t
 
-val func_sum_suppl : (int -> float * float) -> int -> int -> float * float
+val func_sum2 : (int -> Complex.t) -> int -> int -> Complex.t
 
-val func_sum2 : (int -> float * float) -> int -> int -> float * float
+val func_sum : (int -> Complex.t) -> int -> Complex.t
 
-val func_sum : (int -> float * float) -> int -> float * float
-
-type matrix = { mbits : int; minner : (int -> int -> float * float) }
+type matrix = { mbits : int; minner : (int -> int -> Complex.t) }
 
 val msize : matrix -> int
 
-type rowVec = { rVbits : int; rVinner : (int -> float * float) }
+type rowVec = { rVbits : int; rVinner : (int -> Complex.t) }
 
-type colVec = { cVbits : int; cVinner : (int -> float * float) }
+type colVec = { cVbits : int; cVinner : (int -> Complex.t) }
 
 val extract_row_unsafe : matrix -> int -> rowVec
 
 val extract_col_unsafe : matrix -> int -> colVec
 
 val dot_product_suppl :
-  (int -> float * float) -> (int -> float * float) -> int -> float * float
+  (int -> Complex.t) -> (int -> Complex.t) -> int -> Complex.t
 
 val mbop_unsafe :
-  (float * float -> float * float -> float * float) -> matrix -> matrix ->
-  matrix
+  (Complex.t -> Complex.t -> Complex.t) -> matrix -> matrix -> matrix
 
 val mplus : matrix -> matrix -> matrix
 
-val mminus : matrix -> matrix -> matrix
-
-val mmult_inner : matrix -> matrix -> int -> int -> float * float
+val mmult_inner : matrix -> matrix -> int -> int -> Complex.t
 
 val mmult_unsafe : matrix -> matrix -> matrix
 
 val mmult : matrix -> matrix -> matrix
 
 val mconjtrans : matrix -> matrix
+
+val mtrace : matrix -> Complex.t
 
 val eye : int -> matrix
 
@@ -260,10 +255,10 @@ val den_0 : matrix
 
 val den_unitary : matrix -> matrix -> matrix
 
+val den_prob : matrix -> matrix -> float
+
 val den_measure_2 : matrix -> int -> int -> (matrix * matrix)
 
 val den_measure : matrix -> int -> int -> matrix
-
-val den_proj_uop : matrix -> matrix -> matrix -> matrix
 
 val den_0_init : int -> matrix

@@ -19,6 +19,7 @@ Definition Czero : C := (0, 0).
 Definition Cone : C := (1, 0).
 
 Definition RTC (x: R): C := (x, 0).
+Definition RTIm (y: R): C := (0, y).
 Definition NTC (n: nat): C := (INR n, 0).
 
 Coercion RTC : R >-> C.
@@ -58,7 +59,7 @@ Definition Carg (x : C) : R := atan2 (fst x) (snd x).
 Definition Cexp (x : C): C :=
   let r := fst x in
   let theta := snd x in
-  (exp r) * ((cos theta) + (R0, sin theta)).
+  (exp r) * ((cos theta) + RTIm (sin theta)).
 
 Definition Cln (x: C): C := (ln (Cabs x), Carg x).
 

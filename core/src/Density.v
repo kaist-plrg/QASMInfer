@@ -19,7 +19,7 @@ Lemma TMproduct_normalized: forall (den1 den2: Matrix),
   Den_normalized den1 -> Den_normalized den2 -> Den_normalized (TMproduct den1 den2).
 Proof.
   intros.
-  unfold Den_normalized, Mtrace, TMproduct, Msize in *.
+  unfold Den_normalized, Mtrace, TMproduct, Msize, pow_2 in *.
   simpl.
   rewrite Nat.pow_add_r.
   specialize (
@@ -77,7 +77,7 @@ Proof.
   - simpl_bits.
     reflexivity.
   - intros.
-    unfold Mconjtrans, Den_1, Msize in *.
+    unfold Mconjtrans, Den_1, Msize, pow_2 in *.
     simpl in *.
     destruct i as [|i], j as [|j].
     lca.
