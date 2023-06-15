@@ -209,21 +209,25 @@ Definition Den_expect (den observable: Matrix) (H: MMeqbits den observable) :=
 (* ============================================================================================== *)
 (* measurement ================================================================================== *)
 
-Definition Den_measure (den: Matrix) (n t: nat)  (Ht: t < n) (Hd: Mbits den = n): Matrix.
+Definition Den_measure_2
+  (den: Matrix) (n t: nat)  (Ht: t < n) (Hd: Mbits den = n):
+  {m0m1: (Matrix * Matrix) | MMeqbits (fst m0m1) (snd m0m1)}.
 Proof.
-  refine (
-    Mplus (
+  refine ( exist _ (
       Mmult (
         Mmult (Qproj0_n_t n t Ht) den _
-      ) (Qproj0_n_t n t Ht) _
-    ) (
+      ) (Qproj0_n_t n t Ht) _,
       Mmult (
         Mmult (Qproj1_n_t n t Ht) den _
-      ) (Qproj1_n_t n t Ht) _
-    ) _
-  ).
-  Unshelve.
-  all: simpl_bits; simpl; lia.
+      ) (Qproj1_n_t n t Ht) _) _ ).
+    Unshelve.
+    all: simpl_bits; simpl; lia.
+Defined.
+
+Definition Den_measure (den: Matrix) (n t: nat)  (Ht: t < n) (Hd: Mbits den = n): Matrix.
+Proof.
+  destruct (Den_measure_2 den n t Ht Hd) as [ [m0 m1] Hm0m1].
+  exact (Mplus m0 m1 Hm0m1).
 Defined.
 
 Lemma Den_measure_bits: forall (den: Matrix) (n t: nat) (Ht: _) (Hd: _),
@@ -416,7 +420,7 @@ Proof.
   - specialize Mconjtrans_plus as Hconjplus.
     specialize Mconjtrans_mult as Hconjmult.
     specialize Mmult_assoc as Hassoc.
-    unfold Qop_Hermitian, Den_measure, Mmult, Mplus in *.
+    unfold Qop_Hermitian, Den_measure, Den_measure_2, Mmult, Mplus in *.
     rewrite Hconjplus.
     repeat rewrite Hconjmult.
     repeat rewrite TMproduct_Mconjtrans.
@@ -472,7 +476,7 @@ Proof.
     unfold Qop_positive in *.
     intros.
     simpl_bits.
-    unfold Den_measure, Mmult, Mplus, VMmult, MVmult, dot_product in *.
+    unfold Den_measure, Den_measure_2, Mmult, Mplus, VMmult, MVmult, dot_product in *.
     simpl_bits.
     apply Hplus.
     unfold Mmult_unsafe; simpl; lia.
@@ -546,7 +550,7 @@ Proof.
     specialize Mmult_eye_r as Heyer.
     specialize Mmult_eye_l as Heyel.
     specialize Qproj0_n_t_mult as Hpm.
-    unfold Den_normalized, Den_measure, Mmult, Mplus, Mminus in *.
+    unfold Den_normalized, Den_measure, Den_measure_2, Mmult, Mplus, Mminus in *.
     rewrite Hproj.
     repeat rewrite Hdml.
     repeat rewrite Hdmr.
