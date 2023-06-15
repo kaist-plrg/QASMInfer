@@ -21,19 +21,9 @@ val sub : int -> int -> int
 
 module Nat :
  sig
-  val add : int -> int -> int
-
-  val mul : int -> int -> int
-
-  val sub : int -> int -> int
-
   val pow : int -> int -> int
 
   val divmod : int -> int -> int -> int -> int * int
-
-  val div : int -> int -> int
-
-  val modulo : int -> int -> int
  end
 
 val lt_eq_lt_dec : int -> int -> bool option
@@ -147,17 +137,15 @@ module Z :
 
 type q = { qnum : int; qden : int }
 
-type cReal = { seq : (int -> q); scale : int }
-
-type dReal = (q -> bool)
+type dReal = float
 
 module type RbaseSymbolsSig =
  sig
   type coq_R
 
-  val coq_Rabst : cReal -> coq_R
+  val coq_Rabst : float -> coq_R
 
-  val coq_Rrepr : coq_R -> cReal
+  val coq_Rrepr : coq_R -> float
 
   val coq_R0 : coq_R
 
@@ -175,10 +163,6 @@ module RbaseSymbolsImpl :
 
 val rminus :
   RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
-
-val iPR_2 : int -> RbaseSymbolsImpl.coq_R
-
-val iPR : int -> RbaseSymbolsImpl.coq_R
 
 val iZR : int -> RbaseSymbolsImpl.coq_R
 
@@ -296,6 +280,8 @@ val qop_cnot : int -> int -> int -> matrix
 val den_0 : matrix
 
 val den_unitary : matrix -> matrix -> matrix
+
+val den_measure_2 : matrix -> int -> int -> (matrix * matrix)
 
 val den_measure : matrix -> int -> int -> matrix
 

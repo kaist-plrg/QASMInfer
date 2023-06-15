@@ -272,8 +272,8 @@ Local Open Scope R_scope.
 Definition Qop_ry (theta: R): Matrix := {|
   Mbits := 1;
   Minner := fun i j =>
-    if i =? 0 then if j =? 0 then cos (theta / 2%R) else - sin (theta / 2%R)
-    else if j =? 0 then           sin (theta / 2%R) else   cos (theta / 2%R);
+    if i =? 0 then if j =? 0 then cos (theta / 2) else - sin (theta / 2)
+    else if j =? 0 then           sin (theta / 2) else   cos (theta / 2);
   |}.
 
 Lemma Qop_ry_unitary: forall (theta: R), Qop_unitary (Qop_ry theta).

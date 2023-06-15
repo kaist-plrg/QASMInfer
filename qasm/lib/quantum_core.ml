@@ -33,40 +33,12 @@ let rec sub = fun n m -> Stdlib.max 0 (n-m)
 
 module Nat =
  struct
-  (** val add : int -> int -> int **)
-
-  let rec add n m =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> m)
-      (fun p -> Stdlib.Int.succ (add p m))
-      n
-
-  (** val mul : int -> int -> int **)
-
-  let rec mul n m =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> 0)
-      (fun p -> add m (mul p m))
-      n
-
-  (** val sub : int -> int -> int **)
-
-  let rec sub n m =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> n)
-      (fun k ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ -> n)
-        (fun l -> sub k l)
-        m)
-      n
-
   (** val pow : int -> int -> int **)
 
   let rec pow n m =
     (fun fO fS n -> if n=0 then fO () else fS (n-1))
       (fun _ -> Stdlib.Int.succ 0)
-      (fun m0 -> mul n (pow n m0))
+      (fun m0 -> ( * ) n (pow n m0))
       m
 
   (** val divmod : int -> int -> int -> int -> int * int **)
@@ -80,22 +52,6 @@ module Nat =
         (fun u' -> divmod x' y q0 u')
         u)
       x
-
-  (** val div : int -> int -> int **)
-
-  let div x y =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> y)
-      (fun y' -> fst (divmod x y' 0 y'))
-      y
-
-  (** val modulo : int -> int -> int **)
-
-  let modulo x y =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> x)
-      (fun y' -> sub y' (snd (divmod x y' 0 y')))
-      y
  end
 
 (** val lt_eq_lt_dec : int -> int -> bool option **)
@@ -580,17 +536,15 @@ module Z =
 
 type q = { qnum : int; qden : int }
 
-type cReal = { seq : (int -> q); scale : int }
-
-type dReal = (q -> bool)
+type dReal = float
 
 module type RbaseSymbolsSig =
  sig
   type coq_R
 
-  val coq_Rabst : cReal -> coq_R
+  val coq_Rabst : float -> coq_R
 
-  val coq_Rrepr : coq_R -> cReal
+  val coq_Rrepr : coq_R -> float
 
   val coq_R0 : coq_R
 
@@ -607,13 +561,13 @@ module RbaseSymbolsImpl =
  struct
   type coq_R = float
 
-  (** val coq_Rabst : cReal -> dReal **)
+  (** val coq_Rabst : float -> dReal **)
 
-  let coq_Rabst = __
+  let coq_Rabst = fun x -> x
 
-  (** val coq_Rrepr : dReal -> cReal **)
+  (** val coq_Rrepr : dReal -> float **)
 
-  let coq_Rrepr = __
+  let coq_Rrepr = fun x -> x
 
   (** val coq_Rquot1 : __ **)
 
@@ -684,43 +638,9 @@ module RbaseSymbolsImpl =
 let rminus r1 r2 =
   RbaseSymbolsImpl.coq_Rplus r1 (RbaseSymbolsImpl.coq_Ropp r2)
 
-(** val iPR_2 : int -> RbaseSymbolsImpl.coq_R **)
-
-let rec iPR_2 p =
-  (fun f2p1 f2p f1 p ->
-  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
-    (fun p0 ->
-    RbaseSymbolsImpl.coq_Rmult
-      (RbaseSymbolsImpl.coq_Rplus RbaseSymbolsImpl.coq_R1
-        RbaseSymbolsImpl.coq_R1)
-      (RbaseSymbolsImpl.coq_Rplus RbaseSymbolsImpl.coq_R1 (iPR_2 p0)))
-    (fun p0 ->
-    RbaseSymbolsImpl.coq_Rmult
-      (RbaseSymbolsImpl.coq_Rplus RbaseSymbolsImpl.coq_R1
-        RbaseSymbolsImpl.coq_R1) (iPR_2 p0))
-    (fun _ ->
-    RbaseSymbolsImpl.coq_Rplus RbaseSymbolsImpl.coq_R1 RbaseSymbolsImpl.coq_R1)
-    p
-
-(** val iPR : int -> RbaseSymbolsImpl.coq_R **)
-
-let iPR p =
-  (fun f2p1 f2p f1 p ->
-  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
-    (fun p0 ->
-    RbaseSymbolsImpl.coq_Rplus RbaseSymbolsImpl.coq_R1 (iPR_2 p0))
-    (fun p0 -> iPR_2 p0)
-    (fun _ -> RbaseSymbolsImpl.coq_R1)
-    p
-
 (** val iZR : int -> RbaseSymbolsImpl.coq_R **)
 
-let iZR z0 =
-  (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
-    (fun _ -> RbaseSymbolsImpl.coq_R0)
-    (fun n -> iPR n)
-    (fun n -> RbaseSymbolsImpl.coq_Ropp (iPR n))
-    z0
+let iZR = float_of_int
 
 module type RinvSig =
  sig
@@ -895,8 +815,8 @@ let eye bits =
 
 let tMproduct m1 m2 =
   { mbits = (add m1.mbits m2.mbits); minner = (fun i j ->
-    cmult (m1.minner (Nat.div i (msize m2)) (Nat.div j (msize m2)))
-      (m2.minner (Nat.modulo i (msize m2)) (Nat.modulo j (msize m2)))) }
+    cmult (m1.minner ((/) i (msize m2)) ((/) j (msize m2)))
+      (m2.minner ((mod) i (msize m2)) ((mod) j (msize m2)))) }
 
 (** val qop_ry : RbaseSymbolsImpl.coq_R -> matrix **)
 
@@ -1277,11 +1197,16 @@ let den_0 =
 let den_unitary den uop =
   mmult (mmult uop den) (mconjtrans uop)
 
+(** val den_measure_2 : matrix -> int -> int -> (matrix * matrix) **)
+
+let den_measure_2 den n t =
+  ((mmult (mmult (qproj0_n_t n t) den) (qproj0_n_t n t)),
+    (mmult (mmult (qproj1_n_t n t) den) (qproj1_n_t n t)))
+
 (** val den_measure : matrix -> int -> int -> matrix **)
 
 let den_measure den n t =
-  mplus (mmult (mmult (qproj0_n_t n t) den) (qproj0_n_t n t))
-    (mmult (mmult (qproj1_n_t n t) den) (qproj1_n_t n t))
+  let s = den_measure_2 den n t in let (a, b) = s in mplus a b
 
 (** val den_proj_uop : matrix -> matrix -> matrix -> matrix **)
 
