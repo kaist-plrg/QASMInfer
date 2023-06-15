@@ -137,8 +137,6 @@ module Z :
 
 type q = { qnum : int; qden : int }
 
-type dReal = float
-
 module type RbaseSymbolsSig =
  sig
   type coq_R
@@ -158,76 +156,59 @@ module type RbaseSymbolsSig =
   val coq_Ropp : coq_R -> coq_R
  end
 
-module RbaseSymbolsImpl :
- RbaseSymbolsSig
-
-val rminus :
-  RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
-
-val iZR : int -> RbaseSymbolsImpl.coq_R
+val iZR : int -> float
 
 module type RinvSig =
  sig
-  val coq_Rinv : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
+  val coq_Rinv : float -> float
  end
 
-module RinvImpl :
- RinvSig
+val rTC : float -> float * float
 
-val rdiv :
-  RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
+val nTC : int -> float * float
 
-val exp : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
+val cplus : float * float -> float * float -> float * float
 
-val cos : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
+val copp : float * float -> float * float
 
-val sin : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
+val cminus : float * float -> float * float -> float * float
 
-type c = RbaseSymbolsImpl.coq_R * RbaseSymbolsImpl.coq_R
+val cmult : float * float -> float * float -> float * float
 
-val rTC : RbaseSymbolsImpl.coq_R -> c
+val cexp : float * float -> float * float
 
-val nTC : int -> c
+val cconj : float * float -> float * float
 
-val cplus : c -> c -> c
+val func_sum_suppl : (int -> float * float) -> int -> int -> float * float
 
-val copp : c -> c
+val func_sum2 : (int -> float * float) -> int -> int -> float * float
 
-val cminus : c -> c -> c
+val func_sum : (int -> float * float) -> int -> float * float
 
-val cmult : c -> c -> c
-
-val cexp : c -> c
-
-val cconj : c -> c
-
-val func_sum_suppl : (int -> c) -> int -> int -> c
-
-val func_sum2 : (int -> c) -> int -> int -> c
-
-val func_sum : (int -> c) -> int -> c
-
-type matrix = { mbits : int; minner : (int -> int -> c) }
+type matrix = { mbits : int; minner : (int -> int -> float * float) }
 
 val msize : matrix -> int
 
-type rowVec = { rVbits : int; rVinner : (int -> c) }
+type rowVec = { rVbits : int; rVinner : (int -> float * float) }
 
-type colVec = { cVbits : int; cVinner : (int -> c) }
+type colVec = { cVbits : int; cVinner : (int -> float * float) }
 
 val extract_row_unsafe : matrix -> int -> rowVec
 
 val extract_col_unsafe : matrix -> int -> colVec
 
-val dot_product_suppl : (int -> c) -> (int -> c) -> int -> c
+val dot_product_suppl :
+  (int -> float * float) -> (int -> float * float) -> int -> float * float
 
-val mbop_unsafe : (c -> c -> c) -> matrix -> matrix -> matrix
+val mbop_unsafe :
+  (float * float -> float * float -> float * float) -> matrix -> matrix ->
+  matrix
 
 val mplus : matrix -> matrix -> matrix
 
 val mminus : matrix -> matrix -> matrix
 
-val mmult_inner : matrix -> matrix -> int -> int -> c
+val mmult_inner : matrix -> matrix -> int -> int -> float * float
 
 val mmult_unsafe : matrix -> matrix -> matrix
 
@@ -239,13 +220,11 @@ val eye : int -> matrix
 
 val tMproduct : matrix -> matrix -> matrix
 
-val qop_ry : RbaseSymbolsImpl.coq_R -> matrix
+val qop_ry : float -> matrix
 
-val qop_rz : RbaseSymbolsImpl.coq_R -> matrix
+val qop_rz : float -> matrix
 
-val qop_rot :
-  RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
-  -> matrix
+val qop_rot : float -> float -> float -> matrix
 
 val qop_sq : int -> int -> matrix -> matrix
 

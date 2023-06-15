@@ -559,16 +559,6 @@ module type RbaseSymbolsSig =
 
 module RbaseSymbolsImpl =
  struct
-  type coq_R = float
-
-  (** val coq_Rabst : float -> dReal **)
-
-  let coq_Rabst = fun x -> x
-
-  (** val coq_Rrepr : dReal -> float **)
-
-  let coq_Rrepr = fun x -> x
-
   (** val coq_Rquot1 : __ **)
 
   let coq_Rquot1 =
@@ -578,26 +568,6 @@ module RbaseSymbolsImpl =
 
   let coq_Rquot2 =
     __
-
-  (** val coq_R0 : coq_R **)
-
-  let coq_R0 = 0.0
-
-  (** val coq_R1 : coq_R **)
-
-  let coq_R1 = 1.0
-
-  (** val coq_Rplus : coq_R -> coq_R -> coq_R **)
-
-  let coq_Rplus = Stdlib.(+.)
-
-  (** val coq_Rmult : coq_R -> coq_R -> coq_R **)
-
-  let coq_Rmult = Stdlib.( *. )
-
-  (** val coq_Ropp : coq_R -> coq_R **)
-
-  let coq_Ropp = Stdlib.(~-.)
 
   type coq_Rlt = __
 
@@ -632,99 +602,70 @@ module RbaseSymbolsImpl =
     __
  end
 
-(** val rminus :
-    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R **)
-
-let rminus r1 r2 =
-  RbaseSymbolsImpl.coq_Rplus r1 (RbaseSymbolsImpl.coq_Ropp r2)
-
-(** val iZR : int -> RbaseSymbolsImpl.coq_R **)
+(** val iZR : int -> float **)
 
 let iZR = float_of_int
 
 module type RinvSig =
  sig
-  val coq_Rinv : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
+  val coq_Rinv : float -> float
  end
 
 module RinvImpl =
  struct
-  (** val coq_Rinv : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R **)
-
-  let coq_Rinv = fun x -> 1.0 /. x
-
   (** val coq_Rinv_def : __ **)
 
   let coq_Rinv_def =
     __
  end
 
-(** val rdiv :
-    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R **)
 
-let rdiv r1 r2 =
-  RbaseSymbolsImpl.coq_Rmult r1 (RinvImpl.coq_Rinv r2)
 
-(** val exp : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R **)
-
-let exp = Stdlib.exp
-
-(** val cos : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R **)
-
-let cos = Stdlib.cos
-
-(** val sin : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R **)
-
-let sin = Stdlib.sin
-
-type c = RbaseSymbolsImpl.coq_R * RbaseSymbolsImpl.coq_R
-
-(** val rTC : RbaseSymbolsImpl.coq_R -> c **)
+(** val rTC : float -> float * float **)
 
 let rTC = fun x -> (x, 0.0)
 
-(** val nTC : int -> c **)
+(** val nTC : int -> float * float **)
 
 let nTC = fun n -> (float_of_int n, 0.0)
 
-(** val cplus : c -> c -> c **)
+(** val cplus : float * float -> float * float -> float * float **)
 
 let cplus x y =
-  ((RbaseSymbolsImpl.coq_Rplus (fst x) (fst y)),
-    (RbaseSymbolsImpl.coq_Rplus (snd x) (snd y)))
+  ((Stdlib.(+.) (fst x) (fst y)), (Stdlib.(+.) (snd x) (snd y)))
 
-(** val copp : c -> c **)
+(** val copp : float * float -> float * float **)
 
 let copp x =
-  ((RbaseSymbolsImpl.coq_Ropp (fst x)), (RbaseSymbolsImpl.coq_Ropp (snd x)))
+  ((Stdlib.(~-.) (fst x)), (Stdlib.(~-.) (snd x)))
 
-(** val cminus : c -> c -> c **)
+(** val cminus : float * float -> float * float -> float * float **)
 
 let cminus x y =
   cplus x (copp y)
 
-(** val cmult : c -> c -> c **)
+(** val cmult : float * float -> float * float -> float * float **)
 
 let cmult x y =
-  ((rminus (RbaseSymbolsImpl.coq_Rmult (fst x) (fst y))
-     (RbaseSymbolsImpl.coq_Rmult (snd x) (snd y))),
-    (RbaseSymbolsImpl.coq_Rplus (RbaseSymbolsImpl.coq_Rmult (fst x) (snd y))
-      (RbaseSymbolsImpl.coq_Rmult (snd x) (fst y))))
+  ((Stdlib.(-.) (Stdlib.( *. ) (fst x) (fst y))
+     (Stdlib.( *. ) (snd x) (snd y))),
+    (Stdlib.(+.) (Stdlib.( *. ) (fst x) (snd y))
+      (Stdlib.( *. ) (snd x) (fst y))))
 
-(** val cexp : c -> c **)
+(** val cexp : float * float -> float * float **)
 
 let cexp x =
-  let r = fst x in
   let theta = snd x in
-  cmult (rTC (exp r))
-    (cplus (rTC (cos theta)) (RbaseSymbolsImpl.coq_R0, (sin theta)))
+  cmult (rTC (Stdlib.exp (fst x)))
+    (cplus (rTC (Stdlib.cos theta)) (0.0, (Stdlib.sin theta)))
 
-(** val cconj : c -> c **)
+(** val cconj : float * float -> float * float **)
 
 let cconj x =
-  ((fst x), (RbaseSymbolsImpl.coq_Ropp (snd x)))
+  ((fst x), (Stdlib.(~-.) (snd x)))
 
-(** val func_sum_suppl : (int -> c) -> int -> int -> c **)
+(** val func_sum_suppl :
+    (int -> float * float) -> int -> int -> float * float **)
 
 let rec func_sum_suppl f m n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -732,26 +673,26 @@ let rec func_sum_suppl f m n =
     (fun n' -> cplus (f (add m n')) (func_sum_suppl f m n'))
     n
 
-(** val func_sum2 : (int -> c) -> int -> int -> c **)
+(** val func_sum2 : (int -> float * float) -> int -> int -> float * float **)
 
 let func_sum2 f m n =
   func_sum_suppl f m (sub n m)
 
-(** val func_sum : (int -> c) -> int -> c **)
+(** val func_sum : (int -> float * float) -> int -> float * float **)
 
 let func_sum f n =
   func_sum2 f 0 n
 
-type matrix = { mbits : int; minner : (int -> int -> c) }
+type matrix = { mbits : int; minner : (int -> int -> float * float) }
 
 (** val msize : matrix -> int **)
 
 let msize m =
   Nat.pow (Stdlib.Int.succ (Stdlib.Int.succ 0)) m.mbits
 
-type rowVec = { rVbits : int; rVinner : (int -> c) }
+type rowVec = { rVbits : int; rVinner : (int -> float * float) }
 
-type colVec = { cVbits : int; cVinner : (int -> c) }
+type colVec = { cVbits : int; cVinner : (int -> float * float) }
 
 (** val extract_row_unsafe : matrix -> int -> rowVec **)
 
@@ -763,12 +704,15 @@ let extract_row_unsafe m i =
 let extract_col_unsafe m j =
   { cVbits = m.mbits; cVinner = (fun i -> m.minner i j) }
 
-(** val dot_product_suppl : (int -> c) -> (int -> c) -> int -> c **)
+(** val dot_product_suppl :
+    (int -> float * float) -> (int -> float * float) -> int -> float * float **)
 
-let dot_product_suppl r c0 idx =
-  func_sum (fun i -> cmult (r i) (c0 i)) idx
+let dot_product_suppl r c idx =
+  func_sum (fun i -> cmult (r i) (c i)) idx
 
-(** val mbop_unsafe : (c -> c -> c) -> matrix -> matrix -> matrix **)
+(** val mbop_unsafe :
+    (float * float -> float * float -> float * float) -> matrix -> matrix ->
+    matrix **)
 
 let mbop_unsafe bop m1 m2 =
   { mbits = m1.mbits; minner = (fun i j ->
@@ -784,7 +728,7 @@ let mplus m1 m2 =
 let mminus m1 m2 =
   mbop_unsafe cminus m1 m2
 
-(** val mmult_inner : matrix -> matrix -> int -> int -> c **)
+(** val mmult_inner : matrix -> matrix -> int -> int -> float * float **)
 
 let mmult_inner m1 m2 i j =
   dot_product_suppl (extract_row_unsafe m1 i).rVinner
@@ -818,37 +762,34 @@ let tMproduct m1 m2 =
     cmult (m1.minner ((/) i (msize m2)) ((/) j (msize m2)))
       (m2.minner ((mod) i (msize m2)) ((mod) j (msize m2)))) }
 
-(** val qop_ry : RbaseSymbolsImpl.coq_R -> matrix **)
+(** val qop_ry : float -> matrix **)
 
 let qop_ry theta =
   { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
     if (=) i 0
     then if (=) j 0
-         then rTC (cos (rdiv theta (iZR ((fun p->2*p) 1))))
+         then rTC (Stdlib.cos (Stdlib.(/.) theta (iZR ((fun p->2*p) 1))))
          else rTC
-                (RbaseSymbolsImpl.coq_Ropp
-                  (sin (rdiv theta (iZR ((fun p->2*p) 1)))))
+                (Stdlib.(~-.)
+                  (Stdlib.sin (Stdlib.(/.) theta (iZR ((fun p->2*p) 1)))))
     else if (=) j 0
-         then rTC (sin (rdiv theta (iZR ((fun p->2*p) 1))))
-         else rTC (cos (rdiv theta (iZR ((fun p->2*p) 1))))) }
+         then rTC (Stdlib.sin (Stdlib.(/.) theta (iZR ((fun p->2*p) 1))))
+         else rTC (Stdlib.cos (Stdlib.(/.) theta (iZR ((fun p->2*p) 1))))) }
 
-(** val qop_rz : RbaseSymbolsImpl.coq_R -> matrix **)
+(** val qop_rz : float -> matrix **)
 
 let qop_rz theta =
   { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
     if (=) i 0
     then if (=) j 0
          then cexp ((iZR 0),
-                (rdiv (RbaseSymbolsImpl.coq_Ropp theta)
-                  (iZR ((fun p->2*p) 1))))
+                (Stdlib.(/.) (Stdlib.(~-.) theta) (iZR ((fun p->2*p) 1))))
          else rTC (iZR 0)
     else if (=) j 0
          then rTC (iZR 0)
-         else cexp ((iZR 0), (rdiv theta (iZR ((fun p->2*p) 1))))) }
+         else cexp ((iZR 0), (Stdlib.(/.) theta (iZR ((fun p->2*p) 1))))) }
 
-(** val qop_rot :
-    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
-    RbaseSymbolsImpl.coq_R -> matrix **)
+(** val qop_rot : float -> float -> float -> matrix **)
 
 let qop_rot theta phi lambda =
   mmult (mmult (qop_rz phi) (qop_ry theta)) (qop_rz lambda)
@@ -990,19 +931,18 @@ let qop_swap1n n =
 (** val qop_swap : int -> int -> int -> matrix **)
 
 let qop_swap n q1 q2 =
-  let s = lt_eq_lt_dec q1 q2 in
-  (match s with
-   | Some a ->
-     if a
-     then tMproduct
-            (tMproduct (eye q1)
-              (qop_swap1n (add (sub q2 q1) (Stdlib.Int.succ 0))))
-            (eye (sub (sub n q2) (Stdlib.Int.succ 0)))
-     else eye n
-   | None ->
-     tMproduct
-       (tMproduct (eye q2) (qop_swap1n (add (sub q1 q2) (Stdlib.Int.succ 0))))
-       (eye (sub (sub n q1) (Stdlib.Int.succ 0))))
+  match lt_eq_lt_dec q1 q2 with
+  | Some a ->
+    if a
+    then tMproduct
+           (tMproduct (eye q1)
+             (qop_swap1n (add (sub q2 q1) (Stdlib.Int.succ 0))))
+           (eye (sub (sub n q2) (Stdlib.Int.succ 0)))
+    else eye n
+  | None ->
+    tMproduct
+      (tMproduct (eye q2) (qop_swap1n (add (sub q1 q2) (Stdlib.Int.succ 0))))
+      (eye (sub (sub n q1) (Stdlib.Int.succ 0)))
 
 (** val qop_swap_op : int -> int -> int -> matrix -> matrix **)
 
@@ -1158,23 +1098,17 @@ let qop_cnot_tc_n n =
 (** val qop_cnot : int -> int -> int -> matrix **)
 
 let qop_cnot n qc qt =
-  let s = (=) qc 0 in
-  if s
-  then let s0 = (=) qt (Stdlib.Int.succ 0) in
-       if s0
+  if (=) qc 0
+  then if (=) qt (Stdlib.Int.succ 0)
        then qop_cnot_ct_n n
        else qop_swap_op n (Stdlib.Int.succ 0) qt (qop_cnot_ct_n n)
-  else let s0 = (=) qc (Stdlib.Int.succ 0) in
-       if s0
-       then let s1 = (=) qt 0 in
-            if s1
+  else if (=) qc (Stdlib.Int.succ 0)
+       then if (=) qt 0
             then qop_cnot_tc_n n
             else qop_swap_op n 0 qt (qop_cnot_tc_n n)
-       else let s1 = (=) qt 0 in
-            if s1
+       else if (=) qt 0
             then qop_swap_op n (Stdlib.Int.succ 0) qc (qop_cnot_tc_n n)
-            else let s2 = (=) qt (Stdlib.Int.succ 0) in
-                 if s2
+            else if (=) qt (Stdlib.Int.succ 0)
                  then qop_swap_op n 0 qc (qop_cnot_ct_n n)
                  else qop_swap_op n (Stdlib.Int.succ 0) qt
                         (qop_swap_op n 0 qc (qop_cnot_ct_n n))
@@ -1206,7 +1140,7 @@ let den_measure_2 den n t =
 (** val den_measure : matrix -> int -> int -> matrix **)
 
 let den_measure den n t =
-  let s = den_measure_2 den n t in let (a, b) = s in mplus a b
+  let (a, b) = den_measure_2 den n t in mplus a b
 
 (** val den_proj_uop : matrix -> matrix -> matrix -> matrix **)
 
