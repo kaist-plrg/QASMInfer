@@ -1,10 +1,6 @@
 
 type __ = Obj.t
 
-val fst : ('a1 * 'a2) -> 'a1
-
-val snd : ('a1 * 'a2) -> 'a2
-
 type comparison =
 | Eq
 | Lt
@@ -159,21 +155,18 @@ module RbaseSymbolsImpl :
 
 module type RinvSig =
  sig
-  val coq_Rinv : float -> float
+  val coq_Rinv : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
  end
 
 module RinvImpl :
  RinvSig
 
+val rdiv :
+  RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
 
-
-val rTC : float -> Complex.t
-
-val rTIm : float -> Complex.t
+val rTC : RbaseSymbolsImpl.coq_R -> Complex.t
 
 val nTC : int -> Complex.t
-
-val cexp : Complex.t -> Complex.t
 
 val func_sum_suppl : (int -> Complex.t) -> int -> int -> Complex.t
 
@@ -215,11 +208,13 @@ val eye : int -> matrix
 
 val tMproduct : matrix -> matrix -> matrix
 
-val qop_ry : float -> matrix
+val qop_ry : RbaseSymbolsImpl.coq_R -> matrix
 
-val qop_rz : float -> matrix
+val qop_rz : RbaseSymbolsImpl.coq_R -> matrix
 
-val qop_rot : float -> float -> float -> matrix
+val qop_rot :
+  RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
+  -> matrix
 
 val qop_sq : int -> int -> matrix -> matrix
 
@@ -255,7 +250,7 @@ val den_0 : matrix
 
 val den_unitary : matrix -> matrix -> matrix
 
-val den_prob : matrix -> matrix -> float
+val den_prob : matrix -> matrix -> RbaseSymbolsImpl.coq_R
 
 val den_measure_2 : matrix -> int -> int -> (matrix * matrix)
 

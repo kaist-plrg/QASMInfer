@@ -352,8 +352,8 @@ Qed.
 Definition Qop_rz (theta: R): Matrix := {|
   Mbits := 1;
   Minner := fun i j =>
-    if i =? 0 then if j =? 0 then Cexp (0%R, - theta / 2) else          0%R
-    else if j =? 0 then                     0%R           else Cexp (0%R, theta / 2);
+    if i =? 0 then if j =? 0 then Cexp (Cmake 0%R (- theta / 2)) else          0%R
+    else if j =? 0 then                            0%R           else Cexp (Cmake 0%R (theta / 2));
   |}.
 
 Lemma Qop_rz_unitary: forall (theta: R), Qop_unitary (Qop_rz theta).

@@ -3,16 +3,6 @@ open Complex
 type __ = Obj.t
 let __ = let rec f _ = Obj.repr f in Obj.repr f
 
-(** val fst : ('a1 * 'a2) -> 'a1 **)
-
-let fst = function
-| (x, _) -> x
-
-(** val snd : ('a1 * 'a2) -> 'a2 **)
-
-let snd = function
-| (_, y) -> y
-
 type comparison =
 | Eq
 | Lt
@@ -553,6 +543,16 @@ module type RbaseSymbolsSig =
 
 module RbaseSymbolsImpl =
  struct
+  type coq_R = float
+
+  (** val coq_Rabst : float -> float **)
+
+  let coq_Rabst = fun x -> x
+
+  (** val coq_Rrepr : float -> float **)
+
+  let coq_Rrepr = fun x -> x
+
   (** val coq_Rquot1 : __ **)
 
   let coq_Rquot1 =
@@ -562,6 +562,26 @@ module RbaseSymbolsImpl =
 
   let coq_Rquot2 =
     __
+
+  (** val coq_R0 : coq_R **)
+
+  let coq_R0 = 0.0
+
+  (** val coq_R1 : coq_R **)
+
+  let coq_R1 = 1.0
+
+  (** val coq_Rplus : coq_R -> coq_R -> coq_R **)
+
+  let coq_Rplus = Stdlib.(+.)
+
+  (** val coq_Rmult : coq_R -> coq_R -> coq_R **)
+
+  let coq_Rmult = Stdlib.( *. )
+
+  (** val coq_Ropp : coq_R -> coq_R **)
+
+  let coq_Ropp = Stdlib.(~-.)
 
   type coq_Rlt = __
 
@@ -598,38 +618,33 @@ module RbaseSymbolsImpl =
 
 module type RinvSig =
  sig
-  val coq_Rinv : float -> float
+  val coq_Rinv : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
  end
 
 module RinvImpl =
  struct
+  (** val coq_Rinv : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R **)
+
+  let coq_Rinv = fun x -> 1.0 /. x
+
   (** val coq_Rinv_def : __ **)
 
   let coq_Rinv_def =
     __
  end
 
+(** val rdiv :
+    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R **)
 
+let rdiv = Stdlib.(/.)
 
-(** val rTC : float -> Complex.t **)
+(** val rTC : RbaseSymbolsImpl.coq_R -> Complex.t **)
 
 let rTC = fun x -> {re=x; im=0.0}
-
-(** val rTIm : float -> Complex.t **)
-
-let rTIm = fun y -> {re=0.0; im=y}
 
 (** val nTC : int -> Complex.t **)
 
 let nTC = fun n -> {re=float_of_int n; im=0.0}
-
-(** val cexp : Complex.t -> Complex.t **)
-
-let cexp x =
-  let r = fst x in
-  let theta = snd x in
-  Complex.mul (rTC (Stdlib.exp r))
-    (Complex.add (rTC (Stdlib.cos theta)) (rTIm (Stdlib.sin theta)))
 
 (** val func_sum_suppl : (int -> Complex.t) -> int -> int -> Complex.t **)
 
@@ -727,43 +742,40 @@ let tMproduct m1 m2 =
     Complex.mul (m1.minner ((/) i (msize m2)) ((/) j (msize m2)))
       (m2.minner ((mod) i (msize m2)) ((mod) j (msize m2)))) }
 
-(** val qop_ry : float -> matrix **)
+(** val qop_ry : RbaseSymbolsImpl.coq_R -> matrix **)
 
 let qop_ry theta =
   { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
     if (=) i 0
     then if (=) j 0
-         then rTC
-                (Stdlib.cos
-                  (Stdlib.(/.) theta (float_of_int ((fun p->2*p) 1))))
+         then rTC (Stdlib.cos (rdiv theta (float_of_int ((fun p->2*p) 1))))
          else rTC
-                (Stdlib.(~-.)
-                  (Stdlib.sin
-                    (Stdlib.(/.) theta (float_of_int ((fun p->2*p) 1)))))
+                (RbaseSymbolsImpl.coq_Ropp
+                  (Stdlib.sin (rdiv theta (float_of_int ((fun p->2*p) 1)))))
     else if (=) j 0
-         then rTC
-                (Stdlib.sin
-                  (Stdlib.(/.) theta (float_of_int ((fun p->2*p) 1))))
-         else rTC
-                (Stdlib.cos
-                  (Stdlib.(/.) theta (float_of_int ((fun p->2*p) 1))))) }
+         then rTC (Stdlib.sin (rdiv theta (float_of_int ((fun p->2*p) 1))))
+         else rTC (Stdlib.cos (rdiv theta (float_of_int ((fun p->2*p) 1))))) }
 
-(** val qop_rz : float -> matrix **)
+(** val qop_rz : RbaseSymbolsImpl.coq_R -> matrix **)
 
 let qop_rz theta =
   { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
     if (=) i 0
     then if (=) j 0
-         then cexp ((float_of_int 0),
-                (Stdlib.(/.) (Stdlib.(~-.) theta)
-                  (float_of_int ((fun p->2*p) 1))))
+         then Complex.exp
+                ((fun re im -> {re=re; im=im}) (float_of_int 0)
+                  (rdiv (RbaseSymbolsImpl.coq_Ropp theta)
+                    (float_of_int ((fun p->2*p) 1))))
          else rTC (float_of_int 0)
     else if (=) j 0
          then rTC (float_of_int 0)
-         else cexp ((float_of_int 0),
-                (Stdlib.(/.) theta (float_of_int ((fun p->2*p) 1))))) }
+         else Complex.exp
+                ((fun re im -> {re=re; im=im}) (float_of_int 0)
+                  (rdiv theta (float_of_int ((fun p->2*p) 1))))) }
 
-(** val qop_rot : float -> float -> float -> matrix **)
+(** val qop_rot :
+    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
+    RbaseSymbolsImpl.coq_R -> matrix **)
 
 let qop_rot theta phi lambda =
   mmult (mmult (qop_rz phi) (qop_ry theta)) (qop_rz lambda)
@@ -1112,7 +1124,7 @@ let den_0 =
 let den_unitary den uop =
   mmult (mmult uop den) (mconjtrans uop)
 
-(** val den_prob : matrix -> matrix -> float **)
+(** val den_prob : matrix -> matrix -> RbaseSymbolsImpl.coq_R **)
 
 let den_prob den proj =
   (fun x -> x.re) (mtrace (mmult den proj))

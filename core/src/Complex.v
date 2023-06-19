@@ -15,6 +15,8 @@ Delimit Scope C_scope with C.
 
 Definition C := (R * R)%type.
 
+Definition Cmake (re im: R) := (re, im).
+
 Definition Czero : C := (0, 0).
 Definition Cone : C := (1, 0).
 
@@ -61,7 +63,7 @@ Definition Cexp (x : C): C :=
   let theta := snd x in
   (exp r) * ((cos theta) + RTIm (sin theta)).
 
-Definition Cln (x: C): C := (ln (Cabs x), Carg x).
+Definition Cln (x: C): C := Cmake (ln (Cabs x)) (Carg x).
 
 Definition Cpow (cb ce: C): C := Cexp ((Cln cb) * ce).
 Infix "^" := Cpow : C_scope.

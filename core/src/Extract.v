@@ -24,17 +24,17 @@ Extract Inductive Reals.Cauchy.ConstructiveCauchyReals.CReal => "float"
 
 Extract Inlined Constant IZR => "float_of_int".
 
-Extract Inlined Constant RbaseSymbolsImpl.R => "float".
-Extract Inlined Constant RbaseSymbolsImpl.R0 => "0.0".
-Extract Inlined Constant RbaseSymbolsImpl.R1 => "1.0".
-Extract Inlined Constant RbaseSymbolsImpl.Rplus => "Stdlib.(+.)".
-Extract Inlined Constant RbaseSymbolsImpl.Rmult => "Stdlib.( *. )".
-Extract Inlined Constant RbaseSymbolsImpl.Ropp => "Stdlib.(~-.)".
-Extract Inlined Constant Rminus => "Stdlib.(-.)".
-Extract Inlined Constant RinvImpl.Rinv => "fun x -> 1.0 /. x".
-Extract Inlined Constant Rdiv => "Stdlib.(/.)".
-Extract Inlined Constant RbaseSymbolsImpl.Rabst => "fun x -> x".
-Extract Inlined Constant RbaseSymbolsImpl.Rrepr => "fun x -> x".
+Extract Constant RbaseSymbolsImpl.R => "float".
+Extract Constant RbaseSymbolsImpl.R0 => "0.0".
+Extract Constant RbaseSymbolsImpl.R1 => "1.0".
+Extract Constant RbaseSymbolsImpl.Rplus => "Stdlib.(+.)".
+Extract Constant RbaseSymbolsImpl.Rmult => "Stdlib.( *. )".
+Extract Constant RbaseSymbolsImpl.Ropp => "Stdlib.(~-.)".
+Extract Constant Rminus => "Stdlib.(-.)".
+Extract Constant RinvImpl.Rinv => "fun x -> 1.0 /. x".
+Extract Constant Rdiv => "Stdlib.(/.)".
+Extract Constant RbaseSymbolsImpl.Rabst => "fun x -> x".
+Extract Constant RbaseSymbolsImpl.Rrepr => "fun x -> x".
 
 Extract Constant RTC => "fun x -> {re=x; im=0.0}".
 Extract Constant RTIm => "fun y -> {re=0.0; im=y}".
@@ -46,10 +46,12 @@ Extract Inlined Constant atan2 => "Stdlib.atan2".
 Extract Inlined Constant exp => "Stdlib.exp".
 
 Extract Inlined Constant C => "Complex.t".
+Extract Inlined Constant Cmake => "(fun re im -> {re=re; im=im})".
 Extract Inlined Constant Cplus => "Complex.add".
 Extract Inlined Constant Cminus => "Complex.sub".
 Extract Inlined Constant Cmult => "Complex.mul".
 Extract Inlined Constant Cconj => "Complex.conj".
 Extract Inlined Constant Creal => "(fun x -> x.re)".
+Extract Inlined Constant Cexp => "Complex.exp".
 
 Extraction "../qasm/lib/quantum_core.ml" Qop_rot Qop_cnot Den_0_init Den_unitary Den_measure Den_prob.
