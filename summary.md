@@ -67,11 +67,13 @@ Shot-based simulators, on the other hand, produce statistical results that are
 non-deterministic. In quantum computing, a "shot" refers to a single execution
 of a quantum circuit. A shot-based simulator, therefore, runs the quantum
 circuit a certain number of times (shots) and provides a statistical result
-based on the outcomes of those multiple runs. Hence it is
-challenging to pinpoint the expected probability of the circuit due to the
-inherent randomness of each run.
+based on the outcomes of those multiple runs. Hence it is challenging to
+pinpoint the expected probability of the circuit due to the inherent randomness
+of each run.
 
-Therefore, a comparison between these existing simulators and our own QASM interpreter will offer a comprehensive understanding of its broad applicability and superior capabilities in handling executions of diverse quantum circuits.
+Therefore, a comparison between these existing simulators and our own QASM
+interpreter will offer a comprehensive understanding of its broad applicability
+and superior capabilities in handling executions of diverse quantum circuits.
 
 
 ## Relevance to Existing Work
