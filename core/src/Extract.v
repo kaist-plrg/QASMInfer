@@ -1,4 +1,4 @@
-Require Import Density.
+Require Import Program.
 Require Import Extraction.
 Require ExtrOcamlNatInt.
 Require ExtrOcamlZInt.
@@ -35,6 +35,12 @@ Extract Constant RinvImpl.Rinv => "fun x -> 1.0 /. x".
 Extract Constant Rdiv => "Stdlib.(/.)".
 Extract Constant RbaseSymbolsImpl.Rabst => "fun x -> x".
 Extract Constant RbaseSymbolsImpl.Rrepr => "fun x -> x".
+Extract Constant total_order_T =>
+"(fun x y ->
+  if (x < y) then (Some true)
+  else if (y < x) then None else (Some false))".
+Extract Constant Rlt_dec => "(fun x y -> x < y)".
+Extract Constant Rgt_dec => "(fun x y -> x > y)".
 
 Extract Constant RTC => "fun x -> {re=x; im=0.0}".
 Extract Constant RTIm => "fun y -> {re=0.0; im=y}".
@@ -53,5 +59,6 @@ Extract Inlined Constant Cmult => "Complex.mul".
 Extract Inlined Constant Cconj => "Complex.conj".
 Extract Inlined Constant Creal => "(fun x -> x.re)".
 Extract Inlined Constant Cexp => "Complex.exp".
+Extract Inlined Constant Cinv => "Complex.inv".
 
-Extraction "../qasm/lib/quantum_core.ml" Qop_rot Qop_cnot Den_0_init Den_unitary Den_measure Den_prob.
+Extraction "../qasm/lib/quantum_core.ml" Execute.

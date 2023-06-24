@@ -6,5 +6,6 @@ src/Tensor.v
 src/Operator.v
 src/Qubit.v
 src/Density.v
+src/Program.v
 src/Physics.v
 src/Extract.v

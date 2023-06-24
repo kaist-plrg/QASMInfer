@@ -110,6 +110,7 @@ Ltac simpl_bits :=
   repeat rewrite VVmult_bits_l in *;
   repeat rewrite CVconjtrans_bits in *;
   repeat rewrite RVconjtrans_bits in *;
+  repeat rewrite Msmul_bits in *;
   repeat rewrite Mmult_unsafe_bits_l in *;
   repeat rewrite Mmult_bits_l in *;
   repeat rewrite Mplus_bits_l in *;

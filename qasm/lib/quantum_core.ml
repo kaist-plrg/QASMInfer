@@ -3,19 +3,30 @@ open Complex
 type __ = Obj.t
 let __ = let rec f _ = Obj.repr f in Obj.repr f
 
+(** val app : 'a1 list -> 'a1 list -> 'a1 list **)
+
+let rec app l m =
+  match l with
+  | [] -> m
+  | a :: l1 -> a :: (app l1 m)
+
 type comparison =
 | Eq
 | Lt
 | Gt
 
-type 'a sig0 = 'a
-  (* singleton inductive, whose constructor was exist *)
+(** val mul : int -> int -> int **)
 
-
+let rec mul = ( * )
 
 (** val sub : int -> int -> int **)
 
 let rec sub = fun n m -> Stdlib.max 0 (n-m)
+
+(** val eqb : bool -> bool -> bool **)
+
+let eqb b1 b2 =
+  if b1 then b2 else if b2 then false else true
 
 module Nat =
  struct
@@ -43,6 +54,21 @@ module Nat =
 (** val lt_eq_lt_dec : int -> int -> bool option **)
 
 let rec lt_eq_lt_dec = fun n m -> if n>m then None else Some (n<m)
+
+(** val le_gt_dec : int -> int -> bool **)
+
+let le_gt_dec =
+  (<=)
+
+(** val le_dec : int -> int -> bool **)
+
+let le_dec =
+  le_gt_dec
+
+(** val ge_dec : int -> int -> bool **)
+
+let ge_dec n m =
+  le_dec m n
 
 module Pos =
  struct
@@ -298,6 +324,18 @@ module Coq_Pos =
       (fun x -> succ (of_succ_nat x))
       n
  end
+
+(** val concat : 'a1 list list -> 'a1 list **)
+
+let rec concat = function
+| [] -> []
+| x :: l0 -> app x (concat l0)
+
+(** val map : ('a1 -> 'a2) -> 'a1 list -> 'a2 list **)
+
+let rec map f = function
+| [] -> []
+| a :: t -> (f a) :: (map f t)
 
 module Z =
  struct
@@ -638,6 +676,22 @@ module RinvImpl =
 
 let rdiv = Stdlib.(/.)
 
+(** val rgt_dec : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> bool **)
+
+let rgt_dec = (fun x y -> x > y)
+
+type 'v total_map = int -> 'v
+
+(** val tm_empty : 'a1 -> 'a1 total_map **)
+
+let tm_empty v _ =
+  v
+
+(** val tm_update : 'a1 total_map -> int -> 'a1 -> 'a1 total_map **)
+
+let tm_update m k v x =
+  if (=) x k then v else m x
+
 (** val rTC : RbaseSymbolsImpl.coq_R -> Complex.t **)
 
 let rTC = fun x -> {re=x; im=0.0}
@@ -691,17 +745,15 @@ let extract_col_unsafe m j =
 let dot_product_suppl r c idx =
   func_sum (fun i -> Complex.mul (r i) (c i)) idx
 
-(** val mbop_unsafe :
-    (Complex.t -> Complex.t -> Complex.t) -> matrix -> matrix -> matrix **)
+(** val muop : (Complex.t -> Complex.t) -> matrix -> matrix **)
 
-let mbop_unsafe bop m1 m2 =
-  { mbits = m1.mbits; minner = (fun i j ->
-    bop (m1.minner i j) (m2.minner i j)) }
+let muop uop m =
+  { mbits = m.mbits; minner = (fun i j -> uop (m.minner i j)) }
 
-(** val mplus : matrix -> matrix -> matrix **)
+(** val msmul : Complex.t -> matrix -> matrix **)
 
-let mplus m1 m2 =
-  mbop_unsafe Complex.add m1 m2
+let msmul s m =
+  muop (Complex.mul s) m
 
 (** val mmult_inner : matrix -> matrix -> int -> int -> Complex.t **)
 
@@ -1124,21 +1176,32 @@ let den_0 =
 let den_unitary den uop =
   mmult (mmult uop den) (mconjtrans uop)
 
-(** val den_prob : matrix -> matrix -> RbaseSymbolsImpl.coq_R **)
+(** val den_prob : matrix -> matrix -> Complex.t **)
 
 let den_prob den proj =
-  (fun x -> x.re) (mtrace (mmult den proj))
+  mtrace (mmult den proj)
 
-(** val den_measure_2 : matrix -> int -> int -> (matrix * matrix) **)
+(** val den_prob_0 : matrix -> int -> int -> Complex.t **)
 
-let den_measure_2 den n t =
-  ((mmult (mmult (qproj0_n_t n t) den) (qproj0_n_t n t)),
-    (mmult (mmult (qproj1_n_t n t) den) (qproj1_n_t n t)))
+let den_prob_0 den n t =
+  den_prob den (qproj0_n_t n t)
 
-(** val den_measure : matrix -> int -> int -> matrix **)
+(** val den_prob_1 : matrix -> int -> int -> Complex.t **)
 
-let den_measure den n t =
-  let s = den_measure_2 den n t in let (a, b) = s in mplus a b
+let den_prob_1 den n t =
+  den_prob den (qproj1_n_t n t)
+
+(** val den_measure_0 : matrix -> int -> int -> matrix **)
+
+let den_measure_0 den n t =
+  msmul (Complex.inv (den_prob den (qproj0_n_t n t)))
+    (mmult (mmult (qproj0_n_t n t) den) (qproj0_n_t n t))
+
+(** val den_measure_1 : matrix -> int -> int -> matrix **)
+
+let den_measure_1 den n t =
+  msmul (Complex.inv (den_prob den (qproj1_n_t n t)))
+    (mmult (mmult (qproj1_n_t n t) den) (qproj1_n_t n t))
 
 (** val den_0_init : int -> matrix **)
 
@@ -1147,3 +1210,175 @@ let rec den_0_init n =
     (fun _ -> eye 0)
     (fun n' -> tMproduct den_0 (den_0_init n'))
     n
+
+type instruction =
+| RotateInstr of RbaseSymbolsImpl.coq_R * RbaseSymbolsImpl.coq_R
+   * RbaseSymbolsImpl.coq_R * int
+| CnotInstr of int * int
+| MeasureInstr of int * int
+| IfInstr of int * bool * instruction list
+
+type inlinedProgram = { iP_num_qbits : int; iP_num_cbits : int;
+                        iP_num_subinstrs : int; iP_instrs : instruction list }
+
+type world = { w_qstate : matrix; w_cstate : bool total_map;
+               w_prob : RbaseSymbolsImpl.coq_R; w_num_qubits : int }
+
+type manyWorld = world list
+
+(** val manyWorld_init : int -> int -> manyWorld **)
+
+let manyWorld_init num_q _ =
+  { w_qstate = (den_0_init num_q); w_cstate = (tm_empty false); w_prob =
+    (float_of_int 1); w_num_qubits = num_q } :: []
+
+(** val execute_rotate_instr :
+    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
+    RbaseSymbolsImpl.coq_R -> int -> manyWorld -> manyWorld **)
+
+let rec execute_rotate_instr theta phi lambda target = function
+| [] -> []
+| a :: l ->
+  let { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
+    w_num_qubits = w_num_qubits0 } = a
+  in
+  let s = (<) target w_num_qubits0 in
+  if s
+  then { w_qstate =
+         (den_unitary w_qstate0
+           (qop_sq w_num_qubits0 target (qop_rot theta phi lambda)));
+         w_cstate = w_cstate0; w_prob = w_prob0; w_num_qubits =
+         w_num_qubits0 } :: (execute_rotate_instr theta phi lambda target l)
+  else { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
+         w_num_qubits =
+         w_num_qubits0 } :: (execute_rotate_instr theta phi lambda target l)
+
+(** val execute_cnot_instr : int -> int -> manyWorld -> manyWorld **)
+
+let rec execute_cnot_instr control target = function
+| [] -> []
+| a :: l ->
+  let { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
+    w_num_qubits = w_num_qubits0 } = a
+  in
+  let s = ge_dec w_num_qubits0 (Stdlib.Int.succ (Stdlib.Int.succ 0)) in
+  if s
+  then let s0 = (<) control w_num_qubits0 in
+       if s0
+       then let s1 = (<) target w_num_qubits0 in
+            if s1
+            then { w_qstate =
+                   (den_unitary w_qstate0
+                     (qop_cnot w_num_qubits0 control target)); w_cstate =
+                   w_cstate0; w_prob = w_prob0; w_num_qubits =
+                   w_num_qubits0 } :: (execute_cnot_instr control target l)
+            else { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob =
+                   w_prob0; w_num_qubits =
+                   w_num_qubits0 } :: (execute_cnot_instr control target l)
+       else { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
+              w_num_qubits =
+              w_num_qubits0 } :: (execute_cnot_instr control target l)
+  else { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
+         w_num_qubits =
+         w_num_qubits0 } :: (execute_cnot_instr control target l)
+
+(** val execute_measure_instr : int -> int -> manyWorld -> manyWorld **)
+
+let rec execute_measure_instr qbit cbit = function
+| [] -> []
+| a :: l ->
+  let { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
+    w_num_qubits = w_num_qubits0 } = a
+  in
+  let s = (<) qbit w_num_qubits0 in
+  if s
+  then let prob0 = (fun x -> x.re) (den_prob_0 w_qstate0 w_num_qubits0 qbit)
+       in
+       let prob1 = (fun x -> x.re) (den_prob_1 w_qstate0 w_num_qubits0 qbit)
+       in
+       let s0 = rgt_dec prob0 (float_of_int 0) in
+       if s0
+       then let s1 = rgt_dec prob1 (float_of_int 0) in
+            if s1
+            then { w_qstate = (den_measure_0 w_qstate0 w_num_qubits0 qbit);
+                   w_cstate = (tm_update w_cstate0 cbit false); w_prob =
+                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob0); w_num_qubits =
+                   w_num_qubits0 } :: ({ w_qstate =
+                   (den_measure_1 w_qstate0 w_num_qubits0 qbit); w_cstate =
+                   (tm_update w_cstate0 cbit true); w_prob =
+                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob1); w_num_qubits =
+                   w_num_qubits0 } :: (execute_measure_instr qbit cbit l))
+            else { w_qstate = (den_measure_0 w_qstate0 w_num_qubits0 qbit);
+                   w_cstate = (tm_update w_cstate0 cbit false); w_prob =
+                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob0); w_num_qubits =
+                   w_num_qubits0 } :: (execute_measure_instr qbit cbit l)
+       else let s1 = rgt_dec prob1 (float_of_int 0) in
+            if s1
+            then { w_qstate = (den_measure_1 w_qstate0 w_num_qubits0 qbit);
+                   w_cstate = (tm_update w_cstate0 cbit true); w_prob =
+                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob1); w_num_qubits =
+                   w_num_qubits0 } :: (execute_measure_instr qbit cbit l)
+            else execute_measure_instr qbit cbit l
+  else execute_measure_instr qbit cbit l
+
+(** val execute_suppl : int -> instruction list -> manyWorld -> manyWorld **)
+
+let rec execute_suppl ir instrs worlds =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> worlds)
+    (fun ir' ->
+    match instrs with
+    | [] -> worlds
+    | i :: t ->
+      (match i with
+       | RotateInstr (theta, phi, lambda, target) ->
+         execute_suppl ir' t
+           (execute_rotate_instr theta phi lambda target worlds)
+       | CnotInstr (control, target) ->
+         execute_suppl ir' t (execute_cnot_instr control target worlds)
+       | MeasureInstr (qbit, cbit) ->
+         execute_suppl ir' t (execute_measure_instr qbit cbit worlds)
+       | IfInstr (cbit, cond, subinstrs) ->
+         execute_suppl ir' t
+           (concat
+             (map (fun w ->
+               if eqb (w.w_cstate cbit) cond
+               then execute_suppl ir' subinstrs (w :: [])
+               else w :: []) worlds))))
+    ir
+
+(** val cstate_to_binary_suppl : int -> bool total_map -> int **)
+
+let rec cstate_to_binary_suppl n cstate =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> 0)
+    (fun n' ->
+    (+)
+      (mul (Stdlib.Int.succ (Stdlib.Int.succ 0))
+        (cstate_to_binary_suppl n' cstate))
+      (if cstate n' then Stdlib.Int.succ 0 else 0))
+    n
+
+(** val cstate_to_binary : int -> bool total_map -> int **)
+
+let cstate_to_binary =
+  cstate_to_binary_suppl
+
+(** val calculate_prob :
+    int -> manyWorld -> RbaseSymbolsImpl.coq_R total_map **)
+
+let rec calculate_prob num_cbits = function
+| [] -> tm_empty RbaseSymbolsImpl.coq_R0
+| w :: t ->
+  let prev = calculate_prob num_cbits t in
+  let key = cstate_to_binary num_cbits w.w_cstate in
+  tm_update prev key (RbaseSymbolsImpl.coq_Rplus (prev key) w.w_prob)
+
+(** val execute : inlinedProgram -> RbaseSymbolsImpl.coq_R total_map **)
+
+let execute ip =
+  let result =
+    execute_suppl ip.iP_num_subinstrs ip.iP_instrs
+      (manyWorld_init ip.iP_num_qbits ip.iP_num_cbits)
+  in
+  calculate_prob ip.iP_num_cbits result

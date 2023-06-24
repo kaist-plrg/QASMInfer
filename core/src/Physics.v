@@ -19,13 +19,15 @@ Open Scope Den_scope.
  *)
 
 (* 1. \rho is self-adjoint (i.e. Hermitian). *)
+(* Physical meaning: Eigenvalues are real, because any physical quantity should be real *)
 Theorem Mixed_States_Hermitian: forall num_qubits rho,
   DensityMatrix num_qubits rho -> Mconjtrans rho = rho.
 Proof.
   apply DensityMatrix_Hermitian.
 Qed.
 
-(* 2. \rho is positive. *)
+(* 2. \rho is positive semidefinite. *)
+(* Physical meaning: Eigenvalues are positive, because probability is positive *)
 Theorem Mixed_States_positive: forall num_qubits rho,
   DensityMatrix num_qubits rho -> forall qstate Hmc Hd,
   Cge_0 (dot_product (CVconjtrans qstate) (MVmult rho qstate Hmc) Hd).
@@ -34,6 +36,7 @@ Proof.
 Qed.
 
 (* 3. \rho has trace 1. *)
+(* Physical meaning: sum of probabilites of every possible states is 1 *)
 Theorem Mixed_States_trace_1: forall num_qubits rho,
   DensityMatrix num_qubits rho -> Mtrace rho = 1.
 Proof.
@@ -66,7 +69,7 @@ Qed.
   P_\rho ( \lambda ) = tr ( \rho P_\lambda ).
  *)
 Theorem Measurement_Probability: forall rho projection Hbits,
-  Den_prob rho projection Hbits = Creal (Mtrace (Mmult rho projection Hbits)).
+  Den_prob rho projection Hbits = Mtrace (Mmult rho projection Hbits).
 Proof.
   reflexivity.
 Qed.

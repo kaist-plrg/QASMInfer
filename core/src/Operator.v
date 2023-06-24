@@ -489,6 +489,32 @@ Proof.
   all: simpl_bits; reflexivity.
 Qed.
 
+Definition Qop_sq_general (n t: nat) (op: Matrix) (Hop: Mbits op = 1): Matrix.
+Proof.
+  destruct (lt_dec t n).
+  - apply (Qop_sq n t op l Hop).
+  - apply (eye n).
+Defined.
+
+Lemma Qop_sq_genetal_bits: forall (n t: nat) (op: Matrix) (Hop: _), Mbits (Qop_sq_general n t op Hop) = n.
+Proof.
+  intros.
+  unfold Qop_sq_general.
+  destruct (lt_dec t n).
+  - apply Qop_sq_bits.
+  - apply eye_bits.
+Qed.
+
+Lemma Qop_sq_general_unitary: forall (n t: nat) (op: Matrix) (Hop: _), Qop_unitary op -> Qop_unitary (Qop_sq_general n t op Hop).
+Proof.
+  intros.
+  unfold Qop_sq_general.
+  destruct (lt_dec t n).
+  - apply Qop_sq_unitary.
+    apply H.
+  - apply Qop_unitary_eye.
+Qed.
+
 (* ============================================================================================== *)
 (* projection operators ========================================================================= *)
 
@@ -1119,6 +1145,31 @@ Proof.
     (* qt = otherwise *)
     { repeat apply Qop_swap_op_unitary.
       apply Qop_cnot_ct_n_unitary. } } } } } }
+Qed.
+
+Definition Qop_cnot_general (n qc qt: nat): Matrix.
+Proof.
+  destruct (ge_dec n 2), (lt_dec qc n), (lt_dec qt n).
+  apply (Qop_cnot n qc qt g l l0).
+  all: apply (eye n).
+Defined.
+
+Lemma Qop_cnot_general_bits: forall (n qc qt: nat), Mbits (Qop_cnot_general n qc qt) = n.
+Proof.
+  intros.
+  unfold Qop_cnot_general.
+  destruct (ge_dec n 2), (lt_dec qc n), (lt_dec qt n).
+  apply Qop_cnot_bits.
+  all: apply eye_bits.
+Qed.
+
+Lemma Qop_cnot_general_unitary: forall (n qc qt: nat), Qop_unitary (Qop_cnot_general n qc qt).
+Proof.
+  intros.
+  unfold Qop_cnot_general.
+  destruct (ge_dec n 2), (lt_dec qc n), (lt_dec qt n).
+  apply Qop_cnot_unitary.
+  all: apply Qop_unitary_eye.
 Qed.
 
 (* ============================================================================================== *)

@@ -1,17 +1,18 @@
 
 type __ = Obj.t
 
+val app : 'a1 list -> 'a1 list -> 'a1 list
+
 type comparison =
 | Eq
 | Lt
 | Gt
 
-type 'a sig0 = 'a
-  (* singleton inductive, whose constructor was exist *)
-
-
+val mul : int -> int -> int
 
 val sub : int -> int -> int
+
+val eqb : bool -> bool -> bool
 
 module Nat :
  sig
@@ -21,6 +22,12 @@ module Nat :
  end
 
 val lt_eq_lt_dec : int -> int -> bool option
+
+val le_gt_dec : int -> int -> bool
+
+val le_dec : int -> int -> bool
+
+val ge_dec : int -> int -> bool
 
 module Pos :
  sig
@@ -81,6 +88,10 @@ module Coq_Pos :
 
   val of_succ_nat : int -> int
  end
+
+val concat : 'a1 list list -> 'a1 list
+
+val map : ('a1 -> 'a2) -> 'a1 list -> 'a2 list
 
 module Z :
  sig
@@ -164,6 +175,14 @@ module RinvImpl :
 val rdiv :
   RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
 
+val rgt_dec : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> bool
+
+type 'v total_map = int -> 'v
+
+val tm_empty : 'a1 -> 'a1 total_map
+
+val tm_update : 'a1 total_map -> int -> 'a1 -> 'a1 total_map
+
 val rTC : RbaseSymbolsImpl.coq_R -> Complex.t
 
 val nTC : int -> Complex.t
@@ -189,10 +208,9 @@ val extract_col_unsafe : matrix -> int -> colVec
 val dot_product_suppl :
   (int -> Complex.t) -> (int -> Complex.t) -> int -> Complex.t
 
-val mbop_unsafe :
-  (Complex.t -> Complex.t -> Complex.t) -> matrix -> matrix -> matrix
+val muop : (Complex.t -> Complex.t) -> matrix -> matrix
 
-val mplus : matrix -> matrix -> matrix
+val msmul : Complex.t -> matrix -> matrix
 
 val mmult_inner : matrix -> matrix -> int -> int -> Complex.t
 
@@ -250,10 +268,49 @@ val den_0 : matrix
 
 val den_unitary : matrix -> matrix -> matrix
 
-val den_prob : matrix -> matrix -> RbaseSymbolsImpl.coq_R
+val den_prob : matrix -> matrix -> Complex.t
 
-val den_measure_2 : matrix -> int -> int -> (matrix * matrix)
+val den_prob_0 : matrix -> int -> int -> Complex.t
 
-val den_measure : matrix -> int -> int -> matrix
+val den_prob_1 : matrix -> int -> int -> Complex.t
+
+val den_measure_0 : matrix -> int -> int -> matrix
+
+val den_measure_1 : matrix -> int -> int -> matrix
 
 val den_0_init : int -> matrix
+
+type instruction =
+| RotateInstr of RbaseSymbolsImpl.coq_R * RbaseSymbolsImpl.coq_R
+   * RbaseSymbolsImpl.coq_R * int
+| CnotInstr of int * int
+| MeasureInstr of int * int
+| IfInstr of int * bool * instruction list
+
+type inlinedProgram = { iP_num_qbits : int; iP_num_cbits : int;
+                        iP_num_subinstrs : int; iP_instrs : instruction list }
+
+type world = { w_qstate : matrix; w_cstate : bool total_map;
+               w_prob : RbaseSymbolsImpl.coq_R; w_num_qubits : int }
+
+type manyWorld = world list
+
+val manyWorld_init : int -> int -> manyWorld
+
+val execute_rotate_instr :
+  RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
+  -> int -> manyWorld -> manyWorld
+
+val execute_cnot_instr : int -> int -> manyWorld -> manyWorld
+
+val execute_measure_instr : int -> int -> manyWorld -> manyWorld
+
+val execute_suppl : int -> instruction list -> manyWorld -> manyWorld
+
+val cstate_to_binary_suppl : int -> bool total_map -> int
+
+val cstate_to_binary : int -> bool total_map -> int
+
+val calculate_prob : int -> manyWorld -> RbaseSymbolsImpl.coq_R total_map
+
+val execute : inlinedProgram -> RbaseSymbolsImpl.coq_R total_map

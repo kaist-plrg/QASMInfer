@@ -412,11 +412,18 @@ Proof. apply Muop_correct. Qed.
 
 Definition Msmul (s: C) (m: Matrix): Matrix := Muop (Cmult s) m.
 
-Lemma Msuml_correct: forall
+Lemma Msmul_correct: forall
   (s: C) (m: Matrix) (i j: nat)
   (H1i: _) (H1j: _) (H2i: _) (H2j: _),
   (Msmul s m)[[i H2i|j H2j]] = (Cmult s) (m[[i H1i|j H1j]]).
 Proof. intro s. apply Muop_correct. Qed.
+
+Lemma Msmul_bits: forall (s: C) (m: Matrix), MMeqbits (Msmul s m) m.
+Proof.
+  unfold Msmul.
+  intros.
+  apply Muop_bits.
+Qed.
 
 (* ============================================================================================== *)
 (* element-wise binary operation ================================================================ *)

@@ -16,6 +16,16 @@ Open Scope list_scope.
 Declare Scope util_scope.
 
 
+(* total map ==================================================================================== *)
+
+Definition total_map (V: Type) := nat -> V.
+
+Definition tm_empty {V: Type} (v: V): total_map V := fun (_: nat) => v.
+
+Definition tm_update {V: Type} (m: total_map V) (k: nat) (v: V): total_map V :=
+  fun (x: nat) => if (x =? k) then v else m x.
+
+(* ============================================================================================== *)
 (* natural number lemmas ======================================================================== *)
 
 Lemma sub_add_comm: forall (l m n: nat), m <= l -> l - m + n = l + n - m.

@@ -197,17 +197,88 @@ Proof. lca. Qed.
 Definition Den_unitary (den uop: Matrix) (H1: _) (H2: _) :=
   (Mmult (Mmult uop den H1) (Mconjtrans uop) H2).
 
+Lemma Den_unitary_bits: forall (den uop: Matrix) (H1: _) (H2: _),
+  MMeqbits (Den_unitary den uop H1 H2) den.
+Proof.
+  intros.
+  unfold Den_unitary.
+  simpl_bits.
+  apply H1.
+Qed.
+
 (* ============================================================================================== *)
 (* probability ================================================================================== *)
 
-Definition Den_prob (den: Matrix) (proj: Matrix) (H: MMeqbits den proj): R :=
-  Creal (Mtrace (Mmult den proj H)).
+Definition Den_prob (den: Matrix) (proj: Matrix) (H: MMeqbits den proj): C :=
+  Mtrace (Mmult den proj H).
+
+Definition Den_prob_0 (den: Matrix) (n t: nat) (Ht: t < n) (H: Mbits den = n): C.
+  refine (Den_prob den (Qproj0_n_t n t Ht) _).
+  simpl_bits.
+  rewrite Qproj0_n_t_bits.
+  apply H.
+Defined.
+
+Definition Den_prob_1 (den: Matrix) (n t: nat) (Ht: t < n) (H: Mbits den = n): C.
+  refine (Den_prob den (Qproj1_n_t n t Ht) _).
+  simpl_bits.
+  rewrite Qproj1_n_t_bits.
+  apply H.
+Defined.
+
+Lemma Den_prob_sum: forall (den: Matrix) (n t: nat) (Ht: _) (H: _),
+  Mtrace den = 1 -> Den_prob_0 den n t Ht H + Den_prob_1 den n t Ht H = 1.
+Proof.
+  intros.
+  unfold Den_prob_0, Den_prob_1, Den_prob.
+  erewrite <- Mtrace_Mplus_dist.
+  erewrite <- Mmult_dist_plus_r.
+  specialize Mmult_eye_r as Heye.
+  unfold Mmult in *.
+  erewrite Qproj_n_sum_eye.
+  rewrite Heye.
+  apply H0.
+  Unshelve.
+  1-3:simpl_bits; lia.
+  simpl_bits.
+  rewrite Qproj1_n_t_bits.
+  apply Qproj0_n_t_bits.
+  simpl_bits.
+  rewrite Qproj0_n_t_bits.
+  lia.
+Qed.
 
 Definition Den_expect (den observable: Matrix) (H: MMeqbits den observable) :=
   Mtrace (Mmult den observable H).
 
 (* ============================================================================================== *)
 (* measurement ================================================================================== *)
+
+Definition Den_measure_0 (den: Matrix) (n t: nat) (Ht: t < n) (Hd: Mbits den = n): Matrix.
+Proof.
+  refine (
+    Msmul
+      (Cinv (Den_prob den (Qproj0_n_t n t Ht) _))
+      ( Mmult (
+          Mmult (Qproj0_n_t n t Ht) den _
+        ) (Qproj0_n_t n t Ht) _)
+  ).
+  Unshelve.
+  all: simpl_bits; simpl; lia.
+Defined.
+
+Definition Den_measure_1 (den: Matrix) (n t: nat) (Ht: t < n) (Hd: Mbits den = n): Matrix.
+Proof.
+  refine (
+    Msmul
+      (Cinv (Den_prob den (Qproj1_n_t n t Ht) _))
+      ( Mmult (
+          Mmult (Qproj1_n_t n t Ht) den _
+        ) (Qproj1_n_t n t Ht) _)
+  ).
+  Unshelve.
+  all: simpl_bits; simpl; lia.
+Defined.
 
 Definition Den_measure_2
   (den: Matrix) (n t: nat)  (Ht: t < n) (Hd: Mbits den = n):
@@ -224,11 +295,29 @@ Proof.
     all: simpl_bits; simpl; lia.
 Defined.
 
-Definition Den_measure (den: Matrix) (n t: nat)  (Ht: t < n) (Hd: Mbits den = n): Matrix.
+Definition Den_measure (den: Matrix) (n t: nat) (Ht: t < n) (Hd: Mbits den = n): Matrix.
 Proof.
   destruct (Den_measure_2 den n t Ht Hd) as [ [m0 m1] Hm0m1].
   exact (Mplus m0 m1 Hm0m1).
 Defined.
+
+Lemma Den_measure_0_bits: forall (den: Matrix) (n t: nat) (Ht: _) (Hd: _),
+  Mbits (Den_measure_0 den n t Ht Hd) = n.
+Proof.
+  intros.
+  unfold Den_measure_0, Mmult, Mplus.
+  simpl_bits.
+  apply Qproj0_n_t_bits.
+Qed.
+
+Lemma Den_measure_1_bits: forall (den: Matrix) (n t: nat) (Ht: _) (Hd: _),
+  Mbits (Den_measure_1 den n t Ht Hd) = n.
+Proof.
+  intros.
+  unfold Den_measure_1, Mmult, Mplus.
+  simpl_bits.
+  apply Qproj1_n_t_bits.
+Qed.
 
 Lemma Den_measure_bits: forall (den: Matrix) (n t: nat) (Ht: _) (Hd: _),
   Mbits (Den_measure den n t Ht Hd) = n.
