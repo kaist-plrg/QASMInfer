@@ -36,6 +36,40 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma TMproduct_assoc: forall (m1 m2 m3: Matrix),
+  TMproduct (TMproduct m1 m2) m3 = TMproduct m1 (TMproduct m2 m3).
+Proof.
+  intros.
+  apply Mequal.
+  - repeat rewrite TMproduct_bits.
+    lia.
+  - unfold TMproduct, Msize, pow_2; simpl.
+    specialize (pow_2_nonzero (Mbits m2)) as Hpow_m2.
+    specialize (pow_2_nonzero (Mbits m3)) as Hpow_m3.
+    intros.
+    replace (2 ^ (Mbits m2 + Mbits m3))%nat with (2 ^ (Mbits m2) * 2 ^ (Mbits m3))%nat.
+    repeat rewrite div_dist.
+    repeat rewrite div_mod_mult.
+    repeat rewrite <- mod_mult_mod.
+    replace (2 ^ (Mbits m2) * 2 ^ (Mbits m3))%nat with (2 ^ (Mbits m3) * 2 ^ (Mbits m2))%nat.
+    lca.
+    1-7: lia.
+    symmetry.
+    apply Nat.pow_add_r.
+Qed.
+
+Lemma TMproduct_trace: forall (m1 m2: Matrix), Mtrace (TMproduct m1 m2) = Mtrace m1 * Mtrace m2.
+Proof.
+  intros.
+  unfold TMproduct, Mtrace, Msize, pow_2.
+  simpl.
+  rewrite <- func_sum_dist.
+  rewrite Nat.pow_add_r.
+  reflexivity.
+  specialize (pow_2_nonzero (Mbits m2)) as Hpow.
+  lia.
+Qed.
+
 (* ============================================================================================== *)
 (* tensor product of vectors ==================================================================== *)
 
@@ -485,6 +519,50 @@ Proof.
         rewrite Emod.
         lca.
       * lia.
+Qed.
+
+Lemma TMproduct_eye0_l: forall (m: Matrix), TMproduct (eye 0) m = m.
+Proof.
+  intros.
+  apply Mequal.
+  - repeat simpl_bits.
+    lia.
+  - intros.
+    repeat simpl_bits.
+    unfold TMproduct, eye, Msize, pow_2.
+    simpl in *.
+    replace (i / 2 ^ Mbits m)%nat with O.
+    replace (j / 2 ^ Mbits m)%nat with O.
+    replace (i mod 2 ^ Mbits m)%nat with i.
+    replace (j mod 2 ^ Mbits m)%nat with j.
+    lca.
+    symmetry.
+    apply Nat.mod_small.
+    apply H0.
+    symmetry.
+    apply Nat.mod_small.
+    apply H.
+    symmetry.
+    apply Nat.div_small.
+    apply H0.
+    symmetry.
+    apply Nat.div_small.
+    apply H.
+Qed.
+
+Lemma TMproduct_eye0_r: forall (m: Matrix), TMproduct m (eye 0) = m.
+Proof.
+  intros.
+  apply Mequal.
+  - repeat simpl_bits.
+    lia.
+  - intros.
+    repeat simpl_bits.
+    unfold TMproduct, eye, Msize.
+    simpl.
+    repeat rewrite divmod_fst_n0m0.
+    repeat rewrite Nat.add_0_r.
+    lca.
 Qed.
 
 (* ============================================================================================== *)

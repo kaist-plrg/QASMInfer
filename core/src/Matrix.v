@@ -1148,6 +1148,17 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma Mtrace_Msmul: forall (m: Matrix) (c: C),
+  Mtrace (Msmul c m) = c * Mtrace m.
+Proof.
+  intros.
+  unfold Msmul, Muop, Mtrace, Msize, func_sum, func_sum2.
+  simpl.
+  apply func_sum_suppl_scale.
+  intros.
+  reflexivity.
+Qed.
+
 (* ============================================================================================== *)
 (* identity matrix ============================================================================== *)
 

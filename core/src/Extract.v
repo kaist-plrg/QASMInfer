@@ -3,10 +3,6 @@ Require Import Extraction.
 Require ExtrOcamlNatInt.
 Require ExtrOcamlZInt.
 
-Extraction Blacklist add.
-
-(* Set Extraction Flag 2031. *)
-
 Extract Inlined Constant Init.Nat.add => "(+)".
 Extract Inlined Constant Nat.add => "(+)".
 Extract Inlined Constant Nat.sub => "(fun n m -> Stdlib.max 0 (n-m))".
@@ -61,4 +57,4 @@ Extract Inlined Constant Creal => "(fun x -> x.re)".
 Extract Inlined Constant Cexp => "Complex.exp".
 Extract Inlined Constant Cinv => "Complex.inv".
 
-Extraction "../qasm/lib/quantum_core.ml" Execute.
+Extraction "../qasm/lib/core/quantum_core.ml" Execute.

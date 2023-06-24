@@ -28,6 +28,74 @@ Definition tm_update {V: Type} (m: total_map V) (k: nat) (v: V): total_map V :=
 (* ============================================================================================== *)
 (* natural number lemmas ======================================================================== *)
 
+Lemma div_twice_0: forall (l m n: nat), l < m * n -> l / m / n = 0.
+Proof.
+  intros.
+  specialize (Nat.Div0.div_lt_upper_bound l m n H) as Hm.
+  apply Nat.div_small.
+  apply Hm.
+Qed.
+
+Lemma div_dist: forall (l m n: nat), m * n <> 0 -> l / m / n = l / (m * n).
+Proof.
+  intros.
+  specialize (Nat.div_mod l (m * n) H) as Hl.
+  rewrite Hl.
+  replace (m * n * (l / (m * n))) with ((n * (l / (m * n))) * m) at 1 by lia.
+  replace (m * n * (l / (m * n))) with ((l / (m * n)) * (m * n)) at 1 by lia.
+  replace (n * (l / (m * n))) with ((l / (m * n)) * n) by lia.
+  repeat rewrite Nat.div_add_l.
+  rewrite (Nat.div_small (l mod (m * n)) (m * n)).
+  rewrite Nat.add_0_r.
+  assert (m <> 0) as Hm0 by lia.
+  rewrite div_twice_0.
+  lia.
+  1-2: apply (Nat.mod_bound_pos l (m * n)); lia; lia.
+  all: lia.
+Qed.
+
+Lemma div_mod_mult: forall (l m n: nat), m * n <> 0 -> (l / m) mod n = (l mod (m * n)) / m.
+Proof.
+  intros.
+  specialize (Nat.div_mod l (m * n) H) as Hl.
+  rewrite Hl.
+  replace (m * n * (l / (m * n))) with ((n * (l / (m * n))) * m) at 1 by lia.
+  replace (m * n * (l / (m * n))) with ((l / (m * n)) * (m * n)) at 1 by lia.
+  rewrite Nat.div_add_l.
+  rewrite Nat.Div0.add_mod.
+  rewrite Nat.Div0.mul_mod.
+  rewrite Nat.Div0.mod_same.
+  rewrite Nat.Div0.mod_0_l.
+  simpl.
+  rewrite Nat.Div0.add_mod.
+  rewrite Nat.Div0.mul_mod.
+  rewrite Nat.Div0.mod_same.
+  rewrite Nat.mul_0_r.
+  rewrite Nat.Div0.mod_0_l.
+  simpl.
+  repeat rewrite (Nat.mod_small (l mod (m * n) / m) n).
+  repeat rewrite (Nat.mod_small (l mod (m * n)) (m * n)).
+  reflexivity.
+  1-2: apply Nat.mod_bound_pos; lia; lia.
+  1-2: apply Nat.Div0.div_lt_upper_bound; apply Nat.mod_bound_pos; lia; lia.
+  lia.
+Qed.
+
+Lemma mod_mult_mod: forall (l m n: nat), m * n <> 0 -> l mod n = (l mod (m * n)) mod n.
+Proof.
+  intros.
+  replace (m * n) with (n * m) by lia.
+  rewrite Nat.Div0.mod_mul_r.
+  rewrite Nat.Div0.add_mod.
+  rewrite Nat.Div0.mul_mod.
+  rewrite Nat.Div0.mod_same.
+  simpl.
+  rewrite Nat.Div0.mod_0_l.
+  rewrite Nat.add_0_r.
+  repeat rewrite Nat.Div0.mod_mod.
+  reflexivity.
+Qed.
+
 Lemma sub_add_comm: forall (l m n: nat), m <= l -> l - m + n = l + n - m.
 Proof.
   intros.
@@ -43,7 +111,7 @@ Proof.
   - simpl. lia.
 Qed.
 
-Lemma divmode_fst_n0m0: forall n m, fst (Nat.divmod n 0 m 0) = n + m.
+Lemma divmod_fst_n0m0: forall n m, fst (Nat.divmod n 0 m 0) = n + m.
 Proof.
   induction n as [|n'].
   - simpl. lia.

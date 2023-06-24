@@ -70,6 +70,22 @@ Infix "^" := Cpow : C_scope.
 
 Definition Creal (z : C) : R := fst z.
 
+Lemma Creal_plus: forall (z1 z2: C), (Creal (z1 + z2), 0) = (Creal z1 + Creal z2).
+Proof.
+  intros [r1 i1] [r2 i2].
+  unfold Creal.
+  simpl.
+  lca.
+Qed.
+
+Lemma Creal_mult: forall (z1 z2: C), (Creal (z1 * z2), 0) = (Creal z1 * Creal z2).
+Proof.
+  intros [r1 i1] [r2 i2].
+  unfold Creal.
+  simpl.
+  lca.
+Qed.
+
 Definition Cimag (z : C) : R := snd z.
 
 Definition Cconj (x : C) : C := (fst x, (- snd x)%R).

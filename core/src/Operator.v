@@ -15,6 +15,33 @@ Open Scope T_scope.
 
 Definition Qop_Hermitian (m: Matrix) := Mconjtrans m = m.
 
+Lemma Msmul_Hermitian: forall (m: Matrix) (c: C),
+  Qop_Hermitian m -> Cimag c = R0 -> Qop_Hermitian (Msmul c m).
+Proof.
+  intros.
+  destruct m.
+  unfold Qop_Hermitian, Msmul, Muop, Mconjtrans in *.
+  inversion H.
+  simpl.
+  f_equal.
+  apply functional_extensionality.
+  intros i.
+  apply functional_extensionality.
+  intros j.
+  assert (forall f g: nat -> nat -> C, f = g -> f i j = g i j).
+  { intros.
+    rewrite H1.
+    reflexivity. }
+  apply H1 in H2.
+  rewrite <- H2.
+  rewrite Cconj_twice.
+  rewrite Cconj_mult.
+  destruct c.
+  simpl in H0.
+  subst r0.
+  lca.
+Qed.
+
 Lemma TMproduct_Hermitian: forall (m1 m2: Matrix),
   Qop_Hermitian m1 -> Qop_Hermitian m2 -> Qop_Hermitian (TMproduct m1 m2).
 Proof.
@@ -487,6 +514,41 @@ Proof.
   repeat rewrite TMproduct_eye.
   split; reflexivity.
   all: simpl_bits; reflexivity.
+Qed.
+
+Lemma Qop_sq_split_l: forall (n1 n2 t: nat) (op: Matrix) (Ht: _) (Hop: _) (Ht': t < n1),
+  Qop_sq (n1 + n2) t op Ht Hop = TMproduct (Qop_sq n1 t op Ht' Hop) (eye n2).
+Proof.
+  intros.
+  induction n2 as [|n2].
+  - rewrite TMproduct_eye0_r.
+    unfold Qop_sq.
+    rewrite Nat.add_0_r.
+    reflexivity.
+  - unfold Qop_sq in *.
+    replace (n1 + S n2 - t - 1)%nat with ((n1 - t - 1) + (n2 + 1))%nat by lia.
+    replace (S n2)%nat with (n2 + 1)%nat by lia.
+    rewrite <- (TMproduct_eye (n1 - t - 1) (n2 + 1)).
+    repeat rewrite TMproduct_assoc.
+    reflexivity.
+Qed.
+
+Lemma Qop_sq_split_r: forall (n1 n2 t: nat) (op: Matrix) (Ht: _) (Hop: _) (Ht'': _),
+  n1 <= t -> Qop_sq (n1 + n2) t op Ht Hop = TMproduct (eye n1) (Qop_sq n2 (t - n1) op Ht'' Hop).
+Proof.
+  intros.
+  induction n1 as [|n1].
+  - simpl.
+    rewrite TMproduct_eye0_l.
+    unfold Qop_sq.
+    rewrite Nat.sub_0_r.
+    reflexivity.
+  - unfold Qop_sq in *.
+    replace t with ((S n1) + (t - S n1))%nat at 1 by lia.
+    rewrite <- (TMproduct_eye (S n1)).
+    repeat rewrite TMproduct_assoc.
+    replace (S n1 + n2 - t - 1)%nat with (n2 - (t - S n1) - 1)%nat by lia.
+    reflexivity.
 Qed.
 
 Definition Qop_sq_general (n t: nat) (op: Matrix) (Hop: Mbits op = 1): Matrix.
