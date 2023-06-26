@@ -73,6 +73,56 @@ Qed.
 Definition Qop_positive (m: Matrix) :=
   forall c Hmc Hd, Cge_0 (dot_product (CVconjtrans c) (MVmult m c Hmc) Hd).
 
+Lemma Qop_positive_pure: forall (m: Matrix),
+  (exists (qst: ColVec) (H: _), m = VVmult qst (CVconjtrans qst) H) -> Qop_positive m.
+Proof.
+  intros.
+  destruct H as [qst [Hqst H] ].
+  specialize dot_product_conjtrans as Hconj.
+  unfold Qop_positive, dot_product, MVmult.
+  intros.
+  rewrite H.
+  assert (
+    dot_product_unsafe (CVconjtrans c) (MVmult_unsafe (VVmult qst (CVconjtrans qst) Hqst) c) =
+    dot_product_unsafe (CVconjtrans c) qst * dot_product_unsafe (CVconjtrans qst) c
+  ) as Hassoc.
+  { unfold MVmult_unsafe, MVmult_inner, dot_product_unsafe, RVsize.
+    simpl_bits.
+    simpl.
+    replace (
+      (fun i : nat => dot_product_suppl (fun j : nat => CVinner qst i * Cconj (CVinner qst j)) (CVinner c) (2 ^ CVbits c))
+    ) with (
+      (fun i : nat => CVinner qst i * dot_product_suppl (fun j : nat => Cconj (CVinner qst j)) (CVinner c) (2 ^ CVbits c))
+    ).
+    rewrite dot_product_suppl_scale_r with
+      (f2 := (fun i : nat => CVinner qst i))
+      (c := dot_product_suppl (fun j : nat => Cconj (CVinner qst j)) (CVinner c) (2 ^ CVbits c)).
+    replace (CVbits qst) with (CVbits c).
+    ring_simplify.
+    reflexivity.
+    specialize VVmult_bits_l as Hvvb.
+    apply f_equal with (f:= Mbits) in H.
+    simpl_bits.
+    lia.
+    intros.
+    lca.
+    apply functional_extensionality.
+    intros.
+    symmetry.
+    apply dot_product_suppl_scale_l.
+    intros.
+    lca. }
+  rewrite Hassoc.
+  replace c with (RVconjtrans (CVconjtrans c)).
+  unfold dot_product in Hconj.
+  rewrite <- Hconj.
+  rewrite CRVconjtrans_twice.
+  apply Cconj_mult_ge0.
+  apply f_equal with (f:= Mbits) in H; repeat simpl_bits; lia.
+  apply f_equal with (f:= Mbits) in H; repeat simpl_bits; lia.
+  apply CRVconjtrans_twice.
+Qed.
+
 Lemma Qop_positive_plus: forall (m1 m2: Matrix) (H: _),
   Qop_positive m1 -> Qop_positive m2 -> Qop_positive (Mplus m1 m2 H).
 Proof.
@@ -197,6 +247,26 @@ Proof.
   apply H.
   unfold Msize.
   lia.
+Qed.
+
+Lemma Qop_positive_mult: forall (m1 m2: Matrix) H1 H2,
+  Qop_positive m1 -> Qop_positive (Mmult (Mmult (Mconjtrans m2) m1 H1) m2 H2).
+Proof.
+  unfold Qop_positive in *.
+  intros.
+  specialize Mmult_assoc as Hma.
+  specialize MMVmult_assoc as Hva.
+  specialize VMVmult_assoc as Hvva.
+  specialize CVconjtrans_mult as Hccm.
+  unfold Mmult, MVmult, dot_product in *.
+  rewrite Hma.
+  rewrite Hva.
+  erewrite Hvva.
+  rewrite Hva.
+  rewrite <- Hccm.
+  apply H.
+  Unshelve.
+  all: repeat simpl_bits; lia.
 Qed.
 
 (* ============================================================================================== *)
@@ -662,7 +732,7 @@ Qed.
 (* ============================================================================================== *)
 (* projection operators ========================================================================= *)
 
-Definition Projection (m: Matrix) := (forall H, Mmult m m H = m) /\ Qop_Hermitian m.
+Definition Projection (m: Matrix) := (forall H, Mmult m m H = m) /\ Qop_Hermitian m /\ Cge_0 (Mtrace m).
 
 Definition Qproj0: Matrix := {|
   Mbits := 1;
@@ -777,22 +847,70 @@ Proof.
     assert (i = 0) by lia; subst i; lca.
 Qed.
 
+Lemma Qproj0_pure: exists (qst: ColVec) (H: _), Qproj0 = VVmult qst (CVconjtrans qst) H.
+Proof.
+  intros.
+  exists {| CVbits := 1; CVinner := fun x => 1 - x |}.
+  assert (CReqbits {| CVbits := 1; CVinner := fun x : nat => 1 - x |}
+    (CVconjtrans {| CVbits := 1; CVinner := fun x : nat => 1 - x |})) as H0.
+  { simpl_bits; reflexivity. }
+  exists H0.
+  unfold eye, VVmult, VVmult_unsafe, CVconjtrans.
+  simpl.
+  apply Mequal.
+  - reflexivity.
+  - intros.
+    simpl_bits.
+    simpl in *.
+    destruct i as [|[|i] ], j as [|[|j] ].
+    all: try lca; lia.
+Qed.
+
+Lemma Qproj1_pure: exists (qst: ColVec) (H: _), Qproj1 = VVmult qst (CVconjtrans qst) H.
+Proof.
+  intros.
+  exists {| CVbits := 1; CVinner := fun x => x |}.
+  assert (CReqbits {| CVbits := 1; CVinner := fun x : nat => x |}
+    (CVconjtrans {| CVbits := 1; CVinner := fun x : nat => x |})) as H0.
+  { simpl_bits; reflexivity. }
+  exists H0.
+  unfold eye, VVmult, VVmult_unsafe, CVconjtrans.
+  simpl.
+  apply Mequal.
+  - reflexivity.
+  - intros.
+    simpl_bits.
+    simpl in *.
+    destruct i as [|[|i] ], j as [|[|j] ].
+    all: try lca; lia.
+Qed.
+
 Lemma Qproj0_proj: Projection Qproj0.
 Proof.
-  split.
+  split; [|split].
   - intros.
     apply Qproj0_mult.
   - intros.
     apply Qproj0_Hermitian.
+  - unfold Mtrace, Qproj0.
+    unfold func_sum, func_sum2.
+    repeat unfold func_sum_suppl.
+    simpl.
+    split; [simpl;lra|simpl;lra].
 Qed.
 
 Lemma Qproj1_proj: Projection Qproj1.
 Proof.
-  split.
+  split; [|split].
   - intros.
     apply Qproj1_mult.
   - intros.
     apply Qproj1_Hermitian.
+  - unfold Mtrace, Qproj1.
+    unfold func_sum, func_sum2.
+    repeat unfold func_sum_suppl.
+    simpl.
+    split; [simpl;lra|simpl;lra].
 Qed.
 
 Definition Qproj0_n_t (n t: nat) (Ht: t < n) := Qop_sq n t Qproj0 Ht Qproj0_bits.
@@ -890,21 +1008,37 @@ Qed.
 Lemma Qproj0_n_t_proj: forall (n t: nat) (Ht: _), Projection (Qproj0_n_t n t Ht).
 Proof.
   intros.
-  split.
+  split; [|split].
   - intros.
     apply Qproj0_n_t_mult.
   - intros.
     apply Qproj0_n_t_Hermitian.
+  - intros.
+    unfold Qproj0_n_t, Qop_sq.
+    repeat rewrite TMproduct_trace.
+    repeat apply Cge_0_mult.
+    apply eye_trace_pos.
+    specialize Qproj0_proj as [_ [_ H] ].
+    apply H.
+    apply eye_trace_pos.
 Qed.
 
 Lemma Qproj1_n_t_proj: forall (n t: nat) (Ht: _), Projection (Qproj1_n_t n t Ht).
 Proof.
   intros.
-  split.
+  split; [|split].
   - intros.
     apply Qproj1_n_t_mult.
   - intros.
     apply Qproj1_n_t_Hermitian.
+  - intros.
+    unfold Qproj1_n_t, Qop_sq.
+    repeat rewrite TMproduct_trace.
+    repeat apply Cge_0_mult.
+    apply eye_trace_pos.
+    specialize Qproj1_proj as [_ [_ H] ].
+    apply H.
+    apply eye_trace_pos.
 Qed.
 
 (* ============================================================================================== *)

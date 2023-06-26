@@ -724,6 +724,14 @@ Definition MVmult_unsafe (m: Matrix) (c: ColVec): ColVec :=
     CVinner := fun i => MVmult_inner m c i;
   |}.
 
+Lemma MVmult_unsafe_bits_l: forall (m: Matrix) (c: ColVec), CCeqbits (MVmult_unsafe m c) c.
+Proof.
+  intros.
+  unfold CCeqbits.
+  simpl.
+  reflexivity.
+Qed.
+
 Definition MVmult (m: Matrix) (c: ColVec) (H: MCeqbits m c): ColVec := MVmult_unsafe m c.
 
 Lemma MVmult_bits_l: forall (m: Matrix) (c: ColVec) (H: _), CMeqbits (MVmult m c H) m.
@@ -1382,6 +1390,39 @@ Proof.
     simpl.
     apply Mmult_eye_r_suppl.
     lia.
+Qed.
+
+Lemma eye_trace_pos: forall n, Cge_0 (Mtrace (eye n)).
+Proof.
+  assert (forall i, Cge_0 (func_sum (fun i : nat => if i =? i then 1%nat else 0%nat) i)).
+  { induction i.
+    - split.
+      + simpl. lra.
+      + simpl. lra.
+    - destruct IHi as [Hp Hr].
+      split.
+      + unfold Creal, func_sum, func_sum2 in *.
+        rewrite Nat.sub_0_r in *.
+        simpl in *.
+        replace (i =? i) with true.
+        simpl.
+        lra.
+        symmetry.
+        apply Nat.eqb_eq.
+        reflexivity.
+      + unfold Cimag, func_sum, func_sum2 in *.
+        rewrite Nat.sub_0_r in *.
+        simpl in *.
+        replace (i =? i) with true.
+        simpl.
+        lra.
+        symmetry.
+        apply Nat.eqb_eq.
+        reflexivity. }
+  intros.
+  unfold Mtrace, eye, Msize.
+  simpl.
+  apply H.
 Qed.
 
 (* ============================================================================================== *)

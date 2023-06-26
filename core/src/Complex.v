@@ -141,6 +141,15 @@ Proof.
   - simpl. lra.
 Qed.
 
+Lemma Cge_0_mult: forall x y, Cge_0 x -> Cge_0 y -> Cge_0 (x * y).
+Proof.
+  intros x y [Hx1 Hx2] [Hy1 Hy2].
+  unfold Cge_0, Creal, Cimag in *.
+  split.
+  - simpl. nra.
+  - simpl. nra.
+Qed.
+
 Lemma Cconj_mult_ge0: forall (x: C), Cge_0 (x * Cconj x).
 Proof.
   intros.

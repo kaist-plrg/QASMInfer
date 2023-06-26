@@ -140,6 +140,7 @@ Ltac simpl_bits :=
   unfold CMeqbits, CCeqbits, CReqbits in *;
   unfold Msize, RVsize, CVsize, pow_2 in *;
   repeat rewrite MVmult_bits_l in *;
+  repeat rewrite MVmult_unsafe_bits_l in *;
   repeat rewrite VMmult_bits_r in *;
   repeat rewrite VVmult_bits_l in *;
   repeat rewrite CVconjtrans_bits in *;
