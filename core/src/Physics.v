@@ -98,7 +98,7 @@ Qed.
 
  *)
 Theorem Projection_Postulate: forall rho num_bits target_bit Ht Hbits,
-  Den_measure rho num_bits target_bit Ht Hbits =
+  Den_measure_and_sumrho num_bits target_bit Ht Hbits =
   Mbop_unsafe Cplus (
       Mmult_unsafe (
         Mmult_unsafe (Qproj0_n_t num_bits target_bit Ht) rho
