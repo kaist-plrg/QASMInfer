@@ -580,6 +580,9 @@ Qed.
 (* ============================================================================================== *)
 (* projection operators ========================================================================= *)
 
+Definition Projection M := .
+
+
 Definition Qproj0: Matrix := {|
   Mbits := 1;
   Minner := fun i j => match i, j with
@@ -711,8 +714,8 @@ Proof.
   apply Qop_sq_bits.
 Qed.
 
-Lemma Qproj0_n_t_mult: forall (n t: nat) (Ht: _) (H: _),
-  Mmult (Qproj0_n_t n t Ht) (Qproj0_n_t n t Ht) H = (Qproj0_n_t n t Ht).
+Lemma Qproj0_n_t_mult: forall (n t: nat) (Ht1 Ht2 Ht: _) (H: _),
+  Mmult (Qproj0_n_t n t Ht1) (Qproj0_n_t n t Ht2) H = (Qproj0_n_t n t Ht).
 Proof.
   intros.
   unfold Qproj0_n_t, Qproj1_n_t, Qop_sq in *.
@@ -724,8 +727,8 @@ Proof.
   all: simpl_bits; reflexivity.
 Qed.
 
-Lemma Qproj_n_sum_eye: forall (n t: nat) (Ht: _) (H01: _),
-  Mplus (Qproj0_n_t n t Ht) (Qproj1_n_t n t Ht) H01 = eye n.
+Lemma Qproj_n_sum_eye: forall (n t: nat) (Ht1 Ht2: _) (H01: _),
+  Mplus (Qproj0_n_t n t Ht1) (Qproj1_n_t n t Ht2) H01 = eye n.
 Proof.
   intros.
   unfold Qproj0_n_t, Qproj1_n_t, Qop_sq in *.

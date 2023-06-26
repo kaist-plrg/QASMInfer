@@ -497,37 +497,301 @@ Proof.
       lia.
 Qed.
 
+Lemma InitialDensityMatrix_prob0_pos: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
+  InitialDensityMatrix n den -> (Creal (Den_prob_0 den n t Ht Hd) >= 0)%R.
+Proof.
+  intros.
+  revert Ht Hd.
+  revert t.
+  induction H.
+  - intros.
+    simpl.
+    lra.
+  - intros.
+    assert (t = 0) by lia.
+    subst t.
+    unfold Den_prob_0, Den_prob, Mmult.
+    simpl.
+    lra.
+  - intros.
+    assert (t = 0) by lia.
+    subst t.
+    unfold Den_prob_0, Den_prob, Mmult.
+    simpl.
+    lra.
+  - intros.
+    assert (Mbits den1 = n1) as Hb1.
+    { apply InitialDensityMatrix_bits.
+      apply H. }
+    assert (Mbits den2 = n2) as Hb2.
+    { apply InitialDensityMatrix_bits.
+      apply H0. }
+    specialize TMproduct_mult as Htm.
+    specialize Mmult_eye_r as Hmer.
+    specialize InitialDensityMatrix_prob0_real as Hidmpr.
+    unfold Den_prob_0, Den_prob, Mmult, Qproj0_n_t in *.
+    destruct (lt_dec t n1).
+    + erewrite Qop_sq_split_l.
+      rewrite <- Htm.
+      rewrite TMproduct_trace.
+      apply Creal_mult_ge0.
+      apply IHInitialDensityMatrix1.
+      apply Hb1.
+      rewrite Hmer.
+      apply (InitialDensityMatrix_trace_pos n2).
+      apply H0.
+      simpl_bits.
+      apply Hb2.
+      symmetry.
+      apply Hb2.
+      eapply InitialDensityMatrix_prob0_real.
+      apply H.
+      rewrite Hmer.
+      eapply InitialDensityMatrix_trace_real.
+      apply H0.
+      simpl_bits.
+      apply Hb2.
+      symmetry.
+      apply Hb2.
+      simpl_bits.
+      rewrite Qop_sq_bits.
+      apply Hb1.
+      simpl_bits.
+      apply Hb2.
+      repeat simpl_bits.
+      rewrite Qop_sq_bits.
+      apply Hd.
+    + erewrite Qop_sq_split_r.
+      rewrite <- Htm.
+      rewrite TMproduct_trace.
+      apply Creal_mult_ge0.
+      rewrite Hmer.
+      eapply InitialDensityMatrix_trace_pos.
+      apply H.
+      simpl_bits.
+      apply Hb1.
+      1-2: auto.
+      rewrite Hmer.
+      eapply InitialDensityMatrix_trace_real.
+      apply H.
+      1-2: auto.
+      eapply InitialDensityMatrix_prob0_real.
+      1-2: auto.
+      simpl_bits.
+      rewrite Qop_sq_bits.
+      apply Hb2.
+      repeat simpl_bits.
+      rewrite Qop_sq_bits.
+      apply Hd.
+      lia.
+      Unshelve.
+      all: lia.
+Qed.
+
 Lemma InitialDensityMatrix_prob0_real_pos: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
   InitialDensityMatrix n den -> Cge_0 (Den_prob_0 den n t Ht Hd).
 Proof.
   intros.
   split.
-  - induction H.
-    + simpl.
-      lra.
-    + assert (t = 0) by lia.
-      subst t.
-      unfold Den_prob_0, Den_prob, Mmult.
+  - apply InitialDensityMatrix_prob0_pos.
+    apply H.
+  - apply InitialDensityMatrix_prob0_real.
+    apply H.
+Qed.
+
+Lemma InitialDensityMatrix_prob1_real: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
+  InitialDensityMatrix n den -> Cimag (Den_prob_1 den n t Ht Hd) = 0%R.
+Proof.
+  intros.
+  revert Ht Hd.
+  revert t.
+  induction H.
+  - lia.
+  - intros.
+    assert (t = 0) by lia.
+    subst t.
+    unfold Den_prob_0, Den_prob, Mmult.
+    simpl.
+    lra.
+  - intros.
+    assert (t = 0) by lia.
+    subst t.
+    unfold Den_prob_1, Den_prob, Mmult.
+    simpl.
+    lra.
+  - intros.
+    specialize TMproduct_mult as Htm.
+    specialize Mmult_eye_r as Heyer.
+    specialize InitialDensityMatrix_trace_real as Hreal.
+    unfold Den_prob_1, Den_prob, Mmult, Qproj1_n_t in *.
+    destruct (lt_dec t n1).
+    * erewrite Qop_sq_split_l.
+      rewrite <- Htm.
+      rewrite TMproduct_trace.
+      unfold Cimag, Cmult in *.
+      assert (Mbits den1 = n1) as Hbit1.
+      { apply InitialDensityMatrix_bits.
+        apply H. }
+      specialize (IHInitialDensityMatrix1 t l Hbit1).
+      rewrite IHInitialDensityMatrix1.
       simpl.
+      ring_simplify.
+      rewrite Heyer.
+      rewrite (Hreal n2).
       lra.
-    + assert (t = 0) by lia.
-      subst t.
-      unfold Den_prob_0, Den_prob, Mmult.
+      apply H0.
+      simpl_bits.
+      apply InitialDensityMatrix_bits.
+      apply H0.
+      symmetry.
+      apply InitialDensityMatrix_bits.
+      apply H0.
+      simpl_bits.
+      rewrite Qop_sq_bits.
+      apply InitialDensityMatrix_bits.
+      apply H.
+      simpl_bits.
+      apply InitialDensityMatrix_bits.
+      apply H0.
+      simpl_bits.
+      rewrite Qop_sq_bits.
+      simpl_bits.
+      apply Hd.
+    * erewrite Qop_sq_split_r.
+      rewrite <- Htm.
+      rewrite TMproduct_trace.
+      unfold Cimag, Cmult in *.
+      rewrite Heyer.
       simpl.
-      lra.
-    + specialize TMproduct_mult as Htm.
-      unfold Den_prob_0, Den_prob, Mmult, Qproj0_n_t in *.
-      destruct (lt_dec t n1).
-      * erewrite Qop_sq_split_l.
-        rewrite <- Htm.
-        rewrite TMproduct_trace.
-        rewrite Creal
+      rewrite (Hreal n1 den1).
+      ring_simplify.
+      erewrite IHInitialDensityMatrix2.
+      ring.
+      apply InitialDensityMatrix_bits.
+      apply H0.
+      apply H.
+      simpl_bits.
+      apply InitialDensityMatrix_bits.
+      apply H.
+      symmetry.
+      apply InitialDensityMatrix_bits.
+      apply H.
+      simpl_bits.
+      apply InitialDensityMatrix_bits.
+      apply H.
+      simpl_bits.
+      rewrite Qop_sq_bits.
+      apply InitialDensityMatrix_bits.
+      apply H0.
+      repeat simpl_bits.
+      rewrite Qop_sq_bits.
+      apply Hd.
+      lia.
+      Unshelve.
+      lia.
+Qed.
 
-  - split.
+Lemma InitialDensityMatrix_prob1_pos: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
+  InitialDensityMatrix n den -> (Creal (Den_prob_1 den n t Ht Hd) >= 0)%R.
+Proof.
+  intros.
+  revert Ht Hd.
+  revert t.
+  induction H.
+  - intros.
+    simpl.
+    lra.
+  - intros.
+    assert (t = 0) by lia.
+    subst t.
+    unfold Den_prob_0, Den_prob, Mmult.
+    simpl.
+    lra.
+  - intros.
+    assert (t = 0) by lia.
+    subst t.
+    unfold Den_prob_0, Den_prob, Mmult.
+    simpl.
+    lra.
+  - intros.
+    assert (Mbits den1 = n1) as Hb1.
+    { apply InitialDensityMatrix_bits.
+      apply H. }
+    assert (Mbits den2 = n2) as Hb2.
+    { apply InitialDensityMatrix_bits.
+      apply H0. }
+    specialize TMproduct_mult as Htm.
+    specialize Mmult_eye_r as Hmer.
+    specialize InitialDensityMatrix_prob0_real as Hidmpr.
+    unfold Den_prob_1, Den_prob, Mmult, Qproj1_n_t in *.
+    destruct (lt_dec t n1).
+    + erewrite Qop_sq_split_l.
+      rewrite <- Htm.
+      rewrite TMproduct_trace.
+      apply Creal_mult_ge0.
+      apply IHInitialDensityMatrix1.
+      apply Hb1.
+      rewrite Hmer.
+      apply (InitialDensityMatrix_trace_pos n2).
+      apply H0.
+      simpl_bits.
+      apply Hb2.
+      symmetry.
+      apply Hb2.
+      eapply InitialDensityMatrix_prob1_real.
+      apply H.
+      rewrite Hmer.
+      eapply InitialDensityMatrix_trace_real.
+      apply H0.
+      simpl_bits.
+      apply Hb2.
+      symmetry.
+      apply Hb2.
+      simpl_bits.
+      rewrite Qop_sq_bits.
+      apply Hb1.
+      simpl_bits.
+      apply Hb2.
+      repeat simpl_bits.
+      rewrite Qop_sq_bits.
+      apply Hd.
+    + erewrite Qop_sq_split_r.
+      rewrite <- Htm.
+      rewrite TMproduct_trace.
+      apply Creal_mult_ge0.
+      rewrite Hmer.
+      eapply InitialDensityMatrix_trace_pos.
+      apply H.
+      simpl_bits.
+      apply Hb1.
+      1-2: auto.
+      rewrite Hmer.
+      eapply InitialDensityMatrix_trace_real.
+      apply H.
+      1-2: auto.
+      eapply InitialDensityMatrix_prob1_real.
+      1-2: auto.
+      simpl_bits.
+      rewrite Qop_sq_bits.
+      apply Hb2.
+      repeat simpl_bits.
+      rewrite Qop_sq_bits.
+      apply Hd.
+      lia.
+      Unshelve.
+      all: lia.
+Qed.
 
-
-
-
+Lemma InitialDensityMatrix_prob1_real_pos: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
+  InitialDensityMatrix n den -> Cge_0 (Den_prob_1 den n t Ht Hd).
+Proof.
+  intros.
+  split.
+  - apply InitialDensityMatrix_prob1_pos.
+    apply H.
+  - apply InitialDensityMatrix_prob1_real.
+    apply H.
+Qed.
 
 Lemma InitialDensityMatrix_pure: forall (n: nat) (den: Matrix),
   InitialDensityMatrix n den ->
@@ -637,9 +901,9 @@ Inductive DensityMatrix: nat -> Matrix -> Prop :=
   DensityMatrix n den ->
   Qop_unitary uop ->
   DensityMatrix n (Den_unitary den uop H1 H2)
-| DensityMatrix_measure (den: Matrix) (n t: nat) (Ht: _) (Hd: _):
+(* | DensityMatrix_measure (den: Matrix) (n t: nat) (Ht: _) (Hd: _):
   DensityMatrix n den ->
-  DensityMatrix n (Den_measure den n t Ht Hd)
+  DensityMatrix n (Den_measure den n t Ht Hd) *)
 | DensityMatrix_measure_0 (den: Matrix) (n t: nat) (Ht: _) (Hd: _):
   DensityMatrix n den ->
   DensityMatrix n (Den_measure_0 den n t Ht Hd)
@@ -647,8 +911,133 @@ Inductive DensityMatrix: nat -> Matrix -> Prop :=
   DensityMatrix n den ->
   DensityMatrix n (Den_measure_1 den n t Ht Hd).
 
+(* Lemma DensityMatrix_prob0_real: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
+  DensityMatrix n den -> Cimag (Den_prob_0 den n t Ht Hd) = 0%R.
+Proof.
+  intros.
+  revert Ht Hd.
+  revert t.
+  specialize Mtrace_Mmult_comm as Htrcomm.
+  specialize Mmult_assoc as Hassoc.
+  specialize Mconjtrans_mult as Hct.
+  induction H.
+  - intros.
+    apply InitialDensityMatrix_prob0_real.
+    apply H.
+  - intros.
+    apply Cconj_real.
+    unfold Qop_Hermitian, Den_unitary, Den_prob_0, Den_prob, Mmult in *.
+    rewrite Mtrace_Cconj.
+    repeat rewrite Hct.
+    rewrite Mconjtrans_twice.
+    rewrite Hassoc at 1.
+    rewrite Htrcomm.
+    repeat rewrite Hassoc.
+    rewrite <- Hassoc.
+    rewrite Htrcomm.
+    rewrite <- Hassoc. *)
+
+
 (* ============================================================================================== *)
 (* density matrices are Hermitian =============================================================== *)
+
+Lemma DensityMatrix_prob_real_Hermitian: forall (n: nat) (den: Matrix),
+  DensityMatrix n den ->
+  (forall t0 Ht0 Hd0, Cimag (Den_prob_0 den n t0 Ht0 Hd0) = 0%R) /\
+  (forall t1 Ht1 Hd1, Cimag (Den_prob_1 den n t1 Ht1 Hd1) = 0%R) /\
+  Qop_Hermitian den.
+Proof.
+  intros n den H.
+  induction H.
+  - split; [|split ].
+    + intros.
+      apply InitialDensityMatrix_prob0_real.
+      apply H.
+    + intros.
+      apply InitialDensityMatrix_prob1_real.
+      apply H.
+    + induction H.
+      * unfold Qop_Hermitian, eye, Mconjtrans.
+        apply Mequal.
+        { reflexivity. }
+        { intros.
+          simpl_bits.
+          simpl in *.
+          assert (i = 0) by lia; subst i.
+          assert (j = 0) by lia; subst j.
+          simpl.
+          lca. }
+      * apply Den_0_Hermitian.
+      * apply Den_1_Hermitian.
+      * apply TMproduct_Hermitian.
+        apply IHInitialDensityMatrix1.
+        apply IHInitialDensityMatrix2.
+  - destruct IHDensityMatrix as [IH0 [IH1 IHH] ].
+    specialize Mtrace_Mmult_comm as Htrcomm.
+    specialize Mmult_assoc as Hassoc.
+    specialize Mconjtrans_mult as Hct.
+    split; [|split].
+    + intros.
+      apply Cconj_real.
+      unfold Qop_Hermitian, Den_unitary, Den_prob_0, Den_prob, Mmult in *.
+      rewrite Mtrace_Cconj.
+      repeat rewrite Hct.
+      rewrite Mconjtrans_twice.
+      rewrite IHH.
+      rewrite Qproj0_n_t_Hermitian.
+      rewrite Htrcomm at 1.
+      replace
+      (Mmult_unsafe uop (Mmult_unsafe den (Mconjtrans uop))) with
+      (Mmult_unsafe (Mmult_unsafe uop den) (Mconjtrans uop)).
+      reflexivity.
+      apply Hassoc.
+      all: simpl_bits; repeat rewrite Qproj0_n_t_bits; auto.
+    + intros.
+      apply Cconj_real.
+      unfold Qop_Hermitian, Den_unitary, Den_prob_1, Den_prob, Mmult in *.
+      rewrite Mtrace_Cconj.
+      repeat rewrite Hct.
+      rewrite Mconjtrans_twice.
+      rewrite IHH.
+      rewrite Qproj1_n_t_Hermitian.
+      rewrite Htrcomm at 1.
+      replace
+      (Mmult_unsafe uop (Mmult_unsafe den (Mconjtrans uop))) with
+      (Mmult_unsafe (Mmult_unsafe uop den) (Mconjtrans uop)).
+      reflexivity.
+      apply Hassoc.
+      all: simpl_bits; repeat rewrite Qproj1_n_t_bits; auto.
+    + intros.
+      unfold Qop_Hermitian, Den_unitary.
+      unfold Mmult in *.
+      repeat rewrite Hct.
+      rewrite IHH.
+      rewrite Mconjtrans_twice.
+      rewrite Hassoc.
+      reflexivity.
+      all: simpl_bits; lia.
+  - destruct IHDensityMatrix as [IH0 [IH1 IHH] ].
+    specialize Mtrace_Mmult_comm as Htrcomm.
+    specialize Mmult_assoc as Hassoc.
+    specialize Mconjtrans_mult as Hct.
+    specialize Mmult_smul_comm_l as Hms.
+    specialize Qproj0_n_t_mult as Hpp.
+    split; [|split].
+    + intros.
+      unfold Den_measure_0, Den_measure, Den_prob, Den_prob_0, Den_prob, Mmult in *.
+      rewrite Hms.
+      rewrite Mtrace_Msmul.
+      apply Cmult_real.
+      apply Cimag_0_inv.
+      auto.
+      repeat rewrite Hassoc.
+      rewrite Htrcomm.
+      repeat rewrite Hassoc.
+      rewrite Hpp.
+
+
+
+
 
 Lemma DensityMatrix_Hermitian: forall (n: nat) (den: Matrix),
   DensityMatrix n den -> Qop_Hermitian den.
@@ -706,6 +1095,8 @@ Proof.
     repeat rewrite Hassoc.
     reflexivity.
     1-10: repeat simpl_bits; repeat rewrite Qproj0_n_t_bits; repeat rewrite Qproj1_n_t_bits; lia.
+    apply Cimag_0_inv.
+    apply
     unfold Cinv, Creal.
     simpl.
     lra.

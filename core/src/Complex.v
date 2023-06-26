@@ -78,15 +78,36 @@ Proof.
   lca.
 Qed.
 
-Lemma Creal_mult: forall (z1 z2: C), (Creal (z1 * z2), 0) = (Creal z1 * Creal z2).
+Definition Cimag (z : C) : R := snd z.
+
+Lemma Cmult_real: forall (x y: C),
+  Cimag x = 0 -> Cimag y = 0 -> Cimag (x * y) = 0.
 Proof.
   intros [r1 i1] [r2 i2].
   unfold Creal.
   simpl.
-  lca.
+  intros.
+  nra.
 Qed.
 
-Definition Cimag (z : C) : R := snd z.
+Lemma Creal_mult_ge0: forall (x y: C),
+  Creal x >= 0 -> Creal y >= 0 -> Cimag x = 0 -> Cimag y = 0 -> Creal (x * y) >= 0.
+Proof.
+  intros [r1 i1] [r2 i2].
+  unfold Creal.
+  simpl.
+  intros.
+  nra.
+Qed.
+
+Lemma Cimag_0_inv: forall (x: C), Cimag x = 0 -> Cimag (/ x) = 0.
+Proof.
+  intros [r1 i1].
+  unfold Cimag.
+  simpl.
+  intros.
+  nra.
+Qed.
 
 Definition Cconj (x : C) : C := (fst x, (- snd x)%R).
 
@@ -98,6 +119,16 @@ Proof. intros. lca. Qed.
 
 Lemma Cconj_twice: forall (x: C), Cconj (Cconj x) = x.
 Proof. intros. lca. Qed.
+
+Lemma Cconj_real: forall (x: C), Cconj x = x -> Cimag x = 0.
+Proof.
+  intros [r i].
+  unfold Cconj.
+  simpl.
+  intros.
+  inversion H.
+  lra.
+Qed.
 
 Definition Cge_0 (x: C) := Creal x >= 0 /\ Cimag x = 0.
 
@@ -227,6 +258,20 @@ Proof.
   induction m as [|m'].
   - lca.
   - simpl.
+    rewrite IHm'.
+    rewrite H.
+    lca.
+Qed.
+
+Lemma func_sum_suppl_conj: forall (n m: nat) (f1 f2: nat -> C),
+  (forall i, Cconj (f1 i) = f2 i) ->
+  Cconj (func_sum_suppl f1 n m) = func_sum_suppl f2 n m.
+Proof.
+  intros.
+  induction m as [|m'].
+  - lca.
+  - simpl.
+    rewrite Cconj_plus.
     rewrite IHm'.
     rewrite H.
     lca.

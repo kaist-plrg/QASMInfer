@@ -694,6 +694,24 @@ Proof.
     lca.
 Qed.
 
+Lemma Mmult_smul_comm_l: forall (m1 m2: Matrix) (c: C) H1 H2,
+  Mmult (Msmul c m1) m2 H1 =  Msmul c (Mmult m1 m2 H2).
+Proof.
+  intros.
+  unfold Mmult, Msmul, Mmult_unsafe, Muop, Msize.
+  simpl.
+  apply Mequal.
+  - reflexivity.
+  - unfold Msize.
+    simpl.
+    intros.
+    unfold Mmult_inner, extract_row_unsafe, extract_col_unsafe, Msize.
+    simpl.
+    apply dot_product_suppl_scale_l.
+    intros.
+    reflexivity.
+Qed.
+
 (* ============================================================================================== *)
 (* matrix-vector multiplication ================================================================= *)
 
@@ -1124,6 +1142,7 @@ Proof.
   apply func_sum_comm_mat.
 Qed.
 
+
 Lemma Mtrace_Mplus_dist: forall (m1 m2: Matrix) (H: _),
   Mtrace (Mplus m1 m2 H) = Mtrace m1 + Mtrace m2.
 Proof.
@@ -1155,6 +1174,17 @@ Proof.
   unfold Msmul, Muop, Mtrace, Msize, func_sum, func_sum2.
   simpl.
   apply func_sum_suppl_scale.
+  intros.
+  reflexivity.
+Qed.
+
+Lemma Mtrace_Cconj: forall (m: Matrix), Cconj (Mtrace m) = Mtrace (Mconjtrans m).
+Proof.
+  intros.
+  unfold Mtrace, Msize, func_sum, func_sum2, Mconjtrans in *.
+  simpl.
+  rewrite Nat.sub_0_r.
+  apply func_sum_suppl_conj with (f2 := (fun i : nat => Cconj (Minner m i i))).
   intros.
   reflexivity.
 Qed.
