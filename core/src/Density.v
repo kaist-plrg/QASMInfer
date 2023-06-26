@@ -410,96 +410,89 @@ Proof.
     apply H.
 Qed.
 
-Lemma InitialDensityMatrix_prob0_real: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
-  InitialDensityMatrix n den -> Cimag (Den_prob_0 den n t Ht Hd) = 0%R.
+Lemma InitialDensityMatrix_prob_real_Hermitian: forall (n: nat) (den proj: Matrix),
+  InitialDensityMatrix n den -> Projection proj ->
+  (forall Hd, (Cimag (Den_prob den proj Hd) = 0%R)) /\ Qop_Hermitian den.
 Proof.
   intros.
-  revert Ht Hd.
-  revert t.
+  destruct H0 as [Hp HH].
+  specialize Mconjtrans_mult as Hcm.
+  specialize Mtrace_Mmult_comm as Hcomm.
   induction H.
-  - lia.
-  - intros.
-    assert (t = 0) by lia.
-    subst t.
-    unfold Den_prob_0, Den_prob, Mmult.
-    simpl.
-    lra.
-  - intros.
-    assert (t = 0) by lia.
-    subst t.
-    unfold Den_prob_1, Den_prob, Mmult.
-    simpl.
-    lra.
-  - intros.
-    specialize TMproduct_mult as Htm.
-    specialize Mmult_eye_r as Heyer.
-    specialize InitialDensityMatrix_trace_real as Hreal.
-    unfold Den_prob_0, Den_prob, Mmult, Qproj0_n_t in *.
-    destruct (lt_dec t n1).
-    * erewrite Qop_sq_split_l.
-      rewrite <- Htm.
-      rewrite TMproduct_trace.
-      unfold Cimag, Cmult in *.
-      assert (Mbits den1 = n1) as Hbit1.
-      { apply InitialDensityMatrix_bits.
-        apply H. }
-      specialize (IHInitialDensityMatrix1 t l Hbit1).
-      rewrite IHInitialDensityMatrix1.
-      simpl.
-      ring_simplify.
-      rewrite Heyer.
-      rewrite (Hreal n2).
-      lra.
-      apply H0.
-      simpl_bits.
-      apply InitialDensityMatrix_bits.
-      apply H0.
-      symmetry.
-      apply InitialDensityMatrix_bits.
-      apply H0.
-      simpl_bits.
-      rewrite Qop_sq_bits.
-      apply InitialDensityMatrix_bits.
-      apply H.
-      simpl_bits.
-      apply InitialDensityMatrix_bits.
-      apply H0.
-      simpl_bits.
-      rewrite Qop_sq_bits.
+  - split.
+    + intros.
+      unfold Den_prob.
+      rewrite Mmult_eye_l.
+      apply Cconj_real.
+      rewrite Mtrace_Cconj.
+      rewrite HH.
+      reflexivity.
       simpl_bits.
       apply Hd.
-    * erewrite Qop_sq_split_r.
-      rewrite <- Htm.
-      rewrite TMproduct_trace.
-      unfold Cimag, Cmult in *.
-      rewrite Heyer.
+    + apply Qop_Hermitian_eye.
+  - split.
+    + intros.
+      unfold Den_prob.
+      apply Cconj_real.
+      rewrite Mtrace_Cconj.
+      unfold Mmult in *.
+      rewrite Hcm.
+      rewrite HH.
+      rewrite Den_0_Hermitian.
+      rewrite Hcomm.
+      reflexivity.
+      all: simpl_bits; auto.
+    + unfold Qop_Hermitian, eye, Mconjtrans.
       simpl.
-      rewrite (Hreal n1 den1).
-      ring_simplify.
-      erewrite IHInitialDensityMatrix2.
-      ring.
-      apply InitialDensityMatrix_bits.
-      apply H0.
-      apply H.
-      simpl_bits.
-      apply InitialDensityMatrix_bits.
-      apply H.
-      symmetry.
-      apply InitialDensityMatrix_bits.
-      apply H.
-      simpl_bits.
-      apply InitialDensityMatrix_bits.
-      apply H.
-      simpl_bits.
-      rewrite Qop_sq_bits.
-      apply InitialDensityMatrix_bits.
-      apply H0.
-      repeat simpl_bits.
-      rewrite Qop_sq_bits.
-      apply Hd.
-      lia.
-      Unshelve.
-      lia.
+      apply Mequal.
+      * reflexivity.
+      * simpl_bits.
+        simpl.
+        intros.
+        destruct i as [|[|i] ], j as [|[|j] ].
+        all: lca.
+  - split.
+    + intros.
+      unfold Den_prob.
+      apply Cconj_real.
+      rewrite Mtrace_Cconj.
+      unfold Mmult in *.
+      rewrite Hcm.
+      rewrite HH.
+      rewrite Den_1_Hermitian.
+      rewrite Hcomm.
+      reflexivity.
+      all: simpl_bits; auto.
+    + unfold Qop_Hermitian, eye, Mconjtrans.
+      simpl.
+      apply Mequal.
+      * reflexivity.
+      * simpl_bits.
+        simpl.
+        intros.
+        destruct i as [|[|i] ], j as [|[|j] ].
+        all: lca.
+  - split.
+    + intros.
+      unfold Den_prob.
+      apply Cconj_real.
+      rewrite Mtrace_Cconj.
+      unfold Mmult in *.
+      rewrite Hcm.
+      rewrite TMproduct_Hermitian.
+      rewrite HH.
+      rewrite Hcomm.
+      reflexivity.
+      all: simpl_bits; auto.
+      destruct IHInitialDensityMatrix1 as [_ HH1].
+      apply HH1.
+      destruct IHInitialDensityMatrix2 as [_ HH2].
+      apply HH2.
+    + apply TMproduct_Hermitian.
+      destruct IHInitialDensityMatrix1 as [_ HH1].
+      apply HH1.
+      destruct IHInitialDensityMatrix2 as [_ HH2].
+      apply HH2.
 Qed.
 
 Lemma InitialDensityMatrix_prob0_pos: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
