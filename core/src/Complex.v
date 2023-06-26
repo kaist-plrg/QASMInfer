@@ -130,6 +130,16 @@ Proof.
   lra.
 Qed.
 
+Lemma Creal_conj: forall (x: C), Cimag x = 0 -> Cconj x = x.
+Proof.
+  intros [r i].
+  unfold Cconj.
+  simpl.
+  intros.
+  inversion H.
+  lca.
+Qed.
+
 Definition Cge_0 (x: C) := Creal x >= 0 /\ Cimag x = 0.
 
 Lemma Cge_0_plus: forall x y, Cge_0 x -> Cge_0 y -> Cge_0 (x + y).

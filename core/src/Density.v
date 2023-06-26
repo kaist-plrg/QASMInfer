@@ -643,6 +643,105 @@ Proof.
 (* density matrices are Hermitian =============================================================== *)
 
 Lemma DensityMatrix_prob_real_Hermitian: forall (n: nat) (den: Matrix),
+  DensityMatrix n den -> (forall proj, Projection proj ->
+  (forall Hd, (Cimag (Den_prob den proj Hd) = 0%R))) /\ Qop_Hermitian den.
+Proof.
+  intros.
+  induction H.
+  - eapply InitialDensityMatrix_prob_real_Hermitian.
+    apply H.
+  - split.
+    + specialize Mconjtrans_mult as Hcm.
+      specialize Mtrace_Mmult_comm as Hcomm.
+      specialize Mmult_assoc as Hassoc.
+      unfold Den_unitary, Den_prob, Mmult in *.
+      intros.
+      simpl_bits.
+      assert (Mbits den = Mbits proj) as Hdp by lia.
+      destruct IHDensityMatrix as [IH1 IH2].
+      specialize (IH1 proj H3 Hdp).
+      destruct H3 as [Hp1 [Hp2 Hp3] ].
+      apply Cconj_real.
+      rewrite Mtrace_Cconj.
+      repeat rewrite Hcm.
+      repeat rewrite Mconjtrans_twice.
+      repeat rewrite Hp2.
+      rewrite IH2.
+      rewrite Hcomm.
+      repeat rewrite Hassoc.
+      reflexivity.
+      all: simpl_bits; lia.
+    + specialize Mconjtrans_mult as Hcm.
+      specialize Mmult_assoc as Hassoc.
+      unfold Den_unitary, Mmult, Qop_Hermitian in *.
+      intros.
+      simpl_bits.
+      destruct IHDensityMatrix as [IH1 IH2].
+      repeat rewrite Hcm.
+      repeat rewrite Mconjtrans_twice.
+      rewrite IH2.
+      repeat rewrite Hassoc.
+      reflexivity.
+      all: simpl_bits; lia.
+  - split.
+    + specialize Mconjtrans_mult as Hcm.
+      specialize Mtrace_Mmult_comm as Hcomm.
+      specialize Mmult_assoc as Hassoc.
+      specialize Mconjtrans_Msmul as Hcs.
+      unfold Den_unitary, Den_measure, Den_prob, Mmult in *.
+      intros.
+      simpl_bits.
+      assert (Mbits den = Mbits proj) as Hdp by lia.
+      apply Cconj_real.
+      rewrite Mtrace_Cconj.
+      repeat rewrite Hcm.
+      rewrite Hcs.
+      rewrite Hcomm.
+      rewrite Creal_conj.
+      repeat rewrite Hcm.
+      destruct H0 as [Hp01 [Hp02 Hp03] ].
+      destruct H1 as [Hp11 [Hp12 Hp13] ].
+      rewrite Hp02.
+      rewrite Hp12.
+      destruct IHDensityMatrix as [IH1 IH2].
+      rewrite IH2.
+      rewrite Hassoc.
+      reflexivity.
+      1-10: simpl_bits; lia.
+      apply Cimag_0_inv.
+      destruct IHDensityMatrix as [IH1 IH2].
+      apply IH1.
+      apply H0.
+      all: repeat simpl_bits; lia.
+    + specialize Mconjtrans_mult as Hcm.
+      specialize Mtrace_Mmult_comm as Hcomm.
+      specialize Mmult_assoc as Hassoc.
+      specialize Mconjtrans_Msmul as Hcs.
+      unfold Den_unitary, Den_measure, Den_prob, Mmult, Qop_Hermitian in *.
+      intros.
+      simpl_bits.
+      assert (Mbits den = Mbits proj) as Hdp by lia.
+      rewrite Hcs.
+      repeat rewrite Hcm.
+      rewrite Creal_conj.
+      destruct H0 as [Hp01 [Hp02 Hp03] ].
+      rewrite Hp02.
+      destruct IHDensityMatrix as [IH1 IH2].
+      rewrite IH2.
+      rewrite Hassoc.
+      reflexivity.
+      1-4: simpl_bits; lia.
+      apply Cimag_0_inv.
+      destruct IHDensityMatrix as [IH1 IH2].
+      apply IH1.
+      apply H0.
+      all: repeat simpl_bits; lia.
+Qed.
+
+
+
+
+Lemma DensityMatrix_prob_real_Hermitian: forall (n: nat) (den: Matrix),
   DensityMatrix n den ->
   (forall t0 Ht0 Hd0, Cimag (Den_prob_0 den n t0 Ht0 Hd0) = 0%R) /\
   (forall t1 Ht1 Hd1, Cimag (Den_prob_1 den n t1 Ht1 Hd1) = 0%R) /\

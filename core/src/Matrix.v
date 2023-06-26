@@ -1036,6 +1036,21 @@ Proof.
     apply Cconj_twice.
 Qed.
 
+Lemma Mconjtrans_Msmul: forall (m: Matrix) (c: C),
+  Mconjtrans (Msmul c m) = Msmul (Cconj c) (Mconjtrans m).
+Proof.
+  intros.
+  apply Mequal.
+  - rewrite Mconjtrans_bits.
+    repeat rewrite Msmul_bits.
+    rewrite Mconjtrans_bits.
+    reflexivity.
+  - intros.
+    unfold Mconjtrans, Msmul.
+    simpl.
+    lca.
+Qed.
+
 (* ============================================================================================== *)
 (* conjugate transpose of a vector ============================================================== *)
 
