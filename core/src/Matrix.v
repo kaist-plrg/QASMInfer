@@ -780,6 +780,24 @@ Proof.
     apply dot_product_suppl_assoc.
 Qed.
 
+(* Lemma MVmult_smul_comm_l: forall (m: Matrix) (col: ColVec) (c: C) H1 H2,
+  MVmult (Msmul c m) col H1 =  CVsmul c (MVmult m col H2).
+Proof.
+  intros.
+  unfold Mmult, Msmul, Mmult_unsafe, Muop, Msize.
+  simpl.
+  apply Mequal.
+  - reflexivity.
+  - unfold Msize.
+    simpl.
+    intros.
+    unfold Mmult_inner, extract_row_unsafe, extract_col_unsafe, Msize.
+    simpl.
+    apply dot_product_suppl_scale_l.
+    intros.
+    reflexivity.
+Qed. *)
+
 (* Lemma MVmult_dist: forall (m1 m2: Matrix) (c: ColVec) H Hm12c Hm1c Hm2c,
   MVmult (Mplus m1 m2 H) c Hm12c = Mplus (MVmult m1 c Hm1c) (MVmult m2 c Hm2c). *)
 

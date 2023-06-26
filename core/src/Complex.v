@@ -160,6 +160,28 @@ Proof.
   - simpl. nra.
 Qed.
 
+Lemma Cge_0_inv: forall x, Cge_0 x -> Cge_0 (/ x).
+Proof.
+  intros [r i] [Hx1 Hx2].
+  unfold Cge_0, Creal, Cimag in *.
+  simpl in *.
+  subst i.
+  destruct (Req_dec r 0).
+  - nra.
+  - assert (r > 0) by lra.
+    split.
+    + rewrite Rmult_0_l.
+      rewrite Rplus_0_r.
+      rewrite Rmult_1_r.
+      unfold Rdiv.
+      assert (r * r > 0) by nra.
+      assert (/ (r * r) > 0).
+      { apply Rinv_0_lt_compat.
+        lra. }
+      nra.
+    + nra.
+Qed.
+
 Lemma Cconj_mult_ge0: forall (x: C), Cge_0 (x * Cconj x).
 Proof.
   intros.

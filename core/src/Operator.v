@@ -249,7 +249,7 @@ Proof.
   lia.
 Qed.
 
-Lemma Qop_positive_mult: forall (m1 m2: Matrix) H1 H2,
+Lemma Qop_positive_mult_l: forall (m1 m2: Matrix) H1 H2,
   Qop_positive m1 -> Qop_positive (Mmult (Mmult (Mconjtrans m2) m1 H1) m2 H2).
 Proof.
   unfold Qop_positive in *.
@@ -267,6 +267,73 @@ Proof.
   apply H.
   Unshelve.
   all: repeat simpl_bits; lia.
+Qed.
+
+Lemma Qop_positive_mult_r: forall (m1 m2: Matrix) H1 H2,
+  Qop_positive m1 -> Qop_positive (Mmult (Mmult m2 m1 H1) (Mconjtrans m2) H2).
+Proof.
+  unfold Qop_positive in *.
+  intros.
+  specialize Mmult_assoc as Hma.
+  specialize MMVmult_assoc as Hva.
+  specialize VMVmult_assoc as Hvva.
+  specialize CVconjtrans_mult as Hccm.
+  unfold Mmult, MVmult, VMmult, dot_product in *.
+  rewrite Hma.
+  rewrite Hva.
+  erewrite Hvva.
+  rewrite Hva.
+  replace m2 with (Mconjtrans (Mconjtrans m2)) at 1.
+  rewrite <- Hccm.
+  apply H.
+  Unshelve.
+  5: apply Mconjtrans_twice.
+  all: repeat simpl_bits; auto; lia.
+Qed.
+
+Lemma Qop_positive_mult_Hermitian: forall (m1 m2: Matrix) H1 H2,
+  Qop_positive m1 -> Qop_Hermitian m2 -> Qop_positive (Mmult (Mmult m2 m1 H1) m2 H2).
+Proof.
+  intros.
+  unfold Mmult in *.
+  assert (Mmult_unsafe m2 m1 = Mmult_unsafe (Mconjtrans m2) m1).
+  { rewrite H0.
+    reflexivity. }
+  rewrite H3.
+  eapply Qop_positive_mult_l.
+  apply H.
+  Unshelve.
+  simpl_bits. lia.
+  simpl_bits. lia.
+Qed.
+
+Lemma Qop_positive_smult: forall (m: Matrix) (c: C),
+  Qop_positive m -> Cge_0 c -> Qop_positive (Msmul c m).
+Proof.
+  unfold Qop_positive.
+  intros.
+  unfold dot_product, CVconjtrans, MVmult, Msmul, Muop, dot_product_unsafe, MVmult_unsafe in *.
+  simpl_bits.
+  simpl in *.
+  unfold MVmult_inner, extract_row_unsafe in *.
+  simpl in *.
+  replace (fun i : nat => dot_product_suppl (fun j : nat => c * Minner m i j) (CVinner c0) (CVsize c0)) with
+  (fun i : nat => c * dot_product_suppl (fun j : nat => Minner m i j) (CVinner c0) (CVsize c0)).
+  rewrite dot_product_suppl_scale_r with (c := c) (f2 := (fun i : nat => dot_product_suppl (fun j : nat => Minner m i j) (CVinner c0) (CVsize c0))).
+  apply Cge_0_mult.
+  apply H0.
+  unfold CVsize in *.
+  apply H.
+  simpl_bits.
+  lia.
+  reflexivity.
+  intros. reflexivity.
+  apply functional_extensionality.
+  intros.
+  symmetry.
+  apply dot_product_suppl_scale_l.
+  intros.
+  reflexivity.
 Qed.
 
 (* ============================================================================================== *)
