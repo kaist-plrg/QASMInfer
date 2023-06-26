@@ -410,17 +410,17 @@ Proof.
     apply H.
 Qed.
 
-Lemma InitialDensityMatrix_prob_real_Hermitian: forall (n: nat) (den proj: Matrix),
-  InitialDensityMatrix n den -> Projection proj ->
-  (forall Hd, (Cimag (Den_prob den proj Hd) = 0%R)) /\ Qop_Hermitian den.
+Lemma InitialDensityMatrix_prob_real_Hermitian: forall (n: nat) (den: Matrix),
+  InitialDensityMatrix n den -> (forall proj, Projection proj ->
+  (forall Hd, (Cimag (Den_prob den proj Hd) = 0%R))) /\ Qop_Hermitian den.
 Proof.
   intros.
-  destruct H0 as [Hp [HH _] ].
   specialize Mconjtrans_mult as Hcm.
   specialize Mtrace_Mmult_comm as Hcomm.
   induction H.
   - split.
     + intros.
+      destruct H as [Hp [HH _] ].
       unfold Den_prob.
       rewrite Mmult_eye_l.
       apply Cconj_real.
@@ -432,6 +432,7 @@ Proof.
     + apply Qop_Hermitian_eye.
   - split.
     + intros.
+      destruct H as [Hp [HH _] ].
       unfold Den_prob.
       apply Cconj_real.
       rewrite Mtrace_Cconj.
@@ -453,6 +454,7 @@ Proof.
         all: lca.
   - split.
     + intros.
+      destruct H as [Hp [HH _] ].
       unfold Den_prob.
       apply Cconj_real.
       rewrite Mtrace_Cconj.
@@ -474,6 +476,7 @@ Proof.
         all: lca.
   - split.
     + intros.
+      destruct H1 as [Hp [HH _] ].
       unfold Den_prob.
       apply Cconj_real.
       rewrite Mtrace_Cconj.
@@ -493,6 +496,25 @@ Proof.
       apply HH1.
       destruct IHInitialDensityMatrix2 as [_ HH2].
       apply HH2.
+Qed.
+
+Lemma InitialDensityMatrix_prob_real: forall (n: nat) (den proj: Matrix),
+  InitialDensityMatrix n den -> Projection proj -> (forall Hd, (Cimag (Den_prob den proj Hd) = 0%R)).
+Proof.
+  intros.
+  destruct (InitialDensityMatrix_prob_real_Hermitian n den).
+  apply H.
+  apply H1.
+  apply H0.
+Qed.
+
+Lemma InitialDensityMatrix_Hermitian: forall (n: nat) (den proj: Matrix),
+  InitialDensityMatrix n den -> Projection proj -> Qop_Hermitian den.
+Proof.
+  intros.
+  destruct (InitialDensityMatrix_prob_real_Hermitian n den).
+  apply H.
+  apply H2.
 Qed.
 
 Lemma InitialDensityMatrix_pure: forall (n: nat) (den: Matrix),
@@ -574,219 +596,6 @@ Proof.
   apply Hposm.
   3: eapply InitialDensityMatrix_positive; apply H.
   all: try auto; simpl_bits; lia.
-Qed.
-
-Lemma InitialDensityMatrix_prob0_real_pos: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
-  InitialDensityMatrix n den -> Cge_0 (Den_prob_0 den n t Ht Hd).
-Proof.
-  intros.
-  split.
-  - apply InitialDensityMatrix_prob0_pos.
-    apply H.
-  - apply InitialDensityMatrix_prob0_real.
-    apply H.
-Qed.
-
-
-Lemma InitialDensityMatrix_prob1_pos: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
-  InitialDensityMatrix n den -> (Creal (Den_prob_1 den n t Ht Hd) >= 0)%R.
-Proof.
-  intros.
-  revert Ht Hd.
-  revert t.
-  induction H.
-  - intros.
-    simpl.
-    lra.
-  - intros.
-    assert (t = 0) by lia.
-    subst t.
-    unfold Den_prob_0, Den_prob, Mmult.
-    simpl.
-    lra.
-  - intros.
-    assert (t = 0) by lia.
-    subst t.
-    unfold Den_prob_0, Den_prob, Mmult.
-    simpl.
-    lra.
-  - intros.
-    assert (Mbits den1 = n1) as Hb1.
-    { apply InitialDensityMatrix_bits.
-      apply H. }
-    assert (Mbits den2 = n2) as Hb2.
-    { apply InitialDensityMatrix_bits.
-      apply H0. }
-    specialize TMproduct_mult as Htm.
-    specialize Mmult_eye_r as Hmer.
-    specialize InitialDensityMatrix_prob0_real as Hidmpr.
-    unfold Den_prob_1, Den_prob, Mmult, Qproj1_n_t in *.
-    destruct (lt_dec t n1).
-    + erewrite Qop_sq_split_l.
-      rewrite <- Htm.
-      rewrite TMproduct_trace.
-      apply Creal_mult_ge0.
-      apply IHInitialDensityMatrix1.
-      apply Hb1.
-      rewrite Hmer.
-      apply (InitialDensityMatrix_trace_pos n2).
-      apply H0.
-      simpl_bits.
-      apply Hb2.
-      symmetry.
-      apply Hb2.
-      eapply InitialDensityMatrix_prob1_real.
-      apply H.
-      rewrite Hmer.
-      eapply InitialDensityMatrix_trace_real.
-      apply H0.
-      simpl_bits.
-      apply Hb2.
-      symmetry.
-      apply Hb2.
-      simpl_bits.
-      rewrite Qop_sq_bits.
-      apply Hb1.
-      simpl_bits.
-      apply Hb2.
-      repeat simpl_bits.
-      rewrite Qop_sq_bits.
-      apply Hd.
-    + erewrite Qop_sq_split_r.
-      rewrite <- Htm.
-      rewrite TMproduct_trace.
-      apply Creal_mult_ge0.
-      rewrite Hmer.
-      eapply InitialDensityMatrix_trace_pos.
-      apply H.
-      simpl_bits.
-      apply Hb1.
-      1-2: auto.
-      rewrite Hmer.
-      eapply InitialDensityMatrix_trace_real.
-      apply H.
-      1-2: auto.
-      eapply InitialDensityMatrix_prob1_real.
-      1-2: auto.
-      simpl_bits.
-      rewrite Qop_sq_bits.
-      apply Hb2.
-      repeat simpl_bits.
-      rewrite Qop_sq_bits.
-      apply Hd.
-      lia.
-      Unshelve.
-      all: lia.
-Qed.
-
-Lemma InitialDensityMatrix_prob1_real_pos: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
-  InitialDensityMatrix n den -> Cge_0 (Den_prob_1 den n t Ht Hd).
-Proof.
-  intros.
-  split.
-  - apply InitialDensityMatrix_prob1_pos.
-    apply H.
-  - apply InitialDensityMatrix_prob1_real.
-    apply H.
-Qed.
-
-Lemma InitialDensityMatrix_pure: forall (n: nat) (den: Matrix),
-  InitialDensityMatrix n den ->
-  exists (qst: ColVec) (H: _),
-  den = VVmult qst (CVconjtrans qst) H.
-Proof.
-  intros.
-  induction H.
-  - exists {| CVbits := 0; CVinner := fun _ => 1 |}.
-    assert (CReqbits
-      {| CVbits := 0; CVinner := fun _ : nat => 1 |}
-      (CVconjtrans {| CVbits := 0; CVinner := fun _ : nat => 0 |})) as H0.
-    { simpl_bits; reflexivity. }
-    exists H0.
-    unfold eye, VVmult, VVmult_unsafe, CVconjtrans.
-    simpl.
-    apply Mequal.
-    + reflexivity.
-    + intros.
-      simpl_bits.
-      simpl in *.
-      assert (i = 0) by lia; subst i.
-      assert (j = 0) by lia; subst j.
-      simpl.
-      lca.
-  - exists Qst_0.
-    assert (CReqbits Qst_0 (CVconjtrans Qst_0)) as He by reflexivity.
-    exists He.
-    apply Den_0_pure.
-  - exists Qst_1.
-    assert (CReqbits Qst_1 (CVconjtrans Qst_1)) as He by reflexivity.
-    exists He.
-    apply Den_1_pure.
-  - destruct IHInitialDensityMatrix1 as [qst1 [H1 IH1] ].
-    destruct IHInitialDensityMatrix2 as [qst2 [H2 IH2] ].
-    exists (TCVproduct qst1 qst2).
-    assert (CReqbits (TCVproduct qst1 qst2) (CVconjtrans (TCVproduct qst1 qst2))) as He.
-    { simpl_bits. reflexivity. }
-    exists He.
-    specialize TMVproduct_mult as Htmv.
-    unfold VVmult in *.
-    rewrite TCVproduct_conjtrans.
-    rewrite Htmv.
-    rewrite <- IH1.
-    rewrite <- IH2.
-    reflexivity.
-    all: repeat simpl_bits; reflexivity.
-Qed.
-
-Lemma InitialDensityMatrix_positive: forall (n: nat) (den: Matrix),
-  InitialDensityMatrix n den -> Qop_positive den.
-Proof.
-  intros.
-  apply InitialDensityMatrix_pure in H.
-  destruct H as [qst [Hqst H] ].
-  specialize dot_product_conjtrans as Hconj.
-  unfold Qop_positive, dot_product, MVmult.
-  intros.
-  rewrite H.
-  assert (
-    dot_product_unsafe (CVconjtrans c) (MVmult_unsafe (VVmult qst (CVconjtrans qst) Hqst) c) =
-    dot_product_unsafe (CVconjtrans c) qst * dot_product_unsafe (CVconjtrans qst) c
-  ) as Hassoc.
-  { unfold MVmult_unsafe, MVmult_inner, dot_product_unsafe, RVsize.
-    simpl_bits.
-    simpl.
-    replace (
-      (fun i : nat => dot_product_suppl (fun j : nat => CVinner qst i * Cconj (CVinner qst j)) (CVinner c) (2 ^ CVbits c))
-    ) with (
-      (fun i : nat => CVinner qst i * dot_product_suppl (fun j : nat => Cconj (CVinner qst j)) (CVinner c) (2 ^ CVbits c))
-    ).
-    rewrite dot_product_suppl_scale_r with
-      (f2 := (fun i : nat => CVinner qst i))
-      (c := dot_product_suppl (fun j : nat => Cconj (CVinner qst j)) (CVinner c) (2 ^ CVbits c)).
-    replace (CVbits qst) with (CVbits c).
-    ring_simplify.
-    reflexivity.
-    specialize VVmult_bits_l as Hvvb.
-    apply f_equal with (f:= Mbits) in H.
-    simpl_bits.
-    lia.
-    intros.
-    lca.
-    apply functional_extensionality.
-    intros.
-    symmetry.
-    apply dot_product_suppl_scale_l.
-    intros.
-    lca. }
-  rewrite Hassoc.
-  replace c with (RVconjtrans (CVconjtrans c)).
-  unfold dot_product in Hconj.
-  rewrite <- Hconj.
-  rewrite CRVconjtrans_twice.
-  apply Cconj_mult_ge0.
-  apply f_equal with (f:= Mbits) in H; repeat simpl_bits; lia.
-  apply f_equal with (f:= Mbits) in H; repeat simpl_bits; lia.
-  apply CRVconjtrans_twice.
 Qed.
 
 (* ============================================================================================== *)
