@@ -68,6 +68,34 @@ Definition Cln (x: C): C := Cmake (ln (Cabs x)) (Carg x).
 Definition Cpow (cb ce: C): C := Cexp ((Cln cb) * ce).
 Infix "^" := Cpow : C_scope.
 
+Lemma Cinv_mult: forall c: C, c <> 0 -> / c * c = 1.
+Proof.
+  intros [r i] H.
+  unfold Cinv, Cmult.
+  simpl.
+  apply c_proj_eq.
+  - simpl.
+    repeat rewrite Rmult_1_r.
+    field_simplify_eq.
+    reflexivity.
+    destruct (Req_dec r 0), (Req_dec i 0).
+    + subst r i.
+      contradiction.
+    + nra.
+    + nra.
+    + nra.
+  - simpl.
+    repeat rewrite Rmult_1_r.
+    field_simplify_eq.
+    reflexivity.
+    destruct (Req_dec r 0), (Req_dec i 0).
+    + subst r i.
+      contradiction.
+    + nra.
+    + nra.
+    + nra.
+Qed.
+
 Definition Creal (z : C) : R := fst z.
 
 Lemma Creal_plus: forall (z1 z2: C), (Creal (z1 + z2), 0) = (Creal z1 + Creal z2).
