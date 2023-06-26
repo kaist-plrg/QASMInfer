@@ -117,6 +117,88 @@ Proof.
   lca.
 Qed.
 
+Lemma Qop_positive_diag: forall (i: nat) (m: Matrix), Qop_positive m -> i < Msize m -> Cge_0 (Minner m i i).
+Proof.
+  intros i m.
+  unfold Qop_positive, Mtrace, dot_product, Msize, MVmult, CVconjtrans.
+  repeat simpl_bits.
+  simpl.
+  unfold dot_product_unsafe, MVmult_unsafe, MVmult_inner.
+  unfold dot_product_suppl, func_sum.
+  simpl_bits.
+  simpl.
+  intros.
+  specialize H with (c := {|CVbits := Mbits m; CVinner := fun x => if x =? i then 1 else 0|}).
+  simpl in *.
+  assert (Mbits m = Mbits m) as Hrf by reflexivity.
+  specialize (H Hrf Hrf).
+  rewrite func_sum2_split3 with (k := i) in H.
+  specialize func_sum2_split3 with (n := 0) (k := i) (m := (2 ^ Mbits m)%nat) as Hsplit.
+  specialize (func_sum2_zero 0) as Hzero1.
+  specialize (func_sum2_zero (1 + i)) as Hzero2.
+  rewrite (func_sum2_zero 0) in H.
+  rewrite (func_sum2_zero (1 + i)) in H.
+  unfold func_sum2 in H, Hsplit, Hzero1, Hzero2.
+  replace (1 + i - i)%nat with 1 in H by lia.
+  unfold func_sum_suppl at 1 in H.
+  repeat rewrite Nat.add_0_r in H.
+  rewrite Hsplit in H.
+  rewrite Hzero1 in H.
+  rewrite Hzero2 in H.
+  replace (1 + i - i)%nat with 1 in H by lia.
+  unfold func_sum_suppl in H.
+  repeat rewrite Nat.add_0_r in H.
+  repeat rewrite Cplus_0_l in H.
+  repeat rewrite Cplus_0_r in H.
+  replace (i =? i) with true in H.
+  assert (Cconj 1 = 1) as Hone by lca.
+  rewrite Hone in H.
+  rewrite Cmult_1_l in H.
+  rewrite Cmult_1_r in H.
+  apply H.
+  symmetry.
+  rewrite Nat.eqb_eq.
+  reflexivity.
+  intros.
+  assert (k =? i = false) as Hneq.
+  { apply Nat.eqb_neq.
+    lia. }
+  rewrite Hneq.
+  lca.
+  intros.
+  assert (k =? i = false) as Hneq.
+  { apply Nat.eqb_neq.
+    lia. }
+  rewrite Hneq.
+  lca.
+  lia.
+  intros.
+  assert (k =? i = false) as Hneq.
+  { apply Nat.eqb_neq.
+    lia. }
+  rewrite Hneq.
+  lca.
+  intros.
+  assert (k =? i = false) as Hneq.
+  { apply Nat.eqb_neq.
+    lia. }
+  rewrite Hneq.
+  lca.
+  lia.
+Qed.
+
+Lemma Qop_positive_trace: forall (m: Matrix), Qop_positive m -> Cge_0 (Mtrace m).
+Proof.
+  intros.
+  unfold Mtrace, dot_product, Msize, MVmult, CVconjtrans, func_sum, func_sum2.
+  apply func_sum_suppl_pos.
+  intros.
+  apply Qop_positive_diag.
+  apply H.
+  unfold Msize.
+  lia.
+Qed.
+
 (* ============================================================================================== *)
 (* definition of unitary operation ============================================================== *)
 

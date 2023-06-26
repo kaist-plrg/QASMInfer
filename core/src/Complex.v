@@ -179,6 +179,12 @@ Proof. intros. lca. Qed.
 Lemma Cmult_0_r: forall (c: C), c * 0 = 0.
 Proof. intros. lca. Qed.
 
+Lemma Cmult_1_l: forall (c: C), 1 * c = c.
+Proof. intros. lca. Qed.
+
+Lemma Cmult_1_r: forall (c: C), c * 1 = c.
+Proof. intros. lca. Qed.
+
 Lemma Cplus_opp_r : forall x y: C, Cminus x y = Cplus x (Copp y).
 Proof. intros. lca. Qed.
 
@@ -354,6 +360,49 @@ Proof.
   rewrite func_sum2_split with (a := k) (b := (1 + k)%nat).
   lca.
   all: lia.
+Qed.
+
+Lemma func_sum_suppl_zero: forall (n m: nat) (f: nat -> C),
+  (forall k, (n <= k < n + m)%nat -> f k = 0) -> func_sum_suppl f n m = 0.
+Proof.
+  intros.
+  induction m.
+  - reflexivity.
+  - simpl.
+    rewrite IHm.
+    rewrite H.
+    lca.
+    lia.
+    intros.
+    apply H.
+    lia.
+Qed.
+
+Lemma func_sum2_zero: forall (n m: nat) (f: nat -> C),
+  (forall k, (n <= k < m)%nat -> f k = 0) -> func_sum2 f n m = 0.
+Proof.
+  intros.
+  unfold func_sum2.
+  apply func_sum_suppl_zero.
+  intros.
+  apply H.
+  lia.
+Qed.
+
+Lemma func_sum_suppl_pos: forall (n m: nat) (f: nat -> C),
+  (forall k, (n <= k < n + m)%nat -> Cge_0 (f k)) -> Cge_0 (func_sum_suppl f n m).
+Proof.
+  intros.
+  induction m.
+  - split; [simpl; lra|simpl; lra].
+  - simpl.
+    apply Cge_0_plus.
+    apply H.
+    lia.
+    apply IHm.
+    intros.
+    apply H.
+    lia.
 Qed.
 
 Lemma func_sum_mod_suppl_l: forall (n m k i: nat) (f: nat -> C),

@@ -903,18 +903,13 @@ Qed.
 Inductive DensityMatrix: nat -> Matrix -> Prop :=
 | DensityMatrix_init (n: nat) (den: Matrix): InitialDensityMatrix n den -> DensityMatrix n den
 | DensityMatrix_unitary (n: nat) (den uop: Matrix) (H1: _) (H2: _):
-  DensityMatrix n den ->
-  Qop_unitary uop ->
-  DensityMatrix n (Den_unitary den uop H1 H2)
-(* | DensityMatrix_measure (den: Matrix) (n t: nat) (Ht: _) (Hd: _):
-  DensityMatrix n den ->
-  DensityMatrix n (Den_measure_and_sumden n t Ht Hd) *)
-| DensityMatrix_measure_0 (den: Matrix) (n t: nat) (Ht: _) (Hd: _):
-  DensityMatrix n den ->
-  DensityMatrix n (Den_measure_0 den n t Ht Hd)
-| DensityMatrix_measure_1 (den: Matrix) (n t: nat) (Ht: _) (Hd: _):
-  DensityMatrix n den ->
-  DensityMatrix n (Den_measure_1 den n t Ht Hd).
+    DensityMatrix n den ->
+    Qop_unitary uop ->
+    DensityMatrix n (Den_unitary den uop H1 H2)
+| DensityMatrix_measure (n: nat) (den proj: Matrix) (Hd: _):
+    DensityMatrix n den ->
+    Projection proj ->
+    DensityMatrix n (Den_measure den proj Hd).
 
 (* Lemma DensityMatrix_prob0_real: forall (n t: nat) (den: Matrix) (Ht: _) (Hd: _),
   DensityMatrix n den -> Cimag (Den_prob_0 den n t Ht Hd) = 0%R.
