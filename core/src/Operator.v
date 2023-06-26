@@ -580,8 +580,7 @@ Qed.
 (* ============================================================================================== *)
 (* projection operators ========================================================================= *)
 
-Definition Projection M := .
-
+Definition Projection (m: Matrix) := (forall H, Mmult m m H = m) /\ Qop_Hermitian m.
 
 Definition Qproj0: Matrix := {|
   Mbits := 1;
@@ -696,6 +695,24 @@ Proof.
     assert (i = 0) by lia; subst i; lca.
 Qed.
 
+Lemma Qproj0_proj: Projection Qproj0.
+Proof.
+  split.
+  - intros.
+    apply Qproj0_mult.
+  - intros.
+    apply Qproj0_Hermitian.
+Qed.
+
+Lemma Qproj1_proj: Projection Qproj1.
+Proof.
+  split.
+  - intros.
+    apply Qproj1_mult.
+  - intros.
+    apply Qproj1_Hermitian.
+Qed.
+
 Definition Qproj0_n_t (n t: nat) (Ht: t < n) := Qop_sq n t Qproj0 Ht Qproj0_bits.
 
 Definition Qproj1_n_t (n t: nat) (Ht: t < n) := Qop_sq n t Qproj1 Ht Qproj1_bits.
@@ -722,6 +739,19 @@ Proof.
   repeat erewrite <- TMproduct_mult.
   repeat rewrite Mmult_eye_r.
   rewrite Qproj0_mult.
+  reflexivity.
+  Unshelve.
+  all: simpl_bits; reflexivity.
+Qed.
+
+Lemma Qproj1_n_t_mult: forall (n t: nat) (Ht1 Ht2 Ht: _) (H: _),
+  Mmult (Qproj1_n_t n t Ht1) (Qproj1_n_t n t Ht2) H = (Qproj1_n_t n t Ht).
+Proof.
+  intros.
+  unfold Qproj0_n_t, Qproj1_n_t, Qop_sq in *.
+  repeat erewrite <- TMproduct_mult.
+  repeat rewrite Mmult_eye_r.
+  rewrite Qproj1_mult.
   reflexivity.
   Unshelve.
   all: simpl_bits; reflexivity.
@@ -773,6 +803,26 @@ Proof.
   repeat rewrite Qop_Hermitian_eye.
   rewrite H1.
   reflexivity.
+Qed.
+
+Lemma Qproj0_n_t_proj: forall (n t: nat) (Ht: _), Projection (Qproj0_n_t n t Ht).
+Proof.
+  intros.
+  split.
+  - intros.
+    apply Qproj0_n_t_mult.
+  - intros.
+    apply Qproj0_n_t_Hermitian.
+Qed.
+
+Lemma Qproj1_n_t_proj: forall (n t: nat) (Ht: _), Projection (Qproj1_n_t n t Ht).
+Proof.
+  intros.
+  split.
+  - intros.
+    apply Qproj1_n_t_mult.
+  - intros.
+    apply Qproj1_n_t_Hermitian.
 Qed.
 
 (* ============================================================================================== *)
