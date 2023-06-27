@@ -255,20 +255,25 @@ Proof.
     replace (2 ^ Mbits m1)%nat with l1.
     replace (2 ^ Mbits m2)%nat with l2.
     replace (fun i0 : nat =>
-      Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
-      (Minner m3 (i0 / l2) (j / l2) * (if i0 mod l2 =? j mod l2 then 1 else 0))) with
+    Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
+    (Minner m3 (i0 / l2) (j / l2) *
+     (if i0 mod l2 =? j mod l2
+      then if i0 mod l2 <? pow_2 (Mbits m2) then 1 else 0
+      else 0))) with
       (fun i0 : nat => if i0 mod l2 =? j mod l2 then (
-      Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
-      (Minner m3 (i0 / l2) (j / l2))) else 0).
+        Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
+        (Minner m3 (i0 / l2) (j / l2) * if i0 mod l2 <? pow_2 (Mbits m2) then 1 else 0)) else 0).
     rewrite func_sum_mod.
     replace (fun i0 : nat =>
       Minner m1 (i / l2) ((i0 * l2 + j mod l2) / l2) *
       Minner m2 (i mod l2) ((i0 * l2 + j mod l2) mod l2) *
-      Minner m3 ((i0 * l2 + j mod l2) / l2) (j / l2)) with
+      (Minner m3 ((i0 * l2 + j mod l2) / l2) (j / l2) *
+      (if (i0 * l2 + j mod l2) mod l2 <? pow_2 (Mbits m2) then 1 else 0))) with
       (fun i0 : nat =>
       Minner m1 (i / l2) i0 *
       Minner m2 (i mod l2) (j mod l2) *
-      Minner m3 i0 (j / l2)).
+      Minner m3 i0 (j / l2) *
+      (if j mod l2 <? pow_2 (Mbits m2) then 1 else 0)).
       dps_unfold.
       symmetry.
       replace (
@@ -280,12 +285,26 @@ Proof.
       ) by lca.
       apply func_sum_suppl_scale.
       intros.
+      assert (j mod l2 < l2).
+      { apply Nat.mod_bound_pos.
+        lia.
+        subst l2.
+        apply pow_2_nonzero. }
+      replace (j mod l2 <? pow_2 (Mbits m2)) with true.
       lca.
+      symmetry; apply Nat.ltb_lt; unfold pow_2; lia.
       apply functional_extensionality.
       intros.
       replace ((x * l2 + j mod l2) / l2)%nat with x.
       replace ((x * l2 + j mod l2) mod l2) with (j mod l2).
-      reflexivity.
+      assert (j mod l2 < l2).
+      { apply Nat.mod_bound_pos.
+        lia.
+        subst l2.
+        apply pow_2_nonzero. }
+      replace (j mod l2 <? pow_2 (Mbits m2)) with true.
+      lca.
+      symmetry; apply Nat.ltb_lt; unfold pow_2; lia.
       rewrite Nat.Div0.add_mod.
       rewrite Nat.Div0.mul_mod.
       rewrite Nat.Div0.mod_same.
@@ -336,19 +355,23 @@ Proof.
     replace (2 ^ Mbits m2)%nat with l2.
     replace (fun i0 : nat =>
       Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
-      ((if i0 / l2 =? j / l2 then 1 else 0) * Minner m3 (i0 mod l2) (j mod l2))) with
-      (fun i0 : nat => (if i0 / l2 =? j / l2 then
-      Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
-      Minner m3 (i0 mod l2) (j mod l2) else 0)).
+      ((if i0 / l2 =? j / l2
+        then if i0 / l2 <? pow_2 (Mbits m1) then 1 else 0
+        else 0) * Minner m3 (i0 mod l2) (j mod l2))) with
+      (fun i0 : nat => if i0 / l2 =? j / l2 then (
+        Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
+        (if i0 / l2 <? pow_2 (Mbits m1) then 1 else 0)
+        * Minner m3 (i0 mod l2) (j mod l2)) else 0).
     rewrite func_sum_div.
-    rewrite func_sum_f with
-      (f1 := (fun i0 : nat =>
+    rewrite func_sum_f with (f1 := (fun i0 : nat =>
       Minner m1 (i / l2) ((j / l2 * l2 + i0) / l2) *
       Minner m2 (i mod l2) ((j / l2 * l2 + i0) mod l2) *
+      (if (j / l2 * l2 + i0) / l2 <? pow_2 (Mbits m1) then 1 else 0) *
       Minner m3 ((j / l2 * l2 + i0) mod l2) (j mod l2)))
       (f2 := (fun i0 : nat =>
       Minner m1 (i / l2) (j / l2) *
       Minner m2 (i mod l2) i0 *
+      (if j / l2 <? pow_2 (Mbits m1) then 1 else 0) *
       Minner m3 i0 (j mod l2))).
     unfold func_sum.
     unfold func_sum2.
@@ -356,7 +379,13 @@ Proof.
     symmetry.
     apply func_sum_suppl_scale.
     intros.
+    replace (j / l2 <? pow_2 (Mbits m1)) with true.
     lca.
+    symmetry; apply Nat.ltb_lt.
+    unfold pow_2; subst l2.
+    rewrite Nat.pow_add_r in H0.
+    apply Nat.Div0.div_lt_upper_bound.
+    lia.
     intros.
     replace ((j / l2 * l2 + i0) mod l2) with i0.
     replace ((j / l2 * l2 + i0) / l2)%nat with (j / l2)%nat.
@@ -493,7 +522,13 @@ Proof.
     unfold Minner, TMproduct, eye.
     simpl.
     unfold Msize, pow_2.
+    rewrite Nat.pow_add_r.
     simpl.
+    repeat simpl_bits.
+    rewrite Nat.pow_add_r in H, H0.
+    replace (i mod 2 ^ m <? 2 ^ m) with true.
+    replace (i <? 2 ^ n * 2 ^ m) with true.
+    replace (i / 2 ^ m <? 2 ^ n ) with true.
     destruct (i =? j) eqn: E.
     + apply Nat.eqb_eq in E.
       replace (i / 2 ^ m =? j / 2 ^ m) with true.
@@ -507,9 +542,7 @@ Proof.
       apply Nat.eqb_eq.
       rewrite E.
       reflexivity.
-    + repeat simpl_bits.
-      rewrite Nat.pow_add_r in *.
-      apply Nat.eqb_neq in E.
+    + apply Nat.eqb_neq in E.
       specialize (neq_iff_div_or_mod i j (2 ^ m)) as Hneq.
       eapply Hneq in E.
       destruct E as [Ediv|Emod].
@@ -520,6 +553,14 @@ Proof.
         rewrite Emod.
         lca.
       * lia.
+    + symmetry; apply Nat.ltb_lt.
+      apply Nat.Div0.div_lt_upper_bound.
+      lia.
+    + symmetry; apply Nat.ltb_lt.
+      lia.
+    + symmetry; apply Nat.ltb_lt.
+      apply Nat.mod_bound_pos.
+      all: lia.
 Qed.
 
 Lemma TMproduct_eye0_l: forall (m: Matrix), TMproduct (eye 0) m = m.

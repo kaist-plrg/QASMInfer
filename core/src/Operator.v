@@ -63,8 +63,15 @@ Proof.
     simpl.
     intros.
     rewrite Nat.eqb_sym.
-    destruct (i =? j).
-    all: lca.
+    destruct (Nat.eq_dec i j).
+    + replace (i =? j) with true.
+      subst i.
+      destruct (j <? 2 ^ n).
+      1-2: lca.
+      symmetry; apply Nat.eqb_eq; lia.
+    + replace (i =? j) with false.
+      lca.
+      symmetry; apply Nat.eqb_neq; lia.
 Qed.
 
 (* ============================================================================================== *)
@@ -549,14 +556,9 @@ Proof.
       intros.
       destruct i as [|[|i] ], j as [|[|j] ].
       1-2, 4-5: unfold Msize in *; unfold pow_2 in *; repeat simpl in *; lia.
-      all: unfold Msize, pow_2, Mmult_inner in *;
-      repeat simpl_bits;
-      repeat simpl in *;
-      intros;
-      dps_unfold;
-      unfold Cconj, Cplus;
-      repeat unfold func_sum_suppl.
+      all: simpl.
       1-4: reflexivity.
+      destruct (i =? j); [reflexivity|reflexivity].
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.
@@ -564,44 +566,15 @@ Proof.
       intros.
       dps_unfold.
       unfold Cconj.
-      destruct i as [|i], j as [|j].
-        + simpl.
-          unfold Cmult, Cplus.
-          simpl_tri.
-          specialize (sin2_cos2 (theta / 2)) as Hsc.
-          unfold Rsqr in Hsc.
-          lca.
-        + simpl.
-          unfold Cmult, Cplus.
-          simpl_tri.
-          lca.
-        + simpl.
-          unfold Cmult, Cplus.
-          simpl_tri.
-          lca.
-        +
-          (* destruct i as [|i], j as [|j].
-          * simpl.
-            unfold Cmult, Cplus.
-            simpl_tri.
-            specialize (sin2_cos2 (theta / 2)) as Hsc.
-            unfold Rsqr in Hsc.
-            lca.
-          * simpl.
-            unfold Cmult, Cplus.
-            simpl_tri.
-            specialize (sin2_cos2 (theta / 2)) as Hsc.
-            unfold Rsqr in Hsc.
-            lca. *)
-          assert (i = 0%nat) by lia.
-          assert (j = 0%nat) by lia.
-          subst i j.
-          simpl.
-          unfold Cmult, Cplus.
-          simpl_tri.
-          specialize (sin2_cos2 (theta / 2)) as Hsc.
-          unfold Rsqr in Hsc.
-          lca. }
+      destruct i as [|[|i] ], j as [|[|j] ].
+      all: unfold Cmult, Cplus; simpl; simpl_tri; try lca.
+      + specialize (sin2_cos2 (theta / 2)) as Hsc.
+        unfold Rsqr in Hsc.
+        lca.
+      + specialize (sin2_cos2 (theta / 2)) as Hsc.
+        unfold Rsqr in Hsc.
+        lca.
+      + destruct (i =? j); [lca|lca]. }
   { apply Mequal_unsafe.
     - reflexivity.
     - unfold Mmult_inner.
@@ -610,30 +583,15 @@ Proof.
       intros.
       dps_unfold.
       unfold Cconj.
-      destruct i as [|i], j as [|j].
-        + simpl.
-          unfold Cmult, Cplus.
-          simpl_tri.
-          specialize (sin2_cos2 (theta / 2)) as Hsc.
-          unfold Rsqr in Hsc.
-          lca.
-        + simpl.
-          unfold Cmult, Cplus.
-          simpl_tri.
-          lca.
-        + simpl.
-          unfold Cmult, Cplus.
-          simpl_tri.
-          lca.
-        + assert (i = 0%nat) by lia.
-          assert (j = 0%nat) by lia.
-          subst i j.
-          simpl.
-          unfold Cmult, Cplus.
-          simpl_tri.
-          specialize (sin2_cos2 (theta / 2)) as Hsc.
-          unfold Rsqr in Hsc.
-          lca. }
+      destruct i as [|[|i] ], j as [|[|j] ].
+      all: unfold Cmult, Cplus; simpl; simpl_tri; try lca.
+      + specialize (sin2_cos2 (theta / 2)) as Hsc.
+        unfold Rsqr in Hsc.
+        lca.
+      + specialize (sin2_cos2 (theta / 2)) as Hsc.
+        unfold Rsqr in Hsc.
+        lca.
+      + destruct (i =? j); [lca|lca]. }
 Qed.
 
 Definition Qop_rz (theta: R): Matrix := {|
