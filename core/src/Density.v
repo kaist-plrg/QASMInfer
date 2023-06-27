@@ -73,7 +73,7 @@ Qed.
 
 Lemma Den_1_Hermitian: Qop_Hermitian Den_1.
 Proof.
-  apply Mequal.
+  apply Mequal_unsafe.
   - simpl_bits.
     reflexivity.
   - intros.
@@ -90,7 +90,7 @@ Qed.
 Lemma Den_0_pure: forall H, Den_0 = VVmult Qst_0 (CVconjtrans Qst_0) H.
 Proof.
   intros.
-  apply Mequal.
+  apply Mequal_unsafe.
   - reflexivity.
   - intros.
     simpl_bits.
@@ -107,7 +107,7 @@ Qed.
 Lemma Den_1_pure: forall H, Den_1 = VVmult Qst_1 (CVconjtrans Qst_1) H.
 Proof.
   intros.
-  apply Mequal.
+  apply Mequal_unsafe.
   - reflexivity.
   - intros.
     simpl_bits.
@@ -532,7 +532,7 @@ Proof.
     exists H0.
     unfold eye, VVmult, VVmult_unsafe, CVconjtrans.
     simpl.
-    apply Mequal.
+    apply Mequal_unsafe.
     + reflexivity.
     + intros.
       simpl_bits.

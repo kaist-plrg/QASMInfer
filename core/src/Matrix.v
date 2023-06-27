@@ -64,16 +64,94 @@ Definition CVget (c : ColVec) (i: nat) (Hi: i < CVsize c): C := CVinner c i.
 (* ============================================================================================== *)
 (* equality of two matrices ===================================================================== *)
 
-Axiom Mequal: forall (m1 m2: Matrix),
+Lemma Mequal: forall (m1 m2: Matrix),
+  Mbits m1 = Mbits m2 -> (forall i j, Minner m1 i j = Minner m2 i j) -> m1 = m2.
+Proof.
+  intros.
+  destruct m1, m2.
+  simpl in *.
+  rewrite H.
+  assert (forall i, Minner0 i = Minner1 i).
+  { intros.
+    apply functional_extensionality.
+    intros.
+    apply H0. }
+  apply functional_extensionality in H1.
+  rewrite H1.
+  reflexivity.
+Qed.
+
+Definition Moutoufindex_zero (m: Matrix): Prop :=
+  forall i j, (i >= Msize m \/ j >= Msize m) -> Minner m i j = 0.
+
+Lemma Mequal_domain: forall (m1 m2: Matrix),
+  Moutoufindex_zero m1 ->
+  Moutoufindex_zero m2 ->
+  Mbits m1 = Mbits m2 ->
+  (forall i j, i < Msize m1 -> j < Msize m2 -> Minner m1 i j = Minner m2 i j) ->
+  m1 = m2.
+Proof.
+  intros.
+  unfold Moutoufindex_zero in *.
+  apply Mequal.
+  - apply H1.
+  - intros.
+    specialize (H i j).
+    specialize (H0 i j).
+    specialize (H2 i j).
+    unfold Msize in *.
+    rewrite <- H1 in *.
+    destruct (lt_dec i (pow_2 (Mbits m1))), (lt_dec j (pow_2 (Mbits m1))).
+    + apply H2.
+      all: lia.
+    + rewrite H.
+      rewrite H0.
+      reflexivity.
+      all: right; lia.
+    + rewrite H.
+      rewrite H0.
+      reflexivity.
+      all: left; lia.
+    + rewrite H.
+      rewrite H0.
+      reflexivity.
+      all: left; lia.
+Qed.
+
+Axiom Mequal_unsafe: forall (m1 m2: Matrix),
   Mbits m1 = Mbits m2 -> (forall i j, i < Msize m1 -> j < Msize m2 -> Minner m1 i j = Minner m2 i j) -> m1 = m2.
 
 (* ============================================================================================== *)
 (* equality of two vectors ====================================================================== *)
 
-Axiom RVequal: forall (r1 r2: RowVec),
+Lemma RVequal: forall (r1 r2: RowVec),
+  RVbits r1 = RVbits r2 -> (forall i, RVinner r1 i = RVinner r2 i) -> r1 = r2.
+Proof.
+  intros.
+  destruct r1, r2.
+  simpl in *.
+  rewrite H.
+  apply functional_extensionality in H0.
+  rewrite H0.
+  reflexivity.
+Qed.
+
+Axiom RVequal_unsafe: forall (r1 r2: RowVec),
   RVbits r1 = RVbits r2 -> (forall i, i < RVsize r1 -> i < RVsize r2 -> RVinner r1 i = RVinner r2 i) -> r1 = r2.
 
-Axiom CVequal: forall (c1 c2: ColVec),
+Lemma CVequal: forall (c1 c2: ColVec),
+  CVbits c1 = CVbits c2 -> (forall i, CVinner c1 i = CVinner c2 i) -> c1 = c2.
+Proof.
+  intros.
+  destruct c1, c2.
+  simpl in *.
+  rewrite H.
+  apply functional_extensionality in H0.
+  rewrite H0.
+  reflexivity.
+Qed.
+
+Axiom CVequal_unsafe: forall (c1 c2: ColVec),
   CVbits c1 = CVbits c2 -> (forall i, i < CVsize c1 -> i < CVsize c2 -> CVinner c1 i = CVinner c2 i) -> c1 = c2.
 
 (* ============================================================================================== *)
@@ -1363,7 +1441,7 @@ Lemma Mmult_eye_r: forall (m: Matrix) (n: nat) (Hme: _),
   n = Mbits m -> Mmult m (eye n) Hme = m.
 Proof.
   intros.
-  apply Mequal.
+  apply Mequal_unsafe.
   - unfold MMeqbits.
     rewrite Mmult_bits_r.
     rewrite eye_bits.
@@ -1379,7 +1457,7 @@ Lemma Mmult_eye_l: forall (m: Matrix) (n: nat) (Hem: _),
   n = Mbits m -> Mmult (eye n) m Hem = m.
 Proof.
   intros.
-  apply Mequal.
+  apply Mequal_unsafe.
   - unfold MMeqbits.
     rewrite Mmult_bits_r.
     apply eye_bits.
@@ -1404,7 +1482,7 @@ Qed.
 Lemma MVmult_eye: forall (c: ColVec) (Hec: _), MVmult (eye (CVbits c)) c Hec = c.
 Proof.
   intros.
-  apply CVequal.
+  apply CVequal_unsafe.
   - apply MVmult_bits_r.
   - intros.
     unfold MVmult, MVmult_unsafe, MVmult_inner.
@@ -1416,7 +1494,7 @@ Qed.
 Lemma VMmult_eye: forall (r: RowVec) (Hre: _), VMmult r (eye (RVbits r)) Hre = r.
 Proof.
   intros.
-  apply RVequal.
+  apply RVequal_unsafe.
   - apply VMmult_bits_l.
   - intros.
     unfold VMmult, VMmult_unsafe, VMmult_inner.

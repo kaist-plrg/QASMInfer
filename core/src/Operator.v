@@ -387,9 +387,9 @@ Proof.
     unfold eye in H.
     inversion H.
     assert (forall f g: nat -> nat -> C, f = g -> f i j = g i j) as Hfeq.
-    { intros. rewrite H2. reflexivity. }
-    apply Hfeq in H3.
-    apply H3.
+    { intros. rewrite H0. reflexivity. }
+    apply Hfeq in H1.
+    apply H1.
 Qed.
 
 Lemma Qop_unitary_mult_suppl_r: forall (m1 m2: Matrix) (H12: _) (H21: _) (H1221: _),
@@ -408,9 +408,9 @@ Proof.
     unfold eye in H.
     inversion H.
     assert (forall f g: nat -> nat -> C, f = g -> f i j = g i j) as Hfeq.
-    { intros. rewrite H2. reflexivity. }
-    apply Hfeq in H4.
-    apply H4.
+    { intros. rewrite H0. reflexivity. }
+    apply Hfeq in H2.
+    apply H2.
 Qed.
 
 Lemma Qop_unitary_mult: forall (m1 m2: Matrix) (H: _),
@@ -518,8 +518,11 @@ Local Open Scope R_scope.
 Definition Qop_ry (theta: R): Matrix := {|
   Mbits := 1;
   Minner := fun i j =>
-    if i =? 0 then if j =? 0 then cos (theta / 2) else - sin (theta / 2)
-    else if j =? 0 then           sin (theta / 2) else   cos (theta / 2);
+    match i, j with
+    | 0, 0 =>   cos (theta / 2) | 0, 1 => - sin (theta / 2)
+    | 1, 0 =>   sin (theta / 2) | 1, 1 =>   cos (theta / 2)
+    | _, _ => 0
+    end;
   |}.
 
 Lemma Qop_ry_unitary: forall (theta: R), Qop_unitary (Qop_ry theta).
@@ -529,7 +532,31 @@ Proof.
   simpl.
   unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye; simpl.
   split.
-  { apply Mequal.
+  { apply Mequal_domain.
+    - unfold Moutoufindex_zero.
+      intros.
+      destruct i as [|[|i] ], j as [|[|j] ].
+      1-2, 4-5: unfold Msize in *; unfold pow_2 in *; repeat simpl in *; lia.
+      all: unfold Msize, pow_2, Mmult_inner in *;
+      repeat simpl_bits;
+      repeat simpl in *;
+      intros;
+      dps_unfold;
+      unfold Cconj, Cplus;
+      repeat unfold func_sum_suppl;
+      lca.
+    - unfold Moutoufindex_zero.
+      intros.
+      destruct i as [|[|i] ], j as [|[|j] ].
+      1-2, 4-5: unfold Msize in *; unfold pow_2 in *; repeat simpl in *; lia.
+      all: unfold Msize, pow_2, Mmult_inner in *;
+      repeat simpl_bits;
+      repeat simpl in *;
+      intros;
+      dps_unfold;
+      unfold Cconj, Cplus;
+      repeat unfold func_sum_suppl.
+      1-4: reflexivity.
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.
@@ -552,7 +579,21 @@ Proof.
           unfold Cmult, Cplus.
           simpl_tri.
           lca.
-        + assert (i = 0%nat) by lia.
+        +
+          (* destruct i as [|i], j as [|j].
+          * simpl.
+            unfold Cmult, Cplus.
+            simpl_tri.
+            specialize (sin2_cos2 (theta / 2)) as Hsc.
+            unfold Rsqr in Hsc.
+            lca.
+          * simpl.
+            unfold Cmult, Cplus.
+            simpl_tri.
+            specialize (sin2_cos2 (theta / 2)) as Hsc.
+            unfold Rsqr in Hsc.
+            lca. *)
+          assert (i = 0%nat) by lia.
           assert (j = 0%nat) by lia.
           subst i j.
           simpl.
@@ -561,7 +602,7 @@ Proof.
           specialize (sin2_cos2 (theta / 2)) as Hsc.
           unfold Rsqr in Hsc.
           lca. }
-  { apply Mequal.
+  { apply Mequal_unsafe.
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.
@@ -609,7 +650,7 @@ Proof.
   simpl.
   unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye.
   split.
-  { apply Mequal.
+  { apply Mequal_unsafe.
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.
@@ -638,7 +679,7 @@ Proof.
           specialize (sin2_cos2 (theta / 2%R)) as Hsc.
           unfold Rsqr in Hsc.
           lca. }
-  { apply Mequal.
+  { apply Mequal_unsafe.
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.
@@ -842,7 +883,7 @@ Qed.
 Lemma Qproj1_mult: forall H, Mmult Qproj1 Qproj1 H = Qproj1.
 Proof.
   intros.
-  apply Mequal.
+  apply Mequal_unsafe.
   - simpl_bits.
     reflexivity.
   - intros.
@@ -864,7 +905,7 @@ Qed.
 Lemma Qproj_sum_eye: forall H, Mplus Qproj0 Qproj1 H = eye 1.
 Proof.
   intros.
-  apply Mequal.
+  apply Mequal_unsafe.
   - simpl_bits.
     reflexivity.
   - intros.
@@ -901,7 +942,7 @@ Lemma Qproj1_Hermitian: Qop_Hermitian Qproj1.
 Proof.
   unfold Qop_Hermitian, Mconjtrans, Qproj1.
   simpl.
-  apply Mequal.
+  apply Mequal_unsafe.
   - reflexivity.
   - simpl_bits.
     simpl.
@@ -924,7 +965,7 @@ Proof.
   exists H0.
   unfold eye, VVmult, VVmult_unsafe, CVconjtrans.
   simpl.
-  apply Mequal.
+  apply Mequal_unsafe.
   - reflexivity.
   - intros.
     simpl_bits.
@@ -943,7 +984,7 @@ Proof.
   exists H0.
   unfold eye, VVmult, VVmult_unsafe, CVconjtrans.
   simpl.
-  apply Mequal.
+  apply Mequal_unsafe.
   - reflexivity.
   - intros.
     simpl_bits.
@@ -1129,7 +1170,7 @@ Proof.
   simpl.
   unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye.
   split.
-  { apply Mequal.
+  { apply Mequal_unsafe.
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.
@@ -1143,7 +1184,7 @@ Proof.
       1-3: assert (i = 0%nat) by lia; subst i; unfold Cmult; unfold Cplus; simpl; repeat simpl_tri; lca.
       assert (i = 0%nat) by lia; assert (j = 0%nat) by lia.
       subst i j. unfold Cmult; unfold Cplus; simpl. repeat simpl_tri. lca. }
-  { apply Mequal.
+  { apply Mequal_unsafe.
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.
@@ -1340,7 +1381,7 @@ Proof.
   simpl.
   unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye.
   split.
-  { apply Mequal.
+  { apply Mequal_unsafe.
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.
@@ -1354,7 +1395,7 @@ Proof.
       1-3: assert (i = 0%nat) by lia; subst i; unfold Cmult, Cplus; simpl; repeat simpl_tri; lca.
       assert (i = 0%nat) by lia; assert (j = 0%nat) by lia.
       subst i j. unfold Cmult, Cplus. repeat simpl_tri. lca. }
-  { apply Mequal.
+  { apply Mequal_unsafe.
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.
@@ -1377,7 +1418,7 @@ Proof.
   simpl.
   unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye.
   split.
-  { apply Mequal.
+  { apply Mequal_unsafe.
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.
@@ -1391,7 +1432,7 @@ Proof.
       1-3: assert (i = 0%nat) by lia; subst i; unfold Cmult, Cplus; simpl; repeat simpl_tri; lca.
       assert (i = 0%nat) by lia; assert (j = 0%nat) by lia.
       subst i j. unfold Cmult, Cplus. repeat simpl_tri. lca. }
-  { apply Mequal.
+  { apply Mequal_unsafe.
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.

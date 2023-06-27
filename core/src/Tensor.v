@@ -166,7 +166,7 @@ Proof.
   intros.
   unfold Mconjtrans, TMproduct.
   simpl.
-  apply Mequal.
+  apply Mequal_unsafe.
   - reflexivity.
   - unfold Msize, pow_2, Cconj.
     simpl.
@@ -320,7 +320,7 @@ Lemma TMproduct_mult_r: forall
   TMproduct m1 (Mmult m2 m3 H12) = Mmult (TMproduct m1 m2) (TMproduct (eye (Mbits m1)) m3) H1234.
 Proof.
   intros.
-  apply Mequal.
+  apply Mequal_unsafe.
   - repeat simpl_bits.
     lia.
   - intros.
@@ -486,7 +486,7 @@ Qed.
 Lemma TMproduct_eye: forall (n m: nat), TMproduct (eye n) (eye m) = eye (n + m).
 Proof.
   intros.
-  apply Mequal.
+  apply Mequal_unsafe.
   - repeat simpl_bits.
     reflexivity.
   - intros.
@@ -525,7 +525,7 @@ Qed.
 Lemma TMproduct_eye0_l: forall (m: Matrix), TMproduct (eye 0) m = m.
 Proof.
   intros.
-  apply Mequal.
+  apply Mequal_unsafe.
   - repeat simpl_bits.
     lia.
   - intros.
@@ -567,5 +567,3 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
-
-(* Definition trace, partial trace *)
