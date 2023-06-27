@@ -1,14 +1,15 @@
-# Verified QASM Interpreter
+# Verified QASM Probabilistic Execution Model
 
-First theoretical quantum computing simulator
+First Verified QASM probabilistice Execution Model
 * that can simulate all OpenQASM 2.0 circuits (measurements don't have to be at the end of the circuit).
 * whose quantum mechanical consistency is verified via Coq.
 
 
 ## Build
 ```
-coq_makefile -f _CoqProject -o Makefile
-make
+$ cd core
+$ coq_makefile -f _CoqProject -o Makefile
+$ make
 ```
 
 ## Source Files

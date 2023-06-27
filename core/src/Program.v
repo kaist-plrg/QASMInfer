@@ -19,6 +19,7 @@ Inductive Instruction: Type :=
 | RotateInstr: R -> R -> R -> nat -> Instruction  (* U (theta phi lambda) qbit *)
 | CnotInstr: nat -> nat -> Instruction  (* CnotInstr a b: flip b iff a *)
 | MeasureInstr: nat -> nat -> Instruction  (* MeasureInstr q c: *)
+| ResetInstr: nat -> Instruction  (* reset q *)
 | IfInstr: nat -> bool -> list Instruction -> Instruction.  (* if cbit == 0 (false) or cbit == 1 (true) *)
 
 (* ============================================================================================== *)
@@ -63,28 +64,28 @@ Proof.
   destruct worlds as [|[qstate cstate prob nq Hq] t].
   - exact [].
   - destruct (lt_dec target nq).
-      + refine ({|
-          W_qstate := Den_unitary qstate (Qop_sq nq target (Qop_rot theta phi lambda) l _) _ _;
-          W_cstate := cstate;
-          W_prob := prob;
-          W_num_qubits := nq;
-        |} :: (Execute_rotate_instr theta phi lambda target t)).
-        Unshelve.
-        rewrite Den_unitary_bits.
-        apply Hq.
-        apply Qop_rot_bits.
-        simpl_bits.
-        rewrite Qop_sq_bits.
-        lia.
-        simpl_bits.
-        reflexivity.
-      + apply ({|
-          W_qstate := qstate;
-          W_cstate := cstate;
-          W_prob := prob;
-          W_num_qubits := nq;
-          W_qstate_valid := Hq;
-        |} :: (Execute_rotate_instr theta phi lambda target t)).  (* nop *)
+    + refine ({|
+        W_qstate := Den_unitary qstate (Qop_sq nq target (Qop_rot theta phi lambda) l _) _ _;
+        W_cstate := cstate;
+        W_prob := prob;
+        W_num_qubits := nq;
+      |} :: (Execute_rotate_instr theta phi lambda target t)).
+      Unshelve.
+      rewrite Den_unitary_bits.
+      apply Hq.
+      apply Qop_rot_bits.
+      simpl_bits.
+      rewrite Qop_sq_bits.
+      lia.
+      simpl_bits.
+      reflexivity.
+    + apply ({|
+        W_qstate := qstate;
+        W_cstate := cstate;
+        W_prob := prob;
+        W_num_qubits := nq;
+        W_qstate_valid := Hq;
+      |} :: (Execute_rotate_instr theta phi lambda target t)).  (* nop *)
 Defined.
 
 Fixpoint Execute_cnot_instr (control target: nat) (worlds: ManyWorld): ManyWorld.
@@ -157,21 +158,26 @@ Proof.
   + apply (Execute_measure_instr qbit cbit t).  (* nop *)
 Defined.
 
-(* Fixpoint Execute_if_instr (ir: nat) (cbit: nat) (cond: bool) (subinstrs: list Instruction) (worlds: ManyWorld): ManyWorld :=
-  match ir with
-  | O => worlds
-  | S ir' => (
-    match worlds with
-    | [] => []
-    | hw :: tw =>
-      if (W_cstate hw cbit =? cond) then (Execute_suppl ir' subinstrs
+Fixpoint Execute_reset_instr (target: nat) (worlds: ManyWorld): ManyWorld.
 Proof.
-  induction worlds as [|hw tw].
+  destruct worlds as [|[qstate cstate prob nq Hq] t].
   - exact [].
-  - destruct (eqb (W_cstate hw cbit) cond) eqn: Heq.
-    + apply (Execute_suppl). *)
-
-
+  - destruct (lt_dec target nq).
+    + refine ({|
+        W_qstate := Den_measure_0 qstate nq target l Hq;
+        W_cstate := cstate;
+        W_prob := prob;
+        W_num_qubits := nq;
+      |} :: (Execute_reset_instr target t)).
+      apply Den_measure_0_bits.
+    + apply ({|
+        W_qstate := qstate;
+        W_cstate := cstate;
+        W_prob := prob;
+        W_num_qubits := nq;
+        W_qstate_valid := Hq;
+      |} :: (Execute_reset_instr target t)).  (* nop *)
+Defined.
 
 Fixpoint Execute_suppl (ir: nat) (instrs: list Instruction) (worlds: ManyWorld): ManyWorld :=
   match ir with
@@ -182,9 +188,10 @@ Fixpoint Execute_suppl (ir: nat) (instrs: list Instruction) (worlds: ManyWorld):
     | (RotateInstr theta phi lambda target) :: t => Execute_suppl ir' t (Execute_rotate_instr theta phi lambda target worlds)
     | (CnotInstr control target)            :: t => Execute_suppl ir' t (Execute_cnot_instr control target worlds)
     | (MeasureInstr qbit cbit)              :: t => Execute_suppl ir' t (Execute_measure_instr qbit cbit worlds)
+    | (ResetInstr target)                   :: t => Execute_suppl ir' t (Execute_reset_instr target worlds)
     | (IfInstr cbit cond subinstrs)         :: t => Execute_suppl ir' t (
         concat (map (fun w =>
-          if (eqb (W_cstate w cbit)  cond)
+          if (eqb (W_cstate w cbit) cond)
           then Execute_suppl ir' subinstrs [w]
           else [w]) worlds)
     )
