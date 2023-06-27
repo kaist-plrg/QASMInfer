@@ -629,36 +629,7 @@ Proof.
   simpl.
   unfold Mmult, Qop_ry, Mconjtrans, Mmult_unsafe, eye.
   split.
-  { apply Mequal_domain.
-    - unfold Moutoufindex_zero.
-      intros.
-      destruct i as [|[|i] ], j as [|[|j] ].
-      all: unfold Msize in *; unfold pow_2 in *; repeat simpl in *; try lia.
-      all: unfold Msize, pow_2, Mmult_inner in *;
-      repeat simpl_bits;
-      repeat simpl in *;
-      intros;
-      dps_unfold;
-      unfold Cconj, Cplus;
-      repeat unfold func_sum_suppl;
-      repeat rewrite Cmult_0_l;
-      repeat rewrite Cplus_0_l;
-      repeat rewrite Nat.add_0_r;
-      simpl.
-      all: try lca.
-      apply c_proj_eq.
-      simpl.
-      repeat rewrite exp_0.
-      ring_simplify.
-
-      lra.
-    - unfold Moutoufindex_zero.
-      intros.
-      destruct i as [|[|i] ], j as [|[|j] ].
-      1-2, 4-5: unfold Msize in *; unfold pow_2 in *; repeat simpl in *; lia.
-      all: simpl.
-      1-4: reflexivity.
-      destruct (i =? j); [reflexivity|reflexivity].
+  { apply Mequal_unsafe.
     - reflexivity.
     - unfold Mmult_inner.
       repeat simpl_bits.
