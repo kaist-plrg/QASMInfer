@@ -1403,8 +1403,9 @@ Proof.
       apply Hj.
 Qed.
 
-Fact Mmult_eye_l_suppl: forall (i l: nat) (f: nat -> C),
-  i < l -> dot_product_suppl (fun j0 => if i =? j0 then 1 else 0) f l = f i.
+Fact Mmult_eye_l_suppl: forall (i l m: nat) (f: nat -> C),
+  (* i < l -> dot_product_suppl (fun j0 => if i =? j0 then 1 else 0) f l = f i. *)
+  l <= m -> i < l -> dot_product_suppl (fun j0 => if i =? j0 then if i <? m then 1 else 0 else 0) f l = f i.
 Proof.
   intros.
   dps_unfold.
@@ -1416,17 +1417,18 @@ Proof.
     + simpl.
       assert (i =? l' = false).
       { apply Nat.eqb_neq. lia. }
-      rewrite H0.
+      rewrite H1.
       rewrite Cmult_0_l.
       rewrite Cplus_0_l.
       apply IHl'.
+      lia.
       apply Hl.
     + simpl.
       assert (l' = i) as Hj.
       { destruct (lt_eq_lt_dec i l') as [ [Hj|Hj]|Hj]. lia. lia. lia. }
       replace (l' =? i) with true.
       subst l'.
-      assert (forall n, n >= i -> func_sum_suppl (fun i0 : nat => (if n =? i0 then 1 else 0) * f i0) 0 i = 0).
+      assert (forall n, n >= i -> func_sum_suppl (fun i0 : nat => (if n =? i0 then if n <? m then 1 else 0 else 0) * f i0) 0 i = 0).
       { clear.
         induction i as [|i'].
         - reflexivity.
@@ -1440,15 +1442,18 @@ Proof.
           symmetry.
           apply <- Nat.eqb_neq.
           lia. }
-      specialize H0 with i.
-      assert (func_sum_suppl (fun i0 : nat => (if i =? i0 then 1 else 0) * f i0) 0 i = 0).
-      { apply H0. lia. }
-      rewrite H1.
-      rewrite Nat.eqb_refl.
+      specialize H1 with i.
+      assert (func_sum_suppl (fun i0 : nat => (if i =? i0 then if i <? m then 1 else 0 else 0) * f i0) 0 i = 0).
+      { apply H1. lia. }
+      rewrite H2.
+      replace (i <? m) with true.
+      replace (i =? i) with true.
       lca.
-      symmetry.
-      apply <- Nat.eqb_eq.
-      apply Hj.
+      all: symmetry.
+      1,3: apply <- Nat.eqb_eq.
+      1,2: lia.
+      apply <- Nat.ltb_lt.
+      lia.
 Qed.
 
 Lemma Mmult_eye_r: forall (m: Matrix) (n: nat) (Hme: _),
@@ -1482,6 +1487,9 @@ Proof.
   - intros.
     unfold Mget, Mmult, Mmult_unsafe, Mmult_inner.
     simpl.
+    unfold Mmult_inner, extract_row_unsafe, extract_col_unsafe; simpl.
+    replace (fun j0 : nat => if i =? j0 then if i <? pow_2 n then 1 else 0 else 0) with
+    (fun j0 : nat => if i =? j0 then if j0 <? pow_2 n then 1 else 0 else 0).
     rewrite Mmult_eye_l_suppl.
     reflexivity.
     replace (Msize (eye (Mbits m))) with (Msize m).
@@ -1489,12 +1497,38 @@ Proof.
       repeat rewrite Mmult_bits_l in *;
       repeat rewrite Mconjtrans_bits in *;
       repeat rewrite eye_bits in *.
-      apply H0.
+      lia.
     + unfold Msize in *;
       repeat rewrite Mmult_bits_l in *;
       repeat rewrite Mconjtrans_bits in *;
       repeat rewrite eye_bits in *.
       reflexivity.
+    + unfold Msize in *;
+      repeat rewrite Mmult_bits_l in *;
+      repeat rewrite Mconjtrans_bits in *;
+      repeat rewrite eye_bits in *.
+      lia.
+    + apply functional_extensionality.
+      intros.
+      destruct (Nat.eq_dec i x), (lt_dec x (pow_2 n)).
+      * replace (i =? x) with true.
+        subst i.
+        replace (x <? pow_2 n) with true.
+        reflexivity.
+        symmetry; apply Nat.ltb_lt; lia.
+        symmetry; apply Nat.eqb_eq; lia.
+      * replace (i =? x) with true.
+        subst i.
+        replace (x <? pow_2 n) with false.
+        reflexivity.
+        symmetry; apply Nat.ltb_ge; lia.
+        symmetry; apply Nat.eqb_eq; lia.
+      * replace (i =? x) with false.
+        reflexivity.
+        symmetry; apply Nat.eqb_neq; lia.
+      * replace (i =? x) with false.
+        reflexivity.
+        symmetry; apply Nat.eqb_neq; lia.
 Qed.
 
 Lemma MVmult_eye: forall (c: ColVec) (Hec: _), MVmult (eye (CVbits c)) c Hec = c.
@@ -1503,10 +1537,10 @@ Proof.
   apply CVequal_unsafe.
   - apply MVmult_bits_r.
   - intros.
-    unfold MVmult, MVmult_unsafe, MVmult_inner.
+    unfold MVmult, MVmult_unsafe, MVmult_inner, CVsize in *.
     simpl.
     apply Mmult_eye_l_suppl.
-    lia.
+    all: lia.
 Qed.
 
 Lemma VMmult_eye: forall (r: RowVec) (Hre: _), VMmult r (eye (RVbits r)) Hre = r.
@@ -1515,27 +1549,29 @@ Proof.
   apply RVequal_unsafe.
   - apply VMmult_bits_l.
   - intros.
-    unfold VMmult, VMmult_unsafe, VMmult_inner.
+    unfold VMmult, VMmult_unsafe, VMmult_inner, RVsize in *.
     simpl.
     apply Mmult_eye_r_suppl.
-    lia.
+    all: lia.
 Qed.
 
 Lemma eye_trace_pos: forall n, Cge_0 (Mtrace (eye n)).
 Proof.
-  assert (forall i, Cge_0 (func_sum (fun i : nat => if i =? i then 1%nat else 0%nat) i)).
+  assert (forall i n, Cge_0 (func_sum (fun i : nat => if i =? i then if i <? n then 1%nat else 0%nat else 0%nat) i)).
   { induction i.
     - split.
       + simpl. lra.
       + simpl. lra.
-    - destruct IHi as [Hp Hr].
+    - intros.
+      specialize (IHi n).
+      destruct IHi as [Hp Hr].
       split.
       + unfold Creal, func_sum, func_sum2 in *.
         rewrite Nat.sub_0_r in *.
         simpl in *.
         replace (i =? i) with true.
-        simpl.
-        lra.
+        destruct (i <? n).
+        1-2: simpl; lra.
         symmetry.
         apply Nat.eqb_eq.
         reflexivity.
@@ -1543,8 +1579,8 @@ Proof.
         rewrite Nat.sub_0_r in *.
         simpl in *.
         replace (i =? i) with true.
-        simpl.
-        lra.
+        destruct (i <? n).
+        1-2: simpl; lra.
         symmetry.
         apply Nat.eqb_eq.
         reflexivity. }
