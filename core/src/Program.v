@@ -158,27 +158,6 @@ Proof.
   + apply (Execute_measure_instr qbit cbit t).  (* nop *)
 Defined.
 
-Fixpoint Execute_reset_instr (target: nat) (worlds: ManyWorld): ManyWorld.
-Proof.
-  destruct worlds as [|[qstate cstate prob nq Hq] t].
-  - exact [].
-  - destruct (lt_dec target nq).
-    + refine ({|
-        W_qstate := Den_measure_0 qstate nq target l Hq;
-        W_cstate := cstate;
-        W_prob := prob;
-        W_num_qubits := nq;
-      |} :: (Execute_reset_instr target t)).
-      apply Den_measure_0_bits.
-    + apply ({|
-        W_qstate := qstate;
-        W_cstate := cstate;
-        W_prob := prob;
-        W_num_qubits := nq;
-        W_qstate_valid := Hq;
-      |} :: (Execute_reset_instr target t)).  (* nop *)
-Defined.
-
 Fixpoint Execute_suppl (ir: nat) (instrs: list Instruction) (worlds: ManyWorld): ManyWorld :=
   match ir with
   | O => worlds
