@@ -37,6 +37,15 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma c_proj_neq_fst: forall (c1 c2: C), (fst c1 <> fst c2)%R -> c1 <> c2.
+Proof.
+  intros [r1 i1] [r2 i2] H.
+  simpl in *.
+  intro H'.
+  inversion H'.
+  lra.
+Qed.
+
 Ltac lca := eapply c_proj_eq; simpl; lra.
 
 Definition Cplus (x y : C) : C := (fst x + fst y, snd x + snd y).

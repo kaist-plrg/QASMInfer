@@ -289,6 +289,43 @@ Proof.
       all: apply Ht.
 Qed.
 
+Lemma Execute_measure_instr_quantum_state_density:
+  forall (qbit cbit: nat) (worlds: ManyWorld),
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world))
+    (Execute_measure_instr qbit cbit worlds).
+Proof.
+  intros.
+  induction worlds.
+  - simpl.
+    apply H.
+  - destruct a.
+    apply Forall_cons_iff in H.
+    destruct H as [ [n H] Ht].
+    simpl in *.
+    specialize DensityMatrix_prob_pos as Hpos.
+    destruct (lt_dec qbit W_num_qubits0).
+    + destruct
+      (Rgt_dec (Creal (Den_prob_0 W_qstate0 W_num_qubits0 qbit l W_qstate_valid0)) 0),
+      (Rgt_dec (Creal (Den_prob_1 W_qstate0 W_num_qubits0 qbit l W_qstate_valid0)) 0).
+      all: try repeat apply Forall_cons.
+      all: try exists n; simpl.
+      all: unfold Den_measure_0, Den_measure_1 in *.
+      all: try apply DensityMatrix_measure.
+      all: unfold Den_prob_0, Den_prob_1, Den_prob, Mmult in *.
+      all: try apply H.
+      all: try apply Qproj0_n_t_proj.
+      all: try apply Qproj1_n_t_proj.
+      all: unfold Creal in *.
+      all: try apply c_proj_neq_fst.
+      all: unfold NTC, INR; simpl.
+      all: try lra.
+      all: apply IHworlds.
+      all: apply Ht.
+    + apply IHworlds.
+      apply Ht.
+Qed.
+
 Lemma Execute_suppl_quantum_state_density:
   forall (ir: nat) (instrs: list Instruction) (worlds: ManyWorld),
   Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
