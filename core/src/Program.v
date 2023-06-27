@@ -259,6 +259,36 @@ Proof.
       apply Ht.
 Qed.
 
+Lemma Execute_cnot_instr_quantum_state_density:
+  forall (control target: nat) (worlds: ManyWorld),
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world))
+    (Execute_cnot_instr control target worlds).
+Proof.
+  intros.
+  induction worlds.
+  - simpl.
+    apply H.
+  - destruct a.
+    apply Forall_cons_iff in H.
+    destruct H as [ [n H] Ht].
+    simpl in *.
+    destruct (ge_dec W_num_qubits0 2), (lt_dec control W_num_qubits0), (lt_dec target W_num_qubits0).
+    { apply Forall_cons.
+      simpl.
+      exists n.
+      apply DensityMatrix_unitary.
+      apply H.
+      apply Qop_cnot_unitary.
+      apply IHworlds.
+      apply Ht. }
+      all: apply Forall_cons.
+      all: try exists n; simpl.
+      all: try apply H.
+      all: apply IHworlds.
+      all: apply Ht.
+Qed.
+
 Lemma Execute_suppl_quantum_state_density:
   forall (ir: nat) (instrs: list Instruction) (worlds: ManyWorld),
   Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
