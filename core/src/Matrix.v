@@ -1314,7 +1314,7 @@ Qed.
 Definition eye (bits: nat): Matrix :=
   {|
     Mbits := bits;
-    Minner := fun i j => if i =? j then 1 else 0;
+    Minner := fun i j => if i =? j then if i <? pow_2 bits then 1 else 0 else 0;
   |}.
 
 Lemma eye_bits: forall (bits: nat), Mbits (eye bits) = bits.
@@ -1333,17 +1333,27 @@ Proof.
     apply c_proj_eq.
     + simpl.
       rewrite Nat.eqb_sym.
-      reflexivity.
+      destruct (Nat.eq_dec i j).
+      * repeat rewrite e.
+        replace (j =? j) with true.
+        reflexivity.
+        symmetry.
+        apply Nat.eqb_eq.
+        reflexivity.
+      * replace (i =? j) with false.
+        reflexivity.
+        symmetry.
+        apply Nat.eqb_neq.
+        apply n.
     + rewrite Nat.eqb_sym.
       unfold NTC.
       simpl.
-      destruct (i =? j).
-      * simpl. lra.
-      * simpl. lra.
+      destruct (i =? j), (i <? pow_2 bits), (j <? pow_2 bits).
+      all: simpl; lra.
 Qed.
 
-Fact Mmult_eye_r_suppl: forall (j l: nat) (f: nat -> C),
-  j < l -> dot_product_suppl f (fun i0 => if i0 =? j then 1 else 0) l = f j.
+Fact Mmult_eye_r_suppl: forall (j l m: nat) (f: nat -> C),
+  l <= m -> j < l -> dot_product_suppl f (fun i0 => if i0 =? j then if i0 <? m then 1 else 0 else 0) l = f j.
 Proof.
   intros.
   dps_unfold.
@@ -1355,17 +1365,18 @@ Proof.
     + simpl.
       assert (l' =? j = false).
       { apply Nat.eqb_neq. lia. }
-      rewrite H0.
+      rewrite H1.
       rewrite Cmult_0_r.
       rewrite Cplus_0_l.
       apply IHl'.
+      lia.
       apply Hl.
     + simpl.
       assert (l' = j) as Hj.
       { destruct (lt_eq_lt_dec j l') as [ [Hj|Hj]|Hj]. lia. lia. lia. }
       replace (l' =? j) with true.
       subst l'.
-      assert (forall n, n >= j -> func_sum_suppl (fun i : nat => f i * (if i =? n then 1 else 0)) 0 j = 0).
+      assert (forall n, n >= j -> func_sum_suppl (fun i : nat => f i * (if i =? n then if i <? m then 1 else 0 else 0)) 0 j = 0).
       { clear.
         induction j as [|j'].
         - reflexivity.
@@ -1379,12 +1390,15 @@ Proof.
           symmetry.
           apply <- Nat.eqb_neq.
           lia. }
-      specialize H0 with j.
-      assert (func_sum_suppl (fun i : nat => f i * (if i =? j then 1 else 0)) 0 j = 0).
-      { apply H0. lia. }
-      rewrite H1.
+      specialize H1 with j.
+      assert (func_sum_suppl (fun i : nat => f i * (if i =? j then if i <? m then 1 else 0 else 0)) 0 j = 0).
+      { apply H1. lia. }
+      rewrite H2.
+      replace (j <? m) with true.
       lca.
-      symmetry.
+      all: symmetry.
+      apply <- Nat.ltb_lt.
+      lia.
       apply <- Nat.eqb_eq.
       apply Hj.
 Qed.
@@ -1449,7 +1463,11 @@ Proof.
   - intros.
     unfold Mget, Mmult, Mmult_inner.
     simpl.
+    unfold Mmult_inner, extract_row_unsafe, extract_col_unsafe; simpl.
     apply Mmult_eye_r_suppl.
+    rewrite H.
+    unfold Msize.
+    lia.
     apply H1.
 Qed.
 
