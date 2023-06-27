@@ -223,3 +223,61 @@ Fixpoint Calculate_prob (num_cbits: nat) (worlds: ManyWorld): total_map R :=
 Definition Execute (ip: InlinedProgram): total_map R :=
   let result := Execute_suppl (IP_num_subinstrs ip) (IP_instrs ip) (ManyWorld_init (IP_num_qbits ip) (IP_num_cbits ip)) in
   Calculate_prob (IP_num_cbits ip) result.
+
+(* ============================================================================================== *)
+(* Proof about quantum states =================================================================== *)
+
+Lemma Execute_rotate_instr_quantum_state_density:
+  forall (theta phi lambda: R) (target: nat) (worlds: ManyWorld),
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world))
+    (Execute_rotate_instr theta phi lambda target worlds).
+Proof.
+  intros.
+  induction worlds.
+  - simpl.
+    apply H.
+  - destruct a.
+    apply Forall_cons_iff in H.
+    destruct H as [ [n H] Ht].
+    simpl in *.
+    destruct (lt_dec target (W_num_qubits0)).
+    + apply Forall_cons.
+      simpl.
+      exists n.
+      apply DensityMatrix_unitary.
+      apply H.
+      apply Qop_sq_unitary.
+      apply Qop_rot_unitary.
+      apply IHworlds.
+      apply Ht.
+    + apply Forall_cons.
+      simpl.
+      exists n.
+      apply H.
+      apply IHworlds.
+      apply Ht.
+Qed.
+
+Lemma Execute_suppl_quantum_state_density:
+  forall (ir: nat) (instrs: list Instruction) (worlds: ManyWorld),
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) (Execute_suppl ir instrs worlds).
+Proof.
+  intros.
+  revert ir.
+  { induction instrs.
+    { destruct ir.
+      all: simpl; apply H. }
+    { induction worlds.
+      { destruct ir.
+        { simpl; apply H. }
+        { destruct a.
+          all: simpl; apply IHinstrs. } }
+      { induction a.
+        all: destruct ir; [simpl; apply H|].
+        { simpl.
+
+
+
+
