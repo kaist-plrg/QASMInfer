@@ -19,7 +19,6 @@ Inductive Instruction: Type :=
 | RotateInstr: R -> R -> R -> nat -> Instruction  (* U (theta phi lambda) qbit *)
 | CnotInstr: nat -> nat -> Instruction  (* CnotInstr a b: flip b iff a *)
 | MeasureInstr: nat -> nat -> Instruction  (* MeasureInstr q c: *)
-| ResetInstr: nat -> Instruction  (* reset q *)
 | IfInstr: nat -> bool -> list Instruction -> Instruction.  (* if cbit == 0 (false) or cbit == 1 (true) *)
 
 (* ============================================================================================== *)
@@ -167,7 +166,6 @@ Fixpoint Execute_suppl (ir: nat) (instrs: list Instruction) (worlds: ManyWorld):
     | (RotateInstr theta phi lambda target) :: t => Execute_suppl ir' t (Execute_rotate_instr theta phi lambda target worlds)
     | (CnotInstr control target)            :: t => Execute_suppl ir' t (Execute_cnot_instr control target worlds)
     | (MeasureInstr qbit cbit)              :: t => Execute_suppl ir' t (Execute_measure_instr qbit cbit worlds)
-    | (ResetInstr target)                   :: t => Execute_suppl ir' t (Execute_reset_instr target worlds)
     | (IfInstr cbit cond subinstrs)         :: t => Execute_suppl ir' t (
         concat (map (fun w =>
           if (eqb (W_cstate w cbit) cond)
