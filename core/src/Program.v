@@ -16,10 +16,13 @@ Import ListNotations.
 (* inlined QASM2.0 instructions ================================================================= *)
 
 Inductive Instruction: Type :=
+| NopInstr: Instruction
 | RotateInstr: R -> R -> R -> nat -> Instruction  (* U (theta phi lambda) qbit *)
 | CnotInstr: nat -> nat -> Instruction  (* CnotInstr a b: flip b iff a *)
 | MeasureInstr: nat -> nat -> Instruction  (* MeasureInstr q c: *)
-| IfInstr: nat -> bool -> list Instruction -> Instruction.  (* if cbit == 0 (false) or cbit == 1 (true) *)
+| SeqInstr: Instruction -> Instruction -> Instruction
+| IfInstr: nat -> bool -> Instruction -> Instruction.  (* if cbit == 0 (false) or cbit == 1 (true) *)
+
 
 (* ============================================================================================== *)
 (* inlined QASM2.0 program ====================================================================== *)
@@ -28,7 +31,7 @@ Record InlinedProgram: Type := {
   IP_num_qbits: nat;
   IP_num_cbits: nat;
   IP_num_subinstrs: nat;  (* numbers of all subinstructions, to prove decreasing argument of fix *)
-  IP_instrs: list Instruction;
+  IP_instrs: Instruction;
 }.
 
 (* ============================================================================================== *)
@@ -157,19 +160,20 @@ Proof.
   + apply (Execute_measure_instr qbit cbit t).  (* nop *)
 Defined.
 
-Fixpoint Execute_suppl (ir: nat) (instrs: list Instruction) (worlds: ManyWorld): ManyWorld :=
+Fixpoint Execute_suppl (ir: nat) (instr: Instruction) (worlds: ManyWorld): ManyWorld :=
   match ir with
   | O => worlds
   | S ir' => (
-    match instrs with
-    | []                                         => worlds
-    | (RotateInstr theta phi lambda target) :: t => Execute_suppl ir' t (Execute_rotate_instr theta phi lambda target worlds)
-    | (CnotInstr control target)            :: t => Execute_suppl ir' t (Execute_cnot_instr control target worlds)
-    | (MeasureInstr qbit cbit)              :: t => Execute_suppl ir' t (Execute_measure_instr qbit cbit worlds)
-    | (IfInstr cbit cond subinstrs)         :: t => Execute_suppl ir' t (
+    match instr with
+    | NopInstr                            => worlds
+    | RotateInstr theta phi lambda target => Execute_rotate_instr theta phi lambda target worlds
+    | CnotInstr control target            => Execute_cnot_instr control target worlds
+    | MeasureInstr qbit cbit              => Execute_measure_instr qbit cbit worlds
+    | SeqInstr i1 i2                      => Execute_suppl ir' i2 (Execute_suppl ir' i1 worlds)
+    | IfInstr cbit cond subinstr          => (
         concat (map (fun w =>
           if (eqb (W_cstate w cbit) cond)
-          then Execute_suppl ir' subinstrs [w]
+          then Execute_suppl ir' subinstr [w]
           else [w]) worlds)
     )
     end
@@ -303,24 +307,74 @@ Proof.
       apply Ht.
 Qed.
 
-Lemma Execute_suppl_quantum_state_density:
-  forall (ir: nat) (instrs: list Instruction) (worlds: ManyWorld),
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) (Execute_suppl ir instrs worlds).
+Lemma Execute_suppl_empty_world: forall (ir: nat) (instr: Instruction),
+  Execute_suppl ir instr [] = [].
 Proof.
-  intros.
+  induction ir, instr.
+  all: try reflexivity.
+  simpl.
+  repeat rewrite IHir.
+  reflexivity.
+Qed.
+
+Lemma Execute_suppl_nop: forall (ir: nat) (worlds: ManyWorld),
+  Execute_suppl ir NopInstr worlds = worlds.
+Proof.
+  destruct ir, worlds.
+  all: reflexivity.
+Qed.
+
+Arguments Execute_rotate_instr _ _ _ _ : simpl never.
+Arguments Execute_cnot_instr _ _ _ : simpl never.
+Arguments Execute_measure_instr _ _ _ : simpl never.
+
+Lemma Execute_suppl_quantum_state_density:
+  forall (ir: nat) (instr: Instruction) (worlds: ManyWorld),
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) (Execute_suppl ir instr worlds).
+Proof.
+  intros ir instr.
   revert ir.
-  { induction instrs.
-    { destruct ir.
-      all: simpl; apply H. }
-    { induction worlds.
-      { destruct ir.
-        { simpl; apply H. }
-        { destruct a.
-          all: simpl; apply IHinstrs. } }
-      { induction a.
-        all: destruct ir; [simpl; apply H|].
-        { simpl.
+  induction instr.
+  all: intros; destruct ir; [simpl; apply H|].
+  - rewrite Execute_suppl_nop.
+    apply H.
+  - simpl.
+    apply Execute_rotate_instr_quantum_state_density.
+    apply H.
+  - simpl.
+    apply Execute_cnot_instr_quantum_state_density.
+    apply H.
+  - simpl.
+    apply Execute_measure_instr_quantum_state_density.
+    apply H.
+  - simpl.
+    apply IHinstr2.
+    apply IHinstr1.
+    apply H.
+  - simpl.
+    apply Forall_concat.
+    apply Forall_map.
+    induction worlds.
+    + apply Forall_nil.
+    + apply Forall_cons.
+      * destruct (eqb (W_cstate a n) b).
+        { apply IHinstr.
+          apply Forall_cons_iff in H.
+          destruct H.
+          apply Forall_cons.
+          apply H.
+          apply Forall_nil. }
+        { apply Forall_cons_iff in H.
+          destruct H.
+          apply Forall_cons.
+          apply H.
+          apply Forall_nil. }
+      * apply IHworlds.
+        apply Forall_cons_iff in H.
+        destruct H.
+        apply H0.
+Qed.
 
 
 
