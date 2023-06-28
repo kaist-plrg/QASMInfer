@@ -1,0 +1,778 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{enumerate}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{stackengine}
+
+\lstset{
+  basicstyle= \footnotesize \ttfamily,
+  % numbers=left,
+  % numberstyle=\small,
+  % numbersep=8pt,
+  showstringspaces=false,
+  breaklines=true,
+  frame=lines,
+  columns=fullflexible,
+  backgroundcolor=\color{white},
+  emphstyle=\color{blue},
+  keywordstyle=\color{brown},
+  stringstyle=\color{red},
+  commentstyle=\color{gray},
+}
+\setlength\parindent{0pt}
+
+\newcommand{\<}{\langle}
+\renewcommand{\>}{\rangle}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\abs}[1]{\left\vert #1 \right\vert}
+\newcommand{\prths}[1]{\left( #1 \right)}
+\newcommand{\braces}[1]{\left\{ #1 \right\}}
+\newcommand{\brackets}[1]{\left[ #1 \right]}
+\newcommand{\chevrons}[1]{\left\< #1 \right\>}
+\newcommand{\prob}[2][]{\underset{#1}{\mathbb{P}}\left[ #2 \right]}
+\newcommand{\set}[2]{\left\{ #1 \; \middle\vert \; #2 \right\}}
+\newcommand{\tr}[1]{\textrm{tr} \left( #1 \right)}
+\newcommand{\bra}[1]{\left\< #1 \right\vert}
+\newcommand{\ket}[1]{\left\vert #1 \right\>}
+
+% \title{Coq Implementation}
+% \author{Kanguk Lee}
+% \date{\today}
+
+\begin{document}
+% \maketitle
+
+\section{Postulates}
+\subsection{Mixed States}
+In general a quantum mechanical system is described mathematically by an
+operator $\rho$ acting on a Hilbert space $\mathbb{H}$ with $\rho$ having the
+properties:
+
+\subsubsection{$\rho$ is self-adjoint (Hermitian)}
+$$
+\rho^* = \rho \, .
+$$
+
+\subsubsection{$\rho$ is positive-definite}
+$$
+\rho \ge 0 \, .
+$$
+
+\subsubsection{$\rho$ has trace $1$}
+$$
+\textrm{tr} \prths{\rho} = 1 \, .
+$$
+
+The operator $\rho$ is called \textbf{density operator} and we denote the set
+of density operators on a Hilbert space $\mathbb{H}$ by $\textrm{D}
+\prths{\mathbb{H}}$, that is,
+
+$$
+\mathrm{D} \prths{\mathbb{H}} :=
+\set{\rho \in \textrm{L}\prths{\mathbb{H}}}{\rho^* = \rho , \, \rho \ge 0 , \,
+\textrm{tr}\prths{\rho} = 1}
+$$
+
+The quantum states described by density operators in $\textrm{D}
+\prths{\mathbb{H}}$ are called \textbf{mixed states}.
+
+\subsection{Observables and States (Expectation Value)}
+The quantum mechanical \textbf{expectation value} of an observable $A$ in a
+mixed state $\rho$ is given by
+
+$$
+\chevrons{A}_\rho := \tr{\rho A} \, .
+$$
+
+\subsection{Measurement Probability}
+If the quantum system is in a state $\rho$, $\lambda$ is an eigenvalue of $A$
+and $P_\lambda$ the projection onto the eigenspace of $\lambda$, then the
+probability $\textbf{P}_\rho \prths{\lambda}$ that a measurement of $A$ yields
+the value $\lambda$ is given by
+
+$$
+\textbf{P}_\rho \prths{\lambda} = \tr{\rho P_\lambda} \, .
+$$
+
+\subsection{Projection Postulate (Measurement)}
+If the quantum system is initially described by the state $\rho$, and then the
+measurement of the observable $A$ yields the eigenvalue $\lambda$ of $A$, then
+this measurement has effected the following change of state
+
+$$
+\rho = \stackanchor{\textrm{state before}}{\textrm{measurement}}
+\quad \, \xrightarrow{\textrm{measurement}} \quad
+\frac{P_\lambda \rho P_\lambda}{\tr{\rho P_\lambda}}
+= \frac{P_\lambda \rho P_\lambda}{\textbf{P}_\rho \prths{\lambda}}
+= \stackanchor{\textrm{state after}}{\textrm{measurement}}
+$$
+
+where $P_\lambda$ is the projection onto the eigenspace $\lambda$.
+
+
+\subsection{Time Evolution (Unitary operation)}
+Any time evolution of quantum system that is not caused by a measurement is
+described as an evolution of states
+
+$$
+\rho \prths{t_0} = \textrm{state at time } t_0
+\quad \, \xrightarrow{\textrm{no measurement}} \quad
+\rho \prths {t}
+= \textrm{state at time } t
+$$
+
+gien by a unitary time evolution operator $U \prths{t, t_0}$ acting on the
+density operator as
+
+$$
+\rho \prths{t} = U \prths{t, t_0} \rho \prths {t_0} U \prths{t, t_0}^* \, .
+$$
+
+  % Here, as in the case of pure states, the time evolution operator
+  % $U \prths{t, t_0}$ is a solution of the initial value problem (i.e., Schrödinger
+  % equation.).
+
+  % The uncertainty is given as
+
+  % $$
+
+  % $$
+
+  % Pure states $\ket{\psi} \in \mathbb{H}$ are given by special density operators
+  % of the form
+
+
+\section{Implemenation}
+\subsection{Instructions}
+The reduced instructions in the Coq implementation are designed to support all
+the features in OpenQASM2.0, after trivial inlining of syntactic sugars:
+
+\begin{lstlisting}
+(* Program.v *)
+Inductive Instruction: Type :=
+| NopInstr: Instruction
+| RotateInstr: R -> R -> R -> nat -> Instruction  (* U (theta phi lambda) qbit *)
+| CnotInstr: nat -> nat -> Instruction  (* CnotInstr a b: flip b iff a *)
+| MeasureInstr: nat -> nat -> Instruction  (* MeasureInstr q c: *)
+| SeqInstr: Instruction -> Instruction -> Instruction
+| IfInstr: nat -> bool -> Instruction -> Instruction.  (* if cbit == 0 (false) or cbit == 1 (true) *)
+\end{lstlisting}
+
+\subsection{Initial State}
+
+We have assumed that an initial state of the execution model can be arbitrary sequence of
+$\ket{0}$ or $\ket{1}$ qubit:
+
+\begin{lstlisting}
+(* Density.v *)
+Inductive InitialDensityMatrix: nat -> Matrix -> Prop :=
+| DensityMatrix_empty: InitialDensityMatrix 0 (eye 0)
+| DensityMatrix_0: InitialDensityMatrix 1 Den_0
+| DensityMatrix_1: InitialDensityMatrix 1 Den_1
+| DensityMatrix_TMproduct (n1 n2: nat) (den1 den2: Matrix):
+  InitialDensityMatrix n1 den1 ->
+  InitialDensityMatrix n2 den2 ->
+  InitialDensityMatrix (n1 + n2) (TMproduct den1 den2).
+\end{lstlisting}
+
+Note that in OpenQASM2.0, qubits are all initialized to $\ket{0}$ by default.
+
+\subsection{Many-Worlds Interpretation}
+The concept of Many-Worlds Interpreterpretation (MWI) in quantum mechanics has been employed to
+design the program state of the execution model, referred to as \texttt{ManyWorld}.
+\texttt{ManyWorld} is a list of \texttt{world}, each representing every probable
+outcome resulting from different measurement.
+\begin{lstlisting}
+(* Program.v *)
+Record World: Type := {
+  W_qstate: Matrix; (* density matrix *)
+  W_cstate: total_map bool;  (* false for 0, true for 1 *)
+  W_prob: R; (* probability of the world *)
+  W_num_qubits: nat;
+  W_qstate_valid: Mbits W_qstate = W_num_qubits
+}.
+
+Definition ManyWorld: Type := list World.
+\end{lstlisting}
+
+\section{Verification}
+\subsection{Basics}
+\subsubsection{Matrix / Vector Definition}
+In our execution model implementation, matrices and vectors are represented by
+functions of complex numbers and their sizes;
+
+\begin{lstlisting}
+(* Matrix.v *)
+Record Matrix: Type := {
+  Mbits: nat;
+  Minner: nat -> nat -> C;
+}.
+Record RowVec: Type := {
+  RVbits: nat;
+  RVinner: nat -> C;
+}.
+Record ColVec: Type := {
+  CVbits: nat;
+  CVinner: nat -> C;
+}.
+\end{lstlisting}
+
+To ensure validity, accessing elements of matrices or vectors is restricted to
+proper indices:
+
+\begin{lstlisting}
+(* Matrix.v *)
+Definition Mget (m : Matrix) (i j: nat) (Hi: i < Msize m) (Hj: j < Msize m): C := Minner m i j.
+Definition RVget (r : RowVec) (j: nat) (Hj: j < RVsize r): C := RVinner r j.
+Definition CVget (c : ColVec) (i: nat) (Hi: i < CVsize c): C := CVinner c i.
+\end{lstlisting}
+
+\subsubsection{(Matrix / Vector) Element-Wise (Unary / Binary) Operation / Multiplication}
+
+In all matrix operations, we need to validate that the size of each matrix
+is appropriate for the operation.
+Below are the basic correctness of unary and binary element-wise operations:
+\begin{lstlisting}
+(* Matrix.v *)
+Lemma Muop_correct: forall
+  (uop: C -> C) (m: Matrix) (i j: nat)
+  (H1i: _) (H1j: _) (H2i: _) (H2j: _),
+  (Muop uop m)[[i H2i|j H2j]] = uop (m[[i H1i|j H1j]]). (* notation of Mget *)
+Lemma Mbop_correct: forall
+  (bop: C -> C -> C) (m1 m2 m3: Matrix) (i j: nat)
+  (Hbits: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _) (H3i: _) (H3j: _),
+  (Mbop bop m1 m2 Hbits)[[i H3i|j H3j]] = bop (m1[[i H1i|j H1j]]) (m2[[i H2i|j H2j]]).
+\end{lstlisting}
+
+And here's the basic correctness of matrix multiplications:
+\begin{lstlisting}
+(* Matrix.v *)
+Lemma Mmult_correct: forall (m1 m2 m: Matrix) (r: RowVec) (c: ColVec) (i j: nat)
+  (Hi: _) (Hj: _) (H: _) (Hmi: _) (Hmj: _) (Hrc: _),
+  (Mmult m1 m2 H)[[i Hmi|j Hmj]] = dot_product (extract_row m1 i Hi) (extract_col m2 j Hj) Hrc.
+\end{lstlisting}
+
+The proofs regarding vector operations are similar as matrix operations.
+
+\subsubsection{Matrix / Vector Tensor Product (Kronecker Product)}
+
+Here is the basic correctness of tensor products:
+\begin{lstlisting}
+(* Tensor.v *)
+Lemma TMproduct_correct: forall
+  (m1 m2 mt: Matrix) (i j: nat) (Hi: _) (Hj: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
+  (TMproduct m1 m2)[[i Hi|j Hj]] =
+  m1[[(i / Msize m2) H1i|(j / Msize m2) H1j]] * m2[[(i mod Msize m2) H2i|(j mod Msize m2) H2j]].
+\end{lstlisting}
+
+Essential properties of tensor products and other operations have also been
+proven, as demonstrated below:
+
+\begin{lstlisting}
+(* Tensor.v *)
+Lemma TMproduct_mult: forall
+  (m1 m2 m3 m4: Matrix) (H13: _) (H24: _) (H1234: _),
+  TMproduct (Mmult m1 m3 H13) (Mmult m2 m4 H24) = Mmult (TMproduct m1 m2) (TMproduct m3 m4) H1234.
+\end{lstlisting}
+
+
+\subsection{QM-Related Functions in the Execution Model}
+
+Postulate 2 and 3 describe how to calculate essential values for quantum
+circuit execution.
+
+\subsubsection{Observables and States (Expectation Value)}
+
+\textbf{``Observables and States"} postulate details how to calculate
+expectation values of observables. In the context of quantum computing,
+observables are $\sigma_z$, which corresponds to a measurement in the
+standard Z basis, or the \textit{``computational"} basis ($\ket{0}$ and
+$\ket{1}$).  Following the postulate closely, we defined the
+\texttt{Den\_expect} function in the execution model implementation:
+
+\begin{lstlisting}
+(* Physics.v *)
+Theorem Observables_and_States: forall rho observable Hbits,
+Den_expect rho observable Hbits = Mtrace (Mmult rho observable Hbits).
+Proof. reflexivity. Qed.
+\end{lstlisting}
+
+\subsubsection{Measurement Probability}
+
+\textbf{``Measurement Probability"} postulate provides a specification to calculate
+the probabilitiy of each measurement output of the computational observables.
+Adhering to this postulate, we have defined the \texttt{Den\_prob} function in
+the execution model implementation:
+
+\begin{lstlisting}
+(* Physics.v *)
+Theorem measurement_probability_postulate: forall rho projection Hbits,
+Den_prob rho projection Hbits = Mtrace (Mmult rho projection Hbits).
+Proof. reflexivity. Qed.
+\end{lstlisting}
+
+For the purpose of quantum computing, we specialize the \texttt{Den\_prob} function with
+projection operators of computational basis:
+
+\begin{lstlisting}
+(* Density.v *)
+Definition Den_prob_0 (den: Matrix) (n t: nat) (Ht: t < n) (H: Mbits den = n): C.
+  refine (Den_prob den (Qproj0_n_t n t Ht) _).
+  simpl_bits.
+  rewrite Qproj0_n_t_bits.
+  apply H.
+Defined.
+
+Definition Den_prob_1 (den: Matrix) (n t: nat) (Ht: t < n) (H: Mbits den = n): C.
+  refine (Den_prob den (Qproj1_n_t n t Ht) _).
+  simpl_bits.
+  rewrite Qproj1_n_t_bits.
+  apply H.
+Defined.
+\end{lstlisting}
+
+Here, \texttt{Den\_prob\_0} and \texttt{Den\_prob\_1} correspond to the probabilities of
+t-th qubit being 0 and 1, respectively.
+According to the postulate, \texttt{Qproj0\_n\_t n t Ht} and
+\texttt{Qproj0\_n\_t n t Ht} should be valid projection operators so that they satisfy the properties:
+
+1) $P P = P$
+2) $P^* = P$
+and 3) real non-negative trace (positive-definiteness):
+
+\begin{lstlisting}
+(* Operator.v *)
+Definition Projection (m: Matrix) := (forall H, Mmult m m H = m) /\ Qop_Hermitian m /\ Cge_0 (Mtrace m).
+\end{lstlisting}
+
+We have proven that projection operators for $\ket{0}$ and $\ket{1}$ are
+valid projection operators:
+
+\begin{lstlisting}
+(* Operator.v *)
+Lemma Qproj0_n_t_proj: forall (n t: nat) (Ht: _), Projection (Qproj0_n_t n t Ht).
+Lemma Qproj1_n_t_proj: forall (n t: nat) (Ht: _), Projection (Qproj1_n_t n t Ht).
+\end{lstlisting}
+
+With these validations, it is safe to use \texttt{Den\_prob\_0} and
+\texttt{Den\_prob\_1}.
+
+
+\subsection{QASM Operations in the Execution Model}
+
+\subsubsection{Projection Postulate (Measurement)}
+
+The \textbf{``Projection Postulate (Measurement)"} postulate informs us how quantum
+states are transformed during the measurement process.
+Strictly following the postulate, we defined \texttt{Den\_measure} function in
+our execution model implementation:
+
+\begin{lstlisting}
+(* Physics.v *)
+Theorem projection_postulate: forall rho proj Hbits Hp Hm1 Hm2,
+  Den_measure rho proj Hbits =
+    Msmul
+      (Cinv (Den_prob rho proj Hp))
+      ( Mmult (
+          Mmult proj rho Hm1
+        ) proj Hm2).
+Proof. reflexivity. Qed.
+\end{lstlisting}
+
+For quantum computing, we specialize the \texttt{Den\_measure} function to
+measure in the computational basis:
+
+\begin{lstlisting}
+(* Density.v *)
+Definition Den_measure_0 (den: Matrix) (n t: nat) (Ht: t < n) (Hd: Mbits den = n): Matrix.
+  refine (Den_measure den (Qproj0_n_t n t Ht) _).
+  all: simpl_bits; simpl; lia.
+Defined.
+Definition Den_measure_1 (den: Matrix) (n t: nat) (Ht: t < n) (Hd: Mbits den = n): Matrix.
+  refine (Den_measure den (Qproj1_n_t n t Ht) _).
+  all: simpl_bits; simpl; lia.
+Defined.
+\end{lstlisting}
+
+Here, \texttt{Qproj0\_n\_t n t Ht} and \texttt{Qproj0\_n\_t n t Ht} correspond to
+projections to the space where the t-th qubit is $\ket{0}$ and $\ket{1}$, respectively.
+We can now use \texttt{Den\_measure\_0} and \texttt{Den\_measure\_1} to
+execute a QASM2.0 measurement operation:
+
+\begin{lstlisting}
+(* Program.v *)
+Fixpoint Execute_measure_instr (qbit cbit: nat) (worlds: ManyWorld): ManyWorld.
+Proof.
+  destruct worlds as [|[qstate cstate prob nq Hq] t].
+  - exact [].
+  - destruct (lt_dec qbit nq).
+    + specialize (Creal (Den_prob_0 qstate nq qbit l Hq)) as prob0.
+      specialize (Creal (Den_prob_1 qstate nq qbit l Hq)) as prob1.
+      destruct (Rgt_dec prob0 0), (Rgt_dec prob1 0).
+      * refine ({|
+          W_qstate := Den_measure_0 qstate nq qbit l Hq;
+          W_cstate := tm_update cstate cbit false;
+          W_prob := prob * prob0;
+          W_num_qubits := nq;
+        |} :: {|
+          W_qstate := Den_measure_1 qstate nq qbit l Hq;
+          W_cstate := tm_update cstate cbit true;
+          W_prob := prob * prob1;
+          W_num_qubits := nq;
+        |} ::
+        (Execute_measure_instr qbit cbit t)).
+        apply Den_measure_0_bits.
+        apply Den_measure_1_bits.
+      * refine ({|
+          W_qstate := Den_measure_0 qstate nq qbit l Hq;
+          W_cstate := tm_update cstate cbit false;
+          W_prob := prob * prob0;
+          W_num_qubits := nq;
+        |} ::
+        (Execute_measure_instr qbit cbit t)).
+        apply Den_measure_0_bits.
+      * refine ({|
+          W_qstate := Den_measure_1 qstate nq qbit l Hq;
+          W_cstate := tm_update cstate cbit true;
+          W_prob := prob * prob1;
+          W_num_qubits := nq;
+        |} ::
+        (Execute_measure_instr qbit cbit t)).
+        apply Den_measure_1_bits.
+      * apply (Execute_measure_instr qbit cbit t).  (* nop *)
+  + apply (Execute_measure_instr qbit cbit t).  (* nop *)
+Defined.
+\end{lstlisting}
+
+Note that \texttt{Den\_prob\_0} and \texttt{Den\_prob\_0} are also used in
+\texttt{Execute\_measure\_instr}.
+
+
+\subsubsection{Time Evolution (Unitary Operation)}
+
+\textbf{``Time Evolution"} postulate describes how quantum states are changed
+during the time evolution, i.e., unitary operations such as single-qubit
+rotation or controlled-NOT (CNOT) gate in QASM2.0.
+Adhering strictly to this postulate, we defined \texttt{Den\_unitary} function in
+the execution model implementation:
+
+\begin{lstlisting}
+(* Physics.v *)
+Theorem time_evoluation_postulate: forall rho uop H1 H2,
+  Den_unitary rho uop H1 H2 = (Mmult (Mmult uop rho H1) (Mconjtrans uop) H2).
+Proof. reflexivity. Qed.
+\end{lstlisting}
+
+As mentioned before, OpenQASM2.0 supports two built-in universal uniatry
+operations: rotation and CNOT. For each opertaion, we have defined a matrix
+that represents that operation respectively. It is necessary to show that the
+defined matrices are unitary.
+
+\begin{enumerate}
+  \item Generalized Single-Qubit Rotation \\
+    It is widely known that a single-qubit rotation for a single-qubit system is
+    represented by:
+    $$
+      \begin{pmatrix}
+        e^{-i \prths{\phi + \lambda}/2} \cos \prths{\theta / 2} &
+       -e^{-i \prths{\phi - \lambda}/2} \sin \prths{\theta / 2} \\
+        e^{ i \prths{\phi - \lambda}/2} \sin \prths{\theta / 2} &
+        e^{ i \prths{\phi + \lambda}/2} \cos \prths{\theta / 2}
+      \end{pmatrix} \, .
+    $$
+    Using the tensor product with the identity matrix, given a target qubit, we can
+    build a single-qubit rotation matrix for multi-qubit system.
+    The unitarity of these generalized single-qubit rotation can be proven using
+    this lemma we previously proved:
+
+\begin{lstlisting}
+(* Operator.v *)
+Lemma Qop_unitary_TMprod: forall (m1 m2: Matrix),
+  Qop_unitary m1 -> Qop_unitary m2 -> Qop_unitary (TMproduct m1 m2).
+
+Lemma Qop_rot_unitary: forall (theta phi lambda: R), Qop_unitary (Qop_rot theta phi lambda).
+
+Lemma Qop_sq_unitary: forall (n t: nat) (op: Matrix) (Ht: _) (Hop: _),
+  Qop_unitary op -> Qop_unitary (Qop_sq n t op Ht Hop).
+\end{lstlisting}
+
+  \item Generalized Controlled-NOT \\
+    It is widely known that a CNOT gate that flips the second qubit if and only if
+    the first qubit is one is represented by
+    $$
+    \textrm{CNOT} :=
+      \begin{pmatrix}
+        1 & 0 & 0 & 0 \\
+        0 & 1 & 0 & 0 \\
+        0 & 0 & 0 & 1 \\
+        0 & 0 & 1 & 0
+      \end{pmatrix} \, .
+    $$
+    To build generalized CNOT gates that appliy to an arbitrary multi-qubit
+    system with arbitrary control and target qubit, we used the tensor product
+    with the identity matrix, as well as the SWAP operator:
+    $$
+    \textrm{SWAP} :=
+      \begin{pmatrix}
+        1 & 0 & 0 & 0 \\
+        0 & 0 & 1 & 0 \\
+        0 & 1 & 0 & 0 \\
+        0 & 0 & 0 & 1
+      \end{pmatrix} \, .
+    $$
+    Given control and target qubits, we can make a generalized multi-qubit CNOT
+    gate by using an appropriate permutation of tensor product and SWAP matrix.
+    In this case, it is significantly more complex to prove the unitarity, but it can
+    be done using the previously mentioned \texttt{Qop\_uniatry\_TMProd} and a
+    newly proved \texttt{Qop\_uniatry\_mult} lemma:
+
+\begin{lstlisting}
+(* Operator.v *)
+Lemma Qop_unitary_mult: forall (m1 m2: Matrix) (H: _),
+  Qop_unitary m1 -> Qop_unitary m2 -> Qop_unitary (Mmult m1 m2 H).
+
+Lemma Qop_cnot_unitary: forall (n qc qt: nat) (Hn: _) (Hc: _) (Ht: _),
+  Qop_unitary (Qop_cnot n qc qt Hn Hc Ht).
+\end{lstlisting}
+\end{enumerate}
+
+We can now use \texttt{Den\_unitary} execute a single-qubit rotation and CNOT
+operation in OpenQASM2.0:
+
+\begin{lstlisting}
+(* Program.v *)
+Fixpoint Execute_rotate_instr (theta phi lambda: R) (target: nat) (worlds: ManyWorld): ManyWorld.
+Proof.
+  destruct worlds as [|[qstate cstate prob nq Hq] t].
+  - exact [].
+  - destruct (lt_dec target nq).
+    + refine ({|
+        W_qstate := Den_unitary qstate (Qop_sq nq target (Qop_rot theta phi lambda) l _) _ _;
+        W_cstate := cstate;
+        W_prob := prob;
+        W_num_qubits := nq;
+      |} :: (Execute_rotate_instr theta phi lambda target t)).
+      Unshelve.
+      rewrite Den_unitary_bits.
+      apply Hq.
+      apply Qop_rot_bits.
+      simpl_bits.
+      rewrite Qop_sq_bits.
+      lia.
+      simpl_bits.
+      reflexivity.
+    + apply ({|
+        W_qstate := qstate;
+        W_cstate := cstate;
+        W_prob := prob;
+        W_num_qubits := nq;
+        W_qstate_valid := Hq;
+      |} :: (Execute_rotate_instr theta phi lambda target t)).  (* nop *)
+Defined.
+
+Fixpoint Execute_cnot_instr (control target: nat) (worlds: ManyWorld): ManyWorld.
+Proof.
+  destruct worlds as [|[qstate cstate prob nq Hq] t].
+  - exact [].
+  - destruct (ge_dec nq 2), (lt_dec control nq), (lt_dec target nq).
+    refine ({|
+      W_qstate := Den_unitary qstate (Qop_cnot nq control target g l l0) _ _;
+      W_cstate := cstate;
+      W_prob := prob;
+      W_num_qubits := nq;
+      |} :: (Execute_cnot_instr control target t)).
+    2-8: apply ({|
+        W_qstate := qstate;
+        W_cstate := cstate;
+        W_prob := prob;
+        W_num_qubits := nq;
+        W_qstate_valid := Hq;
+      |} :: (Execute_cnot_instr control target t)).  (* nop *)
+    Unshelve.
+    rewrite Den_unitary_bits.
+    apply Hq.
+    simpl_bits.
+    rewrite Qop_cnot_bits.
+    lia.
+    simpl_bits.
+    reflexivity.
+Defined.
+\end{lstlisting}
+
+
+\subsection{Quantum Mixed States in the Execution Model}
+
+In this section, we aim to demonstrate that every \texttt{DensityMatrix} generated by our
+implementation fulfills three properties required by the first postulate. Note that
+these matrices have not yet bee proven to be a valid density matrices. In our
+implementation, \texttt{DensityMatrix} is defined by initial states and their
+transformations as set out in the postulates:
+
+\begin{lstlisting}
+(* Density.v *)
+Inductive DensityMatrix: nat -> Matrix -> Prop :=
+| DensityMatrix_init (n: nat) (den: Matrix): InitialDensityMatrix n den -> DensityMatrix n den
+| DensityMatrix_unitary (n: nat) (den uop: Matrix) (H1: _) (H2: _):
+    DensityMatrix n den ->
+    Qop_unitary uop ->
+    DensityMatrix n (Den_unitary den uop H1 H2)
+| DensityMatrix_measure (n: nat) (den proj: Matrix) (Hd: _):
+    DensityMatrix n den ->
+    Projection proj ->
+    Den_prob den proj Hd <> 0 ->
+    DensityMatrix n (Den_measure den proj Hd).
+\end{lstlisting}
+
+\subsubsection{Self-Adjoint (Hermitian)}
+
+Given that the definition of self-adjoint operator is such that the complex conjugate is
+equivalent to itself ($\rho^* = \rho$), it is crucial to avoid multiplying non-real
+complex scalars to the self-adjoint operator to maintain self-adjointness.
+In the projection(measurement) postulate, we multiply $\frac{1}{\tr{\rho
+P}}$ by a density matrix to calculate a quantum state post- measurement:
+
+$$
+\rho = \stackanchor{\textrm{state before}}{\textrm{measurement}}
+\quad \, \xrightarrow{\textrm{measurement}} \quad
+\frac{P_\lambda \rho P_\lambda}{\tr{\rho P_\lambda}}
+= \frac{P_\lambda \rho P_\lambda}{\textbf{P}_\rho \prths{\lambda}}
+= \stackanchor{\textrm{state after}}{\textrm{measurement}}
+$$
+
+Therefore, it becomes necessary to prove that $\tr{\rho P}$ (probability of $P$)
+is always real for any given projection operator $P$.
+
+
+To prove $\tr{\rho P}$ is real, we have to establish
+that $\rho$ is self-adjoint. Our goal, in proving reality of $\tr{\rho
+P}$, is to demonstrate that
+
+$$
+\tr{\rho P}^* = \tr{\rho P}
+$$
+
+in various base cases and inductive cases. By the way,
+
+$$
+\tr{\rho P}^* = \tr{\prths{\rho P}^*} =
+\tr{P^* \rho^*} =
+\tr{\rho^* P^*} =
+\tr{\rho^* P} \textrm{ ... (note that $P$ is self-adjoint)}
+$$
+
+This transforms the problem of proving the reality of $\tr{\rho P}$ into one of
+proving self-adjointness. As a result, if we attempt to prove both properties
+simutaneously, we could establish both properties through induction:
+
+\begin{lstlisting}
+(* Density.v *)
+Lemma DensityMatrix_prob_real_Hermitian: forall (n: nat) (den: Matrix),
+  DensityMatrix n den -> (forall proj, Projection proj ->
+  (forall Hd, (Cimag (Den_prob den proj Hd) = 0%R))) /\ Qop_Hermitian den.
+\end{lstlisting}
+
+
+\subsubsection{Positive Semi-definite}
+
+Proving positive semi-definiteness is more troublesome than the privious case.
+Given that semi-definiteness is defined as
+
+$$
+  \forall \ket{\psi} \in \mathbb{H}, \quad \bra{\psi} A \ket{\psi} \ge 0 \, ,
+$$
+
+it is crucial to avoid multiplying negative real scalars to positive semi-definite
+operator to maintain positive semi-definiteness.
+Like in the self-adjoint case, we have to multiply $\frac{1}{\tr{\rho
+P}}$ to a density matrix in order to calculate a post-measurement quantum state:
+
+$$
+\rho = \stackanchor{\textrm{state before}}{\textrm{measurement}}
+\quad \, \xrightarrow{\textrm{measurement}} \quad
+\frac{P_\lambda \rho P_\lambda}{\tr{\rho P_\lambda}}
+= \frac{P_\lambda \rho P_\lambda}{\textbf{P}_\rho \prths{\lambda}}
+= \stackanchor{\textrm{state after}}{\textrm{measurement}}
+$$
+
+So it is necessary to prove that $\tr{\rho P}$ (probability of $P$)
+is always non-negative for arbitrary projection operator $P$.
+Moreover, as the self-adjoint case, positive semi-definiteness is needed when
+proving non-negativity of $\tr{\rho P}$.
+Here's why.
+
+\begin{multline*}
+\tr{\rho P} \ge 0
+\, \xleftarrow{P = P P} \,
+\tr{\rho P P} \ge 0
+\, \xleftarrow{\tr{AB} = \tr{BA}} \,
+\tr{P \rho P} \ge 0
+\, \xleftarrow{\textrm{1st Lemma}} \,
+{P \rho P} \ge 0
+\, \xleftarrow{\textrm{2nd Lemma}} \,
+\rho \ge 0
+\end{multline*}
+
+We have proven the corresponding ``1st" and ``2nd" lemmas:
+
+\begin{lstlisting}
+(* Operator.v *)
+(* 1st Lemma *)
+Lemma Qop_positive_trace: forall (m: Matrix), Qop_positive m -> Cge_0 (Mtrace m).
+(* 2nd Lemma *)
+Lemma Qop_positive_mult_Hermitian: forall (m1 m2: Matrix) H1 H2,
+  Qop_positive m1 -> Qop_Hermitian m2 -> Qop_positive (Mmult (Mmult m2 m1 H1) m2
+  H2).
+\end{lstlisting}
+
+Consequently, the problem of proving non-negativity of $\tr{\rho P}$ has been transformed into one of
+proving positive semi-definiteness. Hence if both properties are attemptd to be
+proven simutaneously, we could establish both through induction:
+
+\begin{lstlisting}
+(* Density.v *)
+Lemma DensityMatrix_prob_pos_positive: forall (n: nat) (den: Matrix),
+  DensityMatrix n den -> (forall proj, Projection proj ->
+  (forall Hd, Cge_0 (Den_prob den proj Hd))) /\ Qop_positive den.
+\end{lstlisting}
+
+
+\subsubsection{Trace 1}
+This case is relatively easier than the two cases before. Using induction, we
+could prove this lemma:
+
+\begin{lstlisting}
+(* Density.v *)
+Lemma DensityMatrix_normalized: forall (n: nat) (den: Matrix),
+  DensityMatrix n den -> Den_normalized den.
+\end{lstlisting}
+
+
+\subsubsection{Extension to Execution Level}
+
+Using the Lemmas we proved in the section 3.4.1 to 3.4.3, we can demonstrate that, for any
+given arbitrary QASM2.0 program, each quantum state of the world in the
+resulting program state (\texttt{ManyWorld}), produced by our
+execution model, adheres to the postulate about the quantum state (proposition
+1):
+
+\begin{lstlisting}
+Theorem all_states_Hermitian: forall program,
+  Forall (fun world => Qop_Hermitian (W_qstate world)) (Execute program).
+
+Theorem all_states_positive: forall program,
+  Forall (fun world => Qop_positive (W_qstate world)) (Execute program).
+
+Theorem all_states_trace_1: forall program,
+  Forall (fun world => Mtrace (W_qstate world) = 1) (Execute program).
+\end{lstlisting}
+
+
+\end{document}
+

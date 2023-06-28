@@ -65,7 +65,7 @@ Lemma InitialDensityMatrix_Hermitian: forall (n: nat) (den proj: Matrix),
 Proof.
   ...
 ```
-### Positive-semidefinite
+### Positive-definite
 임의의 모든 벡터에 대해서, v^t * A * v 가 non-negative임을 보여야 하기 때문에 Hermitian보다는 증명이 까다롭다.
 일단 우리가 정의한 initial density matrix들은 모두 특정 vector의 outer product로 나타내어질 수 있다는 점을 주목하자.
 (물리학 용어로는 pure하다 라고 표현)
@@ -405,7 +405,7 @@ Proof.
   ...
 ```
 
-# Postulate 1의 execution level 확장
+# execution level로 확장
 임의의 프로그램 input에 대해서 모든 many world를 구성하고 있는 world의 quantum state 는 항상 postulate 1 의 3가지 property를 만족한다.
 
 ```coq

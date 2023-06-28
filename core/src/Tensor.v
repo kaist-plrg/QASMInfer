@@ -24,7 +24,7 @@ Definition TMproduct (m1 m2: Matrix): Matrix :=
 Lemma TMproduct_bits: forall (m1 m2: Matrix), Mbits (TMproduct m1 m2) = (Mbits m1 + Mbits m2)%nat.
 Proof. reflexivity. Qed.
 
-Property TMproduct_correct: forall
+Lemma TMproduct_correct: forall
   (m1 m2 mt: Matrix) (i j: nat) (Hi: _) (Hj: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
   (TMproduct m1 m2)[[i Hi|j Hj]] =
   m1[[(i / Msize m2) H1i|(j / Msize m2) H1j]] * m2[[(i mod Msize m2) H2i|(j mod Msize m2) H2j]].
