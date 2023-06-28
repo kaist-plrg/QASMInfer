@@ -57,4 +57,4 @@ Extract Inlined Constant Creal => "(fun x -> x.re)".
 Extract Inlined Constant Cexp => "Complex.exp".
 Extract Inlined Constant Cinv => "Complex.inv".
 
-Extraction "../qasm/lib/core/quantum_core.ml" Execute.
+Extraction "../qasm/lib/core/quantum_core.ml" Execute_and_calculate_prob.

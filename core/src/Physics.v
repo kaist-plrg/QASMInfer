@@ -20,29 +20,42 @@ Open Scope Den_scope.
 
 (* 1. \rho is self-adjoint (i.e. Hermitian). *)
 (* Physical meaning: Eigenvalues are real, because any physical quantity should be real *)
-Theorem Mixed_States_Hermitian: forall num_qubits rho,
-  DensityMatrix num_qubits rho -> Mconjtrans rho = rho.
+Theorem all_states_Hermitian: forall program,
+  Forall (fun world => Qop_Hermitian (W_qstate world)) (Execute program).
 Proof.
-  apply DensityMatrix_Hermitian.
+  intros.
+  apply Forall_impl with (P := (fun world => exists n, DensityMatrix n (W_qstate world))).
+  intros world [n H].
+  apply DensityMatrix_Hermitian with (n := n).
+  apply H.
+  apply Execute_quantum_state_density.
 Qed.
 
 (* 2. \rho is positive semidefinite. *)
 (* Physical meaning: Eigenvalues are positive, because probability is positive *)
-Theorem Mixed_States_positive: forall num_qubits rho,
-  DensityMatrix num_qubits rho -> forall qstate Hmc Hd,
-  Cge_0 (dot_product (CVconjtrans qstate) (MVmult rho qstate Hmc) Hd).
+Theorem all_states_positive: forall program,
+  Forall (fun world => Qop_positive (W_qstate world)) (Execute program).
 Proof.
-  apply DensityMatrix_positive.
+  intros.
+  apply Forall_impl with (P := (fun world => exists n, DensityMatrix n (W_qstate world))).
+  intros world [n H].
+  apply DensityMatrix_positive with (n := n).
+  apply H.
+  apply Execute_quantum_state_density.
 Qed.
 
 (* 3. \rho has trace 1. *)
 (* Physical meaning: sum of probabilites of every possible states is 1 *)
-Theorem Mixed_States_trace_1: forall num_qubits rho,
-  DensityMatrix num_qubits rho -> Mtrace rho = 1.
+Theorem all_states_trace_1: forall program,
+  Forall (fun world => Mtrace (W_qstate world) = 1) (Execute program).
 Proof.
-  apply DensityMatrix_normalized.
+  intros.
+  apply Forall_impl with (P := (fun world => exists n, DensityMatrix n (W_qstate world))).
+  intros world [n H].
+  apply DensityMatrix_normalized with (n := n).
+  apply H.
+  apply Execute_quantum_state_density.
 Qed.
-
 
 
 (*
@@ -59,7 +72,6 @@ Proof.
 Qed.
 
 
-
 (*
   # Measurement Probability ( Mathematics of Quantum Computing (Wolfgang Scherer): 45 )
   If the quanutm system is in a state \rho, \lambda is an eigenvalue of A and
@@ -68,12 +80,11 @@ Qed.
 
   P_\rho ( \lambda ) = tr ( \rho P_\lambda ).
  *)
-Theorem Measurement_Probability: forall rho projection Hbits,
+Theorem measurement_probability_postulate: forall rho projection Hbits,
   Den_prob rho projection Hbits = Mtrace (Mmult rho projection Hbits).
 Proof.
   reflexivity.
 Qed.
-
 
 
 (*
@@ -97,22 +108,25 @@ Qed.
   * (Qproj0_n_t num_bits target_bit Ht) and (Qproj1_n_t num_bits target_bit Ht).
 
  *)
-Theorem Projection_Postulate: forall rho num_bits target_bit Ht Hbits,
-  Den_measure_and_sumrho num_bits target_bit Ht Hbits =
-  Mbop_unsafe Cplus (
-      Mmult_unsafe (
-        Mmult_unsafe (Qproj0_n_t num_bits target_bit Ht) rho
-      ) (Qproj0_n_t num_bits target_bit Ht)
-    ) (
-      Mmult_unsafe (
-        Mmult_unsafe (Qproj1_n_t num_bits target_bit Ht) rho
-      ) (Qproj1_n_t num_bits target_bit Ht)
-    ).
+Theorem projection_postulate: forall rho proj Hbits Hp Hm1 Hm2,
+  Den_measure rho proj Hbits =
+    Msmul
+      (Cinv (Den_prob rho proj Hp))
+      ( Mmult (
+          Mmult proj rho Hm1
+        ) proj Hm2).
 Proof.
   reflexivity.
 Qed.
 
-
+Theorem projection_postulate_density: forall num_bits rho proj Hbits,
+  DensityMatrix num_bits rho ->
+  Projection proj ->
+  Den_prob rho proj Hbits <> 0 ->
+  DensityMatrix num_bits (Den_measure rho proj Hbits).
+Proof.
+  apply DensityMatrix_measure.
+Qed.
 
 (*
   # Time Evolution ( Mathematics of Quantum Computing (Wolfgang Scherer): 45 )
@@ -122,7 +136,14 @@ Qed.
 
   \rho ( t ) = U \rho U^*.
  *)
-Theorem Time_Evolution: forall num_bits  rho uop Hbits1 Hbits2,
+
+Theorem time_evoluation_postulate: forall rho uop H1 H2,
+  Den_unitary rho uop H1 H2 = (Mmult (Mmult uop rho H1) (Mconjtrans uop) H2).
+Proof.
+  reflexivity.
+Qed.
+
+Theorem time_evolution_postulate_density: forall num_bits rho uop Hbits1 Hbits2,
   DensityMatrix num_bits rho ->
   Qop_unitary uop ->
   DensityMatrix num_bits (Mmult (Mmult uop rho Hbits1) (Mconjtrans uop) Hbits2).

@@ -1,3 +1,4 @@
+open Complex
 
 type __ = Obj.t
 let __ = let rec f _ = Obj.repr f in Obj.repr f
@@ -29,6 +30,11 @@ let eqb b1 b2 =
 
 module Nat =
  struct
+  (** val ltb : int -> int -> bool **)
+
+  let ltb n m =
+    (<=) (Stdlib.Int.succ n) m
+
   (** val pow : int -> int -> int **)
 
   let rec pow n m =
@@ -784,7 +790,11 @@ let mtrace m =
 
 let eye bits =
   { mbits = bits; minner = (fun i j ->
-    if (=) i j then nTC (Stdlib.Int.succ 0) else nTC 0) }
+    if (=) i j
+    then if Nat.ltb i ((fun n -> Int.shift_left 1 n) bits)
+         then nTC (Stdlib.Int.succ 0)
+         else nTC 0
+    else nTC 0) }
 
 (** val tMproduct : matrix -> matrix -> matrix **)
 
@@ -797,15 +807,36 @@ let tMproduct m1 m2 =
 
 let qop_ry theta =
   { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
-    if (=) i 0
-    then if (=) j 0
-         then rTC (Stdlib.cos (rdiv theta (float_of_int ((fun p->2*p) 1))))
-         else rTC
-                (RbaseSymbolsImpl.coq_Ropp
-                  (Stdlib.sin (rdiv theta (float_of_int ((fun p->2*p) 1)))))
-    else if (=) j 0
-         then rTC (Stdlib.sin (rdiv theta (float_of_int ((fun p->2*p) 1))))
-         else rTC (Stdlib.cos (rdiv theta (float_of_int ((fun p->2*p) 1))))) }
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ ->
+      (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ ->
+        rTC (Stdlib.cos (rdiv theta (float_of_int ((fun p->2*p) 1)))))
+        (fun n ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          rTC
+            (RbaseSymbolsImpl.coq_Ropp
+              (Stdlib.sin (rdiv theta (float_of_int ((fun p->2*p) 1))))))
+          (fun _ -> rTC (float_of_int 0))
+          n)
+        j)
+      (fun n ->
+      (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          rTC (Stdlib.sin (rdiv theta (float_of_int ((fun p->2*p) 1)))))
+          (fun n0 ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            rTC (Stdlib.cos (rdiv theta (float_of_int ((fun p->2*p) 1)))))
+            (fun _ -> rTC (float_of_int 0))
+            n0)
+          j)
+        (fun _ -> rTC (float_of_int 0))
+        n)
+      i) }
 
 (** val qop_rz : RbaseSymbolsImpl.coq_R -> matrix **)
 
@@ -1190,17 +1221,20 @@ let den_prob_0 den n t =
 let den_prob_1 den n t =
   den_prob den (qproj1_n_t n t)
 
+(** val den_measure : matrix -> matrix -> matrix **)
+
+let den_measure den proj =
+  msmul (Complex.inv (den_prob den proj)) (mmult (mmult proj den) proj)
+
 (** val den_measure_0 : matrix -> int -> int -> matrix **)
 
 let den_measure_0 den n t =
-  msmul (Complex.inv (den_prob den (qproj0_n_t n t)))
-    (mmult (mmult (qproj0_n_t n t) den) (qproj0_n_t n t))
+  den_measure den (qproj0_n_t n t)
 
 (** val den_measure_1 : matrix -> int -> int -> matrix **)
 
 let den_measure_1 den n t =
-  msmul (Complex.inv (den_prob den (qproj1_n_t n t)))
-    (mmult (mmult (qproj1_n_t n t) den) (qproj1_n_t n t))
+  den_measure den (qproj1_n_t n t)
 
 (** val den_0_init : int -> matrix **)
 
@@ -1211,14 +1245,16 @@ let rec den_0_init n =
     n
 
 type instruction =
+| NopInstr
 | RotateInstr of RbaseSymbolsImpl.coq_R * RbaseSymbolsImpl.coq_R
    * RbaseSymbolsImpl.coq_R * int
 | CnotInstr of int * int
 | MeasureInstr of int * int
-| IfInstr of int * bool * instruction list
+| SeqInstr of instruction * instruction
+| IfInstr of int * bool * instruction
 
 type inlinedProgram = { iP_num_qbits : int; iP_num_cbits : int;
-                        iP_num_subinstrs : int; iP_instrs : instruction list }
+                        iP_num_subinstrs : int; iP_instrs : instruction }
 
 type world = { w_qstate : matrix; w_cstate : bool total_map;
                w_prob : RbaseSymbolsImpl.coq_R; w_num_qubits : int }
@@ -1320,31 +1356,32 @@ let rec execute_measure_instr qbit cbit = function
             else execute_measure_instr qbit cbit l
   else execute_measure_instr qbit cbit l
 
-(** val execute_suppl : int -> instruction list -> manyWorld -> manyWorld **)
+(** val execute_suppl : int -> instruction -> manyWorld -> manyWorld **)
 
-let rec execute_suppl ir instrs worlds =
+let rec execute_suppl ir instr worlds =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> worlds)
     (fun ir' ->
-    match instrs with
-    | [] -> worlds
-    | i :: t ->
-      (match i with
-       | RotateInstr (theta, phi, lambda, target) ->
-         execute_suppl ir' t
-           (execute_rotate_instr theta phi lambda target worlds)
-       | CnotInstr (control, target) ->
-         execute_suppl ir' t (execute_cnot_instr control target worlds)
-       | MeasureInstr (qbit, cbit) ->
-         execute_suppl ir' t (execute_measure_instr qbit cbit worlds)
-       | IfInstr (cbit, cond, subinstrs) ->
-         execute_suppl ir' t
-           (concat
-             (map (fun w ->
-               if eqb (w.w_cstate cbit) cond
-               then execute_suppl ir' subinstrs (w :: [])
-               else w :: []) worlds))))
+    match instr with
+    | NopInstr -> worlds
+    | RotateInstr (theta, phi, lambda, target) ->
+      execute_rotate_instr theta phi lambda target worlds
+    | CnotInstr (control, target) -> execute_cnot_instr control target worlds
+    | MeasureInstr (qbit, cbit) -> execute_measure_instr qbit cbit worlds
+    | SeqInstr (i1, i2) -> execute_suppl ir' i2 (execute_suppl ir' i1 worlds)
+    | IfInstr (cbit, cond, subinstr) ->
+      concat
+        (map (fun w ->
+          if eqb (w.w_cstate cbit) cond
+          then execute_suppl ir' subinstr (w :: [])
+          else w :: []) worlds))
     ir
+
+(** val execute : inlinedProgram -> manyWorld **)
+
+let execute program =
+  execute_suppl program.iP_num_subinstrs program.iP_instrs
+    (manyWorld_init program.iP_num_qbits program.iP_num_cbits)
 
 (** val cstate_to_binary_suppl : int -> bool total_map -> int **)
 
@@ -1373,11 +1410,8 @@ let rec calculate_prob num_cbits = function
   let key = cstate_to_binary num_cbits w.w_cstate in
   tm_update prev key (RbaseSymbolsImpl.coq_Rplus (prev key) w.w_prob)
 
-(** val execute : inlinedProgram -> RbaseSymbolsImpl.coq_R total_map **)
+(** val execute_and_calculate_prob :
+    inlinedProgram -> RbaseSymbolsImpl.coq_R total_map **)
 
-let execute ip =
-  let result =
-    execute_suppl ip.iP_num_subinstrs ip.iP_instrs
-      (manyWorld_init ip.iP_num_qbits ip.iP_num_cbits)
-  in
-  calculate_prob ip.iP_num_cbits result
+let execute_and_calculate_prob program =
+  calculate_prob program.iP_num_cbits (execute program)

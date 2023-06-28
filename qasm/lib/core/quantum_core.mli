@@ -16,6 +16,8 @@ val eqb : bool -> bool -> bool
 
 module Nat :
  sig
+  val ltb : int -> int -> bool
+
   val pow : int -> int -> int
 
   val divmod : int -> int -> int -> int -> int * int
@@ -274,6 +276,8 @@ val den_prob_0 : matrix -> int -> int -> Complex.t
 
 val den_prob_1 : matrix -> int -> int -> Complex.t
 
+val den_measure : matrix -> matrix -> matrix
+
 val den_measure_0 : matrix -> int -> int -> matrix
 
 val den_measure_1 : matrix -> int -> int -> matrix
@@ -281,14 +285,16 @@ val den_measure_1 : matrix -> int -> int -> matrix
 val den_0_init : int -> matrix
 
 type instruction =
+| NopInstr
 | RotateInstr of RbaseSymbolsImpl.coq_R * RbaseSymbolsImpl.coq_R
    * RbaseSymbolsImpl.coq_R * int
 | CnotInstr of int * int
 | MeasureInstr of int * int
-| IfInstr of int * bool * instruction list
+| SeqInstr of instruction * instruction
+| IfInstr of int * bool * instruction
 
 type inlinedProgram = { iP_num_qbits : int; iP_num_cbits : int;
-                        iP_num_subinstrs : int; iP_instrs : instruction list }
+                        iP_num_subinstrs : int; iP_instrs : instruction }
 
 type world = { w_qstate : matrix; w_cstate : bool total_map;
                w_prob : RbaseSymbolsImpl.coq_R; w_num_qubits : int }
@@ -305,7 +311,9 @@ val execute_cnot_instr : int -> int -> manyWorld -> manyWorld
 
 val execute_measure_instr : int -> int -> manyWorld -> manyWorld
 
-val execute_suppl : int -> instruction list -> manyWorld -> manyWorld
+val execute_suppl : int -> instruction -> manyWorld -> manyWorld
+
+val execute : inlinedProgram -> manyWorld
 
 val cstate_to_binary_suppl : int -> bool total_map -> int
 
@@ -313,4 +321,5 @@ val cstate_to_binary : int -> bool total_map -> int
 
 val calculate_prob : int -> manyWorld -> RbaseSymbolsImpl.coq_R total_map
 
-val execute : inlinedProgram -> RbaseSymbolsImpl.coq_R total_map
+val execute_and_calculate_prob :
+  inlinedProgram -> RbaseSymbolsImpl.coq_R total_map

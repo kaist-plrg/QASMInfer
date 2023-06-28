@@ -180,8 +180,11 @@ Fixpoint Execute_suppl (ir: nat) (instr: Instruction) (worlds: ManyWorld): ManyW
   )
   end.
 
-Definition Execute (ip: InlinedProgram): ManyWorld :=
-  Execute_suppl (IP_num_subinstrs ip) (IP_instrs ip) (ManyWorld_init (IP_num_qbits ip) (IP_num_cbits ip)).
+Definition Execute (program: InlinedProgram): ManyWorld :=
+  Execute_suppl
+    (IP_num_subinstrs program)
+    (IP_instrs program)
+    (ManyWorld_init (IP_num_qbits program) (IP_num_cbits program)).
 
 Fixpoint Cstate_to_binary_suppl (n: nat) (cstate: total_map bool): nat := match n with
   | O => O
@@ -204,8 +207,8 @@ Fixpoint Calculate_prob (num_cbits: nat) (worlds: ManyWorld): total_map R :=
     tm_update prev key (prev key + W_prob w)%R
   end.
 
-Definition Execute_and_calculate_prob (ip: InlinedProgram): total_map R :=
-  Calculate_prob (IP_num_cbits ip) (Execute ip).
+Definition Execute_and_calculate_prob (program: InlinedProgram): total_map R :=
+  Calculate_prob (IP_num_cbits program) (Execute program).
 
 (* ============================================================================================== *)
 (* Proof about quantum states =================================================================== *)
@@ -379,11 +382,11 @@ Proof.
 Qed.
 
 
-Theorem Execute_quantum_state_density: forall (ip: InlinedProgram),
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) (Execute ip).
+Theorem Execute_quantum_state_density: forall (program: InlinedProgram),
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) (Execute program).
 Proof.
   intros.
-  destruct ip.
+  destruct program.
   unfold Execute.
   simpl.
   apply Execute_suppl_quantum_state_density.
