@@ -797,7 +797,7 @@ Proof.
   - apply (eye n).
 Defined.
 
-Lemma Qop_sq_genetal_bits: forall (n t: nat) (op: Matrix) (Hop: _), Mbits (Qop_sq_general n t op Hop) = n.
+Lemma Qop_sq_general_bits: forall (n t: nat) (op: Matrix) (Hop: _), Mbits (Qop_sq_general n t op Hop) = n.
 Proof.
   intros.
   unfold Qop_sq_general.

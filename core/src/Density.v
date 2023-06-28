@@ -598,6 +598,20 @@ Proof.
   all: try auto; simpl_bits; lia.
 Qed.
 
+Lemma InitialDensityMatrix_normalized: forall (n: nat) (den: Matrix),
+  InitialDensityMatrix n den -> Den_normalized den.
+Proof.
+  intros.
+  induction H.
+  + unfold Den_normalized, eye, Mtrace, func_sum, func_sum2, func_sum_suppl.
+    lca.
+  + apply Den_0_normalized.
+  + apply Den_1_normalized.
+  + apply TMproduct_normalized.
+    apply IHInitialDensityMatrix1.
+    apply IHInitialDensityMatrix2.
+Qed.
+
 (* ============================================================================================== *)
 (* density matrix =============================================================================== *)
 
@@ -887,14 +901,8 @@ Lemma DensityMatrix_normalized: forall (n: nat) (den: Matrix),
 Proof.
   intros.
   induction H.
-  - induction H.
-    + unfold Den_normalized, eye, Mtrace, func_sum, func_sum2, func_sum_suppl.
-      lca.
-    + apply Den_0_normalized.
-    + apply Den_1_normalized.
-    + apply TMproduct_normalized.
-      apply IHInitialDensityMatrix1.
-      apply IHInitialDensityMatrix2.
+  - eapply InitialDensityMatrix_normalized.
+    apply H.
   - unfold Den_normalized, Den_unitary.
     erewrite Mtrace_Mmult_comm.
     erewrite <- Mmult_assoc.
