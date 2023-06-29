@@ -1,0 +1,450 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{enumerate}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{stackengine}
+\usepackage{quantikz}
+\usepackage{cancel}
+
+
+\lstset{
+  basicstyle= \footnotesize \ttfamily,
+  % numbers=left,
+  % numberstyle=\small,
+  % numbersep=8pt,
+  showstringspaces=false,
+  breaklines=true,
+  frame=lines,
+  columns=fullflexible,
+  backgroundcolor=\color{white},
+  emphstyle=\color{blue},
+  keywordstyle=\color{brown},
+  stringstyle=\color{red},
+  commentstyle=\color{gray},
+}
+\setlength\parindent{0pt}
+
+\newcommand{\<}{\langle}
+\renewcommand{\>}{\rangle}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\abs}[1]{\left\vert #1 \right\vert}
+\newcommand{\prths}[1]{\left( #1 \right)}
+\newcommand{\braces}[1]{\left\{ #1 \right\}}
+\newcommand{\brackets}[1]{\left[ #1 \right]}
+\newcommand{\chevrons}[1]{\left\< #1 \right\>}
+\newcommand{\prob}[2][]{\underset{#1}{\mathbb{P}}\left[ #2 \right]}
+\newcommand{\set}[2]{\left\{ #1 \; \middle\vert \; #2 \right\}}
+\newcommand{\tr}[1]{\textrm{tr} \left( #1 \right)}
+% \newcommand{\bra}[1]{\left\< #1 \right\vert}
+% \newcommand{\ket}[1]{\left\vert #1 \right\>}
+
+\title{Coq Implementation}
+\author{Kanguk Lee}
+\date{\today}
+
+\begin{document}
+% \maketitle
+
+\section{Quantum Teleportation Source Code}
+
+\begin{lstlisting}
+OPENQASM 2.0;
+
+gate x a { U(pi,0,pi) a; }
+gate z a { U(0,0,pi) a; }
+gate h a { U(pi/2,0,pi) a; }
+
+qreg q[3];
+creg c0[1];
+creg c1[1];
+creg c2[1];
+
+// we are trying to send q[0]
+
+// step 0
+// prepare an arbitrary qubit
+U(0.3,0.2,0.1) q[0];
+
+// step 1
+// make a Bell pair
+h q[1];
+CX q[1],q[2];
+
+// step 2
+CX q[0],q[1];
+h q[0];
+
+// step 3
+measure q[0] -> c0[0];
+measure q[1] -> c1[0];
+
+// step 4
+if(c0==1) z q[2];
+if(c1==1) x q[2];
+
+// now q[0] teleported to q[2]
+\end{lstlisting}
+
+\section{Quantum Teleportation Circuit}
+
+\begin{quantikz}[wire types={q,q,q,c,c}]
+  \lstick{$q_0:\ket{\psi}$} & \qw & \slice{2} & \ctrl{1} & \gate{H} & \meter{} \wire[d][3]{c} &&&&\\
+  \lstick{$q_1:\ket{0}$} & \gate{H} & \ctrl{1} & \targ{} & \slice{3} && \meter{} \wire[d][3]{c}&&&\\
+  \lstick{$q_2:\ket{0}$} && \targ{} &&&&& \gate{Z} & \gate{X} & \rstick{$\ket{\psi}$}\\
+  \lstick{$c_1$} &&&&&& \slice{4} & \ctrl[vertical wire=c]{-1} &&\\
+  \lstick{$c_2$} \slice{1} &&&&&&&& \ctrl[vertical wire=c]{-2} &
+\end{quantikz}
+
+\section{Formal Presentation}
+\subsection{Preliminaries}
+\begin{align*}
+  H \ket{0} & = \frac{1}{\sqrt{2}} \prths{\ket{0} + \ket{1}} \\
+  H \ket{1} & = \frac{1}{\sqrt{2}} \prths{\ket{0} - \ket{1}} \\
+  X \ket{0} & = \ket{1} \\
+  X \ket{1} & = \ket{0} \\
+  Z \ket{0} & = \ket{0} \\
+  Z \ket{1} & = -\ket{1} \\
+  C_X \ket{00} & = \ket{00} \\
+  C_X \ket{01} & = \ket{01} \\
+  C_X \ket{10} & = \ket{11} \\
+  C_X \ket{11} & = \ket{10} \\
+\end{align*}
+\subsection{Step 0}
+Alice is the one who owns $q_0 = \ket{\psi}$ and $q_1$ and she wants to teleport $\ket{psi}$ to Bob,
+who owns $q_2$.
+The teleportation protocol begins with a quantum state or qubit $\ket{\psi}$, in Alice's
+possession, that she wants to convey to Bob. This qubit can be written generally as:
+
+$$
+\ket{\psi}_{q_0} = \alpha \ket{0}_{q_0} + \beta \ket{1}_{q_0}
+$$
+
+The subscript $0$ above is used only to distinguish this qubit states in the first, second and third
+horizontal rows of the circuit.
+
+\subsection{Step 1}
+Next, the protocol requires that Alice and Bob share a maximally entangled state. This state is
+fixed in advance, by mutual agreement between Alice and Bob, and can be any one of the four Bell
+states. In this circuit, Alice and Bob will share following Bell state:
+
+$$
+\ket{\Phi^+}_{q_1q_2} =
+\frac{1}{\sqrt{2}}
+\prths{
+\ket{0}_{q_1} \otimes \ket{0}_{q_2} +
+\ket{1}_{q_1} \otimes \ket{1}_{q_2}
+}
+$$
+
+by the process we are about to discuss. Given $q_1$ and $q_2$ both initialized to $\ket{0}$:
+
+$$
+\textrm{Inital $q_1$ and $q_2$} = \ket{0}_{q_1} \otimes \ket{0}_{q_2} \, ,
+$$
+
+the Hadamard gate is applied to $q_1$:
+
+\begin{align*}
+\prths{
+H \otimes I
+} \cdot \prths {
+\ket{0}_{q_1} \otimes \ket{0}_{q_2}
+} & =
+\prths {H \ket{0}_{q_1}} \otimes
+\prths {I \ket{0}_{q_2}} \\ & =
+\frac{1}{\sqrt{2}}
+\prths {\ket{0}_{q_1} + \ket{1}_{q_1}} \otimes
+\ket{0}_{q_2} \\ & =
+\frac{1}{\sqrt{2}}
+\prths {\ket{00}_{q_1q_2} + \ket{10}_{q_1q_2}}
+\end{align*}
+
+then $C_X$ (CNOT) gate, $q1$ as a control qubit and $q2$ as a target qubit:
+
+$$
+\frac{1}{\sqrt{2}}
+\prths {\ket{00}_{q_1q_2} + \ket{10}_{q_1q_2}} \cdot C_X =
+\frac{1}{\sqrt{2}}
+\prths {\ket{00}_{q_1q_2} + \ket{11}_{q_1q_2}}
+$$
+
+At this point, Alice has two particles ($q_0$, the one she wants to teleport, and $q_1$, one of the
+entangled pair), and Bob has one particle, $q_2$. In the total system, the state of these three
+particles is given by
+
+\begin{align*}
+\ket{\psi}_{q_0} \otimes
+\frac{1}{\sqrt{2}}
+\prths {\ket{00}_{q_1q_2} + \ket{11}_{q_1q_2}} & =
+\prths {\alpha \ket{0}_{q_0} + \beta \ket{1}_{q_0}} \otimes
+\frac{1}{\sqrt{2}}
+\prths {\ket{00}_{q_1q_2} + \ket{11}_{q_1q_2}} \\ & =
+\frac{1}{\sqrt{2}}
+\prths {
+\alpha \ket{000}+
+\alpha \ket{011}+
+\beta \ket{100}+
+\beta \ket{111}
+}.
+\end{align*}
+
+\subsection{Step 2}
+
+In step 2, we first apply $C_X$ (CNOT) gate with $q_0$ as a control qubit and $q_1$ as a target qubit:
+
+\begin{align*}
+\prths{C_X \otimes I } \cdot
+\frac{1}{\sqrt{2}}
+\prths {
+\alpha \ket{000}+
+\alpha \ket{011}+
+\beta \ket{100}+
+\beta \ket{111}
+} \\ =
+\frac{1}{\sqrt{2}}
+\prths {
+\alpha \ket{000}+
+\alpha \ket{011}+
+\beta \ket{110}+
+\beta \ket{101}
+}
+\end{align*}
+
+then $H$ gate to $q_0$:
+
+\begin{align*}
+& \prths{H \otimes I } \cdot
+\frac{1}{\sqrt{2}}
+\prths {
+\alpha \ket{000}+
+\alpha \ket{011}+
+\beta \ket{100}+
+\beta \ket{111}
+} \\ = &
+\frac{1}{2}
+\prths {
+ \alpha \ket{000}
++\alpha \ket{100}
++\alpha \ket{011}
++\alpha \ket{111}
++\beta  \ket{010}
+-\beta  \ket{110}
++\beta  \ket{001}
+-\beta  \ket{101}
+} \\ = &
+\frac{1}{2}
+\prths {
+ \alpha \ket{000}
++\beta  \ket{001}
++\beta  \ket{010}
++\alpha \ket{011}
++\alpha \ket{100}
+-\beta  \ket{101}
+-\beta  \ket{110}
++\alpha \ket{111}
+}.
+\end{align*}
+
+\subsection{Step 3}
+Alice will then make two local measurement of $q_0$ and $q_1$. The measurement causes each qubit to
+collapse to non-superposed state. There are a total of four possible results of step 3, depending
+on the measurement outcomes. (Omit details about normalization.)
+
+\subsubsection{ $q_0 \rightarrow c_0 = 0$, $q_1 \rightarrow c_1 = 0$}
+\begin{align*}
+\textrm{resulting state}
+& =
+\frac{1}{2}
+\prths {
+ \alpha \ket{000}
++\beta  \ket{001}
++\cancel{\beta  \ket{010}}
++\cancel{\alpha \ket{011}}
++\cancel{\alpha \ket{100}}
+-\cancel{\beta  \ket{101}}
+-\cancel{\beta  \ket{110}}
++\cancel{\alpha \ket{111}}
+}
+\\ & =
+ \alpha \ket{000}
++\beta  \ket{001}
+\end{align*}
+
+\subsubsection{ $q_0 \rightarrow c_0 = 0$, $q_1 \rightarrow c_1 = 1$}
+\begin{align*}
+\textrm{resulting state}
+& =
+\frac{1}{2}
+\prths {
+\cancel{\alpha \ket{000}}
++\cancel{\beta  \ket{001}}
++\beta  \ket{010}
++\alpha \ket{011}
++\cancel{\alpha \ket{100}}
+-\cancel{\beta  \ket{101}}
+-\cancel{\beta  \ket{110}}
++\cancel{\alpha \ket{111}}
+}
+\\ & =
+ \beta  \ket{010}
++\alpha \ket{011}
+\end{align*}
+
+\subsubsection{ $q_0 \rightarrow c_0 = 1$, $q_1 \rightarrow c_1 = 0$}
+\begin{align*}
+\textrm{resulting state}
+& =
+\frac{1}{2}
+\prths {
+ \cancel{\alpha \ket{000}}
++\cancel{\beta  \ket{001}}
++\cancel{\beta  \ket{010}}
++\cancel{\alpha \ket{011}}
++\alpha \ket{100}
+-\beta  \ket{101}
+-\cancel{\beta  \ket{110}}
++\cancel{\alpha \ket{111}}
+}
+\\ = &
+\alpha \ket{100}
+-\beta  \ket{101}
+\end{align*}
+
+\subsubsection{ $q_0 \rightarrow c_0 = 1$, $q_1 \rightarrow c_1 = 1$}
+\begin{align*}
+\textrm{resulting state}
+& =
+\frac{1}{2}
+\prths {
+ \cancel{\alpha \ket{000}}
++\cancel{\beta  \ket{001}}
++\cancel{\beta  \ket{010}}
++\cancel{\alpha \ket{011}}
++\cancel{\alpha \ket{100}}
+-\cancel{\beta  \ket{101}}
+-\beta  \ket{110}
++\alpha \ket{111}
+}
+\\ = &
+-\beta  \ket{110}
++\alpha \ket{111}
+\end{align*}
+
+\subsection{Step 4}
+The result of Alice's measurement tells her which of the above four states the system is in. She can
+now send her result to Bob through a classical channel, $c_0$ and $c_1$. These two classical bits
+can communicate which of the four results she obtained.
+
+After Bob receives the message from Alice, he will know which of the four states his particle is in.
+using this information, he performs a unitary operation on his particle to transform it to the
+desired state $\alpha \ket{0}_{q_2} + \beta \ket{1}_{q_2}$.
+
+From now on, we only care about Bob's qubit $q_2$ hence omit the states for $q_0$ and $q_1$.
+
+\subsubsection{ $q_0 \rightarrow c_0 = 0$, $q_1 \rightarrow c_1 = 0$}
+\begin{align*}
+\textrm{state after step 3}
+& =
+\alpha \ket{0}_{q_2}
++\beta  \ket{1}_{q_2}
+\\ & = \ket{\psi}_{q_2}
+\end{align*}
+
+This is exactly the state we want. As with the circuit, Bob does not have to do anything.
+
+\subsubsection{ $q_0 \rightarrow c_0 = 0$, $q_1 \rightarrow c_1 = 1$}
+\begin{align*}
+\textrm{state after step 3}
+& =
+\beta  \ket{0}_{q_2}
++\alpha \ket{1}_{q_2}
+\end{align*}
+
+Since $c_1$ is 1, Bob just needs to do the $X$ operation as represented in the circuit to get the
+state we want:
+
+\begin{align*}
+X \cdot \prths {\textrm{state after step 3}}
+& =
+X \cdot \prths{
+\beta  \ket{0}_{q_2}
++\alpha \ket{1}_{q_2}
+}
+\\ & =
+\alpha \ket{0}_{q_2}
++\beta  \ket{1}_{q_2}
+\\ & = \ket{\psi}_{q_2}
+\end{align*}
+
+\subsubsection{ $q_0 \rightarrow c_0 = 1$, $q_1 \rightarrow c_1 = 0$}
+\begin{align*}
+\textrm{state after step 3}
+& =
+\alpha \ket{0}_{q_2}
+-\beta  \ket{1}_{q_2}
+\end{align*}
+
+Since $c_0$ is 1, Bob just needs to do the $Z$ operation as represented in the circuit to get the
+state we want:
+
+\begin{align*}
+Z \cdot \prths {\textrm{state after step 3}}
+& =
+Z \cdot \prths{
+\alpha \ket{0}_{q_2}
+-\beta  \ket{1}_{q_2}
+}
+\\ & =
+\alpha \ket{0}_{q_2}
++\beta  \ket{1}_{q_2}
+\\ & = \ket{\psi}_{q_2}
+\end{align*}
+
+\subsubsection{ $q_0 \rightarrow c_0 = 1$, $q_1 \rightarrow c_1 = 1$}
+\begin{align*}
+\textrm{state after step 3}
+& =
+-\beta  \ket{0}_{q_2}
++\alpha \ket{1}_{q_2}
+\end{align*}
+Since both $c_0$ and $c_1$ are 1, Bob needs to do the $Z$ then also $X$ operation as represented in
+the circuit to get the state we want:
+
+\begin{align*}
+X \cdot Z \cdot \prths {\textrm{state after step 3}}
+& =
+X \cdot Z \cdot \prths{
+-\beta  \ket{0}_{q_2}
++\alpha \ket{1}_{q_2}
+}
+\\ & =
+X \cdot \prths{
+-\beta  \ket{0}_{q_2}
+-\alpha \ket{1}_{q_2}
+}
+\\ & =
+\prths{
+-\alpha \ket{0}_{q_2}
+-\beta  \ket{1}_{q_2}
+}
+\\ & =
+-\prths{
+\alpha \ket{0}_{q_2}
++\beta  \ket{1}_{q_2}
+\\ & = -\ket{\psi}_{q_2}
+}
+\end{align*}
+
+The global phase in quantum mechanics does not matter because it does not affect observable
+properties of the system due to the cancellation effect in the computation of expectation values.
+Therefore, we can say that $\ket{\psi}$ and $-\ket{\psi}$ are same.
+
+\end{document}
+
