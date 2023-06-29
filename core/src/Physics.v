@@ -20,10 +20,11 @@ Open Scope Den_scope.
 
 (* 1. \rho is self-adjoint (i.e. Hermitian). *)
 (* Physical meaning: Eigenvalues are real, because any physical quantity should be real *)
-Theorem all_states_Hermitian: forall program,
-  Forall (fun world => Qop_Hermitian (W_qstate world)) (Execute program).
+Theorem all_states_Hermitian: forall program world,
+  In world (Execute program) -> Qop_Hermitian (W_qstate world).
 Proof.
-  intros.
+  intro program.
+  apply Forall_forall.
   apply Forall_impl with (P := (fun world => exists n, DensityMatrix n (W_qstate world))).
   intros world [n H].
   apply DensityMatrix_Hermitian with (n := n).
@@ -33,10 +34,11 @@ Qed.
 
 (* 2. \rho is positive semidefinite. *)
 (* Physical meaning: Eigenvalues are positive, because probability is positive *)
-Theorem all_states_positive: forall program,
-  Forall (fun world => Qop_positive (W_qstate world)) (Execute program).
+Theorem all_states_positive: forall program world,
+  In world (Execute program) -> Qop_positive (W_qstate world).
 Proof.
-  intros.
+  intro program.
+  apply Forall_forall.
   apply Forall_impl with (P := (fun world => exists n, DensityMatrix n (W_qstate world))).
   intros world [n H].
   apply DensityMatrix_positive with (n := n).
@@ -46,10 +48,11 @@ Qed.
 
 (* 3. \rho has trace 1. *)
 (* Physical meaning: sum of probabilites of every possible states is 1 *)
-Theorem all_states_trace_1: forall program,
-  Forall (fun world => Mtrace (W_qstate world) = 1) (Execute program).
+Theorem all_states_trace_1: forall program world,
+  In world (Execute program) -> Mtrace (W_qstate world) = 1.
 Proof.
-  intros.
+  intro program.
+  apply Forall_forall.
   apply Forall_impl with (P := (fun world => exists n, DensityMatrix n (W_qstate world))).
   intros world [n H].
   apply DensityMatrix_normalized with (n := n).
