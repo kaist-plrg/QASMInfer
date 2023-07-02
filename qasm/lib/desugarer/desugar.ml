@@ -3,39 +3,43 @@ open OpenQASM2.OpenQASM
 open OpenQASM2.AST
 
 (* 1. desugar parallel execution *)
+type argument_dp = id * int
 
-type stmt_desugar_par =
-  | Decl of decl
-  | GateDecl of gatedecl * gop list
-  | Qop of qop
-  | IfList of id * int * qop list
+type uop_dp =
+  | CX_dp of argument_dp * argument_dp
+  | U_dp of exp list * argument_dp
+  | Gate_dp of id * exp list * argument_dp list
 
-type prgm_desugar_par = stmt_desugar_par list
+type qop_dp =
+  | Uop_dp of uop_dp
+  | Meas_dp of argument_dp * argument_dp
+  | Reset_dp of argument_dp
 
-module RegSizeMap = Map.Make (struct
+type statement_dp = Qop_dp of qop_dp | IfList_dp of id * int * qop_dp list
+type program_dp = statement_dp list
+
+module IdMap = Map.Make (struct
   type t = id
 
   let compare = compare
 end)
 
-let rec extract_qreg_size (qasm_program : program) : int RegSizeMap.t =
+let rec extract_qreg_size (qasm_program : program) : int IdMap.t =
   match qasm_program with
-  | [] -> RegSizeMap.empty
+  | [] -> IdMap.empty
   | Decl (QReg (reg_id, reg_size)) :: tail ->
-      RegSizeMap.add reg_id reg_size (extract_qreg_size tail)
+      IdMap.add reg_id reg_size (extract_qreg_size tail)
   | _ :: tail -> extract_qreg_size tail
 
-let rec extract_creg_size (qasm_program : program) : int RegSizeMap.t =
+let rec extract_creg_size (qasm_program : program) : int IdMap.t =
   match qasm_program with
-  | [] -> RegSizeMap.empty
+  | [] -> IdMap.empty
   | Decl (CReg (reg_id, reg_size)) :: tail ->
-      RegSizeMap.add reg_id reg_size (extract_creg_size tail)
+      IdMap.add reg_id reg_size (extract_creg_size tail)
   | _ :: tail -> extract_creg_size tail
 
 let get_or_fail key msg map =
-  match RegSizeMap.find_opt key map with
-  | Some value -> value
-  | None -> failwith msg
+  match IdMap.find_opt key map with Some value -> value | None -> failwith msg
 
 let rec get_same_elem_opt lst =
   match lst with
@@ -43,15 +47,15 @@ let rec get_same_elem_opt lst =
   | x :: [] -> Some x
   | x :: y :: tl -> if x = y then get_same_elem_opt (y :: tl) else None
 
-let rec instantiate_arg_list (arg_list : argument list) (index : int) :
-    argument list =
+let rec index_arg_list (arg_list : argument list) (index : int) :
+    argument_dp list =
   match arg_list with
   | [] -> []
-  | (qid, None) :: tail -> (qid, Some index) :: instantiate_arg_list tail index
-  | h :: tail -> h :: instantiate_arg_list tail index
+  | (qid, None) :: tail -> (qid, index) :: index_arg_list tail index
+  | (qid, Some i) :: tail -> (qid, i) :: index_arg_list tail index
 
 let desugar_parallel_arg_list (arg_list : argument list)
-    (qreg_size : int RegSizeMap.t) : argument list list =
+    (qreg_size : int IdMap.t) : argument_dp list list =
   let reg_size_list =
     arg_list
     |> List.filter_map (function
@@ -60,60 +64,135 @@ let desugar_parallel_arg_list (arg_list : argument list)
   in
   let reg_size_opt = get_same_elem_opt reg_size_list in
   match reg_size_opt with
-  | Some s -> List.init s (fun i -> instantiate_arg_list arg_list i)
+  | Some s -> List.init s (fun i -> index_arg_list arg_list i)
   | None -> failwith "invalid register size"
 
-let desugar_parallel_qop (operation : qop) (qreg_size : int RegSizeMap.t)
-    (creg_size : int RegSizeMap.t) : qop list =
+let desugar_parallel_uop (operation : uop) (qreg_size : int IdMap.t) :
+    uop_dp list =
   match operation with
-  | Uop (CX ((qid1, None), (qid2, None))) -> (
-      match
-        (RegSizeMap.find_opt qid1 qreg_size, RegSizeMap.find_opt qid2 qreg_size)
-      with
+  | CX ((qid1, None), (qid2, None)) -> (
+      match (IdMap.find_opt qid1 qreg_size, IdMap.find_opt qid2 qreg_size) with
       | Some s1, Some s2 ->
-          if s1 == s2 then
-            List.init s1 (fun i -> Uop (CX ((qid1, Some i), (qid2, Some i))))
+          if s1 == s2 then List.init s1 (fun i -> CX_dp ((qid1, i), (qid2, i)))
           else failwith "invalid register size"
       | _ -> failwith "invalid id")
-  | Uop (U (exp_list, (qid, None))) -> (
-      match RegSizeMap.find_opt qid qreg_size with
-      | Some s -> List.init s (fun i -> Uop (U (exp_list, (qid, Some i))))
+  | CX ((qid1, Some i1), (qid2, Some i2)) -> [ CX_dp ((qid1, i1), (qid2, i2)) ]
+  | CX _ -> failwith "Invalid CX usage"
+  | U (exp_list, (qid, None)) -> (
+      match IdMap.find_opt qid qreg_size with
+      | Some s -> List.init s (fun i -> U_dp (exp_list, (qid, i)))
       | None -> failwith "invalid id")
-  | Uop (Gate (gid, exp_list, arg_list)) ->
+  | U (exp_list, (qid, Some i)) -> [ U_dp (exp_list, (qid, i)) ]
+  | Gate (gid, exp_list, arg_list) ->
       desugar_parallel_arg_list arg_list qreg_size
       |> map (fun arg_list_instantiated ->
-             Uop (Gate (gid, exp_list, arg_list_instantiated)))
+             Gate_dp (gid, exp_list, arg_list_instantiated))
+
+let desugar_parallel_qop (operation : qop) (qreg_size : int IdMap.t)
+    (creg_size : int IdMap.t) : qop_dp list =
+  match operation with
+  | Uop uop -> map (fun u -> Uop_dp u) (desugar_parallel_uop uop qreg_size)
   | Meas ((qid, None), (cid, None)) -> (
-      match
-        (RegSizeMap.find_opt qid qreg_size, RegSizeMap.find_opt cid creg_size)
-      with
+      match (IdMap.find_opt qid qreg_size, IdMap.find_opt cid creg_size) with
       | Some s1, Some s2 ->
-          if s1 == s2 then
-            List.init s1 (fun i -> Meas ((qid, Some i), (cid, Some i)))
+          if s1 == s2 then List.init s1 (fun i -> Meas_dp ((qid, i), (cid, i)))
           else failwith "invalid register size"
       | _ -> failwith "invalid id")
+  | Meas ((qid, Some i), (cid, Some j)) -> [ Meas_dp ((qid, i), (cid, j)) ]
+  | Meas _ -> failwith "invalid measure usage"
   | Reset (qid, None) -> (
-      match RegSizeMap.find_opt qid qreg_size with
-      | Some s -> List.init s (fun i -> Reset (qid, Some i))
+      match IdMap.find_opt qid qreg_size with
+      | Some s -> List.init s (fun i -> Reset_dp (qid, i))
       | None -> failwith "invalid id")
-  | x -> [ x ]
+  | Reset (qid, Some i) -> [ Reset_dp (qid, i) ]
 
 let rec desugar_parallel_program (qasm_program : program)
-    (qreg_size : int RegSizeMap.t) (creg_size : int RegSizeMap.t) :
-    prgm_desugar_par =
+    (qreg_size : int IdMap.t) (creg_size : int IdMap.t) : program_dp =
   match qasm_program with
   | [] -> []
   | Qop qop :: tail ->
-      map (fun o -> Qop o) (desugar_parallel_qop qop qreg_size creg_size)
+      map (fun o -> Qop_dp o) (desugar_parallel_qop qop qreg_size creg_size)
       @ desugar_parallel_program tail qreg_size creg_size
   | If (cid, i, qop) :: tail ->
-      IfList (cid, i, desugar_parallel_qop qop qreg_size creg_size)
+      IfList_dp (cid, i, desugar_parallel_qop qop qreg_size creg_size)
       :: desugar_parallel_program tail qreg_size creg_size
-  | Decl d :: t -> Decl d :: desugar_parallel_program t qreg_size creg_size
-  | GateDecl (d, g) :: t ->
-      GateDecl (d, g) :: desugar_parallel_program t qreg_size creg_size
-  | Include _ :: t | OpaqueDecl _ :: t | Barrier _ :: t ->
+  | Decl _ :: t
+  | GateDecl _ :: t
+  | Include _ :: t
+  | OpaqueDecl _ :: t
+  | Barrier _ :: t ->
       desugar_parallel_program t qreg_size creg_size
+
+(* 2. desugar gate subroutines (macros) *)
+
+let create_param_map (params : id list) (args : 'a list) : 'a IdMap.t =
+  List.combine params args
+  |> List.fold_left (fun acc (k, v) -> IdMap.add k v acc) IdMap.empty
+
+let instantiate_arg (arg_map : argument_dp IdMap.t) (arg : argument) :
+    argument_dp =
+  match arg with
+  | qid, None -> get_or_fail qid "unbound id in gate declaration" arg_map
+  | _ -> failwith "invalid gate declaration"
+
+let instantiate_exp (exp_map : exp IdMap.t) (expr : exp) : exp =
+  match expr with
+  | Id id_expr -> get_or_fail id_expr "unbound id in gate declaration" exp_map
+  | e -> e
+
+let instantiate_gop (exp_map : exp IdMap.t) (arg_map : argument_dp IdMap.t)
+    (operation : gop) : uop_dp option =
+  match operation with
+  | GUop (CX (arg1, arg2)) ->
+      Some (CX_dp (instantiate_arg arg_map arg1, instantiate_arg arg_map arg2))
+  | GUop (U (exp_list, arg)) ->
+      Some
+        (U_dp
+           (map (instantiate_exp exp_map) exp_list, instantiate_arg arg_map arg))
+  | GUop (Gate (id, exp_list, arg_list)) ->
+      Some
+        (Gate_dp
+           ( id,
+             map (instantiate_exp exp_map) exp_list,
+             map (instantiate_arg arg_map) arg_list ))
+  | GBarrier _ -> None
+
+let instantiate_gate_decl (decl_head : gatedecl) (decl_body : gop list)
+    (exp_list : exp list) (arg_list : argument_dp list) : qop_dp list =
+  let _, exp_params, arg_params = decl_head in
+  let exp_map = create_param_map exp_params exp_list in
+  let arg_map = create_param_map arg_params arg_list in
+  decl_body
+  |> List.filter_map (instantiate_gop exp_map arg_map)
+  |> map (fun u -> Uop_dp u)
+
+let extract_gate_decl_rev (qasm : program) : (gatedecl * gop list) list =
+  let rec helper_rev acc qasm =
+    match qasm with
+    | [] -> acc
+    | GateDecl (decl_head, decl_body) :: tail ->
+        helper_rev ((decl_head, decl_body) :: acc) tail
+    | _ :: tail -> helper_rev acc tail
+  in
+  helper_rev [] qasm
+
+let rec desugar_macro_program (qasm_dp : program_dp)
+    (gate_decls : (gatedecl * gop list) list) : program_dp =
+  let rec inline decl_head decl_body qasm_dp =
+    let this_id, _, _ = decl_head in
+    match qasm_dp with
+    | [] -> []
+    | Qop_dp (Uop_dp (Gate_dp (gate_id, exp_list, arg_list))) :: tail
+      when gate_id == this_id ->
+        instantiate_gate_decl decl_head decl_body exp_list arg_list
+        |> map (fun x -> Qop_dp x)
+        |> fun x -> List.append x (inline decl_head decl_body tail)
+    | x :: tail -> x :: inline decl_head decl_body tail
+  in
+  match gate_decls with
+  | [] -> qasm_dp
+  | (decl_head, decl_body) :: tail ->
+      desugar_macro_program (inline decl_head decl_body qasm_dp) tail
 
 type qc_ir =
   | NopInter
@@ -139,3 +218,11 @@ module QubitMap = Map.Make (QASMqubit)
 
 let extract_qubit_map (qasm_program : program) : int QubitMap.t =
   failwith "not implemented"
+
+let desugar qasm =
+  let qreg_size_map = extract_qreg_size qasm in
+  let creg_size_map = extract_creg_size qasm in
+  let gate_decls = extract_gate_decl_rev qasm in
+  let qasm_dp = desugar_parallel_program qasm qreg_size_map creg_size_map in
+  let qasm_dm = desugar_macro_program qasm_dp gate_decls in
+  failwith "not yet implemented"
