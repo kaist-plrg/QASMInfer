@@ -194,30 +194,66 @@ let rec desugar_macro_program (qasm_dp : program_dp)
   | (decl_head, decl_body) :: tail ->
       desugar_macro_program (inline decl_head decl_body qasm_dp) tail
 
-type qc_ir =
-  | NopInter
-  | RotateInter of
-      RbaseSymbolsImpl.coq_R
-      * RbaseSymbolsImpl.coq_R
-      * RbaseSymbolsImpl.coq_R
-      * int
-  | CnotInter of int * int
-  | MeasureInter of int * int
-  | ResetInter of int * qc_ir
-  | SeqInter of qc_ir * qc_ir
-  | IfInter of int * bool * qc_ir
+(* 3. assign (q)bits in registers *)
 
-module QASMqubit = struct
-  type t = string * int
+module QASMArg = struct
+  type t = id * int
 
   let compare (s1, i1) (s2, i2) =
     match compare s1 s2 with 0 -> compare i1 i2 | c -> c
 end
 
-module QubitMap = Map.Make (QASMqubit)
+module QASMArgMap = Map.Make (QASMArg)
 
-let extract_qubit_map (qasm_program : program) : int QubitMap.t =
-  failwith "not implemented"
+module IntMap = Map.Make (struct
+  type t = int
+
+  let compare = compare
+end)
+
+let assign_seq (reg_size_map : int IdMap.t) : (int * (id * int)) Seq.t =
+  reg_size_map |> IdMap.to_seq
+  |> Seq.flat_map (fun (reg_id, size) -> Seq.init size (fun i -> (reg_id, i)))
+  |> Seq.mapi (fun i arg -> (i, arg))
+
+let assign_arg_int (assign_seq : (int * (id * int)) Seq.t) : int QASMArgMap.t =
+  assign_seq |> Seq.map (fun (a, b) -> (b, a)) |> QASMArgMap.of_seq
+
+let assign_int_arg (assign_seq : (int * (id * int)) Seq.t) : QASMArg.t IntMap.t
+    =
+  IntMap.of_seq assign_seq
+
+let deref_or_fail key msg map =
+  match QASMArgMap.find_opt key map with
+  | Some value -> value
+  | None -> failwith msg
+
+let unfold_if (creg_size_map : int IdMap.t)
+    (assingment_c_rev : int QASMArgMap.t) (creg_id : id) (cmp : int) :
+    (int * bool) list =
+  let rec to_binary n s =
+    if n = 0 then List.init s (fun _ -> false)
+    else (n mod 2 = 1) :: to_binary (n / 2) (s - 1)
+  in
+  let reg_size = get_or_fail creg_id "invalid creg id" creg_size_map in
+  let cbits =
+    List.init reg_size (fun i ->
+        deref_or_fail (creg_id, i) "invalid index" assingment_c_rev)
+  in
+  List.combine cbits (to_binary cmp reg_size)
+
+type qc_ir =
+  | NopIr
+  | RotateIr of
+      RbaseSymbolsImpl.coq_R
+      * RbaseSymbolsImpl.coq_R
+      * RbaseSymbolsImpl.coq_R
+      * int
+  | CnotIr of int * int
+  | MeasureIr of int * int
+  | ResetIr of int * qc_ir
+  | SeqIr of qc_ir * qc_ir
+  | IfIr of int * bool * qc_ir
 
 let desugar qasm =
   let qreg_size_map = extract_qreg_size qasm in
@@ -225,4 +261,10 @@ let desugar qasm =
   let gate_decls = extract_gate_decl_rev qasm in
   let qasm_dp = desugar_parallel_program qasm qreg_size_map creg_size_map in
   let qasm_dm = desugar_macro_program qasm_dp gate_decls in
-  failwith "not yet implemented"
+  let assignment_q_seq = assign_seq qreg_size_map in
+  let assignment_q_rev = assign_arg_int assignment_q_seq in
+  let assignment_q = assign_int_arg assignment_q_seq in
+  let assignment_c_seq = assign_seq creg_size_map in
+  let assignment_c_rev = assign_arg_int assignment_c_seq in
+  let assignment_c = assign_int_arg assignment_c_seq in
+  (assignment_q, assignment_c)
