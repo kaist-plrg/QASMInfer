@@ -1,5 +1,4 @@
 open Quantum_core
-open OpenQASM2.OpenQASM
 open OpenQASM2.AST
 
 (*********************************)
@@ -356,6 +355,25 @@ let rec desugar_qasm_program (creg_size_map : int IdMap.t)
 (* 4. desugar reset instruction *)
 (********************************)
 
+let rec desugar_qcir_program (qc_ir_program : qc_ir) (acc : int) :
+    instruction * int =
+  match qc_ir_program with
+  | NopIr -> (NopInstr, acc)
+  | RotateIr (t, p, l, q) -> (RotateInstr (t, p, l, q), acc)
+  | CnotIr (a1, a2) -> (CnotInstr (a1, a2), acc)
+  | MeasureIr (q, c) -> (MeasureInstr (q, c), acc)
+  | ResetIr q -> (SwapInstr (q, acc), acc + 1)
+  | SeqIr (ir1, ir2) ->
+      let qc1, acc1 = desugar_qcir_program ir1 acc in
+      let qc2, acc2 = desugar_qcir_program ir2 acc1 in
+      (SeqInstr (qc1, qc2), acc2)
+  | IfIr (i, b, ir) ->
+      let qc1, acc1 = desugar_qcir_program ir acc in
+      (IfInstr (i, b, qc1), acc1)
+
+let count_bits (size_map : int IdMap.t) : int =
+  IdMap.fold (fun _ s a -> s + a) size_map 0
+
 let desugar qasm =
   let qreg_size_map = extract_qreg_size qasm in
   let creg_size_map = extract_creg_size qasm in
@@ -371,4 +389,7 @@ let desugar qasm =
   let qasm_core_ir =
     desugar_qasm_program creg_size_map assignment_q_rev assignment_c_rev qasm_dm
   in
-  (assignment_q, assignment_c)
+  let num_qbits_tmp = count_bits qreg_size_map in
+  let num_cbits = count_bits creg_size_map in
+  let qasm_core, num_qbits = desugar_qcir_program qasm_core_ir num_qbits_tmp in
+  (qasm_core, num_qbits, num_cbits, assignment_q, assignment_c)
