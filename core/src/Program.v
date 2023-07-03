@@ -19,6 +19,7 @@ Inductive Instruction: Type :=
 | NopInstr: Instruction
 | RotateInstr: R -> R -> R -> nat -> Instruction  (* U (theta phi lambda) qbit *)
 | CnotInstr: nat -> nat -> Instruction  (* CnotInstr a b: flip b iff a *)
+| SwapInstr: nat -> nat -> Instruction  (* SwapInstr a b: swap a b *)
 | MeasureInstr: nat -> nat -> Instruction  (* MeasureInstr q c: *)
 | SeqInstr: Instruction -> Instruction -> Instruction
 | IfInstr: nat -> bool -> Instruction -> Instruction.  (* if cbit == 0 (false) or cbit == 1 (true) *)
@@ -118,6 +119,34 @@ Proof.
     reflexivity.
 Defined.
 
+Fixpoint Execute_swap_instr (q1 q2: nat) (worlds: ManyWorld): ManyWorld.
+Proof.
+  destruct worlds as [|[qstate cstate prob nq Hq] t].
+  - exact [].
+  - destruct (lt_dec q1 nq), (lt_dec q2 nq).
+    refine ({|
+      W_qstate := Den_unitary qstate (Qop_swap nq q1 q2 l l0) _ _;
+      W_cstate := cstate;
+      W_prob := prob;
+      W_num_qubits := nq;
+      |} :: (Execute_swap_instr q1 q2 t)).
+    2-4: apply ({|
+        W_qstate := qstate;
+        W_cstate := cstate;
+        W_prob := prob;
+        W_num_qubits := nq;
+        W_qstate_valid := Hq;
+      |} :: (Execute_swap_instr q1 q2 t)).  (* nop *)
+    Unshelve.
+    rewrite Den_unitary_bits.
+    apply Hq.
+    simpl_bits.
+    rewrite Qop_swap_bits.
+    lia.
+    simpl_bits.
+    reflexivity.
+Defined.
+
 Fixpoint Execute_measure_instr (qbit cbit: nat) (worlds: ManyWorld): ManyWorld.
 Proof.
   destruct worlds as [|[qstate cstate prob nq Hq] t].
@@ -168,6 +197,7 @@ Fixpoint Execute_suppl (ir: nat) (instr: Instruction) (worlds: ManyWorld): ManyW
     | NopInstr                            => worlds
     | RotateInstr theta phi lambda target => Execute_rotate_instr theta phi lambda target worlds
     | CnotInstr control target            => Execute_cnot_instr control target worlds
+    | SwapInstr q1 q2                     => Execute_swap_instr q1 q2 worlds
     | MeasureInstr qbit cbit              => Execute_measure_instr qbit cbit worlds
     | SeqInstr i1 i2                      => Execute_suppl ir' i2 (Execute_suppl ir' i1 worlds)
     | IfInstr cbit cond subinstr          => (
@@ -275,6 +305,36 @@ Proof.
       all: apply Ht.
 Qed.
 
+Lemma Execute_swap_instr_quantum_state_density:
+  forall (q1 q2: nat) (worlds: ManyWorld),
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world))
+    (Execute_swap_instr q1 q2 worlds).
+Proof.
+  intros.
+  induction worlds.
+  - simpl.
+    apply H.
+  - destruct a.
+    apply Forall_cons_iff in H.
+    destruct H as [ [n H] Ht].
+    simpl in *.
+    destruct (lt_dec q1 W_num_qubits0), (lt_dec q2 W_num_qubits0).
+    { apply Forall_cons.
+      simpl.
+      exists n.
+      apply DensityMatrix_unitary.
+      apply H.
+      apply Qop_swap_unitary.
+      apply IHworlds.
+      apply Ht. }
+      all: apply Forall_cons.
+      all: try exists n; simpl.
+      all: try apply H.
+      all: apply IHworlds.
+      all: apply Ht.
+Qed.
+
 Lemma Execute_measure_instr_quantum_state_density:
   forall (qbit cbit: nat) (worlds: ManyWorld),
   Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
@@ -331,6 +391,7 @@ Qed.
 
 Arguments Execute_rotate_instr _ _ _ _ : simpl never.
 Arguments Execute_cnot_instr _ _ _ : simpl never.
+Arguments Execute_swap_instr _ _ _ : simpl never.
 Arguments Execute_measure_instr _ _ _ : simpl never.
 
 Lemma Execute_suppl_quantum_state_density:
@@ -349,6 +410,9 @@ Proof.
     apply H.
   - simpl.
     apply Execute_cnot_instr_quantum_state_density.
+    apply H.
+  - simpl.
+    apply Execute_swap_instr_quantum_state_density.
     apply H.
   - simpl.
     apply Execute_measure_instr_quantum_state_density.

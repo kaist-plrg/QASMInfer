@@ -196,6 +196,19 @@ let rec desugar_macro_program (qasm_dp : program_dp)
 
 (* 3. assign (q)bits in registers *)
 
+type qc_ir =
+  | NopIr
+  | RotateIr of
+      RbaseSymbolsImpl.coq_R
+      * RbaseSymbolsImpl.coq_R
+      * RbaseSymbolsImpl.coq_R
+      * int
+  | CnotIr of int * int
+  | MeasureIr of int * int
+  | ResetIr of int * qc_ir
+  | SeqIr of qc_ir * qc_ir
+  | IfIr of int * bool * qc_ir
+
 module QASMArg = struct
   type t = id * int
 
@@ -242,18 +255,17 @@ let unfold_if (creg_size_map : int IdMap.t)
   in
   List.combine cbits (to_binary cmp reg_size)
 
-type qc_ir =
-  | NopIr
-  | RotateIr of
-      RbaseSymbolsImpl.coq_R
-      * RbaseSymbolsImpl.coq_R
-      * RbaseSymbolsImpl.coq_R
-      * int
-  | CnotIr of int * int
-  | MeasureIr of int * int
-  | ResetIr of int * qc_ir
-  | SeqIr of qc_ir * qc_ir
-  | IfIr of int * bool * qc_ir
+let rec desugar_qasm_program (qasm_dm : program_dp)
+    (assignment_q_rev : int QASMArgMap.t) (assignment_c_rev : int QASMArgMap.t)
+    : qc_ir =
+  match qasm_dm with
+  | [] -> NopIr
+  | Qop_dp (Uop_dp (CX_dp (arg1, arg2))) :: tail -> failwith ""
+  | Qop_dp (Uop_dp (U_dp (exp_list, arg))) :: tail -> failwith ""
+  | Qop_dp (Meas_dp (arg1, arg2)) :: tail -> failwith ""
+  | Qop_dp (Reset_dp arg) :: tail -> failwith ""
+  | IfList_dp (cid, comp, qop_list) :: tail -> failwith ""
+  | Qop_dp (Uop_dp (Gate_dp _)) :: _ -> failwith "macro gate should not be here"
 
 let desugar qasm =
   let qreg_size_map = extract_qreg_size qasm in

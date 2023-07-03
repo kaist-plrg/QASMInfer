@@ -289,6 +289,7 @@ type instruction =
 | RotateInstr of RbaseSymbolsImpl.coq_R * RbaseSymbolsImpl.coq_R
    * RbaseSymbolsImpl.coq_R * int
 | CnotInstr of int * int
+| SwapInstr of int * int
 | MeasureInstr of int * int
 | SeqInstr of instruction * instruction
 | IfInstr of int * bool * instruction
@@ -308,6 +309,8 @@ val execute_rotate_instr :
   -> int -> manyWorld -> manyWorld
 
 val execute_cnot_instr : int -> int -> manyWorld -> manyWorld
+
+val execute_swap_instr : int -> int -> manyWorld -> manyWorld
 
 val execute_measure_instr : int -> int -> manyWorld -> manyWorld
 
