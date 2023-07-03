@@ -205,7 +205,7 @@ type qc_ir =
       * int
   | CnotIr of int * int
   | MeasureIr of int * int
-  | ResetIr of int * qc_ir
+  | ResetIr of int
   | SeqIr of qc_ir * qc_ir
   | IfIr of int * bool * qc_ir
 
@@ -236,10 +236,10 @@ let assign_int_arg (assign_seq : (int * (id * int)) Seq.t) : QASMArg.t IntMap.t
     =
   IntMap.of_seq assign_seq
 
-let deref_or_fail key msg map =
+let deref_or_fail key map =
   match QASMArgMap.find_opt key map with
   | Some value -> value
-  | None -> failwith msg
+  | None -> failwith "invalid argument"
 
 let unfold_if (creg_size_map : int IdMap.t)
     (assingment_c_rev : int QASMArgMap.t) (creg_id : id) (cmp : int) :
@@ -250,22 +250,97 @@ let unfold_if (creg_size_map : int IdMap.t)
   in
   let reg_size = get_or_fail creg_id "invalid creg id" creg_size_map in
   let cbits =
-    List.init reg_size (fun i ->
-        deref_or_fail (creg_id, i) "invalid index" assingment_c_rev)
+    List.init reg_size (fun i -> deref_or_fail (creg_id, i) assingment_c_rev)
   in
   List.combine cbits (to_binary cmp reg_size)
 
-let rec desugar_qasm_program (qasm_dm : program_dp)
+let rec eval_exp (expr : exp) : float =
+  match expr with
+  | Real f -> f
+  | Nninteger i -> Int.to_float i
+  | Pi -> Float.pi
+  | Id _ -> failwith "cannot eval id"
+  | BinaryOp (bop, e1, e2) -> eval_bop bop e1 e2
+  | UnaryOp (uop, e) -> eval_uop uop e
+
+and eval_bop (bop : binaryop) (e1 : exp) (e2 : exp) : float =
+  match bop with
+  | Plus -> eval_exp e1 +. eval_exp e2
+  | Minus -> eval_exp e1 -. eval_exp e2
+  | Times -> eval_exp e1 *. eval_exp e2
+  | Div -> eval_exp e1 /. eval_exp e2
+  | Pow -> eval_exp e1 ** eval_exp e2
+
+and eval_uop (uop : unaryop) (e : exp) : float =
+  match uop with
+  | Sin -> Float.sin (eval_exp e)
+  | Cos -> Float.cos (eval_exp e)
+  | Tan -> Float.tan (eval_exp e)
+  | Exp -> Float.exp (eval_exp e)
+  | Ln -> Float.log (eval_exp e)
+  | Sqrt -> Float.sqrt (eval_exp e)
+  | UMinus -> -.eval_exp e
+
+let eval_exp_list (exp_list : exp list) : float * float * float =
+  match exp_list with
+  | [ theta_exp; phi_exp; lambda_exp ] ->
+      (eval_exp theta_exp, eval_exp phi_exp, eval_exp lambda_exp)
+  | _ -> failwith "invalid exp list length"
+
+let float_to_R = RbaseSymbolsImpl.coq_Rabst
+
+let desugar_qasm_qop (assignment_q_rev : int QASMArgMap.t)
+    (assignment_c_rev : int QASMArgMap.t) (qasm_qop : qop_dp) : qc_ir =
+  match qasm_qop with
+  | Uop_dp (CX_dp (arg1, arg2)) ->
+      CnotIr
+        ( deref_or_fail arg1 assignment_q_rev,
+          deref_or_fail arg2 assignment_q_rev )
+  | Uop_dp (U_dp (exp_list, arg)) ->
+      let theta, phi, lambda = eval_exp_list exp_list in
+      RotateIr
+        ( float_to_R theta,
+          float_to_R phi,
+          float_to_R lambda,
+          deref_or_fail arg assignment_q_rev )
+  | Meas_dp (qarg, carg) ->
+      MeasureIr
+        ( deref_or_fail qarg assignment_q_rev,
+          deref_or_fail carg assignment_c_rev )
+  | Reset_dp arg -> ResetIr (deref_or_fail arg assignment_q_rev)
+  | Uop_dp (Gate_dp _) -> failwith "macro gate should not be here"
+
+let rec desugar_qasm_if (cond_list : (int * bool) list) (qop_ir : qc_ir) : qc_ir
+    =
+  match cond_list with
+  | [] -> qop_ir
+  | (c, b) :: t -> IfIr (c, b, desugar_qasm_if t qop_ir)
+
+let rec desugar_qasm_qop_list (assignment_q_rev : int QASMArgMap.t)
+    (assignment_c_rev : int QASMArgMap.t) (qop_list : qop_dp list) : qc_ir =
+  match qop_list with
+  | [] -> NopIr
+  | h :: t ->
+      SeqIr
+        ( desugar_qasm_qop assignment_q_rev assignment_c_rev h,
+          desugar_qasm_qop_list assignment_q_rev assignment_c_rev t )
+
+let rec desugar_qasm_program (creg_size_map : int IdMap.t)
     (assignment_q_rev : int QASMArgMap.t) (assignment_c_rev : int QASMArgMap.t)
-    : qc_ir =
+    (qasm_dm : program_dp) : qc_ir =
   match qasm_dm with
   | [] -> NopIr
-  | Qop_dp (Uop_dp (CX_dp (arg1, arg2))) :: tail -> failwith ""
-  | Qop_dp (Uop_dp (U_dp (exp_list, arg))) :: tail -> failwith ""
-  | Qop_dp (Meas_dp (arg1, arg2)) :: tail -> failwith ""
-  | Qop_dp (Reset_dp arg) :: tail -> failwith ""
-  | IfList_dp (cid, comp, qop_list) :: tail -> failwith ""
-  | Qop_dp (Uop_dp (Gate_dp _)) :: _ -> failwith "macro gate should not be here"
+  | Qop_dp op :: tail ->
+      SeqIr
+        ( desugar_qasm_qop assignment_q_rev assignment_c_rev op,
+          desugar_qasm_program creg_size_map assignment_q_rev assignment_c_rev
+            tail )
+  | IfList_dp (cid, comp, qop_list) :: tail ->
+      let cond_list = unfold_if creg_size_map assignment_c_rev cid comp in
+      let qop_ir =
+        desugar_qasm_qop_list assignment_q_rev assignment_c_rev qop_list
+      in
+      desugar_qasm_if cond_list qop_ir
 
 let desugar qasm =
   let qreg_size_map = extract_qreg_size qasm in
@@ -279,4 +354,7 @@ let desugar qasm =
   let assignment_c_seq = assign_seq creg_size_map in
   let assignment_c_rev = assign_arg_int assignment_c_seq in
   let assignment_c = assign_int_arg assignment_c_seq in
+  let qasm_core_ir =
+    desugar_qasm_program creg_size_map assignment_q_rev assignment_c_rev qasm_dm
+  in
   (assignment_q, assignment_c)
