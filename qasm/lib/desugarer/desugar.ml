@@ -165,13 +165,11 @@ let instantiate_gop (exp_map : exp IdMap.t) (arg_map : argument_dp IdMap.t)
   | GBarrier _ -> None
 
 let instantiate_gate_decl (decl_head : gatedecl) (decl_body : gop list)
-    (exp_list : exp list) (arg_list : argument_dp list) : qop_dp list =
+    (exp_list : exp list) (arg_list : argument_dp list) : uop_dp list =
   let _, exp_params, arg_params = decl_head in
   let exp_map = create_param_map exp_params exp_list in
   let arg_map = create_param_map arg_params arg_list in
-  decl_body
-  |> List.filter_map (instantiate_gop exp_map arg_map)
-  |> map (fun u -> Uop_dp u)
+  decl_body |> List.filter_map (instantiate_gop exp_map arg_map)
 
 let extract_gate_decl_rev (qasm : program) : (gatedecl * gop list) list =
   let rec helper_rev acc qasm =
@@ -183,17 +181,36 @@ let extract_gate_decl_rev (qasm : program) : (gatedecl * gop list) list =
   in
   helper_rev [] qasm
 
+let desugar_macro_uop (decl_head : gatedecl) (decl_body : gop list)
+    (op : uop_dp) : uop_dp list =
+  let this_id, _, _ = decl_head in
+  match op with
+  | Gate_dp (gate_id, exp_list, arg_list) when gate_id = this_id ->
+      instantiate_gate_decl decl_head decl_body exp_list arg_list
+  | x -> [ x ]
+
+let rec desugar_macro_qop_list (decl_head : gatedecl) (decl_body : gop list)
+    (qop_list : qop_dp list) : qop_dp list =
+  match qop_list with
+  | [] -> []
+  | Uop_dp op :: tail ->
+      desugar_macro_uop decl_head decl_body op |> map (fun x -> Uop_dp x)
+      |> fun x ->
+      List.append x (desugar_macro_qop_list decl_head decl_body tail)
+  | x :: tail -> x :: desugar_macro_qop_list decl_head decl_body tail
+
 let rec desugar_macro_program (qasm_dp : program_dp)
     (gate_decls : (gatedecl * gop list) list) : program_dp =
   let rec inline decl_head decl_body qasm_dp =
-    let this_id, _, _ = decl_head in
     match qasm_dp with
     | [] -> []
-    | Qop_dp (Uop_dp (Gate_dp (gate_id, exp_list, arg_list))) :: tail
-      when gate_id = this_id ->
-        instantiate_gate_decl decl_head decl_body exp_list arg_list
-        |> map (fun x -> Qop_dp x)
+    | Qop_dp (Uop_dp op) :: tail ->
+        desugar_macro_uop decl_head decl_body op
+        |> map (fun x -> Qop_dp (Uop_dp x))
         |> fun x -> List.append x (inline decl_head decl_body tail)
+    | IfList_dp (cid, i, qop_list) :: tail ->
+        IfList_dp (cid, i, desugar_macro_qop_list decl_head decl_body qop_list)
+        :: inline decl_head decl_body tail
     | x :: tail -> x :: inline decl_head decl_body tail
   in
   match gate_decls with
@@ -408,7 +425,7 @@ let desugar qasm =
     {
       iP_num_qbits = num_qbits;
       iP_num_cbits = num_cbits;
-      iP_num_subinstrs = 100;
+      iP_num_subinstrs = Int.max_int;
       iP_instrs = qasm_core;
     }
   in
