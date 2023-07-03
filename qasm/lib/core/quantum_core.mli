@@ -174,7 +174,8 @@ module type RinvSig =
 module RinvImpl :
  RinvSig
 
-val rdiv : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
+val rdiv :
+  RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
 
 val rgt_dec : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> bool
 
@@ -187,6 +188,10 @@ val tm_update : 'a1 total_map -> int -> 'a1 -> 'a1 total_map
 val rTC : RbaseSymbolsImpl.coq_R -> Complex.t
 
 val nTC : int -> Complex.t
+
+val func_sum_suppl : (int -> Complex.t) -> int -> int -> Complex.t
+
+val func_sum2 : (int -> Complex.t) -> int -> int -> Complex.t
 
 val func_sum : (int -> Complex.t) -> int -> Complex.t
 
@@ -202,7 +207,8 @@ val extract_row_unsafe : matrix -> int -> rowVec
 
 val extract_col_unsafe : matrix -> int -> colVec
 
-val dot_product_suppl : (int -> Complex.t) -> (int -> Complex.t) -> int -> Complex.t
+val dot_product_suppl :
+  (int -> Complex.t) -> (int -> Complex.t) -> int -> Complex.t
 
 val muop : (Complex.t -> Complex.t) -> matrix -> matrix
 
@@ -226,7 +232,9 @@ val qop_ry : RbaseSymbolsImpl.coq_R -> matrix
 
 val qop_rz : RbaseSymbolsImpl.coq_R -> matrix
 
-val qop_rot : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> matrix
+val qop_rot :
+  RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
+  -> matrix
 
 val qop_sq : int -> int -> matrix -> matrix
 
@@ -278,26 +286,27 @@ val den_0_init : int -> matrix
 
 type instruction =
 | NopInstr
-| RotateInstr of RbaseSymbolsImpl.coq_R * RbaseSymbolsImpl.coq_R * RbaseSymbolsImpl.coq_R * int
+| RotateInstr of RbaseSymbolsImpl.coq_R * RbaseSymbolsImpl.coq_R
+   * RbaseSymbolsImpl.coq_R * int
 | CnotInstr of int * int
 | SwapInstr of int * int
 | MeasureInstr of int * int
 | SeqInstr of instruction * instruction
 | IfInstr of int * bool * instruction
 
-type inlinedProgram = { iP_num_qbits : int; iP_num_cbits : int; iP_num_subinstrs : int;
-                        iP_instrs : instruction }
+type inlinedProgram = { iP_num_qbits : int; iP_num_cbits : int;
+                        iP_num_subinstrs : int; iP_instrs : instruction }
 
-type world = { w_qstate : matrix; w_cstate : bool total_map; w_prob : RbaseSymbolsImpl.coq_R;
-               w_num_qubits : int }
+type world = { w_qstate : matrix; w_cstate : bool total_map;
+               w_prob : RbaseSymbolsImpl.coq_R; w_num_qubits : int }
 
 type manyWorld = world list
 
 val manyWorld_init : int -> int -> manyWorld
 
 val execute_rotate_instr :
-  RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> int -> manyWorld
-  -> manyWorld
+  RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
+  -> int -> manyWorld -> manyWorld
 
 val execute_cnot_instr : int -> int -> manyWorld -> manyWorld
 
@@ -315,4 +324,5 @@ val cstate_to_binary : int -> bool total_map -> int
 
 val calculate_prob : int -> manyWorld -> RbaseSymbolsImpl.coq_R total_map
 
-val execute_and_calculate_prob : inlinedProgram -> RbaseSymbolsImpl.coq_R total_map
+val execute_and_calculate_prob :
+  inlinedProgram -> RbaseSymbolsImpl.coq_R total_map

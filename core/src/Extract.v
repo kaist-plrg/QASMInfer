@@ -20,12 +20,12 @@ Extract Inductive Reals.Cauchy.ConstructiveCauchyReals.CReal => "float"
 
 Extract Inlined Constant IZR => "float_of_int".
 
-Extract Constant func_sum => "(fun f n ->
+(* Extract Constant func_sum => "(fun f n ->
 let rec aux i acc =
   if i >= n then acc
   else aux (i + 1) (Complex.add acc (f i))
 in
-aux 0 Complex.zero)".
+aux 0 Complex.zero)". *)
 
 Extract Constant RbaseSymbolsImpl.R => "float".
 Extract Constant RbaseSymbolsImpl.R0 => "0.0".
