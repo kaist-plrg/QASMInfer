@@ -2,7 +2,10 @@ open Quantum_core
 open OpenQASM2.OpenQASM
 open OpenQASM2.AST
 
+(*********************************)
 (* 1. desugar parallel execution *)
+(*********************************)
+
 type argument_dp = id * int
 
 type uop_dp =
@@ -123,7 +126,9 @@ let rec desugar_parallel_program (qasm_program : program)
   | Barrier _ :: t ->
       desugar_parallel_program t qreg_size creg_size
 
+(****************************************)
 (* 2. desugar gate subroutines (macros) *)
+(****************************************)
 
 let create_param_map (params : id list) (args : 'a list) : 'a IdMap.t =
   List.combine params args
@@ -194,7 +199,9 @@ let rec desugar_macro_program (qasm_dp : program_dp)
   | (decl_head, decl_body) :: tail ->
       desugar_macro_program (inline decl_head decl_body qasm_dp) tail
 
+(**********************************)
 (* 3. assign (q)bits in registers *)
+(**********************************)
 
 type qc_ir =
   | NopIr
@@ -340,7 +347,14 @@ let rec desugar_qasm_program (creg_size_map : int IdMap.t)
       let qop_ir =
         desugar_qasm_qop_list assignment_q_rev assignment_c_rev qop_list
       in
-      desugar_qasm_if cond_list qop_ir
+      SeqIr
+        ( desugar_qasm_if cond_list qop_ir,
+          desugar_qasm_program creg_size_map assignment_q_rev assignment_c_rev
+            tail )
+
+(********************************)
+(* 4. desugar reset instruction *)
+(********************************)
 
 let desugar qasm =
   let qreg_size_map = extract_qreg_size qasm in
