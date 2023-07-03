@@ -45,7 +45,7 @@ let get_or_fail key msg map =
 
 let rec get_same_elem_opt lst =
   match lst with
-  | [] -> None
+  | [] -> Some 1
   | x :: [] -> Some x
   | x :: y :: tl -> if x = y then get_same_elem_opt (y :: tl) else None
 
@@ -61,13 +61,16 @@ let desugar_parallel_arg_list (arg_list : argument list)
   let reg_size_list =
     arg_list
     |> List.filter_map (function
-         | qid, None -> Some (get_or_fail qid "invalid id" qreg_size)
+         | qid, None ->
+             Some
+               (get_or_fail qid "desugar_parallel_arg_list: invalid id"
+                  qreg_size)
          | _ -> None)
   in
   let reg_size_opt = get_same_elem_opt reg_size_list in
   match reg_size_opt with
   | Some s -> List.init s (fun i -> index_arg_list arg_list i)
-  | None -> failwith "invalid register size"
+  | None -> failwith "desugar_parallel_arg_list: invalid register size"
 
 let desugar_parallel_uop (operation : uop) (qreg_size : int IdMap.t) :
     uop_dp list =
@@ -76,14 +79,14 @@ let desugar_parallel_uop (operation : uop) (qreg_size : int IdMap.t) :
       match (IdMap.find_opt qid1 qreg_size, IdMap.find_opt qid2 qreg_size) with
       | Some s1, Some s2 ->
           if s1 == s2 then List.init s1 (fun i -> CX_dp ((qid1, i), (qid2, i)))
-          else failwith "invalid register size"
+          else failwith "desugar_parallel_uop: invalid register size"
       | _ -> failwith "invalid id")
   | CX ((qid1, Some i1), (qid2, Some i2)) -> [ CX_dp ((qid1, i1), (qid2, i2)) ]
-  | CX _ -> failwith "Invalid CX usage"
+  | CX _ -> failwith "deguar_parallel_uop: Invalid CX usage"
   | U (exp_list, (qid, None)) -> (
       match IdMap.find_opt qid qreg_size with
       | Some s -> List.init s (fun i -> U_dp (exp_list, (qid, i)))
-      | None -> failwith "invalid id")
+      | None -> failwith "desugar_parallel_uop: invalid id")
   | U (exp_list, (qid, Some i)) -> [ U_dp (exp_list, (qid, i)) ]
   | Gate (gid, exp_list, arg_list) ->
       desugar_parallel_arg_list arg_list qreg_size
@@ -187,7 +190,7 @@ let rec desugar_macro_program (qasm_dp : program_dp)
     match qasm_dp with
     | [] -> []
     | Qop_dp (Uop_dp (Gate_dp (gate_id, exp_list, arg_list))) :: tail
-      when gate_id == this_id ->
+      when gate_id = this_id ->
         instantiate_gate_decl decl_head decl_body exp_list arg_list
         |> map (fun x -> Qop_dp x)
         |> fun x -> List.append x (inline decl_head decl_body tail)
@@ -242,10 +245,10 @@ let assign_int_arg (assign_seq : (int * (id * int)) Seq.t) : QASMArg.t IntMap.t
     =
   IntMap.of_seq assign_seq
 
-let deref_or_fail key map =
+let deref_or_fail key msg map =
   match QASMArgMap.find_opt key map with
   | Some value -> value
-  | None -> failwith "invalid argument"
+  | None -> failwith msg
 
 let unfold_if (creg_size_map : int IdMap.t)
     (assingment_c_rev : int QASMArgMap.t) (creg_id : id) (cmp : int) :
@@ -256,7 +259,9 @@ let unfold_if (creg_size_map : int IdMap.t)
   in
   let reg_size = get_or_fail creg_id "invalid creg id" creg_size_map in
   let cbits =
-    List.init reg_size (fun i -> deref_or_fail (creg_id, i) assingment_c_rev)
+    List.init reg_size (fun i ->
+        deref_or_fail (creg_id, i) "unfold_if: invalid argument"
+          assingment_c_rev)
   in
   List.combine cbits (to_binary cmp reg_size)
 
@@ -300,20 +305,27 @@ let desugar_qasm_qop (assignment_q_rev : int QASMArgMap.t)
   match qasm_qop with
   | Uop_dp (CX_dp (arg1, arg2)) ->
       CnotIr
-        ( deref_or_fail arg1 assignment_q_rev,
-          deref_or_fail arg2 assignment_q_rev )
+        ( deref_or_fail arg1 "desugar_qasm_qop: CX: invalid argument"
+            assignment_q_rev,
+          deref_or_fail arg2 "desugar_qasm_qop: CX: invalid argument"
+            assignment_q_rev )
   | Uop_dp (U_dp (exp_list, arg)) ->
       let theta, phi, lambda = eval_exp_list exp_list in
       RotateIr
         ( float_to_R theta,
           float_to_R phi,
           float_to_R lambda,
-          deref_or_fail arg assignment_q_rev )
+          deref_or_fail arg "desugar_qasm_qop: U: invalid argument"
+            assignment_q_rev )
   | Meas_dp (qarg, carg) ->
       MeasureIr
-        ( deref_or_fail qarg assignment_q_rev,
-          deref_or_fail carg assignment_c_rev )
-  | Reset_dp arg -> ResetIr (deref_or_fail arg assignment_q_rev)
+        ( deref_or_fail qarg "desugar_qasm_qop: invalid argument"
+            assignment_q_rev,
+          deref_or_fail carg "desugar_qasm_qop: invalid argument"
+            assignment_c_rev )
+  | Reset_dp arg ->
+      ResetIr
+        (deref_or_fail arg "desugar_qasm_qop: invalid argument" assignment_q_rev)
   | Uop_dp (Gate_dp _) -> failwith "macro gate should not be here"
 
 let rec desugar_qasm_if (cond_list : (int * bool) list) (qop_ir : qc_ir) : qc_ir
@@ -392,4 +404,40 @@ let desugar qasm =
   let num_qbits_tmp = count_bits qreg_size_map in
   let num_cbits = count_bits creg_size_map in
   let qasm_core, num_qbits = desugar_qcir_program qasm_core_ir num_qbits_tmp in
-  (qasm_core, num_qbits, num_cbits, assignment_q, assignment_c)
+  let qc_program : inlinedProgram =
+    {
+      iP_num_qbits = num_qbits;
+      iP_num_cbits = num_cbits;
+      iP_num_subinstrs = 100;
+      iP_instrs = qasm_core;
+    }
+  in
+  (qc_program, assignment_q, assignment_c)
+
+(********************)
+(* 5. for debugging *)
+(********************)
+
+let desugar_parallel qasm =
+  let qreg_size_map = extract_qreg_size qasm in
+  let creg_size_map = extract_creg_size qasm in
+  desugar_parallel_program qasm qreg_size_map creg_size_map
+
+let desugar_macro qasm =
+  let qreg_size_map = extract_qreg_size qasm in
+  let creg_size_map = extract_creg_size qasm in
+  let gate_decls = extract_gate_decl_rev qasm in
+  let qasm_dp = desugar_parallel_program qasm qreg_size_map creg_size_map in
+  desugar_macro_program qasm_dp gate_decls
+
+let desugar_qasm qasm =
+  let qreg_size_map = extract_qreg_size qasm in
+  let creg_size_map = extract_creg_size qasm in
+  let gate_decls = extract_gate_decl_rev qasm in
+  let qasm_dp = desugar_parallel_program qasm qreg_size_map creg_size_map in
+  let qasm_dm = desugar_macro_program qasm_dp gate_decls in
+  let assignment_q_seq = assign_seq qreg_size_map in
+  let assignment_q_rev = assign_arg_int assignment_q_seq in
+  let assignment_c_seq = assign_seq creg_size_map in
+  let assignment_c_rev = assign_arg_int assignment_c_seq in
+  desugar_qasm_program creg_size_map assignment_q_rev assignment_c_rev qasm_dm

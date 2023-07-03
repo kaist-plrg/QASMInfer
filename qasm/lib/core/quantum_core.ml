@@ -1,5 +1,24 @@
 open Complex
 
+let memoize f =
+  let memo_table = Hashtbl.create 256 in
+  fun x ->
+    try Hashtbl.find memo_table x
+    with Not_found ->
+      let result = f x in
+      Hashtbl.add memo_table x result;
+      result
+
+let memoize2 f =
+  let memo_table = Hashtbl.create 65536 in
+  fun x y ->
+    let xy = Int.shift_left x 8 + y in
+    try Hashtbl.find memo_table xy
+    with Not_found ->
+      let result = f x y in
+      Hashtbl.add memo_table xy result;
+      result
+
 type __ = Obj.t
 
 let __ =
@@ -669,8 +688,7 @@ module RinvImpl = struct
   let coq_Rinv_def = __
 end
 
-(** val rdiv :
-    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R **)
+(** val rdiv : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R **)
 
 let rdiv = Stdlib.( /. )
 
@@ -696,21 +714,13 @@ let rTC x = { re = x; im = 0.0 }
 
 let nTC n = { re = float_of_int n; im = 0.0 }
 
-(** val func_sum_suppl : (int -> Complex.t) -> int -> int -> Complex.t **)
-
-let rec func_sum_suppl f m n =
-  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-    (fun _ -> nTC 0)
-    (fun n' -> Complex.add (f (m + n')) (func_sum_suppl f m n'))
-    n
-
-(** val func_sum2 : (int -> Complex.t) -> int -> int -> Complex.t **)
-
-let func_sum2 f m n = func_sum_suppl f m (sub n m)
-
 (** val func_sum : (int -> Complex.t) -> int -> Complex.t **)
 
-let func_sum f n = func_sum2 f 0 n
+let func_sum f n =
+  let rec aux i acc =
+    if i >= n then acc else aux (i + 1) (Complex.add acc (f i))
+  in
+  aux 0 Complex.zero
 
 type matrix = { mbits : int; minner : int -> int -> Complex.t }
 
@@ -731,8 +741,7 @@ let extract_row_unsafe m i =
 let extract_col_unsafe m j =
   { cVbits = m.mbits; cVinner = (fun i -> m.minner i j) }
 
-(** val dot_product_suppl :
-    (int -> Complex.t) -> (int -> Complex.t) -> int -> Complex.t **)
+(** val dot_product_suppl : (int -> Complex.t) -> (int -> Complex.t) -> int -> Complex.t **)
 
 let dot_product_suppl r c idx = func_sum (fun i -> Complex.mul (r i) (c i)) idx
 
@@ -753,7 +762,7 @@ let mmult_inner m1 m2 i j =
 (** val mmult_unsafe : matrix -> matrix -> matrix **)
 
 let mmult_unsafe m1 m2 =
-  { mbits = m1.mbits; minner = (fun i j -> mmult_inner m1 m2 i j) }
+  { mbits = m1.mbits; minner = memoize2 (fun i j -> mmult_inner m1 m2 i j) }
 
 (** val mmult : matrix -> matrix -> matrix **)
 
@@ -762,7 +771,10 @@ let mmult = mmult_unsafe
 (** val mconjtrans : matrix -> matrix **)
 
 let mconjtrans m =
-  { mbits = m.mbits; minner = (fun i j -> Complex.conj (m.minner j i)) }
+  {
+    mbits = m.mbits;
+    minner = memoize2 (fun i j -> Complex.conj (m.minner j i));
+  }
 
 (** val mtrace : matrix -> Complex.t **)
 
@@ -864,8 +876,7 @@ let qop_rz theta =
   }
 
 (** val qop_rot :
-    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
-    RbaseSymbolsImpl.coq_R -> matrix **)
+    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> matrix **)
 
 let qop_rot theta phi lambda =
   mmult (mmult (qop_rz phi) (qop_ry theta)) (qop_rz lambda)
@@ -1314,8 +1325,8 @@ let manyWorld_init num_q _ =
   :: []
 
 (** val execute_rotate_instr :
-    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
-    RbaseSymbolsImpl.coq_R -> int -> manyWorld -> manyWorld **)
+    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> int ->
+    manyWorld -> manyWorld **)
 
 let rec execute_rotate_instr theta phi lambda target = function
   | [] -> []
@@ -1542,8 +1553,7 @@ let rec cstate_to_binary_suppl n cstate =
 
 let cstate_to_binary = cstate_to_binary_suppl
 
-(** val calculate_prob :
-    int -> manyWorld -> RbaseSymbolsImpl.coq_R total_map **)
+(** val calculate_prob : int -> manyWorld -> RbaseSymbolsImpl.coq_R total_map **)
 
 let rec calculate_prob num_cbits = function
   | [] -> tm_empty RbaseSymbolsImpl.coq_R0
@@ -1552,8 +1562,7 @@ let rec calculate_prob num_cbits = function
       let key = cstate_to_binary num_cbits w.w_cstate in
       tm_update prev key (RbaseSymbolsImpl.coq_Rplus (prev key) w.w_prob)
 
-(** val execute_and_calculate_prob :
-    inlinedProgram -> RbaseSymbolsImpl.coq_R total_map **)
+(** val execute_and_calculate_prob : inlinedProgram -> RbaseSymbolsImpl.coq_R total_map **)
 
 let execute_and_calculate_prob program =
   calculate_prob program.iP_num_cbits (execute program)
