@@ -36,10 +36,7 @@ let () = print_endline horizontal_line
 
 (* let ast = get_ast "/Users/p51lee/dev/quantum-coq/qasm/example/basic.qasm" *)
 (* let ast = get_ast "/Users/p51lee/dev/quantum-coq/qasm/example/parallel.qasm" *)
-let ast =
-  get_ast
-    "/Users/p51lee/dev/quantum-coq/qasm/example/spec/quantum_teleportation.qasm"
-
+let ast = get_ast "/Users/p51lee/dev/quantum-coq/qasm/example/basic.qasm"
 let s = string_of_program ast
 let () = print_endline s
 

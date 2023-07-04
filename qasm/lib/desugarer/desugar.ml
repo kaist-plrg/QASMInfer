@@ -154,9 +154,12 @@ let instantiate_arg (arg_map : argument_dp IdMap.t) (arg : argument) :
   | qid, None -> get_or_fail qid "unbound id in gate declaration" arg_map
   | _ -> failwith "invalid gate declaration"
 
-let instantiate_exp (exp_map : exp IdMap.t) (expr : exp) : exp =
+let rec instantiate_exp (exp_map : exp IdMap.t) (expr : exp) : exp =
   match expr with
   | Id id_expr -> get_or_fail id_expr "unbound id in gate declaration" exp_map
+  | BinaryOp (b, e1, e2) ->
+      BinaryOp (b, instantiate_exp exp_map e1, instantiate_exp exp_map e2)
+  | UnaryOp (u, e) -> UnaryOp (u, instantiate_exp exp_map e)
   | e -> e
 
 let instantiate_gop (exp_map : exp IdMap.t) (arg_map : argument_dp IdMap.t)
