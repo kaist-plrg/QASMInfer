@@ -1345,10 +1345,10 @@ Definition Qop_cnot_ct: Matrix := {|
 Definition Qop_cnot_tc: Matrix := {|
   Mbits := 2;
   Minner := fun i j => match i, j with
-    | 0, 1 => 1
-    | 1, 0 => 1
+    | 0, 0 => 1
+    | 1, 3 => 1
     | 2, 2 => 1
-    | 3, 3 => 1
+    | 3, 1 => 1
     | _, _ => 0
     end;
   |}.

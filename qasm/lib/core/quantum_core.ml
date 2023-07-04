@@ -1098,19 +1098,27 @@ let qop_cnot_tc =
     (fun fO fS n -> if n=0 then fO () else fS (n-1))
       (fun _ ->
       (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ -> nTC (Stdlib.Int.succ 0))
         (fun _ -> nTC 0)
-        (fun n ->
-        (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ -> nTC (Stdlib.Int.succ 0))
-          (fun _ -> nTC 0)
-          n)
         j)
       (fun n ->
       (fun fO fS n -> if n=0 then fO () else fS (n-1))
         (fun _ ->
         (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ -> nTC (Stdlib.Int.succ 0))
           (fun _ -> nTC 0)
+          (fun n0 ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ -> nTC 0)
+            (fun n1 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ -> nTC 0)
+              (fun n2 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ -> nTC (Stdlib.Int.succ 0))
+                (fun _ -> nTC 0)
+                n2)
+              n1)
+            n0)
           j)
         (fun n0 ->
         (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -1134,16 +1142,8 @@ let qop_cnot_tc =
               (fun _ -> nTC 0)
               (fun n2 ->
               (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ -> nTC (Stdlib.Int.succ 0))
                 (fun _ -> nTC 0)
-                (fun n3 ->
-                (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                  (fun _ -> nTC 0)
-                  (fun n4 ->
-                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                    (fun _ -> nTC (Stdlib.Int.succ 0))
-                    (fun _ -> nTC 0)
-                    n4)
-                  n3)
                 n2)
               j)
             (fun _ -> nTC 0)
