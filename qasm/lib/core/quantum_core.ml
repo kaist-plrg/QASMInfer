@@ -1535,7 +1535,11 @@ let rec string_of_instruction = function
       Printf.sprintf "IfInstr (%d, %b, \n%s)" i b (string_of_instruction instr)
 
 let rec execute_suppl ir instr worlds =
-  let () = print_endline (string_of_instruction instr) in
+  let () =
+    match instr with
+    | SeqInstr (_, _) -> ()
+    | _ -> print_endline (string_of_instruction instr)
+  in
   (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
     (fun _ -> worlds)
     (fun ir' ->
