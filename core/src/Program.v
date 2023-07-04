@@ -216,17 +216,19 @@ Definition Execute (program: InlinedProgram): ManyWorld :=
     (IP_instrs program)
     (ManyWorld_init (IP_num_qbits program) (IP_num_cbits program)).
 
-Fixpoint Cstate_to_binary_suppl (n: nat) (cstate: total_map bool): nat := match n with
-  | O => O
-  | S n' => 2 * Cstate_to_binary_suppl n' cstate + if (cstate n') then 1 else 0
+Fixpoint Cstate_to_binary_little_endian (n: nat) (cstate: total_map bool) (acc: nat): nat := match n with
+  | O => acc
+  | S n' => let bit := if (cstate n') then 1 else 0 in
+            Cstate_to_binary_little_endian n' cstate (2 * acc + bit)
 end.
 
-Definition Cstate_to_binary (num_cbits: nat) (cstate: total_map bool) := Cstate_to_binary_suppl num_cbits cstate.
+Definition Cstate_to_binary (num_cbits: nat) (cstate: total_map bool) := Cstate_to_binary_little_endian num_cbits cstate O.
 
 (*  0 -> true
-    1 -> false     ===> 1011 (value of 0 is the leftmost bit in the result)
-    2 -> true      ===>
+    1 -> false     ===> 1011 (value of 0 is the leftmost bit in the result) (big endian)
+    2 -> true      ===> In qasm, they use little endian so have to reverse it
     3 -> true *)
+
 
 Fixpoint Calculate_prob (num_cbits: nat) (worlds: ManyWorld): total_map R :=
   match worlds with

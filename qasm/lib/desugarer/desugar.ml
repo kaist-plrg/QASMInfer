@@ -26,6 +26,18 @@ module IdMap = Map.Make (struct
   let compare = compare
 end)
 
+let rec extract_qreg_order (qasm_program : program) : id list =
+  match qasm_program with
+  | [] -> []
+  | Decl (QReg (reg_id, _)) :: tail -> reg_id :: extract_qreg_order tail
+  | _ :: tail -> extract_qreg_order tail
+
+let rec extract_creg_order (qasm_program : program) : id list =
+  match qasm_program with
+  | [] -> []
+  | Decl (CReg (reg_id, _)) :: tail -> reg_id :: extract_creg_order tail
+  | _ :: tail -> extract_creg_order tail
+
 let rec extract_qreg_size (qasm_program : program) : int IdMap.t =
   match qasm_program with
   | [] -> IdMap.empty
@@ -250,9 +262,12 @@ module IntMap = Map.Make (struct
   let compare = compare
 end)
 
-let assign_seq (reg_size_map : int IdMap.t) : (int * (id * int)) Seq.t =
-  reg_size_map |> IdMap.to_seq
-  |> Seq.flat_map (fun (reg_id, size) -> Seq.init size (fun i -> (reg_id, i)))
+let assign_seq (reg_order : id list) (reg_size_map : int IdMap.t) :
+    (int * (id * int)) Seq.t =
+  reg_order |> List.to_seq
+  |> Seq.flat_map (fun reg_id ->
+         Seq.init (get_or_fail reg_id "assign_seq: invalid id" reg_size_map)
+           (fun i -> (reg_id, i)))
   |> Seq.mapi (fun i arg -> (i, arg))
 
 let assign_arg_int (assign_seq : (int * (id * int)) Seq.t) : int QASMArgMap.t =
@@ -404,15 +419,17 @@ let count_bits (size_map : int IdMap.t) : int =
   IdMap.fold (fun _ s a -> s + a) size_map 0
 
 let desugar qasm =
+  let qreg_order = extract_qreg_order qasm in
+  let creg_order = extract_creg_order qasm in
   let qreg_size_map = extract_qreg_size qasm in
   let creg_size_map = extract_creg_size qasm in
   let gate_decls = extract_gate_decl_rev qasm in
   let qasm_dp = desugar_parallel_program qasm qreg_size_map creg_size_map in
   let qasm_dm = desugar_macro_program qasm_dp gate_decls in
-  let assignment_q_seq = assign_seq qreg_size_map in
+  let assignment_q_seq = assign_seq qreg_order qreg_size_map in
   let assignment_q_rev = assign_arg_int assignment_q_seq in
   let assignment_q = assign_int_arg assignment_q_seq in
-  let assignment_c_seq = assign_seq creg_size_map in
+  let assignment_c_seq = assign_seq creg_order creg_size_map in
   let assignment_c_rev = assign_arg_int assignment_c_seq in
   let assignment_c = assign_int_arg assignment_c_seq in
   let qasm_core_ir =
@@ -448,13 +465,15 @@ let desugar_macro qasm =
   desugar_macro_program qasm_dp gate_decls
 
 let desugar_qasm qasm =
+  let qreg_order = extract_qreg_order qasm in
+  let creg_order = extract_creg_order qasm in
   let qreg_size_map = extract_qreg_size qasm in
   let creg_size_map = extract_creg_size qasm in
   let gate_decls = extract_gate_decl_rev qasm in
   let qasm_dp = desugar_parallel_program qasm qreg_size_map creg_size_map in
   let qasm_dm = desugar_macro_program qasm_dp gate_decls in
-  let assignment_q_seq = assign_seq qreg_size_map in
+  let assignment_q_seq = assign_seq qreg_order qreg_size_map in
   let assignment_q_rev = assign_arg_int assignment_q_seq in
-  let assignment_c_seq = assign_seq creg_size_map in
+  let assignment_c_seq = assign_seq creg_order creg_size_map in
   let assignment_c_rev = assign_arg_int assignment_c_seq in
   desugar_qasm_program creg_size_map assignment_q_rev assignment_c_rev qasm_dm

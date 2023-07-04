@@ -8,9 +8,21 @@ let horizontal_line = "==========================================="
 let () = print_endline horizontal_line
 let () = print_endline "Quantum core Test"
 let () = print_endline horizontal_line
-let a = eye 3
-let c = a.minner 2 2
-let _ = Printf.printf ": %f\n%!" c.re
+let zero = RbaseSymbolsImpl.coq_Rabst 0.0
+let pi = RbaseSymbolsImpl.coq_Rabst Float.pi
+let pi_half = RbaseSymbolsImpl.coq_Rabst (Float.pi /. 2.0)
+
+(* let a = qop_rot pi zero zero *)
+(* let x = qop_rot pi zero pi
+   let y = qop_rot pi pi_half pi_half
+   let z = qop_rot zero zero pi *)
+let h = qop_rot pi_half zero pi
+let t = h
+
+let _ =
+  Printf.printf ": %f %f   %f %f\n%f %f  %f %f\n" (t.minner 0 0).re
+    (t.minner 0 0).im (t.minner 0 1).re (t.minner 0 1).im (t.minner 1 0).re
+    (t.minner 1 0).im (t.minner 1 1).re (t.minner 1 1).im
 
 (* parsing test *)
 

@@ -1,4 +1,5 @@
 (library
  (name quantum_core)
+ (libraries)
  (flags
   (:standard -w -32..39)))

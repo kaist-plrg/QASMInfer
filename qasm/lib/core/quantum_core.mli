@@ -318,7 +318,7 @@ val execute_suppl : int -> instruction -> manyWorld -> manyWorld
 
 val execute : inlinedProgram -> manyWorld
 
-val cstate_to_binary_suppl : int -> bool total_map -> int
+val cstate_to_binary_little_endian : int -> bool total_map -> int -> int
 
 val cstate_to_binary : int -> bool total_map -> int
 
