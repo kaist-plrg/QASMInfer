@@ -28,7 +28,7 @@ let main () =
   List.init (Int.shift_left 1 program.iP_num_cbits) (fun x ->
       x |> prob_map |> RbaseSymbolsImpl.coq_Rrepr)
   |> List.iteri (fun i prob ->
-         Printf.printf "%s : %f\n"
+         Printf.printf "%s : %.16e\n"
            (int_to_binary_fixed_width i program.iP_num_cbits)
            prob)
 
