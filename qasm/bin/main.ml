@@ -1,4 +1,3 @@
-open Stdio
 open Quantum_core
 open OpenQASM2.OpenQASM
 open Desugarer.Desugar
