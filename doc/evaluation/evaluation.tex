@@ -125,44 +125,6 @@ was consequently conducted under this presupposition.
 
 \subsection{Compared Simulators}
 
-% \begin{itemize}
-%   \item{\texttt{aer\_simulator}} \\
-%     Select the simulation method automatically based on the circuit and noise model.
-%   \item{\texttt{aer\_simulator\_statevector}} \\
-%      A dense statevector simulation that can sample measurement outcomes from ideal circuits with
-%      all measurements at end of the circuit. For noisy simulations each shot samples a randomly
-%      sampled noisy circuit from the noise model.
-%   \item{\texttt{aer\_simulator\_density\_matrix}} \\
-%     A dense density matrix simulation that may sample measurement outcomes from noisy circuits with
-%     all measurements at end of the circuit.
-%   \item{\texttt{aer\_simulator\_stabilizer}} \\
-%     An efficient Clifford stabilizer state simulator that can simulate noisy Clifford circuits if
-%     all errors in the noise model are also Clifford errors.
-%   \item{\texttt{aer\_simulator\_extended\_stabilizer}} \\
-%     An approximate simulated for Clifford + T circuits based on a state decomposition into
-%     ranked-stabilizer state. The number of terms grows with the number of non-Clifford (T) gates.
-%   \item{\texttt{aer\_simulator\_matrix\_product\_state}} \\
-%     A tensor-network statevector simulator that uses a Matrix Product State (MPS) representation for
-%     the state. This can be done either with or without truncation of the MPS bond dimensions
-%     depending on the simulator options. The default behaviour is no truncation.
-%   \item{\texttt{aer\_simulator\_unitary}} \\
-%     A dense unitary matrix simulation of an ideal circuit. This simulates the unitary matrix of the
-%     circuit itself rather than the evolution of an initial quantum state. This method can only
-%     simulate gates, it does not support measurement, reset, or noise.
-%   \item{\texttt{aer\_simulator\_superop}} \\
-%     A dense superoperator matrix simulation of an ideal or noisy circuit. This simulates the
-%     superoperator matrix of the circuit itself rather than the evolution of an initial quantum
-%     state. This method can simulate ideal and noisy gates, and reset, but does not support
-%     measurement.
-%   \item{\texttt{qasm\_simulator}} \\
-%   \item{\texttt{statevector\_simulator}} \\
-%     Ideal quantum circuit statevector simulator
-%   \item{\texttt{unitary\_simulator}} \\
-%     Ideal quantum circuit unitary simulator.
-%   \item{\texttt{pulse\_simulator}} \\
-%     Pulse schedule simulator backend.
-% \end{itemize}
-
 We conducted a comparison of the results from twelve quantum simulators provided by Qiskit to
 determine whether they align with the probability distribution derived from our implementation.
 
@@ -204,7 +166,7 @@ determine whether they align with the probability distribution derived from our 
 \subsection{Benchmarks}
 
 To compare the behaviors of both static and dynamic quantum circuits between our implementation and
-Qiskit Aer simulators, we executed a total of 34 benchmark programs from QASMBench[ ] and \red{all} examples
+Qiskit Aer simulators, we executed a total of 33 benchmark programs from QASMBench[ ] and \red{all} examples
 found in the OpenQASM2.0 specification.
 
 \subsubsection{QASMBench}
@@ -277,7 +239,7 @@ This enabled us to derive the expected probability distribution for each benchma
 \hline
 28 & wstate & small & 3 & 30 & 9 \\
 \hline
-29 & \red{dnn} & medium & 8 & 1200 & 384 \\
+29 & dnn & medium & 8 & 1200 & 384 \\
 \hline
 30 & bb84 & medium & 8 & 27 & 0 \\
 \hline
@@ -285,9 +247,7 @@ This enabled us to derive the expected probability distribution for each benchma
 \hline
 32 & simons & medium & 6 & 44 & 14 \\
 \hline
-33 & \red{vqe\_uccsd} & medium & 8 & 10808 & 5488 \\
-\hline
-34 & hhl & medium & 7 & 689 & 196 \\
+33 & hhl & medium & 7 & 689 & 196 \\
 \hline
 \end{tabularx}
 \caption{QASMBench}
@@ -327,6 +287,22 @@ OpenQASM2.0 specification (See Table 3).
 
 \subsection{Experiment Result}
 
+Below are the p-values of the chi-square goodness-of-fit test for all 12 simulators compared to our
+implementation using all 33 benchmarks.
+\\
+\\
+\textbf{\red{Image}}
+\\
+\\
+Even after \red{10 million} shots, the p-values are large enough that we can confidently reject the null
+hypothesis that the simulator and our implementation conform.
+\red{
+In a few situations, we saw p-values smaller than 0.05, but careful and rigorous checking is
+required to determine if this is a true physical semantics error.
+}
+
+
+
 
 \section{Comparisons to Previous Works}
 
@@ -355,8 +331,40 @@ method.
 \end{enumerate}
 
 \subsection{One-sample testing}
-\subsection{Experiment Result}
 
+The results produced by our implementation allow for one-sample testing that addresses both of these issues.
+\begin{enumerate}
+  \item
+    Because we know what the correct expected probability distribution is, we can do one-sample
+    testing that is more effective at catching semantic errors.
+  \item
+    The Chi-square goodness-of-fit test is for discrete probability distributions and is more
+    appropriate for our situation, finding a p-value, answering ``When we say that this distribution
+    came from this probability distribution, does that make sense?".
+\end{enumerate}
+
+\subsection{Effectiveness Comparison Between One-sample and Two-sample Testing}
+To confirm that one-sample testing with the Chi-square goodness-of-fit test is more effective at
+catching semantic errors than two-sample testing with the F-S test, we experimented with how well
+each method catches semantic errors when the semantic of the Hadamard gate is incorrect:
+
+\begin{lstlisting}
+gate h a { U(pi/2 - 0.1, 0,pi) a; } // wrong: - 0.1
+\end{lstlisting}
+
+\\
+\\
+\red{Graph: The number of p-values lower than 0.05 increases as the number of shots increases. The
+  number of p-values of the one-sample test increases much faster. Confirmed in small-scale
+experiments; this experiment is ongoing.} \\
+\\
+
+The graph above shows how the p-value-based error detection rate increases with the number of shots
+when testing a benchmark suite with incorrect semantics for Hadamard gate. For the two-sample test,
+we used MorphQ's method to calculate the p-value.
+We can see that the one-sample test detects a significantly higher amount of semantic errors.
+Therefore, it seems that if testing with our implementation is applied properly, it will be possible
+to detect more effective errors.
 
 \end{document}
 
