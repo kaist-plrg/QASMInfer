@@ -1,0 +1,362 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{enumerate}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{stackengine}
+\usepackage{tabularx}
+\usepackage{xcolor}
+
+\lstset{
+  basicstyle= \footnotesize \ttfamily,
+  % numbers=left,
+  % numberstyle=\small,
+  % numbersep=8pt,
+  showstringspaces=false,
+  breaklines=true,
+  frame=lines,
+  columns=fullflexible,
+  backgroundcolor=\color{white},
+  emphstyle=\color{blue},
+  keywordstyle=\color{brown},
+  stringstyle=\color{red},
+  commentstyle=\color{gray},
+}
+\setlength\parindent{0pt}
+
+\newcommand{\<}{\langle}
+\renewcommand{\>}{\rangle}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\abs}[1]{\left\vert #1 \right\vert}
+\newcommand{\prths}[1]{\left( #1 \right)}
+\newcommand{\braces}[1]{\left\{ #1 \right\}}
+\newcommand{\brackets}[1]{\left[ #1 \right]}
+\newcommand{\chevrons}[1]{\left\< #1 \right\>}
+\newcommand{\prob}[2][]{\underset{#1}{\mathbb{P}}\left[ #2 \right]}
+\newcommand{\set}[2]{\left\{ #1 \; \middle\vert \; #2 \right\}}
+\newcommand{\tr}[1]{\textrm{tr} \left( #1 \right)}
+\newcommand{\bra}[1]{\left\< #1 \right\vert}
+\newcommand{\ket}[1]{\left\vert #1 \right\>}
+\newcommand{\red}[1]{\textcolor{red}{#1}}
+\newcommand{\todo}{\red{?}}
+
+% \title{Coq Implementation}
+% \author{Kanguk Lee}
+% \date{\today}
+
+\begin{document}
+% \maketitle
+\section{Execution Example}
+
+This is the example dynamic circuit introduced in section 2.2.1, written is OpenQASM2.0:\\
+\begin{lstlisting}
+OPENQASM 2.0;
+
+gate u2(phi,lambda) q { U(pi/2,phi,lambda) q; }
+gate h a { u2(0,pi) a; }
+
+qreg q0[1];
+creg c0[1];
+creg c1[1];
+
+h q0[0];
+measure q0[0] -> c0[0];
+if(c0==0) h q0[0];
+measure q0[0] -> c1[0];
+\end{lstlisting}
+
+Note that the values in the classical registers, are either 00, 10, or 11, with probabilities of
+1/4, 1/4, and 1/2, respectively.
+\\
+
+\begin{lstlisting}
+$ dune exec qasm example/basic.qasm
+QASMCore ========================================
+RotateInstr (1.570796, 0.000000, 3.141593, 0)
+MeasureInstr (0, 0)
+IfInstr (0, false,
+RotateInstr (1.570796, 0.000000, 3.141593, 0)
+NopInstr)
+MeasureInstr (0, 1)
+NopInstr
+RESULT ==========================================
+00 : 2.5000000000000011e-01
+01 : 0.0000000000000000e+00
+10 : 2.5000000000000000e-01
+11 : 4.9999999999999989e-01
+\end{lstlisting}
+
+
+
+\section{Comparison of Result to Traditional Quantum Simulators}
+
+In this section, we align the results of our novel implementation with those obtained from Qiskit's
+entire suite of simulators. Our aim is to verify that our results are consistent with those of
+well-established, widely-used simulators.
+
+\subsection{Chi-Square Goodness-of-Fit Test}
+
+To compare our results with those of the extant quantum simulators, we deployed the Chi-Square
+Goodness-of-Fit Test, a variant of Pearson's chi-square test. This test is employed to determine if
+the observed distribution of a particular execution result, which is treated as a discrete random
+variable, deviates from the expected distribution. This expectation is derived from the result of
+the result of our implementation.
+
+For the reliability of a Chi-Square goodness-of-fit test, a widely accepted rule of thumb stipulates
+that the expected frequencies should be no less than 5 for all potential outputs. Consequently, we
+adhered to this guideline in conducting our experiment.
+
+The p-value of the Chi-Square goodness-of-fit test is the probability of obtaining statistical results at
+least as extreme as the results actually observed, under the assumption that the null hypothesis is
+correct. A smaller p-value indicates that the observed data is less likely under the null
+hypothesis, and at a certain threshold (often 0.05), we might reject the null hypothesis in favor of
+the alternative hypothesis.
+
+In our comparative analysis between the results of our implementation and those of Qiskit's
+simulators, we formed the null hypothesis stating, "the outcomes of the Qiskit simulator conform to
+the probability distribution derived from our implementation". The Chi-Square goodness-of-fit test
+was consequently conducted under this presupposition.
+
+\subsection{Compared Simulators}
+
+% \begin{itemize}
+%   \item{\texttt{aer\_simulator}} \\
+%     Select the simulation method automatically based on the circuit and noise model.
+%   \item{\texttt{aer\_simulator\_statevector}} \\
+%      A dense statevector simulation that can sample measurement outcomes from ideal circuits with
+%      all measurements at end of the circuit. For noisy simulations each shot samples a randomly
+%      sampled noisy circuit from the noise model.
+%   \item{\texttt{aer\_simulator\_density\_matrix}} \\
+%     A dense density matrix simulation that may sample measurement outcomes from noisy circuits with
+%     all measurements at end of the circuit.
+%   \item{\texttt{aer\_simulator\_stabilizer}} \\
+%     An efficient Clifford stabilizer state simulator that can simulate noisy Clifford circuits if
+%     all errors in the noise model are also Clifford errors.
+%   \item{\texttt{aer\_simulator\_extended\_stabilizer}} \\
+%     An approximate simulated for Clifford + T circuits based on a state decomposition into
+%     ranked-stabilizer state. The number of terms grows with the number of non-Clifford (T) gates.
+%   \item{\texttt{aer\_simulator\_matrix\_product\_state}} \\
+%     A tensor-network statevector simulator that uses a Matrix Product State (MPS) representation for
+%     the state. This can be done either with or without truncation of the MPS bond dimensions
+%     depending on the simulator options. The default behaviour is no truncation.
+%   \item{\texttt{aer\_simulator\_unitary}} \\
+%     A dense unitary matrix simulation of an ideal circuit. This simulates the unitary matrix of the
+%     circuit itself rather than the evolution of an initial quantum state. This method can only
+%     simulate gates, it does not support measurement, reset, or noise.
+%   \item{\texttt{aer\_simulator\_superop}} \\
+%     A dense superoperator matrix simulation of an ideal or noisy circuit. This simulates the
+%     superoperator matrix of the circuit itself rather than the evolution of an initial quantum
+%     state. This method can simulate ideal and noisy gates, and reset, but does not support
+%     measurement.
+%   \item{\texttt{qasm\_simulator}} \\
+%   \item{\texttt{statevector\_simulator}} \\
+%     Ideal quantum circuit statevector simulator
+%   \item{\texttt{unitary\_simulator}} \\
+%     Ideal quantum circuit unitary simulator.
+%   \item{\texttt{pulse\_simulator}} \\
+%     Pulse schedule simulator backend.
+% \end{itemize}
+
+We conducted a comparison of the results from twelve quantum simulators provided by Qiskit to
+determine whether they align with the probability distribution derived from our implementation.
+
+\begin{table}[h]
+\centering
+\begin{tabularx}{\textwidth}{|c|c|X|}
+\hline
+\textbf{Quantum Simulator} & \textbf{Explanation} & \textbf{Dynamic Circuit Support}\\
+\hline
+\texttt{aer\_simulator} & Explanation for Simulator 1 & \textcolor{red}{?} \\
+\hline
+\texttt{aer\_simulator\_statevector} & Explanation for Simulator 2 & \textcolor{red}{?} \\
+\hline
+\texttt{aer\_simulator\_density\_matrix} & Explanation for Simulator 3 & \textcolor{red}{?} \\
+\hline
+\texttt{aer\_simulator\_stabilizer} & Explanation for Simulator 4 & \textcolor{red}{?} \\
+\hline
+\texttt{aer\_simulator\_matrix\_product\_state} & Explanation for Simulator 5 & \textcolor{red}{?} \\
+\hline
+\texttt{aer\_simulator\_extended\_stabilizer}& Explanation for Simulator 6 & \textcolor{red}{?} \\
+\hline
+\texttt{aer\_simulator\_unitary} & Explanation for Simulator 7 & \textcolor{red}{?} \\
+\hline
+\texttt{aer\_simulator\_superop} & Explanation for Simulator 8 & \textcolor{red}{?} \\
+\hline
+\texttt{qasm\_simulator} & Explanation for Simulator 9 & \textcolor{red}{?} \\
+\hline
+\texttt{statevector\_simulator} & Explanation for Simulator 10 & \textcolor{red}{?} \\
+\hline
+\texttt{unitary\_simulator} & Explanation for Simulator 11 & \textcolor{red}{?} \\
+\hline
+\texttt{pulse\_simulator} & Explanation for Simulator 12 & \textcolor{red}{?} \\
+\hline
+\end{tabularx}
+\caption{Qiskit Quantum Simulators}
+\label{table:qsimulators}
+\end{table}
+
+\subsection{Benchmarks}
+
+To compare the behaviors of both static and dynamic quantum circuits between our implementation and
+Qiskit Aer simulators, we executed a total of 34 benchmark programs from QASMBench[ ] and \red{all} examples
+found in the OpenQASM2.0 specification.
+
+\subsubsection{QASMBench}
+
+We executed all the small-scale benchmarks specified in the QASMBench paper along with some of the
+medium-scale benchmarks that involve 8 qubits or less, using our implementation (refer to Table 2).
+This enabled us to derive the expected probability distribution for each benchmark program.
+
+\begin{table}[h]
+\centering
+\begin{tabularx}{\textwidth}{|c|c|X|X|X|X|}
+\hline
+\textbf{Index} & \textbf{Benchmark} & \textbf{Scale} & \textbf{Qubits} & \textbf{Gates} & \textbf{CX} \\
+\hline
+1 & adder & small & 4 & 23 & 10 \\
+\hline
+2 & basis\_change & small & 3 & 53 & 10 \\
+\hline
+3 & basis\_trotter & small & 4 & 1626 & 582 \\
+\hline
+4 & bell\_state & small & 2 & 3 & 1 \\
+\hline
+5 & cat\_state & small & 4 & 4 & 3 \\
+\hline
+6 & deutsch & small & 2 & 5 & 1 \\
+\hline
+7 & dnn & small & 2 & 268 & 84 \\
+\hline
+8 & fredkin\_n3 & small & 3 & 19 & 9 \\
+\hline
+9 & qec\_dist3 & small & 5 & 114 & 49 \\
+\hline
+10 & grover & small & 2 & 16 & 2 \\
+\hline
+11 & hs4 & small & 4 & 28 & 4 \\
+\hline
+12 & inverseqft & small & 4 & 8 & 0 \\
+\hline
+13 & iSWAP & small & 2 & 9 & 2 \\
+\hline
+14 & linearsolver & small & 3 & 19 & 4 \\
+\hline
+15 & lpn & small & 5 & 11 & 2 \\
+\hline
+16 & pea & small & 5 & 98 & 42 \\
+\hline
+17 & qaoa & small & 3 & 15 & 6 \\
+\hline
+18 & qec\_sm & small & 5 & 5 & 4 \\
+\hline
+19 & qec\_en & small & 5 & 25 & 10 \\
+\hline
+20 & qft & small & 4 & 36 & 12 \\
+\hline
+21 & qrng & small & 4 & 4 & 0 \\
+\hline
+22 & quantumwalks & small & 2 & 11 & 3 \\
+\hline
+23 & shor & small & 5 & 64 & 30 \\
+\hline
+24 & toffoli & small & 3 & 18 & 6 \\
+\hline
+25 & teleportation & small & 3 & 8 & 2 \\
+\hline
+26 & jellium & small & 4 & 54 & 16 \\
+\hline
+27 & vqe & small & 4 & 89 & 9 \\
+\hline
+27 & vqe\_uccsd & small & 4 & 220 & 88 \\
+\hline
+28 & wstate & small & 3 & 30 & 9 \\
+\hline
+29 & \red{dnn} & medium & 8 & 1200 & 384 \\
+\hline
+30 & bb84 & medium & 8 & 27 & 0 \\
+\hline
+31 & qaoa & medium & 6 & 270 & 54 \\
+\hline
+32 & simons & medium & 6 & 44 & 14 \\
+\hline
+33 & \red{vqe\_uccsd} & medium & 8 & 10808 & 5488 \\
+\hline
+34 & hhl & medium & 7 & 689 & 196 \\
+\hline
+\end{tabularx}
+\caption{QASMBench}
+\label{table:qbenchmarks}
+\end{table}
+
+\subsubsection{OpenQASM2.0 Specification}
+
+All the benchmark programs listed in Table 2 are static circuits. To facilitate a comparison
+of dynamic circuit behaviors, we incorporated dynamic circuit benchmarks as introduced in the
+OpenQASM2.0 specification (See Table 3).
+
+\begin{table}[h]
+\centering
+\begin{tabularx}{\textwidth}{|c|c|X|X|X|X|}
+\hline
+\textbf{Index} & \textbf{Benchmark} & \textbf{S/D} & \textbf{Qubits} & \textbf{Gates} & \textbf{CX} \\
+\hline
+1 & inverse QFT followed by measurement & dynamic & \todo & \todo & \todo \\
+\hline
+2 & quantum error correction & dynamic & \todo & \todo & \todo \\
+\hline
+3 & quantum fourier transform & static & \todo & \todo & \todo \\
+\hline
+4 & quantum process tomography & static & \todo & \todo & \todo \\
+\hline
+5 & quantum teleportation & dynamic & \todo & \todo & \todo \\
+\hline
+6 & randomized benchmarking & static & \todo & \todo & \todo \\
+\hline
+7 & ripple carry adder & static & \todo & \todo & \todo \\
+\hline
+\end{tabularx}
+\caption{OpenQASM2.0 Specification Examples}
+\label{table:qbenchmarks}
+\end{table}
+
+\subsection{Experiment Result}
+
+
+\section{Comparisons to Previous Works}
+
+In this section, we highlight the potential for using new ways to test quantum simulators that
+haven't been tried before.
+
+\subsection{Problems}
+Past techniques for testing quantum simulators, like QDiff and MorphQ, have made use of two-sample
+tests, specifically the Kolmogorov-Smirnov test (K-S test). There are two main issues with this
+method.
+
+\begin{enumerate}
+  \item
+    Two-sample testing is carried out without the expected probability distribution that the
+    simulation results should match, so the test's accuracy is naturally lower.
+  \item
+    The K-S test is basically a statistical test for a continuous probability distribution, which
+    isn't a good fit for our situation where we have a discrete probability distribution. QDiff uses
+    a modified version of the K-S test for discrete cases,
+    but doesn't calculate the p-value for the test; they use this technique to get an answer for
+    ``\textit{how many measurements do we need for a reliable evaluation to ensure the relative error
+    between two distributions is within a given threshold t with confidence p?}".
+    In MorphQ, the p-value is found using the standard K-S test for a
+    continuous probability distribution without any changes, but it's unclear whether the p-value
+    obtained in this way is meaningful.
+\end{enumerate}
+
+\subsection{One-sample testing}
+\subsection{Experiment Result}
+
+
+\end{document}
+
