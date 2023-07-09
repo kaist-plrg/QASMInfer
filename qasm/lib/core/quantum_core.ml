@@ -1,7 +1,7 @@
 open Complex
 
 let memoize2 f =
-  let b = 8 in
+  let b = 9 in
   let memo_table = Hashtbl.create (Int.shift_left 1 (b + b)) in
   fun x y ->
     let xy = Int.shift_left x b + y in
