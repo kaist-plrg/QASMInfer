@@ -54,7 +54,7 @@
 % \maketitle
 \section{Execution Example}
 
-This is the example dynamic circuit introduced in section 2.2.1, written is OpenQASM2.0:\\
+Here is the example of a dynamic circuit discussed in section 2.2.1, written in OpenQASM2.0:\\
 \begin{lstlisting}
 OPENQASM 2.0;
 
@@ -287,18 +287,20 @@ OpenQASM2.0 specification (See Table 3).
 
 \subsection{Experiment Result}
 
-Below are the p-values of the chi-square goodness-of-fit test for all 12 simulators compared to our
-implementation using all 33 benchmarks.
+Presented below are the p-values derived from the chi-square goodness-of-fit test for all twelve
+simulators, as compared to our implementation using all 33 benchmarks.
+
+\textbf{\red{Image (Currently under experiment)}}
 \\
 \\
-\textbf{\red{Image}}
-\\
-\\
-Even after \red{10 million} shots, the p-values are large enough that we can confidently reject the null
-hypothesis that the simulator and our implementation conform.
+Even after conducting \red{10 million} shots, the p-values remain sufficiently large for us to
+confidently accept the null hypothesis asserting conformance between the simulator and our
+implementation.
+
 \red{
-In a few situations, we saw p-values smaller than 0.05, but careful and rigorous checking is
-required to determine if this is a true physical semantics error.
+There were occaional instances where we observed p-values smaller than 0.05.  However, careful and
+rigorous evaluation is necessary to confirm whether these instances truly indicate a physical
+semantics error. (Confirmed in small-scale experiments)
 }
 
 
@@ -306,65 +308,65 @@ required to determine if this is a true physical semantics error.
 
 \section{Comparisons to Previous Works}
 
-In this section, we highlight the potential for using new ways to test quantum simulators that
-haven't been tried before.
+This section emphasizes the potential for utilizing novel approaches for testing quantum simulators
+that have not yet been explored.
 
 \subsection{Problems}
-Past techniques for testing quantum simulators, like QDiff and MorphQ, have made use of two-sample
-tests, specifically the Kolmogorov-Smirnov test (K-S test). There are two main issues with this
-method.
+Earlier methods for testing quantum simulators, such as QDiff and MorphQ, have employed two-sample
+tests, specifically the Kolmogorov-Smirnov test (K-S test).
+However, there are two key issues with this approach.
 
 \begin{enumerate}
   \item
-    Two-sample testing is carried out without the expected probability distribution that the
-    simulation results should match, so the test's accuracy is naturally lower.
+    Two-sample testing is performed without the ideal probability distribution that the simulation
+    results should align with, which inherently decreases the test's accuracy.
   \item
-    The K-S test is basically a statistical test for a continuous probability distribution, which
-    isn't a good fit for our situation where we have a discrete probability distribution. QDiff uses
-    a modified version of the K-S test for discrete cases,
-    but doesn't calculate the p-value for the test; they use this technique to get an answer for
-    ``\textit{how many measurements do we need for a reliable evaluation to ensure the relative error
-    between two distributions is within a given threshold t with confidence p?}".
-    In MorphQ, the p-value is found using the standard K-S test for a
-    continuous probability distribution without any changes, but it's unclear whether the p-value
-    obtained in this way is meaningful.
+    The K-S test is fundamentally a statistical test for a continuous probability distribution,
+    which is not a suitable fit for our case where we are dealing with a discrete probability
+    distribution. QDiff employs a variant of the K-S test for discrete instances, but they don't
+    compute the p-value for the test; instead, they use it to determine "\textit{how many
+    measurements are needed for a reliable evaluation to ensure the relative error between two
+    distributions is within a given threshold t with confidence p?}" On the other hand, MorphQ
+    computes the p-value using the standard K-S test for a continuous probability distribution without
+    any modifications, but the relevance of the p-value obtained this way remains ambiguous.
 \end{enumerate}
 
 \subsection{One-sample testing}
 
-The results produced by our implementation allow for one-sample testing that addresses both of these issues.
+The results produced by our implementation, represented as a discrete probability distribution,
+enable the use of one-sample testing, effectively addressing both aforementioned issues.
+
 \begin{enumerate}
   \item
-    Because we know what the correct expected probability distribution is, we can do one-sample
-    testing that is more effective at catching semantic errors.
+    As we have knowledge of the correct expected probability distribution, we can conduct one-sample
+    testing that is more capable of identifying semantic errors.
   \item
-    The Chi-square goodness-of-fit test is for discrete probability distributions and is more
-    appropriate for our situation, finding a p-value, answering ``When we say that this distribution
-    came from this probability distribution, does that make sense?".
+    The Chi-square goodness-of-fit test is designed for discrete probability distributions and is more
+    suited to our case. It provides a p-value, essentially answering the question, ``Does it make sense
+    to say that this distribution originated from this particular probability distribution?".
 \end{enumerate}
 
 \subsection{Effectiveness Comparison Between One-sample and Two-sample Testing}
-To confirm that one-sample testing with the Chi-square goodness-of-fit test is more effective at
-catching semantic errors than two-sample testing with the F-S test, we experimented with how well
-each method catches semantic errors when the semantic of the Hadamard gate is incorrect:
+To verify that one-sample testing with the Chi-square goodness-of-fit test is more proficient at
+identifying semantic errors compared to two-sample testing with the F-S test, we conducted an
+experiment examining each method's ability to identify semantic errors when the semantics of the
+Hadamard gate are incorrect:
 
 \begin{lstlisting}
-gate h a { U(pi/2 - 0.1, 0,pi) a; } // wrong: - 0.1
+gate h a { U(pi/2 - 0.1, 0,pi) a; } // incorrect: - 0.1
 \end{lstlisting}
 
-\\
-\\
-\red{Graph: The number of p-values lower than 0.05 increases as the number of shots increases. The
-  number of p-values of the one-sample test increases much faster. Confirmed in small-scale
+\red{Graph: As the number of shots increases, the count of p-values less than 0.05 also rises. The
+  count of p-values of the one-sample test increases much quicker. Confirmed in small-scale
 experiments; this experiment is ongoing.} \\
 \\
 
-The graph above shows how the p-value-based error detection rate increases with the number of shots
-when testing a benchmark suite with incorrect semantics for Hadamard gate. For the two-sample test,
-we used MorphQ's method to calculate the p-value.
-We can see that the one-sample test detects a significantly higher amount of semantic errors.
-Therefore, it seems that if testing with our implementation is applied properly, it will be possible
-to detect more effective errors.
+The graph above demonstrates how the error detection rate, based on p-value, increases with the
+number of shots when testing a benchmark suite with incorrect semantics for the Hadamard gate. For
+the two-sample test, we used MorphQ's methodology to compute the p-value. We can observe that the
+one-sample test identifies a significantly higher number of semantic errors.
+
+Thus, testing a quantum circuit smulator, using our implementation will be more effective than the existing method.
 
 \end{document}
 
