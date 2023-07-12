@@ -134,29 +134,29 @@ determine whether they align with the probability distribution derived from our 
 \hline
 \textbf{Quantum Simulator} & \textbf{Explanation} & \textbf{Dynamic Circuit Support}\\
 \hline
-\texttt{aer\_simulator} & Explanation for Simulator 1 & \textcolor{red}{?} \\
+\texttt{aer\_simulator} & Explanation for Simulator 1 & yes \\
 \hline
-\texttt{aer\_simulator\_statevector} & Explanation for Simulator 2 & \textcolor{red}{?} \\
+\texttt{aer\_simulator\_statevector} & Explanation for Simulator 2 & yes \\
 \hline
-\texttt{aer\_simulator\_density\_matrix} & Explanation for Simulator 3 & \textcolor{red}{?} \\
+\texttt{aer\_simulator\_density\_matrix} & Explanation for Simulator 3 & yes \\
 \hline
-\texttt{aer\_simulator\_stabilizer} & Explanation for Simulator 4 & \textcolor{red}{?} \\
+\texttt{aer\_simulator\_stabilizer} & Explanation for Simulator 4 & yes \\
 \hline
-\texttt{aer\_simulator\_matrix\_product\_state} & Explanation for Simulator 5 & \textcolor{red}{?} \\
+\texttt{aer\_simulator\_matrix\_product\_state} & Explanation for Simulator 5 & yes \\
 \hline
-\texttt{aer\_simulator\_extended\_stabilizer}& Explanation for Simulator 6 & \textcolor{red}{?} \\
+\texttt{aer\_simulator\_extended\_stabilizer}& Explanation for Simulator 6 & yes \\
 \hline
-\texttt{aer\_simulator\_unitary} & Explanation for Simulator 7 & \textcolor{red}{?} \\
+\texttt{aer\_simulator\_unitary} & Explanation for Simulator 7 & no \\
 \hline
-\texttt{aer\_simulator\_superop} & Explanation for Simulator 8 & \textcolor{red}{?} \\
+\texttt{aer\_simulator\_superop} & Explanation for Simulator 8 & no \\
 \hline
-\texttt{qasm\_simulator} & Explanation for Simulator 9 & \textcolor{red}{?} \\
+\texttt{qasm\_simulator} & Explanation for Simulator 9 & yes \\
 \hline
-\texttt{statevector\_simulator} & Explanation for Simulator 10 & \textcolor{red}{?} \\
+\texttt{statevector\_simulator} & Explanation for Simulator 10 & yes \\
 \hline
-\texttt{unitary\_simulator} & Explanation for Simulator 11 & \textcolor{red}{?} \\
+\texttt{unitary\_simulator} & Explanation for Simulator 11 & no \\
 \hline
-\texttt{pulse\_simulator} & Explanation for Simulator 12 & \textcolor{red}{?} \\
+\texttt{pulse\_simulator} & Explanation for Simulator 12 & no \\
 \hline
 \end{tabularx}
 \caption{Qiskit Quantum Simulators}
@@ -266,19 +266,19 @@ OpenQASM2.0 specification (See Table 3).
 \hline
 \textbf{Index} & \textbf{Benchmark} & \textbf{S/D} & \textbf{Qubits} & \textbf{Gates} & \textbf{CX} \\
 \hline
-1 & inverse QFT followed by measurement & dynamic & \todo & \todo & \todo \\
+1 & inverse QFT followed by measurement & dynamic & 4 & 16 & \todo \\
 \hline
-2 & quantum error correction & dynamic & \todo & \todo & \todo \\
+2 & quantum error correction & dynamic & 5 & 6 & \todo \\
 \hline
-3 & quantum fourier transform & static & \todo & \todo & \todo \\
+3 & quantum fourier transform & static & 4 & 36 & \todo \\
 \hline
-4 & quantum process tomography & static & \todo & \todo & \todo \\
+4 & quantum process tomography & static & 1 & 3 & \todo \\
 \hline
-5 & quantum teleportation & dynamic & \todo & \todo & \todo \\
+5 & quantum teleportation & dynamic & 3 & 7 & \todo \\
 \hline
-6 & randomized benchmarking & static & \todo & \todo & \todo \\
+6 & randomized benchmarking & static & 2 & 11 & \todo \\
 \hline
-7 & ripple carry adder & static & \todo & \todo & \todo \\
+7 & ripple carry adder & static & \red{X} & \todo & \todo \\
 \hline
 \end{tabularx}
 \caption{OpenQASM2.0 Specification Examples}
