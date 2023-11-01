@@ -233,6 +233,23 @@ Proof.
   apply H.
 Qed.
 
+Lemma Den_unitary_trace: forall (den uop: Matrix) (H1: _) (H2: _),
+  Qop_unitary uop -> Mtrace (Den_unitary den uop H1 H2) = Mtrace den.
+Proof.
+  intros.
+  unfold Den_unitary.
+  erewrite Mtrace_Mmult_comm.
+  erewrite <- Mmult_assoc.
+  destruct H as [Hu1 Hu2].
+  specialize Mmult_eye_l as Heyel.
+  unfold Qop_unitary_l, Qop_unitary_r, Mmult in *.
+  rewrite Hu2.
+  rewrite Heyel.
+  reflexivity.
+  Unshelve.
+  all: unfold Mmult; simpl_bits; try lia.
+Qed.
+
 (* ============================================================================================== *)
 (* apply reset to density matrix ================================================================ *)
 
@@ -310,6 +327,49 @@ Proof.
   reflexivity.
   Unshelve.
   all: simpl_bits; simpl; try lia.
+Qed.
+
+Lemma Den_reset_trace: forall (den: Matrix) (t: nat) (Ht: t < Mbits den),
+  Mtrace (Den_reset den t Ht) = Mtrace den.
+Proof.
+  intros.
+  specialize Mtrace_Mplus_dist as Hdist.
+  specialize Mtrace_Mmult_comm as Hcomm.
+  specialize Mmult_assoc as Hassoc.
+  specialize Qproj_n_sum_eye as Hsum.
+  specialize Mmult_dist_plus_l as Hplus.
+  specialize Mmult_eye_l as Heyel.
+  assert (Projection (Qproj1_n_t (Mbits den) t Ht)) as [Hp11 [Hp12 Hp13] ] by apply Qproj1_n_t_proj.
+  assert (Projection (Qproj0_n_t (Mbits den) t Ht)) as [Hp01 [Hp02 Hp03] ] by apply Qproj0_n_t_proj.
+  unfold Den_reset.
+  unfold Mmult, Mplus in *.
+  rewrite Hdist.
+  rewrite Den_unitary_trace.
+  rewrite Hcomm.
+  rewrite <- Hassoc.
+  replace (Mmult_unsafe (Qproj0_n_t (Mbits den) t Ht) (Qproj0_n_t (Mbits den) t Ht)) with (Qproj0_n_t (Mbits den) t Ht).
+  replace
+    (Mtrace (Mmult_unsafe (Mmult_unsafe (Qproj1_n_t (Mbits den) t Ht) den) (Qproj1_n_t (Mbits den) t Ht))) with
+    (Mtrace (Mmult_unsafe (Qproj1_n_t (Mbits den) t Ht) den)).
+  rewrite <- Hdist.
+  rewrite <- Hplus.
+  rewrite Hsum.
+  rewrite Heyel.
+  reflexivity.
+  all: simpl_bits; try lia; auto.
+  all: try rewrite Qproj0_n_t_bits; try rewrite Qproj1_n_t_bits; try lia.
+  rewrite (Hcomm (Mmult_unsafe (Qproj1_n_t (Mbits den) t Ht) den)).
+  rewrite <- Hassoc.
+  replace (Mmult_unsafe (Qproj1_n_t (Mbits den) t Ht) (Qproj1_n_t (Mbits den) t Ht)) with (Qproj1_n_t (Mbits den) t Ht).
+  reflexivity.
+  rewrite Hp11.
+  reflexivity.
+  all: simpl_bits; try lia; auto.
+  all: try rewrite Qproj0_n_t_bits; try rewrite Qproj1_n_t_bits; try lia.
+  rewrite Hp01.
+  1-2: reflexivity.
+  apply Qop_sq_unitary.
+  apply Qop_rot_unitary.
 Qed.
 
 (* ============================================================================================== *)
@@ -1078,20 +1138,9 @@ Proof.
   induction H.
   - eapply InitialDensityMatrix_normalized.
     apply H.
-  - unfold Den_normalized, Den_unitary.
-    erewrite Mtrace_Mmult_comm.
-    erewrite <- Mmult_assoc.
-    destruct H0 as [Hu1 Hu2].
-    specialize Mmult_eye_l as Heyel.
-    unfold Qop_unitary_l, Qop_unitary_r, Mmult in *.
-    rewrite Hu2.
-    rewrite H1.
-    rewrite Heyel.
-    apply IHDensityMatrix.
-    Unshelve.
-    1-3: simpl_bits; reflexivity.
-    simpl_bits; lia.
-    simpl_bits. lia.
+  - unfold Den_normalized.
+    rewrite Den_unitary_trace.
+    all: auto.
   - specialize Mtrace_Msmul as Hts.
     specialize Mtrace_Mmult_comm as Hcomm.
     specialize Mmult_assoc as Hassoc.
@@ -1109,6 +1158,9 @@ Proof.
     1-7: simpl_bits; lia.
     apply Hcomm.
     all: simpl_bits; lia.
+  - unfold Den_normalized.
+    rewrite Den_reset_trace.
+    all: auto.
 Qed.
 
 (* ============================================================================================== *)
