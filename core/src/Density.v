@@ -224,6 +224,15 @@ Proof.
   apply Mmult_unsafe_bits_l.
 Qed.
 
+Lemma Den_unitary_positive: forall (den uop: Matrix) (H1: _) (H2: _),
+  Qop_positive den -> Qop_positive (Den_unitary den uop H1 H2).
+Proof.
+  intros.
+  unfold Den_unitary.
+  apply Qop_positive_mult_r.
+  apply H.
+Qed.
+
 (* ============================================================================================== *)
 (* apply reset to density matrix ================================================================ *)
 
@@ -995,6 +1004,48 @@ Proof.
       apply H0.
       Unshelve.
       all: simpl_bits; lia.
+  - destruct IHDensityMatrix as [IH1 IH2].
+    specialize Qop_positive_mult_l as Hposm.
+    specialize Mmult_assoc as Hassoc.
+    specialize Mtrace_Mmult_comm as Hcomm.
+    specialize Mconjtrans_mult as Hcm.
+    assert(Qop_positive (Den_reset den t Ht)) as Hres.
+    { unfold Den_reset; simpl.
+      apply Qop_positive_plus.
+      - unfold Mmult in *.
+        replace
+          (Qproj0_n_t (Mbits den) t Ht)
+        with
+          (Mconjtrans (Qproj0_n_t (Mbits den) t Ht))
+        at 1 by apply Qproj0_n_t_Hermitian.
+        apply Hposm.
+        all: repeat simpl_bits; try lia; auto.
+        apply Qproj0_n_t_bits.
+      - unfold Mmult in *.
+        apply Den_unitary_positive.
+        replace
+          (Qproj1_n_t (Mbits den) t Ht)
+        with
+          (Mconjtrans (Qproj1_n_t (Mbits den) t Ht))
+        at 1 by apply Qproj1_n_t_Hermitian.
+        apply Hposm.
+        all: repeat simpl_bits; try lia; auto.
+        apply Qproj1_n_t_bits.
+    }
+    split.
+    + intros.
+      unfold Den_prob.
+      destruct H0 as [Hp1 [Hp2 Hp3] ].
+      unfold Mmult in *.
+      rewrite <- Hp1.
+      rewrite <- Hcomm.
+      rewrite Hassoc.
+      rewrite Hcomm.
+      apply Qop_positive_trace.
+      replace proj with (Mconjtrans proj) at 1.
+      apply Hposm.
+      all: repeat simpl_bits; try lia; auto.
+    + exact Hres.
 Qed.
 
 
