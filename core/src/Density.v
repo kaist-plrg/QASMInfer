@@ -207,6 +207,54 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
+(* apply reset to density matrix ================================================================ *)
+
+Definition Den_reset (den: Matrix) (t: nat) (Ht: t < Mbits den): Matrix.
+Proof.
+  refine (
+    Mplus
+      (Mmult (Mmult (Qproj0_n_t (Mbits den) t Ht) den _) (Qproj0_n_t (Mbits den) t Ht) _)
+      (Den_unitary
+        (Mmult (Mmult (Qproj1_n_t (Mbits den) t Ht) den _) (Qproj1_n_t (Mbits den) t Ht) _)
+        (Qop_sq (Mbits den) t (Qop_rot PI 0 PI) _ _) _ _)
+      _
+  ).
+  Unshelve.
+  all: try unfold MMeqbits.
+  - simpl_bits.
+    rewrite Den_unitary_bits.
+    repeat simpl_bits.
+    reflexivity.
+  - apply Qproj0_n_t_bits.
+  - repeat simpl_bits.
+    reflexivity.
+  - apply Qproj1_n_t_bits.
+  - repeat simpl_bits.
+    reflexivity.
+  - lia.
+  - apply Qop_rot_bits.
+  - repeat simpl_bits.
+    rewrite Qop_sq_bits.
+    unfold Mmult.
+    simpl_bits.
+    symmetry.
+    apply Qproj1_n_t_bits.
+  - unfold Mmult, Mplus.
+    simpl_bits.
+    rewrite Qop_sq_bits.
+    reflexivity.
+Defined.
+
+Lemma Den_reset_bits : forall (den: Matrix) (t: nat) (Ht: t < Mbits den),
+  MMeqbits (Den_reset den t Ht) den.
+Proof.
+  intros.
+  unfold Den_reset, Mmult.
+  repeat simpl_bits.
+  apply Qproj0_n_t_bits.
+Qed.
+
+(* ============================================================================================== *)
 (* probability ================================================================================== *)
 
 Definition Den_prob (den: Matrix) (proj: Matrix) (H: MMeqbits den proj): C :=
