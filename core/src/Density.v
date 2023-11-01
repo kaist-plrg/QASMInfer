@@ -835,9 +835,19 @@ Proof.
       unfold Mmult in *.
       rewrite Hp2.
       rewrite Hcomm.
-      (* TODO: Mconjtrans Den_reset *)
-
-
+      assert (Mconjtrans den = den) as Hden by apply IHDensityMatrix.
+      rewrite Den_reset_Mconjtrans.
+      unfold Den_reset, Mplus, Mmult; simpl.
+      rewrite Hden.
+      reflexivity.
+      Unshelve.
+      all: simpl_bits; lia.
+    + unfold Qop_Hermitian.
+      rewrite Den_reset_Mconjtrans.
+      assert (Mconjtrans den = den) as Hden by apply IHDensityMatrix.
+      unfold Den_reset, Mplus, Mmult; simpl.
+      rewrite Hden.
+      reflexivity.
 Qed.
 
 Lemma DensityMatrix_prob_real: forall (n: nat) (den proj: Matrix),
