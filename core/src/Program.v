@@ -22,7 +22,8 @@ Inductive Instruction: Type :=
 | SwapInstr: nat -> nat -> Instruction  (* SwapInstr a b: swap a b *)
 | MeasureInstr: nat -> nat -> Instruction  (* MeasureInstr q c: *)
 | SeqInstr: Instruction -> Instruction -> Instruction
-| IfInstr: nat -> bool -> Instruction -> Instruction.  (* if cbit == 0 (false) or cbit == 1 (true) *)
+| IfInstr: nat -> bool -> Instruction -> Instruction  (* if cbit == 0 (false) or cbit == 1 (true) *)
+| ResetInstr: nat -> Instruction.  (* reset qbit to 0 *)
 
 
 (* ============================================================================================== *)
@@ -189,6 +190,30 @@ Proof.
   + apply (Execute_measure_instr qbit cbit t).  (* nop *)
 Defined.
 
+Fixpoint Execute_reset_instr (target: nat) (worlds: ManyWorld): ManyWorld.
+Proof.
+  destruct worlds as [|[qstate cstate prob nq Hq] t].
+  - exact [].
+  - destruct (lt_dec target nq).
+    + refine ({|
+        W_qstate := Den_reset qstate target _;
+        W_cstate := cstate;
+        W_prob := prob;
+        W_num_qubits := nq;
+      |} :: (Execute_reset_instr target t)).
+      Unshelve.
+      rewrite Den_reset_bits.
+      apply Hq.
+      lia.
+    + apply ({|
+        W_qstate := qstate;
+        W_cstate := cstate;
+        W_prob := prob;
+        W_num_qubits := nq;
+        W_qstate_valid := Hq;
+      |} :: (Execute_reset_instr target t)).  (* nop *)
+Defined.
+
 Fixpoint Execute_suppl (ir: nat) (instr: Instruction) (worlds: ManyWorld): ManyWorld :=
   match ir with
   | O => worlds
@@ -206,6 +231,7 @@ Fixpoint Execute_suppl (ir: nat) (instr: Instruction) (worlds: ManyWorld): ManyW
           then Execute_suppl ir' subinstr [w]
           else [w]) worlds)
     )
+    | ResetInstr target                   => Execute_reset_instr target worlds
     end
   )
   end.
@@ -374,6 +400,36 @@ Proof.
       apply Ht.
 Qed.
 
+Lemma Execute_reset_instr_quantum_state_density:
+  forall (target: nat) (worlds: ManyWorld),
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => exists n, DensityMatrix n (W_qstate world))
+    (Execute_reset_instr target worlds).
+Proof.
+  intros.
+  induction worlds.
+  - simpl.
+    apply H.
+  - destruct a.
+    apply Forall_cons_iff in H.
+    destruct H as [ [n H] Ht].
+    simpl in *.
+    destruct (lt_dec target (W_num_qubits0)).
+    + apply Forall_cons.
+      simpl.
+      exists n.
+      apply DensityMatrix_reset.
+      apply H.
+      apply IHworlds.
+      apply Ht.
+    + apply Forall_cons.
+      simpl.
+      exists n.
+      apply H.
+      apply IHworlds.
+      apply Ht.
+Qed.
+
 Lemma Execute_suppl_empty_world: forall (ir: nat) (instr: Instruction),
   Execute_suppl ir instr [] = [].
 Proof.
@@ -445,6 +501,9 @@ Proof.
         apply Forall_cons_iff in H.
         destruct H.
         apply H0.
+  - simpl.
+    apply Execute_reset_instr_quantum_state_density.
+    apply H.
 Qed.
 
 
