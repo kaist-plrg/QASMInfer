@@ -206,6 +206,24 @@ Proof.
   apply H1.
 Qed.
 
+Lemma Den_unitary_Mconjtrans: forall (den uop: Matrix) (H1: _) (H2: _),
+  Mconjtrans (Den_unitary den uop H1 H2) = Den_unitary (Mconjtrans den) uop H1 H2.
+Proof.
+  intros.
+  specialize Mconjtrans_mult as Hcm.
+  specialize Mconjtrans_twice as Hct.
+  specialize Mmult_assoc as Hassoc.
+  unfold Den_unitary, Mmult in *; simpl.
+  erewrite Hcm.
+  rewrite Hct.
+  rewrite Hcm.
+  symmetry.
+  apply Hassoc.
+  all: simpl_bits; try lia.
+  symmetry.
+  apply Mmult_unsafe_bits_l.
+Qed.
+
 (* ============================================================================================== *)
 (* apply reset to density matrix ================================================================ *)
 
@@ -252,6 +270,37 @@ Proof.
   unfold Den_reset, Mmult.
   repeat simpl_bits.
   apply Qproj0_n_t_bits.
+Qed.
+
+Lemma Den_reset_Mconjtrans : forall (den: Matrix) (t: nat) (Ht: t < Mbits den),
+  Mconjtrans (Den_reset den t Ht) = (Den_reset (Mconjtrans den) t Ht).
+Proof.
+  intros.
+  specialize Mconjtrans_mult as Hcm.
+  specialize Mmult_assoc as Hassoc.
+  specialize Den_unitary_Mconjtrans as Hcu.
+  specialize Qproj0_n_t_proj as Hp0.
+  specialize Qproj1_n_t_proj as Hp1.
+  assert (
+    forall (n t : nat) (Ht : t < n), Mconjtrans (Qproj0_n_t n t Ht) = Qproj0_n_t n t Ht
+  ) as Hcp0 by eapply Hp0.
+  assert (
+    forall (n t : nat) (Ht : t < n), Mconjtrans (Qproj1_n_t n t Ht) = Qproj1_n_t n t Ht
+  ) as Hcp1 by eapply Hp1.
+  unfold Den_reset; simpl; simpl_bits.
+  erewrite Mconjtrans_plus.
+  unfold Mmult, Mplus in *; simpl.
+  repeat erewrite Hcm.
+  repeat rewrite Hcu.
+  repeat rewrite Hcp0.
+  erewrite <- Hassoc.
+  unfold Den_unitary, Qproj0_n_t, Mmult, Qop_sq in *; simpl; simpl_bits.
+  repeat rewrite Hcm.
+  erewrite Hcp1.
+  repeat rewrite Hassoc.
+  reflexivity.
+  Unshelve.
+  all: simpl_bits; simpl; try lia.
 Qed.
 
 (* ============================================================================================== *)
@@ -673,7 +722,10 @@ Inductive DensityMatrix: nat -> Matrix -> Prop :=
     DensityMatrix n den ->
     Projection proj ->
     Den_prob den proj Hd <> 0 ->
-    DensityMatrix n (Den_measure den proj Hd).
+    DensityMatrix n (Den_measure den proj Hd)
+| DensityMatrix_reset (n: nat) (den: Matrix) (t: nat) (Ht: t < Mbits den):
+    DensityMatrix n den ->
+    DensityMatrix n (Den_reset den t Ht).
 
 (* ============================================================================================== *)
 (* density matrices are Hermitian =============================================================== *)
@@ -772,6 +824,20 @@ Proof.
       apply IH1.
       apply H0.
       all: repeat simpl_bits; lia.
+  - split.
+    + intros.
+      specialize Mtrace_Mmult_comm as Hcomm.
+      apply Cconj_real.
+      unfold Den_prob.
+      rewrite Mtrace_Cconj.
+      erewrite Mconjtrans_mult.
+      destruct H0 as [Hp1 [Hp2 Hp3] ].
+      unfold Mmult in *.
+      rewrite Hp2.
+      rewrite Hcomm.
+      (* TODO: Mconjtrans Den_reset *)
+
+
 Qed.
 
 Lemma DensityMatrix_prob_real: forall (n: nat) (den proj: Matrix),
