@@ -214,6 +214,11 @@ val muop : (Complex.t -> Complex.t) -> matrix -> matrix
 
 val msmul : Complex.t -> matrix -> matrix
 
+val mbop_unsafe :
+  (Complex.t -> Complex.t -> Complex.t) -> matrix -> matrix -> matrix
+
+val mplus : matrix -> matrix -> matrix
+
 val mmult_inner : matrix -> matrix -> int -> int -> Complex.t
 
 val mmult_unsafe : matrix -> matrix -> matrix
@@ -270,6 +275,8 @@ val den_0 : matrix
 
 val den_unitary : matrix -> matrix -> matrix
 
+val den_reset : matrix -> int -> matrix
+
 val den_prob : matrix -> matrix -> Complex.t
 
 val den_prob_0 : matrix -> int -> int -> Complex.t
@@ -293,6 +300,7 @@ type instruction =
 | MeasureInstr of int * int
 | SeqInstr of instruction * instruction
 | IfInstr of int * bool * instruction
+| ResetInstr of int
 
 type inlinedProgram = { iP_num_qbits : int; iP_num_cbits : int;
                         iP_num_subinstrs : int; iP_instrs : instruction }
@@ -313,6 +321,8 @@ val execute_cnot_instr : int -> int -> manyWorld -> manyWorld
 val execute_swap_instr : int -> int -> manyWorld -> manyWorld
 
 val execute_measure_instr : int -> int -> manyWorld -> manyWorld
+
+val execute_reset_instr : int -> manyWorld -> manyWorld
 
 val execute_suppl : int -> instruction -> manyWorld -> manyWorld
 

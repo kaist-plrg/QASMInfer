@@ -21,6 +21,7 @@ let rec string_of_instruction = function
       string_of_instruction instr1 ^ "\n" ^ string_of_instruction instr2
   | IfInstr (i, b, instr) ->
       Printf.sprintf "IfInstr (%d, %b, \n%s)" i b (string_of_instruction instr)
+  | ResetInstr i -> Printf.sprintf "ResetInstr %d" i
 
 (*******************************)
 (* OpenQASMCore_ir stringifier *)

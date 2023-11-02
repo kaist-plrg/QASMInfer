@@ -46,6 +46,7 @@ Extract Inlined Constant sin => "Stdlib.sin".
 Extract Inlined Constant cos => "Stdlib.cos".
 Extract Inlined Constant atan2 => "Stdlib.atan2".
 Extract Inlined Constant exp => "Stdlib.exp".
+Extract Inlined Constant PI => "(4. *. Stdlib.atan 1.)".
 
 Extract Inlined Constant C => "Complex.t".
 Extract Inlined Constant Cmake => "(fun re im -> {re=re; im=im})".

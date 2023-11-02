@@ -1,7 +1,7 @@
 open Complex
 
 let memoize2 f =
-  let b = 9 in
+  let b = 8 in
   let memo_table = Hashtbl.create (Int.shift_left 1 (b + b)) in
   fun x y ->
     let xy = Int.shift_left x b + y in
@@ -756,6 +756,19 @@ let muop uop m =
 
 let msmul s m = muop (Complex.mul s) m
 
+(** val mbop_unsafe :
+    (Complex.t -> Complex.t -> Complex.t) -> matrix -> matrix -> matrix **)
+
+let mbop_unsafe bop m1 m2 =
+  {
+    mbits = m1.mbits;
+    minner = memoize2 (fun i j -> bop (m1.minner i j) (m2.minner i j));
+  }
+
+(** val mplus : matrix -> matrix -> matrix **)
+
+let mplus m1 m2 = mbop_unsafe Complex.add m1 m2
+
 (** val mmult_inner : matrix -> matrix -> int -> int -> Complex.t **)
 
 let mmult_inner m1 m2 i j =
@@ -1039,8 +1052,8 @@ let qop_swap1n n =
 let qop_swap n q1 q2 =
   let s = lt_eq_lt_dec q1 q2 in
   match s with
-  | Some a ->
-      if a then
+  | Some s0 ->
+      if s0 then
         tMproduct
           (tMproduct (eye q1) (qop_swap1n (sub q2 q1 + Stdlib.Int.succ 0)))
           (eye (sub (sub n q2) (Stdlib.Int.succ 0)))
@@ -1260,6 +1273,19 @@ let den_0 =
 
 let den_unitary den uop = mmult (mmult uop den) (mconjtrans uop)
 
+(** val den_reset : matrix -> int -> matrix **)
+
+let den_reset den t =
+  mplus
+    (mmult (mmult (qproj0_n_t den.mbits t) den) (qproj0_n_t den.mbits t))
+    (den_unitary
+       (mmult (mmult (qproj1_n_t den.mbits t) den) (qproj1_n_t den.mbits t))
+       (qop_sq den.mbits t
+          (qop_rot
+             (4. *. Stdlib.atan 1.)
+             (float_of_int 0)
+             (4. *. Stdlib.atan 1.))))
+
 (** val den_prob : matrix -> matrix -> Complex.t **)
 
 let den_prob den proj = mtrace (mmult den proj)
@@ -1305,6 +1331,7 @@ type instruction =
   | MeasureInstr of int * int
   | SeqInstr of instruction * instruction
   | IfInstr of int * bool * instruction
+  | ResetInstr of int
 
 type inlinedProgram = {
   iP_num_qbits : int;
@@ -1339,14 +1366,14 @@ let manyWorld_init num_q _ =
 
 let rec execute_rotate_instr theta phi lambda target = function
   | [] -> []
-  | a :: l ->
+  | w :: l ->
       let {
         w_qstate = w_qstate0;
         w_cstate = w_cstate0;
         w_prob = w_prob0;
         w_num_qubits = w_num_qubits0;
       } =
-        a
+        w
       in
       let s = target < w_num_qubits0 in
       if s then
@@ -1372,14 +1399,14 @@ let rec execute_rotate_instr theta phi lambda target = function
 
 let rec execute_cnot_instr control target = function
   | [] -> []
-  | a :: l ->
+  | w :: l ->
       let {
         w_qstate = w_qstate0;
         w_cstate = w_cstate0;
         w_prob = w_prob0;
         w_num_qubits = w_num_qubits0;
       } =
-        a
+        w
       in
       let s = ge_dec w_num_qubits0 (Stdlib.Int.succ (Stdlib.Int.succ 0)) in
       if s then
@@ -1424,14 +1451,14 @@ let rec execute_cnot_instr control target = function
 
 let rec execute_swap_instr q1 q2 = function
   | [] -> []
-  | a :: l ->
+  | w :: l ->
       let {
         w_qstate = w_qstate0;
         w_cstate = w_cstate0;
         w_prob = w_prob0;
         w_num_qubits = w_num_qubits0;
       } =
-        a
+        w
       in
       let s = q1 < w_num_qubits0 in
       if s then
@@ -1465,14 +1492,14 @@ let rec execute_swap_instr q1 q2 = function
 
 let rec execute_measure_instr qbit cbit = function
   | [] -> []
-  | a :: l ->
+  | w :: l ->
       let {
         w_qstate = w_qstate0;
         w_cstate = w_cstate0;
         w_prob = w_prob0;
         w_num_qubits = w_num_qubits0;
       } =
-        a
+        w
       in
       let s = qbit < w_num_qubits0 in
       if s then
@@ -1516,30 +1543,40 @@ let rec execute_measure_instr qbit cbit = function
           else execute_measure_instr qbit cbit l
       else execute_measure_instr qbit cbit l
 
+(** val execute_reset_instr : int -> manyWorld -> manyWorld **)
+
+let rec execute_reset_instr target = function
+  | [] -> []
+  | w :: l ->
+      let {
+        w_qstate = w_qstate0;
+        w_cstate = w_cstate0;
+        w_prob = w_prob0;
+        w_num_qubits = w_num_qubits0;
+      } =
+        w
+      in
+      let s = target < w_num_qubits0 in
+      if s then
+        {
+          w_qstate = den_reset w_qstate0 target;
+          w_cstate = w_cstate0;
+          w_prob = w_prob0;
+          w_num_qubits = w_num_qubits0;
+        }
+        :: execute_reset_instr target l
+      else
+        {
+          w_qstate = w_qstate0;
+          w_cstate = w_cstate0;
+          w_prob = w_prob0;
+          w_num_qubits = w_num_qubits0;
+        }
+        :: execute_reset_instr target l
+
 (** val execute_suppl : int -> instruction -> manyWorld -> manyWorld **)
 
-let rec string_of_instruction = function
-  | NopInstr -> "NopInstr"
-  | RotateInstr (x, y, z, i) ->
-      Printf.sprintf "RotateInstr (%f, %f, %f, %d)"
-        (RbaseSymbolsImpl.coq_Rrepr x)
-        (RbaseSymbolsImpl.coq_Rrepr y)
-        (RbaseSymbolsImpl.coq_Rrepr z)
-        i
-  | CnotInstr (i, j) -> Printf.sprintf "CnotInstr (%d, %d)" i j
-  | SwapInstr (i, j) -> Printf.sprintf "SwapInstr (%d, %d)" i j
-  | MeasureInstr (i, j) -> Printf.sprintf "MeasureInstr (%d, %d)" i j
-  | SeqInstr (instr1, instr2) ->
-      string_of_instruction instr1 ^ "\n" ^ string_of_instruction instr2
-  | IfInstr (i, b, instr) ->
-      Printf.sprintf "IfInstr (%d, %b, \n%s)" i b (string_of_instruction instr)
-
 let rec execute_suppl ir instr worlds =
-  let () =
-    match instr with
-    | SeqInstr (_, _) -> ()
-    | _ -> print_endline (string_of_instruction instr)
-  in
   (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
     (fun _ -> worlds)
     (fun ir' ->
@@ -1558,7 +1595,8 @@ let rec execute_suppl ir instr worlds =
                  if eqb (w.w_cstate cbit) cond then
                    execute_suppl ir' subinstr (w :: [])
                  else w :: [])
-               worlds))
+               worlds)
+      | ResetInstr target -> execute_reset_instr target worlds)
     ir
 
 (** val execute : inlinedProgram -> manyWorld **)
