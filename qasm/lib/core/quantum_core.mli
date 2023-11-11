@@ -185,9 +185,13 @@ val tm_empty : 'a1 -> 'a1 total_map
 
 val tm_update : 'a1 total_map -> int -> 'a1 -> 'a1 total_map
 
+val tmb_equal : bool total_map -> bool total_map -> int -> bool
+
 val rTC : RbaseSymbolsImpl.coq_R -> Complex.t
 
 val nTC : int -> Complex.t
+
+val cdiv : Complex.t -> Complex.t -> Complex.t
 
 val func_sum_suppl : (int -> Complex.t) -> int -> int -> Complex.t
 
@@ -277,6 +281,10 @@ val den_unitary : matrix -> matrix -> matrix
 
 val den_reset : matrix -> int -> matrix
 
+val den_mix :
+  matrix -> matrix -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
+  matrix
+
 val den_prob : matrix -> matrix -> Complex.t
 
 val den_prob_0 : matrix -> int -> int -> Complex.t
@@ -311,6 +319,10 @@ type world = { w_qstate : matrix; w_cstate : bool total_map;
 type manyWorld = world list
 
 val manyWorld_init : int -> int -> manyWorld
+
+val merge_manyworld_suppl : world -> manyWorld -> manyWorld
+
+val merge_manyworld : manyWorld -> manyWorld
 
 val execute_rotate_instr :
   RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R

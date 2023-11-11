@@ -699,6 +699,14 @@ let tm_empty v _ = v
 
 let tm_update m k v x = if x = k then v else m x
 
+(** val tmb_equal : bool total_map -> bool total_map -> int -> bool **)
+
+let rec tmb_equal m1 m2 size =
+  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+    (fun _ -> eqb (m1 0) (m2 0))
+    (fun n -> eqb (m1 n) (m2 n) && tmb_equal m1 m2 n)
+    size
+
 (** val rTC : RbaseSymbolsImpl.coq_R -> Complex.t **)
 
 let rTC x = { re = x; im = 0.0 }
@@ -706,6 +714,10 @@ let rTC x = { re = x; im = 0.0 }
 (** val nTC : int -> Complex.t **)
 
 let nTC n = { re = float_of_int n; im = 0.0 }
+
+(** val cdiv : Complex.t -> Complex.t -> Complex.t **)
+
+let cdiv x y = Complex.mul x (Complex.inv y)
 
 (** val func_sum_suppl : (int -> Complex.t) -> int -> int -> Complex.t **)
 
@@ -1286,6 +1298,15 @@ let den_reset den t =
              (float_of_int 0)
              (4. *. Stdlib.atan 1.))))
 
+(** val den_mix :
+    matrix -> matrix -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
+    matrix **)
+
+let den_mix den1 den2 p1 p2 =
+  mplus
+    (msmul (cdiv (rTC p1) (Complex.add (rTC p1) (rTC p2))) den1)
+    (msmul (cdiv (rTC p2) (Complex.add (rTC p1) (rTC p2))) den2)
+
 (** val den_prob : matrix -> matrix -> Complex.t **)
 
 let den_prob den proj = mtrace (mmult den proj)
@@ -1359,6 +1380,29 @@ let manyWorld_init num_q _ =
     w_num_qubits = num_q;
   }
   :: []
+
+(** val merge_manyworld_suppl : world -> manyWorld -> manyWorld **)
+
+let rec merge_manyworld_suppl w = function
+  | [] -> w :: []
+  | y :: l ->
+      let s = y.w_num_qubits = w.w_num_qubits in
+      if s then
+        let b = tmb_equal y.w_cstate w.w_cstate y.w_num_qubits in
+        if b then
+          {
+            w_qstate = den_mix y.w_qstate w.w_qstate y.w_prob w.w_prob;
+            w_cstate = y.w_cstate;
+            w_prob = RbaseSymbolsImpl.coq_Rplus y.w_prob w.w_prob;
+            w_num_qubits = y.w_num_qubits;
+          }
+          :: l
+        else y :: merge_manyworld_suppl w l
+      else y :: merge_manyworld_suppl w l
+
+(** val merge_manyworld : manyWorld -> manyWorld **)
+
+let merge_manyworld = function [] -> [] | y :: l -> merge_manyworld_suppl y l
 
 (** val execute_rotate_instr :
     RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
@@ -1586,7 +1630,8 @@ let rec execute_suppl ir instr worlds =
           execute_rotate_instr theta phi lambda target worlds
       | CnotInstr (control, target) -> execute_cnot_instr control target worlds
       | SwapInstr (q1, q2) -> execute_swap_instr q1 q2 worlds
-      | MeasureInstr (qbit, cbit) -> execute_measure_instr qbit cbit worlds
+      | MeasureInstr (qbit, cbit) ->
+          merge_manyworld (execute_measure_instr qbit cbit worlds)
       | SeqInstr (i1, i2) -> execute_suppl ir' i2 (execute_suppl ir' i1 worlds)
       | IfInstr (cbit, cond, subinstr) ->
           concat
