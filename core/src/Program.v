@@ -600,14 +600,12 @@ Proof.
 Qed.
 
 
-Theorem Execute_quantum_state_density: forall (program: InlinedProgram), exists (n: nat),
-  Forall (fun world => DensityMatrix n (W_qstate world)) (Execute program).
+Theorem Execute_quantum_state_density: forall (program: InlinedProgram),
+  Forall (fun world => DensityMatrix program.(IP_num_qbits) (W_qstate world)) (Execute program).
 Proof.
   intros.
-  destruct program.
   unfold Execute.
   simpl.
-  exists IP_num_qbits0.
   apply Execute_suppl_quantum_state_density.
   unfold ManyWorld_init.
   apply Forall_cons.

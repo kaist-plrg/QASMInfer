@@ -25,9 +25,9 @@ Theorem all_states_Hermitian: forall program world,
 Proof.
   intro program.
   apply Forall_forall.
-  apply Forall_impl with (P := (fun world => exists n, DensityMatrix n (W_qstate world))).
-  intros world [n H].
-  apply DensityMatrix_Hermitian with (n := n).
+  apply Forall_impl with (P := (fun world => DensityMatrix program.(IP_num_qbits) (W_qstate world))).
+  intros world H.
+  apply DensityMatrix_Hermitian with (n := program.(IP_num_qbits)).
   apply H.
   apply Execute_quantum_state_density.
 Qed.
@@ -39,9 +39,9 @@ Theorem all_states_positive: forall program world,
 Proof.
   intro program.
   apply Forall_forall.
-  apply Forall_impl with (P := (fun world => exists n, DensityMatrix n (W_qstate world))).
-  intros world [n H].
-  apply DensityMatrix_positive with (n := n).
+  apply Forall_impl with (P := (fun world => DensityMatrix program.(IP_num_qbits) (W_qstate world))).
+  intros world H.
+  apply DensityMatrix_positive with (n := program.(IP_num_qbits)).
   apply H.
   apply Execute_quantum_state_density.
 Qed.
@@ -53,9 +53,9 @@ Theorem all_states_trace_1: forall program world,
 Proof.
   intro program.
   apply Forall_forall.
-  apply Forall_impl with (P := (fun world => exists n, DensityMatrix n (W_qstate world))).
-  intros world [n H].
-  apply DensityMatrix_normalized with (n := n).
+  apply Forall_impl with (P := (fun world => DensityMatrix program.(IP_num_qbits) (W_qstate world))).
+  intros world H.
+  apply DensityMatrix_normalized with (n := program.(IP_num_qbits)).
   apply H.
   apply Execute_quantum_state_density.
 Qed.
