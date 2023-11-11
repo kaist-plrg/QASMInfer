@@ -15,6 +15,21 @@ Open Scope T_scope.
 
 Definition Qop_Hermitian (m: Matrix) := Mconjtrans m = m.
 
+Lemma Mplus_Hermitian: forall (m1 m2: Matrix) (H: _),
+  Qop_Hermitian m1 -> Qop_Hermitian m2 -> Qop_Hermitian (Mplus m1 m2 H).
+Proof.
+  intros.
+  unfold Qop_Hermitian in *.
+  erewrite Mconjtrans_plus.
+  unfold Mplus in *.
+  rewrite H0.
+  rewrite H1.
+  reflexivity.
+  Unshelve.
+  simpl_bits.
+  apply H.
+Qed.
+
 Lemma Msmul_Hermitian: forall (m: Matrix) (c: C),
   Qop_Hermitian m -> Cimag c = R0 -> Qop_Hermitian (Msmul c m).
 Proof.

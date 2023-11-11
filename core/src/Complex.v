@@ -146,6 +146,24 @@ Proof.
   nra.
 Qed.
 
+Lemma Cimag_0_plus: forall (x y: C), Cimag x = 0 -> Cimag y = 0 -> Cimag (x + y) = 0.
+Proof.
+  intros [r1 i1] [r2 i2].
+  unfold Cimag.
+  simpl.
+  intros.
+  lra.
+Qed.
+
+Lemma Cimag_0_mult: forall (x y: C), Cimag x = 0 -> Cimag y = 0 -> Cimag (x * y) = 0.
+Proof.
+  intros [r1 i1] [r2 i2].
+  unfold Cimag.
+  simpl.
+  intros.
+  nra.
+Qed.
+
 Definition Cconj (x : C) : C := (fst x, (- snd x)%R).
 
 Lemma Cconj_plus: forall (x1 x2: C), Cconj (x1 + x2) = Cconj x1 + Cconj x2.

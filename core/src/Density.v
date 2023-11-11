@@ -373,6 +373,25 @@ Proof.
 Qed.
 
 (* ============================================================================================== *)
+(* mix two density matrices ===================================================================== *)
+
+Definition Den_mix (den1 den2: Matrix) (p1 p2: R) (Hbits: Mbits den1 = Mbits den2): Matrix.
+Proof.
+  refine(Mplus (Msmul (p1 / (p1 + p2)) den1) (Msmul (p2 / (p1 + p2)) den2) _).
+  simpl_bits.
+  exact Hbits.
+Defined.
+
+Lemma Den_mix_bits: forall (den1 den2: Matrix) (p1 p2: R) (Hbits: Mbits den1 = Mbits den2),
+  MMeqbits (Den_mix den1 den2 p1 p2 Hbits) den1.
+Proof.
+  intros.
+  unfold Den_mix, Msmul, Muop.
+  simpl_bits.
+  reflexivity.
+Qed.
+
+(* ============================================================================================== *)
 (* probability ================================================================================== *)
 
 Definition Den_prob (den: Matrix) (proj: Matrix) (H: MMeqbits den proj): C :=
@@ -794,7 +813,11 @@ Inductive DensityMatrix: nat -> Matrix -> Prop :=
     DensityMatrix n (Den_measure den proj Hd)
 | DensityMatrix_reset (n: nat) (den: Matrix) (t: nat) (Ht: t < Mbits den):
     DensityMatrix n den ->
-    DensityMatrix n (Den_reset den t Ht).
+    DensityMatrix n (Den_reset den t Ht)
+| DensityMatrix_mix (den1 den2: Matrix) (n: nat) (p1 p2: R) (H1: _):
+    (p1 >= 0)%R -> (p2 >= 0)%R ->
+    DensityMatrix n den1 -> DensityMatrix n den2 ->
+    DensityMatrix n (Den_mix den1 den2 p1 p2 H1).
 
 (* ============================================================================================== *)
 (* density matrices are Hermitian =============================================================== *)
@@ -917,6 +940,29 @@ Proof.
       unfold Den_reset, Mplus, Mmult; simpl.
       rewrite Hden.
       reflexivity.
+  - destruct IHDensityMatrix1 as [IH11 IH12].
+    destruct IHDensityMatrix2 as [IH21 IH22].
+    unfold Den_mix, Den_prob in *.
+    split.
+    + intros.
+      erewrite Mmult_dist_plus_l.
+      rewrite Mtrace_Mplus_dist.
+      repeat erewrite Mmult_smul_comm_l.
+      repeat rewrite Mtrace_Msmul.
+      apply Cimag_0_plus.
+      all: repeat apply Cimag_0_mult.
+      all: unfold Cimag, RTC in *; simpl.
+      all: try nra; try auto.
+      Unshelve.
+      all: simpl_bits; try auto.
+      all: rewrite <- Hd.
+      all: unfold Msmul, Muop; simpl; auto.
+    + unfold Den_mix.
+      apply Mplus_Hermitian.
+      all: apply Msmul_Hermitian; auto.
+      all: repeat apply Cimag_0_mult.
+      all: unfold Cimag, RTC in *; simpl.
+      all: try nra; try auto.
 Qed.
 
 Lemma DensityMatrix_prob_real: forall (n: nat) (den proj: Matrix),
