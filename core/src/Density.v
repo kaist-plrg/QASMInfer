@@ -1237,6 +1237,21 @@ Proof.
   - unfold Den_normalized.
     rewrite Den_reset_trace.
     all: auto.
+  - unfold Den_normalized, Den_mix in *.
+    rewrite Mtrace_Mplus_dist.
+    repeat rewrite Mtrace_Msmul.
+    rewrite IHDensityMatrix1.
+    rewrite IHDensityMatrix2.
+    replace (p1 / (p1 + p2) * 1) with (p1 / (p1 + p2)) by lca.
+    replace (p2 / (p1 + p2) * 1) with (p2 / (p1 + p2)) by lca.
+    unfold Cdiv.
+    rewrite <- Cmult_plus_distr_l.
+    rewrite Cmult_comm.
+    rewrite Cinv_mult.
+    lca.
+    unfold RTC, Cplus, not; simpl; intros.
+    inversion H4.
+    lra.
 Qed.
 
 (* ============================================================================================== *)
