@@ -373,9 +373,9 @@ Definition Execute_and_calculate_prob (program: InlinedProgram): total_map R :=
 (* Proof about quantum states =================================================================== *)
 
 Lemma Execute_rotate_instr_quantum_state_density:
-  forall (theta phi lambda: R) (target: nat) (worlds: ManyWorld),
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world))
+  forall (theta phi lambda: R) (n target: nat) (worlds: ManyWorld),
+  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => DensityMatrix n (W_qstate world))
     (Execute_rotate_instr theta phi lambda target worlds).
 Proof.
   intros.
@@ -384,12 +384,11 @@ Proof.
     apply H.
   - destruct a.
     apply Forall_cons_iff in H.
-    destruct H as [ [n H] Ht].
+    destruct H as [H Ht].
     simpl in *.
     destruct (lt_dec target (W_num_qubits0)).
     + apply Forall_cons.
       simpl.
-      exists n.
       apply DensityMatrix_unitary.
       apply H.
       apply Qop_sq_unitary.
@@ -398,16 +397,15 @@ Proof.
       apply Ht.
     + apply Forall_cons.
       simpl.
-      exists n.
       apply H.
       apply IHworlds.
       apply Ht.
 Qed.
 
 Lemma Execute_cnot_instr_quantum_state_density:
-  forall (control target: nat) (worlds: ManyWorld),
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world))
+  forall (n control target: nat) (worlds: ManyWorld),
+  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => DensityMatrix n (W_qstate world))
     (Execute_cnot_instr control target worlds).
 Proof.
   intros.
@@ -416,28 +414,26 @@ Proof.
     apply H.
   - destruct a.
     apply Forall_cons_iff in H.
-    destruct H as [ [n H] Ht].
+    destruct H as [H Ht].
     simpl in *.
     destruct (ge_dec W_num_qubits0 2), (lt_dec control W_num_qubits0), (lt_dec target W_num_qubits0).
     { apply Forall_cons.
       simpl.
-      exists n.
       apply DensityMatrix_unitary.
       apply H.
       apply Qop_cnot_unitary.
       apply IHworlds.
       apply Ht. }
       all: apply Forall_cons.
-      all: try exists n; simpl.
-      all: try apply H.
+      all: simpl; try apply H.
       all: apply IHworlds.
       all: apply Ht.
 Qed.
 
 Lemma Execute_swap_instr_quantum_state_density:
-  forall (q1 q2: nat) (worlds: ManyWorld),
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world))
+  forall (n q1 q2: nat) (worlds: ManyWorld),
+  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => DensityMatrix n (W_qstate world))
     (Execute_swap_instr q1 q2 worlds).
 Proof.
   intros.
@@ -446,28 +442,26 @@ Proof.
     apply H.
   - destruct a.
     apply Forall_cons_iff in H.
-    destruct H as [ [n H] Ht].
+    destruct H as [H Ht].
     simpl in *.
     destruct (lt_dec q1 W_num_qubits0), (lt_dec q2 W_num_qubits0).
     { apply Forall_cons.
       simpl.
-      exists n.
       apply DensityMatrix_unitary.
       apply H.
       apply Qop_swap_unitary.
       apply IHworlds.
       apply Ht. }
       all: apply Forall_cons.
-      all: try exists n; simpl.
-      all: try apply H.
+      all: simpl; try apply H.
       all: apply IHworlds.
       all: apply Ht.
 Qed.
 
 Lemma Execute_measure_instr_quantum_state_density:
-  forall (qbit cbit: nat) (worlds: ManyWorld),
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world))
+  forall (n qbit cbit: nat) (worlds: ManyWorld),
+  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => DensityMatrix n (W_qstate world))
     (Execute_measure_instr qbit cbit worlds).
 Proof.
   intros.
@@ -476,15 +470,14 @@ Proof.
     apply H.
   - destruct a.
     apply Forall_cons_iff in H.
-    destruct H as [ [n H] Ht].
+    destruct H as [H Ht].
     simpl in *.
     specialize DensityMatrix_prob_pos as Hpos.
     destruct (lt_dec qbit W_num_qubits0).
     + destruct
       (Rgt_dec (Creal (Den_prob_0 W_qstate0 W_num_qubits0 qbit l W_qstate_valid0)) 0),
       (Rgt_dec (Creal (Den_prob_1 W_qstate0 W_num_qubits0 qbit l W_qstate_valid0)) 0).
-      all: try repeat apply Forall_cons.
-      all: try exists n; simpl.
+      all: try repeat apply Forall_cons; simpl.
       all: unfold Den_measure_0, Den_measure_1 in *.
       all: try apply DensityMatrix_measure.
       all: unfold Den_prob_0, Den_prob_1, Den_prob, Mmult in *.
@@ -502,9 +495,9 @@ Proof.
 Qed.
 
 Lemma Execute_reset_instr_quantum_state_density:
-  forall (target: nat) (worlds: ManyWorld),
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world))
+  forall (n target: nat) (worlds: ManyWorld),
+  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => DensityMatrix n (W_qstate world))
     (Execute_reset_instr target worlds).
 Proof.
   intros.
@@ -513,19 +506,17 @@ Proof.
     apply H.
   - destruct a.
     apply Forall_cons_iff in H.
-    destruct H as [ [n H] Ht].
+    destruct H as [H Ht].
     simpl in *.
     destruct (lt_dec target (W_num_qubits0)).
     + apply Forall_cons.
       simpl.
-      exists n.
       apply DensityMatrix_reset.
       apply H.
       apply IHworlds.
       apply Ht.
     + apply Forall_cons.
       simpl.
-      exists n.
       apply H.
       apply IHworlds.
       apply Ht.
@@ -554,11 +545,11 @@ Arguments Execute_swap_instr _ _ _ : simpl never.
 Arguments Execute_measure_instr _ _ _ : simpl never.
 
 Lemma Execute_suppl_quantum_state_density:
-  forall (ir: nat) (instr: Instruction) (worlds: ManyWorld),
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) (Execute_suppl ir instr worlds).
+  forall (n ir: nat) (instr: Instruction) (worlds: ManyWorld),
+  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
+  Forall (fun world => DensityMatrix n (W_qstate world)) (Execute_suppl ir instr worlds).
 Proof.
-  intros ir instr.
+  intros n ir instr.
   revert ir.
   induction instr.
   all: intros; destruct ir; [simpl; apply H|].
@@ -586,7 +577,7 @@ Proof.
     induction worlds.
     + apply Forall_nil.
     + apply Forall_cons.
-      * destruct (eqb (W_cstate a n) b).
+      * destruct (eqb (W_cstate a n0) b).
         { apply IHinstr.
           apply Forall_cons_iff in H.
           destruct H.
@@ -608,18 +599,18 @@ Proof.
 Qed.
 
 
-Theorem Execute_quantum_state_density: forall (program: InlinedProgram),
-  Forall (fun world => exists n, DensityMatrix n (W_qstate world)) (Execute program).
+Theorem Execute_quantum_state_density: forall (program: InlinedProgram), exists (n: nat),
+  Forall (fun world => DensityMatrix n (W_qstate world)) (Execute program).
 Proof.
   intros.
   destruct program.
   unfold Execute.
   simpl.
+  exists IP_num_qbits0.
   apply Execute_suppl_quantum_state_density.
   unfold ManyWorld_init.
   apply Forall_cons.
   simpl.
-  exists IP_num_qbits0.
   apply Den_0_init_DensityMatrix.
   apply Forall_nil.
 Qed.
