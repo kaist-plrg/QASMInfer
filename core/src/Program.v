@@ -324,7 +324,7 @@ Fixpoint Execute_suppl (ir: nat) (instr: Instruction) (worlds: ManyWorld): ManyW
     | RotateInstr theta phi lambda target => Execute_rotate_instr theta phi lambda target worlds
     | CnotInstr control target            => Execute_cnot_instr control target worlds
     | SwapInstr q1 q2                     => Execute_swap_instr q1 q2 worlds
-    | MeasureInstr qbit cbit              => Execute_measure_instr qbit cbit worlds
+    | MeasureInstr qbit cbit              => Merge_manyworld (Execute_measure_instr qbit cbit worlds)
     | SeqInstr i1 i2                      => Execute_suppl ir' i2 (Execute_suppl ir' i1 worlds)
     | IfInstr cbit cond subinstr          => (
         concat (map (fun w =>
@@ -565,6 +565,7 @@ Proof.
     apply Execute_swap_instr_quantum_state_density.
     apply H.
   - simpl.
+    apply Merge_manyworld_quantum_state_density.
     apply Execute_measure_instr_quantum_state_density.
     apply H.
   - simpl.
