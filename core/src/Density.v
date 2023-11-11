@@ -815,7 +815,7 @@ Inductive DensityMatrix: nat -> Matrix -> Prop :=
     DensityMatrix n den ->
     DensityMatrix n (Den_reset den t Ht)
 | DensityMatrix_mix (den1 den2: Matrix) (n: nat) (p1 p2: R) (H1: _):
-    (p1 >= 0)%R -> (p2 >= 0)%R ->
+    (p1 > 0)%R -> (p2 > 0)%R ->
     DensityMatrix n den1 -> DensityMatrix n den2 ->
     DensityMatrix n (Den_mix den1 den2 p1 p2 H1).
 
@@ -1152,6 +1152,36 @@ Proof.
       apply Hposm.
       all: repeat simpl_bits; try lia; auto.
     + exact Hres.
+  - destruct IHDensityMatrix1 as [IH11 IH12].
+    destruct IHDensityMatrix2 as [IH21 IH22].
+    unfold Den_mix, Den_prob in *.
+    split.
+    + intros.
+      erewrite Mmult_dist_plus_l.
+      rewrite Mtrace_Mplus_dist.
+      repeat erewrite Mmult_smul_comm_l.
+      repeat rewrite Mtrace_Msmul.
+      apply Cge_0_plus.
+      all: repeat apply Cge_0_mult.
+      all: unfold Cge_0, RTC in *; simpl.
+      all: try nra; try auto; split.
+      all: try nra.
+      all: assert (/((p1 + p2) * ((p1 + p2) * 1) + (0 + 0) * ((0 + 0) * 1)) > 0)%R as Hinv by (apply Rinv_0_lt_compat; nra).
+      all: nra.
+      Unshelve.
+      all: simpl_bits; try auto.
+      all: rewrite <- Hd.
+      all: unfold Msmul, Muop; simpl; auto.
+    +
+      assert (((p1 + p2) / ((p1 + p2) * ((p1 + p2) * 1) + (0 + 0) * ((0 + 0) * 1))) > 0)%R.
+      { assert (((p1 + p2) * ((p1 + p2) * 1) + (0 + 0) * ((0 + 0) * 1)) > 0)%R as Hinv by nra.
+        apply Rinv_0_lt_compat in Hinv.
+        nra.
+      }
+      apply Qop_positive_plus.
+      all: apply Qop_positive_smult.
+      all: auto.
+      all: unfold Cge_0, RTC in *; split; simpl; try nra.
 Qed.
 
 
