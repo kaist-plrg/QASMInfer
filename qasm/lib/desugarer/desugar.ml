@@ -398,9 +398,9 @@ let rec desugar_qasm_program (creg_size_map : int IdMap.t)
           desugar_qasm_program creg_size_map assignment_q_rev assignment_c_rev
             tail )
 
-(********************************)
-(* 4. desugar reset instruction *)
-(********************************)
+(********************************************)
+(* 4. DEPRECATED: desugar reset instruction *)
+(********************************************)
 
 let rec desugar_qcir_program (qc_ir_program : qc_ir) (acc : int) :
     instruction * int =
