@@ -761,8 +761,7 @@ let dot_product_suppl r c idx = func_sum (fun i -> Complex.mul (r i) (c i)) idx
 
 (** val muop : (Complex.t -> Complex.t) -> matrix -> matrix **)
 
-let muop uop m =
-  { mbits = m.mbits; minner = memoize2 (fun i j -> uop (m.minner i j)) }
+let muop uop m = { mbits = m.mbits; minner = (fun i j -> uop (m.minner i j)) }
 
 (** val msmul : Complex.t -> matrix -> matrix **)
 
@@ -774,7 +773,7 @@ let msmul s m = muop (Complex.mul s) m
 let mbop_unsafe bop m1 m2 =
   {
     mbits = m1.mbits;
-    minner = memoize2 (fun i j -> bop (m1.minner i j) (m2.minner i j));
+    minner = (fun i j -> bop (m1.minner i j) (m2.minner i j));
   }
 
 (** val mplus : matrix -> matrix -> matrix **)
@@ -799,10 +798,7 @@ let mmult = mmult_unsafe
 (** val mconjtrans : matrix -> matrix **)
 
 let mconjtrans m =
-  {
-    mbits = m.mbits;
-    minner = memoize2 (fun i j -> Complex.conj (m.minner j i));
-  }
+  { mbits = m.mbits; minner = (fun i j -> Complex.conj (m.minner j i)) }
 
 (** val mtrace : matrix -> Complex.t **)
 
@@ -814,12 +810,12 @@ let eye bits =
   {
     mbits = bits;
     minner =
-      memoize2 (fun i j ->
-          if i = j then
-            if Nat.ltb i ((fun n -> Int.shift_left 1 n) bits) then
-              nTC (Stdlib.Int.succ 0)
-            else nTC 0
-          else nTC 0);
+      (fun i j ->
+        if i = j then
+          if Nat.ltb i ((fun n -> Int.shift_left 1 n) bits) then
+            nTC (Stdlib.Int.succ 0)
+          else nTC 0
+        else nTC 0);
   }
 
 (** val tMproduct : matrix -> matrix -> matrix **)
@@ -828,10 +824,10 @@ let tMproduct m1 m2 =
   {
     mbits = m1.mbits + m2.mbits;
     minner =
-      memoize2 (fun i j ->
-          Complex.mul
-            (m1.minner (i / msize m2) (j / msize m2))
-            (m2.minner (i mod msize m2) (j mod msize m2)));
+      (fun i j ->
+        Complex.mul
+          (m1.minner (i / msize m2) (j / msize m2))
+          (m2.minner (i mod msize m2) (j mod msize m2)));
   }
 
 (** val qop_ry : RbaseSymbolsImpl.coq_R -> matrix **)
@@ -840,44 +836,43 @@ let qop_ry theta =
   {
     mbits = Stdlib.Int.succ 0;
     minner =
-      memoize2 (fun i j ->
-          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-            (fun _ ->
-              (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                (fun _ ->
-                  rTC
-                    (Stdlib.cos
-                       (rdiv theta (float_of_int ((fun p -> 2 * p) 1)))))
-                (fun n ->
-                  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                    (fun _ ->
-                      rTC
-                        (RbaseSymbolsImpl.coq_Ropp
-                           (Stdlib.sin
-                              (rdiv theta (float_of_int ((fun p -> 2 * p) 1))))))
-                    (fun _ -> rTC (float_of_int 0))
-                    n)
-                j)
-            (fun n ->
-              (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                (fun _ ->
-                  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                    (fun _ ->
-                      rTC
-                        (Stdlib.sin
-                           (rdiv theta (float_of_int ((fun p -> 2 * p) 1)))))
-                    (fun n0 ->
-                      (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                        (fun _ ->
-                          rTC
-                            (Stdlib.cos
-                               (rdiv theta (float_of_int ((fun p -> 2 * p) 1)))))
-                        (fun _ -> rTC (float_of_int 0))
-                        n0)
-                    j)
-                (fun _ -> rTC (float_of_int 0))
-                n)
-            i);
+      (fun i j ->
+        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+          (fun _ ->
+            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+              (fun _ ->
+                rTC
+                  (Stdlib.cos (rdiv theta (float_of_int ((fun p -> 2 * p) 1)))))
+              (fun n ->
+                (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                  (fun _ ->
+                    rTC
+                      (RbaseSymbolsImpl.coq_Ropp
+                         (Stdlib.sin
+                            (rdiv theta (float_of_int ((fun p -> 2 * p) 1))))))
+                  (fun _ -> rTC (float_of_int 0))
+                  n)
+              j)
+          (fun n ->
+            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+              (fun _ ->
+                (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                  (fun _ ->
+                    rTC
+                      (Stdlib.sin
+                         (rdiv theta (float_of_int ((fun p -> 2 * p) 1)))))
+                  (fun n0 ->
+                    (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                      (fun _ ->
+                        rTC
+                          (Stdlib.cos
+                             (rdiv theta (float_of_int ((fun p -> 2 * p) 1)))))
+                      (fun _ -> rTC (float_of_int 0))
+                      n0)
+                  j)
+              (fun _ -> rTC (float_of_int 0))
+              n)
+          i);
   }
 
 (** val qop_rz : RbaseSymbolsImpl.coq_R -> matrix **)
@@ -886,22 +881,22 @@ let qop_rz theta =
   {
     mbits = Stdlib.Int.succ 0;
     minner =
-      memoize2 (fun i j ->
-          if i = 0 then
-            if j = 0 then
-              Complex.exp
-                ((fun re im -> { re; im })
-                   (float_of_int 0)
-                   (rdiv
-                      (RbaseSymbolsImpl.coq_Ropp theta)
-                      (float_of_int ((fun p -> 2 * p) 1))))
-            else rTC (float_of_int 0)
-          else if j = 0 then rTC (float_of_int 0)
-          else
+      (fun i j ->
+        if i = 0 then
+          if j = 0 then
             Complex.exp
               ((fun re im -> { re; im })
                  (float_of_int 0)
-                 (rdiv theta (float_of_int ((fun p -> 2 * p) 1)))));
+                 (rdiv
+                    (RbaseSymbolsImpl.coq_Ropp theta)
+                    (float_of_int ((fun p -> 2 * p) 1))))
+          else rTC (float_of_int 0)
+        else if j = 0 then rTC (float_of_int 0)
+        else
+          Complex.exp
+            ((fun re im -> { re; im })
+               (float_of_int 0)
+               (rdiv theta (float_of_int ((fun p -> 2 * p) 1)))));
   }
 
 (** val qop_rot :
@@ -922,15 +917,15 @@ let qproj0 =
   {
     mbits = Stdlib.Int.succ 0;
     minner =
-      memoize2 (fun i j ->
-          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-            (fun _ ->
-              (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                (fun _ -> nTC (Stdlib.Int.succ 0))
-                (fun _ -> nTC 0)
-                j)
-            (fun _ -> nTC 0)
-            i);
+      (fun i j ->
+        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+          (fun _ ->
+            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+              (fun _ -> nTC (Stdlib.Int.succ 0))
+              (fun _ -> nTC 0)
+              j)
+          (fun _ -> nTC 0)
+          i);
   }
 
 (** val qproj1 : matrix **)
@@ -939,23 +934,23 @@ let qproj1 =
   {
     mbits = Stdlib.Int.succ 0;
     minner =
-      memoize2 (fun i j ->
-          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-            (fun _ -> nTC 0)
-            (fun n ->
-              (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                (fun _ ->
-                  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                    (fun _ -> nTC 0)
-                    (fun n0 ->
-                      (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                        (fun _ -> nTC (Stdlib.Int.succ 0))
-                        (fun _ -> nTC 0)
-                        n0)
-                    j)
-                (fun _ -> nTC 0)
-                n)
-            i);
+      (fun i j ->
+        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+          (fun _ -> nTC 0)
+          (fun n ->
+            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+              (fun _ ->
+                (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                  (fun _ -> nTC 0)
+                  (fun n0 ->
+                    (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                      (fun _ -> nTC (Stdlib.Int.succ 0))
+                      (fun _ -> nTC 0)
+                      n0)
+                  j)
+              (fun _ -> nTC 0)
+              n)
+          i);
   }
 
 (** val qproj0_n_t : int -> int -> matrix **)
@@ -972,66 +967,65 @@ let qop_swap2 =
   {
     mbits = Stdlib.Int.succ (Stdlib.Int.succ 0);
     minner =
-      memoize2 (fun i j ->
-          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-            (fun _ ->
-              (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                (fun _ -> nTC (Stdlib.Int.succ 0))
-                (fun _ -> nTC 0)
-                j)
-            (fun n ->
-              (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                (fun _ ->
-                  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                    (fun _ -> nTC 0)
-                    (fun n0 ->
-                      (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                        (fun _ -> nTC 0)
-                        (fun n1 ->
-                          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                            (fun _ -> nTC (Stdlib.Int.succ 0))
-                            (fun _ -> nTC 0)
-                            n1)
-                        n0)
-                    j)
-                (fun n0 ->
-                  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                    (fun _ ->
-                      (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                        (fun _ -> nTC 0)
-                        (fun n1 ->
-                          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                            (fun _ -> nTC (Stdlib.Int.succ 0))
-                            (fun _ -> nTC 0)
-                            n1)
-                        j)
-                    (fun n1 ->
-                      (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                        (fun _ ->
-                          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                            (fun _ -> nTC 0)
-                            (fun n2 ->
-                              (fun fO fS n ->
-                                if n = 0 then fO () else fS (n - 1))
-                                (fun _ -> nTC 0)
-                                (fun n3 ->
-                                  (fun fO fS n ->
-                                    if n = 0 then fO () else fS (n - 1))
-                                    (fun _ -> nTC 0)
-                                    (fun n4 ->
-                                      (fun fO fS n ->
-                                        if n = 0 then fO () else fS (n - 1))
-                                        (fun _ -> nTC (Stdlib.Int.succ 0))
-                                        (fun _ -> nTC 0)
-                                        n4)
-                                    n3)
-                                n2)
-                            j)
-                        (fun _ -> nTC 0)
-                        n1)
-                    n0)
-                n)
-            i);
+      (fun i j ->
+        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+          (fun _ ->
+            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+              (fun _ -> nTC (Stdlib.Int.succ 0))
+              (fun _ -> nTC 0)
+              j)
+          (fun n ->
+            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+              (fun _ ->
+                (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                  (fun _ -> nTC 0)
+                  (fun n0 ->
+                    (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                      (fun _ -> nTC 0)
+                      (fun n1 ->
+                        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                          (fun _ -> nTC (Stdlib.Int.succ 0))
+                          (fun _ -> nTC 0)
+                          n1)
+                      n0)
+                  j)
+              (fun n0 ->
+                (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                  (fun _ ->
+                    (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                      (fun _ -> nTC 0)
+                      (fun n1 ->
+                        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                          (fun _ -> nTC (Stdlib.Int.succ 0))
+                          (fun _ -> nTC 0)
+                          n1)
+                      j)
+                  (fun n1 ->
+                    (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                      (fun _ ->
+                        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                          (fun _ -> nTC 0)
+                          (fun n2 ->
+                            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                              (fun _ -> nTC 0)
+                              (fun n3 ->
+                                (fun fO fS n ->
+                                  if n = 0 then fO () else fS (n - 1))
+                                  (fun _ -> nTC 0)
+                                  (fun n4 ->
+                                    (fun fO fS n ->
+                                      if n = 0 then fO () else fS (n - 1))
+                                      (fun _ -> nTC (Stdlib.Int.succ 0))
+                                      (fun _ -> nTC 0)
+                                      n4)
+                                  n3)
+                              n2)
+                          j)
+                      (fun _ -> nTC 0)
+                      n1)
+                  n0)
+              n)
+          i);
   }
 
 (** val qop_swap1n_suppl : int -> matrix **)
@@ -1086,67 +1080,65 @@ let qop_cnot_ct =
   {
     mbits = Stdlib.Int.succ (Stdlib.Int.succ 0);
     minner =
-      memoize2 (fun i j ->
-          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-            (fun _ ->
-              (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                (fun _ -> nTC (Stdlib.Int.succ 0))
-                (fun _ -> nTC 0)
-                j)
-            (fun n ->
-              (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                (fun _ ->
-                  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                    (fun _ -> nTC 0)
-                    (fun n0 ->
-                      (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                        (fun _ -> nTC (Stdlib.Int.succ 0))
-                        (fun _ -> nTC 0)
-                        n0)
-                    j)
-                (fun n0 ->
-                  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                    (fun _ ->
-                      (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                        (fun _ -> nTC 0)
-                        (fun n1 ->
-                          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                            (fun _ -> nTC 0)
-                            (fun n2 ->
-                              (fun fO fS n ->
-                                if n = 0 then fO () else fS (n - 1))
-                                (fun _ -> nTC 0)
-                                (fun n3 ->
-                                  (fun fO fS n ->
-                                    if n = 0 then fO () else fS (n - 1))
-                                    (fun _ -> nTC (Stdlib.Int.succ 0))
-                                    (fun _ -> nTC 0)
-                                    n3)
-                                n2)
-                            n1)
-                        j)
-                    (fun n1 ->
-                      (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                        (fun _ ->
-                          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                            (fun _ -> nTC 0)
-                            (fun n2 ->
-                              (fun fO fS n ->
-                                if n = 0 then fO () else fS (n - 1))
-                                (fun _ -> nTC 0)
-                                (fun n3 ->
-                                  (fun fO fS n ->
-                                    if n = 0 then fO () else fS (n - 1))
-                                    (fun _ -> nTC (Stdlib.Int.succ 0))
-                                    (fun _ -> nTC 0)
-                                    n3)
-                                n2)
-                            j)
-                        (fun _ -> nTC 0)
-                        n1)
-                    n0)
-                n)
-            i);
+      (fun i j ->
+        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+          (fun _ ->
+            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+              (fun _ -> nTC (Stdlib.Int.succ 0))
+              (fun _ -> nTC 0)
+              j)
+          (fun n ->
+            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+              (fun _ ->
+                (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                  (fun _ -> nTC 0)
+                  (fun n0 ->
+                    (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                      (fun _ -> nTC (Stdlib.Int.succ 0))
+                      (fun _ -> nTC 0)
+                      n0)
+                  j)
+              (fun n0 ->
+                (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                  (fun _ ->
+                    (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                      (fun _ -> nTC 0)
+                      (fun n1 ->
+                        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                          (fun _ -> nTC 0)
+                          (fun n2 ->
+                            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                              (fun _ -> nTC 0)
+                              (fun n3 ->
+                                (fun fO fS n ->
+                                  if n = 0 then fO () else fS (n - 1))
+                                  (fun _ -> nTC (Stdlib.Int.succ 0))
+                                  (fun _ -> nTC 0)
+                                  n3)
+                              n2)
+                          n1)
+                      j)
+                  (fun n1 ->
+                    (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                      (fun _ ->
+                        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                          (fun _ -> nTC 0)
+                          (fun n2 ->
+                            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                              (fun _ -> nTC 0)
+                              (fun n3 ->
+                                (fun fO fS n ->
+                                  if n = 0 then fO () else fS (n - 1))
+                                  (fun _ -> nTC (Stdlib.Int.succ 0))
+                                  (fun _ -> nTC 0)
+                                  n3)
+                              n2)
+                          j)
+                      (fun _ -> nTC 0)
+                      n1)
+                  n0)
+              n)
+          i);
   }
 
 (** val qop_cnot_tc : matrix **)
@@ -1155,66 +1147,63 @@ let qop_cnot_tc =
   {
     mbits = Stdlib.Int.succ (Stdlib.Int.succ 0);
     minner =
-      memoize2 (fun i j ->
-          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-            (fun _ ->
-              (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                (fun _ -> nTC (Stdlib.Int.succ 0))
-                (fun _ -> nTC 0)
-                j)
-            (fun n ->
-              (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                (fun _ ->
-                  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                    (fun _ -> nTC 0)
-                    (fun n0 ->
-                      (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                        (fun _ -> nTC 0)
-                        (fun n1 ->
-                          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                            (fun _ -> nTC 0)
-                            (fun n2 ->
-                              (fun fO fS n ->
-                                if n = 0 then fO () else fS (n - 1))
-                                (fun _ -> nTC (Stdlib.Int.succ 0))
-                                (fun _ -> nTC 0)
-                                n2)
-                            n1)
-                        n0)
-                    j)
-                (fun n0 ->
-                  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                    (fun _ ->
-                      (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                        (fun _ -> nTC 0)
-                        (fun n1 ->
-                          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                            (fun _ -> nTC 0)
-                            (fun n2 ->
-                              (fun fO fS n ->
-                                if n = 0 then fO () else fS (n - 1))
-                                (fun _ -> nTC (Stdlib.Int.succ 0))
-                                (fun _ -> nTC 0)
-                                n2)
-                            n1)
-                        j)
-                    (fun n1 ->
-                      (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                        (fun _ ->
-                          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                            (fun _ -> nTC 0)
-                            (fun n2 ->
-                              (fun fO fS n ->
-                                if n = 0 then fO () else fS (n - 1))
-                                (fun _ -> nTC (Stdlib.Int.succ 0))
-                                (fun _ -> nTC 0)
-                                n2)
-                            j)
-                        (fun _ -> nTC 0)
-                        n1)
-                    n0)
-                n)
-            i);
+      (fun i j ->
+        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+          (fun _ ->
+            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+              (fun _ -> nTC (Stdlib.Int.succ 0))
+              (fun _ -> nTC 0)
+              j)
+          (fun n ->
+            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+              (fun _ ->
+                (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                  (fun _ -> nTC 0)
+                  (fun n0 ->
+                    (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                      (fun _ -> nTC 0)
+                      (fun n1 ->
+                        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                          (fun _ -> nTC 0)
+                          (fun n2 ->
+                            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                              (fun _ -> nTC (Stdlib.Int.succ 0))
+                              (fun _ -> nTC 0)
+                              n2)
+                          n1)
+                      n0)
+                  j)
+              (fun n0 ->
+                (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                  (fun _ ->
+                    (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                      (fun _ -> nTC 0)
+                      (fun n1 ->
+                        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                          (fun _ -> nTC 0)
+                          (fun n2 ->
+                            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                              (fun _ -> nTC (Stdlib.Int.succ 0))
+                              (fun _ -> nTC 0)
+                              n2)
+                          n1)
+                      j)
+                  (fun n1 ->
+                    (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                      (fun _ ->
+                        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                          (fun _ -> nTC 0)
+                          (fun n2 ->
+                            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+                              (fun _ -> nTC (Stdlib.Int.succ 0))
+                              (fun _ -> nTC 0)
+                              n2)
+                          j)
+                      (fun _ -> nTC 0)
+                      n1)
+                  n0)
+              n)
+          i);
   }
 
 (** val qop_cnot_ct_n : int -> matrix **)
@@ -1270,15 +1259,15 @@ let den_0 =
   {
     mbits = Stdlib.Int.succ 0;
     minner =
-      memoize2 (fun i j ->
-          (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-            (fun _ ->
-              (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
-                (fun _ -> nTC (Stdlib.Int.succ 0))
-                (fun _ -> nTC 0)
-                j)
-            (fun _ -> nTC 0)
-            i);
+      (fun i j ->
+        (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+          (fun _ ->
+            (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+              (fun _ -> nTC (Stdlib.Int.succ 0))
+              (fun _ -> nTC 0)
+              j)
+          (fun _ -> nTC 0)
+          i);
   }
 
 (** val den_unitary : matrix -> matrix -> matrix **)
