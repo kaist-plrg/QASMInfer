@@ -23,7 +23,7 @@ make
 #       Hashtbl.add memo_table xy result;
 #       result
 
-sed -i '' '1s/^/open Complex\n\nlet memoize2 f =\n  let b = 8 in\n  let memo_table = Hashtbl.create (Int.shift_left 1 (b + b)) in\n  fun x y ->\n    let xy = Int.shift_left x b + y in\n    try Hashtbl.find memo_table xy\n    with Not_found ->\n      let result = f x y in\n      Hashtbl.add memo_table xy result;\n      result\n\n/' ../qasm/lib/core/quantum_core.ml
+sed -i '' '1s/^/open Complex\n\nlet memoize2 f =\n  let b = 10 in\n  let memo_table = Hashtbl.create (Int.shift_left 1 (b + b)) in\n  fun x y ->\n    let xy = Int.shift_left x b + y in\n    try Hashtbl.find memo_table xy\n    with Not_found ->\n      let result = f x y in\n      Hashtbl.add memo_table xy result;\n      result\n\n/' ../qasm/lib/core/quantum_core.ml
 
 # sed -i '' '/type matrix = { mbits : int; minner : int -> int -> Complex.t }/a\
 # let memoize_matrix m = { mbits = m.mbits; minner = memoize2 m.minner }' lib/core/quantum_core.ml
