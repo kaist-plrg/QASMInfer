@@ -409,7 +409,16 @@ let rec desugar_qcir_program (qc_ir_program : qc_ir) (acc : int) :
   | RotateIr (t, p, l, q) -> (RotateInstr (t, p, l, q), acc)
   | CnotIr (a1, a2) -> (CnotInstr (a1, a2), acc)
   | MeasureIr (q, c) -> (MeasureInstr (q, c), acc)
-  | ResetIr q -> (SwapInstr (q, acc), acc + 1)
+  | ResetIr q ->
+      ( SeqInstr
+          ( MeasureInstr (q, acc),
+            IfInstr
+              ( acc,
+                true,
+                RotateInstr
+                  (float_to_R Float.pi, float_to_R 0.0, float_to_R Float.pi, q)
+              ) ),
+        acc )
   | SeqIr (ir1, ir2) ->
       let qc1, acc1 = desugar_qcir_program ir1 acc in
       let qc2, acc2 = desugar_qcir_program ir2 acc1 in
@@ -426,6 +435,8 @@ let desugar qasm =
   let creg_order = extract_creg_order qasm in
   let qreg_size_map = extract_qreg_size qasm in
   let creg_size_map = extract_creg_size qasm in
+  let num_qbits_tmp = count_bits qreg_size_map in
+  let num_cbits = count_bits creg_size_map in
   let gate_decls = extract_gate_decl_rev qasm in
   let qasm_dp = desugar_parallel_program qasm qreg_size_map creg_size_map in
   let qasm_dm = desugar_macro_program qasm_dp gate_decls in
@@ -438,13 +449,12 @@ let desugar qasm =
   let qasm_core_ir =
     desugar_qasm_program creg_size_map assignment_q_rev assignment_c_rev qasm_dm
   in
-  let num_qbits_tmp = count_bits qreg_size_map in
-  let num_cbits = count_bits creg_size_map in
-  let qasm_core, num_qbits = desugar_qcir_program qasm_core_ir num_qbits_tmp in
+  let qasm_core, _ = desugar_qcir_program qasm_core_ir num_cbits in
   let qc_program : inlinedProgram =
     {
-      iP_num_qbits = num_qbits;
-      iP_num_cbits = num_cbits;
+      iP_num_qbits = num_qbits_tmp;
+      iP_num_cbits = num_cbits + 1;
+      (* for reset *)
       iP_num_subinstrs = Int.max_int;
       iP_instrs = qasm_core;
     }
