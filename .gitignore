@@ -19,3 +19,4 @@ author-response
 __pycache__
 fit_test/temp.py
 fit_test/data/trash/
+extract_light.zsh
