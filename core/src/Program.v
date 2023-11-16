@@ -104,9 +104,11 @@ Defined.
 
 Definition Merge_manyworld (mw: ManyWorld): ManyWorld.
 Proof.
-  induction mw.
+  destruct mw.
   - exact [].
-  - exact (Merge_manyworld_suppl a mw).
+  - destruct mw.
+    + exact (Merge_manyworld_suppl w []).
+    + exact (Merge_manyworld_suppl w (Merge_manyworld_suppl w0 mw)).
 Defined.
 
 Lemma Merge_manyworld_suppl_quantum_state_density:
@@ -143,12 +145,19 @@ Lemma Merge_manyworld_quantum_state_density:
   Forall (fun world => DensityMatrix n (W_qstate world))
     (Merge_manyworld worlds).
 Proof.
-  induction worlds.
+  induction worlds as [|w0[|w1 t] ].
   - intros.
     simpl.
     apply Forall_nil.
   - intros.
+    simpl.
+    apply H.
+  - intros.
+    simpl.
     apply Forall_cons_iff in H; destruct H.
+    apply Forall_cons_iff in H0; destruct H0.
+    apply Merge_manyworld_suppl_quantum_state_density.
+    all: auto.
     apply Merge_manyworld_suppl_quantum_state_density.
     all: auto.
 Qed.
