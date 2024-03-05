@@ -1,11 +1,13 @@
 -R src QuantumCoq
-src/Util.v
+src/util
 src/Complex.v
+src/Hermitian.v
 src/Matrix.v
+src/MatrixVector.v
+src/Projection.v
+src/Positive.v
 src/Tensor.v
-src/Operator.v
-src/Qubit.v
-src/Density.v
-src/Program.v
-src/Physics.v
-src/Extract.v
+src/Unitary.v
+src/Vector.v
+src/SqOperator.v
+src/MqOperator.v

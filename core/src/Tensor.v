@@ -1,610 +1,290 @@
-Require Export Matrix.
-Import ListNotations.
+Require Export MatrixVector.
+Require Import Coq.Program.Equality.
 
-Declare Scope T_scope.
-Open Scope nat_scope.
-Bind Scope nat_scope with nat.
-Open Scope util_scope.
-Open Scope C_scope.
-Bind Scope C_scope with C.
+Open Scope Matrix_scope.
 
-
-(* tensor product of matrices =================================================================== *)
-
-Definition TMproduct (m1 m2: Matrix): Matrix :=
-  {|
-    Mbits := Mbits m1 + Mbits m2;
-    Minner := fun i j => Cmult (
-      Minner m1 (i / Msize m2) (j / Msize m2)
-    ) (
-      Minner m2 (i mod Msize m2) (j mod Msize m2)
-    )
-  |}.
-
-Lemma TMproduct_bits: forall (m1 m2: Matrix), Mbits (TMproduct m1 m2) = (Mbits m1 + Mbits m2)%nat.
-Proof. reflexivity. Qed.
-
-Lemma TMproduct_correct: forall
-  (m1 m2 mt: Matrix) (i j: nat) (Hi: _) (Hj: _) (H1i: _) (H1j: _) (H2i: _) (H2j: _),
-  (TMproduct m1 m2)[[i Hi|j Hj]] =
-  m1[[(i / Msize m2) H1i|(j / Msize m2) H1j]] * m2[[(i mod Msize m2) H2i|(j mod Msize m2) H2j]].
+Definition tensor_product {m n: nat} (A: Matrix m) (B: Matrix n) : Matrix (m + n).
 Proof.
-  unfold Mget. simpl.
-  unfold TMproduct. simpl.
+  induction A.
+  - exact (c .* B).
+  - exact (rec_mat IHA1 IHA2 IHA3 IHA4).
+Defined.
+
+Notation "A ⊗ B" := (tensor_product A B) (at level 36) : Matrix_scope.
+
+Section PROPERTIES.
+
+Lemma tprod_scale_assoc: forall {m n} (A: Matrix m) (B: Matrix n) (c: Complex),
+  c .* (A ⊗ B) = c .* A ⊗ B.
+Proof.
   intros.
+  induction A as [a | ].
+  - simpl.
+    rewrite mat_scale_scale_comm.
+    reflexivity.
+  - simpl. f_equal; assumption.
+Qed.
+
+Lemma tprod_assoc: forall {m n k} (A: Matrix m) (B: Matrix n) (C: Matrix k),
+  mat_ccast (A ⊗ (B ⊗ C)) add_assoc = A ⊗ B ⊗ C.
+Proof.
+  intros.
+  induction A as [a|m].
+  - simpl. rewrite tprod_scale_assoc. mat_cast.
+  - simpl. f_equal.
+    + rewrite <- IHA1. mat_cast.
+    + rewrite <- IHA2. mat_cast.
+    + rewrite <- IHA3. mat_cast.
+    + rewrite <- IHA4. mat_cast.
+Qed.
+
+Lemma tprod_assoc': forall {m n k} (A: Matrix m) (B: Matrix n) (C: Matrix k),
+  mat_ccast (A ⊗ B ⊗ C) (eq_sym add_assoc) = A ⊗ (B ⊗ C).
+Proof.
+  intros.
+  induction A as [a|m].
+  - simpl. rewrite tprod_scale_assoc. apply mat_ccast_refl.
+  - simpl. f_equal.
+    + rewrite <- IHA1. mat_cast.
+    + rewrite <- IHA2. mat_cast.
+    + rewrite <- IHA3. mat_cast.
+    + rewrite <- IHA4. mat_cast.
+Qed.
+
+Lemma tprod_assoc_JMeq: forall {m n k} (A: Matrix m) (B: Matrix n) (C: Matrix k),
+  JMeq (A ⊗ B ⊗ C) (A ⊗ (B ⊗ C)).
+Proof.
+  intros.
+  rewrite <- tprod_assoc.
+  mat_cast. do_JMeq.
+Qed.
+
+Lemma tprod_eq: forall {m n} (A C: Matrix m) (B D: Matrix n), A = C -> B = D -> A ⊗ B = C ⊗ D.
+Proof.
+  intros. rewrite H, H0. reflexivity.
+Qed.
+
+Lemma tprod_JMeq: forall {a b c d} (A: Matrix a) (B: Matrix b) (C: Matrix c) (D: Matrix d),
+  a = c -> b = d ->
+  JMeq A C -> JMeq B D ->
+  JMeq (A ⊗ B) (C ⊗ D).
+Proof.
+  intros.
+  replace A with (mat_cast C (eq_sym H)).
+  replace B with (mat_cast D (eq_sym H0)).
+  - rewrite H. rewrite H0. reflexivity.
+  - apply JMeq_eq. eapply JMeq_trans. do_JMeq.
+    rewrite H2. reflexivity.
+  - apply JMeq_eq. eapply JMeq_trans. do_JMeq.
+    rewrite H1. reflexivity.
+Qed.
+
+Lemma tprod_add_dist_l: forall m n (A: Matrix m) (B C: Matrix n), A ⊗ (B + C) = A ⊗ B + A ⊗ C.
+Proof.
+  intros.
+  induction A.
+  - simpl.
+    rewrite mat_scale_dist_l.
+    reflexivity.
+  - simpl.
+    rewrite IHA1; rewrite IHA2; rewrite IHA3; rewrite IHA4.
+    reflexivity.
+Qed.
+
+Lemma tprod_add_dist_r: forall m n (A B: Matrix m) (C: Matrix n), (A + B) ⊗ C = A ⊗ C + B ⊗ C.
+Proof.
+intros.
+induction A.
+- specialize (mat_0_inv B) as [b]; subst.
   simpl.
+  rewrite mat_scale_dist_r.
+  reflexivity.
+- specialize (mat_S_inv B) as [B1 [B2 [B3 [B4]]]]; subst.
+  simpl.
+  all: try rewrite IHA1; try rewrite IHA2; try rewrite IHA3; try rewrite IHA4.
   reflexivity.
 Qed.
 
-Lemma TMproduct_assoc: forall (m1 m2 m3: Matrix),
-  TMproduct (TMproduct m1 m2) m3 = TMproduct m1 (TMproduct m2 m3).
+Lemma tprod_0_r: forall m n (A: Matrix m), A ⊗ (mat_0: Matrix n) = mat_0.
 Proof.
-  intros.
-  apply Mequal.
-  - repeat rewrite TMproduct_bits.
-    lia.
-  - unfold TMproduct, Msize, pow_2; simpl.
-    specialize (pow_2_nonzero (Mbits m2)) as Hpow_m2.
-    specialize (pow_2_nonzero (Mbits m3)) as Hpow_m3.
-    intros.
-    replace (2 ^ (Mbits m2 + Mbits m3))%nat with (2 ^ (Mbits m2) * 2 ^ (Mbits m3))%nat.
-    repeat rewrite div_dist.
-    repeat rewrite div_mod_mult.
-    repeat rewrite <- mod_mult_mod.
-    replace (2 ^ (Mbits m2) * 2 ^ (Mbits m3))%nat with (2 ^ (Mbits m3) * 2 ^ (Mbits m2))%nat.
-    lca.
-    1-7: lia.
-    symmetry.
-    apply Nat.pow_add_r.
+  induction A; simpl.
+  - apply mat_0_scale.
+  - f_equal; assumption.
 Qed.
 
-Lemma TMproduct_trace: forall (m1 m2: Matrix), Mtrace (TMproduct m1 m2) = Mtrace m1 * Mtrace m2.
+Lemma tprod_0_l: forall m n (A: Matrix n), (mat_0: Matrix m) ⊗ A = mat_0.
+Proof.
+  induction m; intros; simpl.
+  - apply mat_scale_0.
+  - f_equal; apply IHm.
+Qed.
+
+Lemma tprod_mul_0_rl: forall m n (A: Matrix m) (B C: Matrix n), (A ⊗ B) * (mat_0 ⊗ C) = mat_0.
 Proof.
   intros.
-  unfold TMproduct, Mtrace, Msize, pow_2.
-  simpl.
-  rewrite <- func_sum_dist.
-  rewrite Nat.pow_add_r.
+  rewrite tprod_0_l.
+  apply mat_mul_0_r.
+Qed.
+
+Lemma tprod_mul_eye_rr: forall m n (A C: Matrix m) (B: Matrix n), (A ⊗ B) * (C ⊗ mat_eye) = (A * C) ⊗ B.
+Proof.
+  induction A as [a | n'].
+  - intros.
+    specialize (mat_0_inv C) as [c]; subst.
+    simpl.
+    mat_sort.
+    rewrite mat_mul_eye_r.
+    f_equal.
+    lca.
+  - intros.
+    specialize (mat_S_inv C) as [C1 [C2 [C3 [C4]]]]; subst.
+    simpl.
+    f_equal.
+    all: try rewrite IHA1; try rewrite IHA2; try rewrite IHA3; try rewrite IHA4.
+    all: rewrite tprod_add_dist_r.
+    all: reflexivity.
+Qed.
+
+Lemma tprod_mul_eye_rl: forall m n (A: Matrix m) (B C: Matrix n), (A ⊗ B) * (mat_eye ⊗ C) = A ⊗ (B * C).
+Proof.
+  induction m as [| m'].
+  - intros.
+    specialize (mat_0_inv A) as [a]; subst.
+    unfold mat_eye.
+    simpl.
+    mat_sort.
+    lca.
+  - intros.
+    specialize (mat_S_inv A) as [A1 [A2 [A3 [A4]]]]; subst.
+    simpl.
+    f_equal.
+    all: rewrite IHm'.
+    all: rewrite tprod_mul_0_rl.
+    all: try apply mat_add_0_l; try apply mat_add_0_r.
+  Qed.
+
+Lemma tprod_mul: forall m n (A C: Matrix m) (B D: Matrix n), (A ⊗ B) * (C ⊗ D) = (A * C) ⊗ (B * D).
+Proof.
+  intros.
+  replace (C ⊗ D) with ((C ⊗ mat_eye) * (mat_eye ⊗ D)).
+  rewrite mat_mul_assoc.
+  rewrite tprod_mul_eye_rr.
+  apply tprod_mul_eye_rl.
+  rewrite tprod_mul_eye_rl.
+  rewrite mat_mul_eye_l.
   reflexivity.
-  specialize (pow_2_nonzero (Mbits m2)) as Hpow.
-  lia.
 Qed.
 
-(* ============================================================================================== *)
-(* tensor product of vectors ==================================================================== *)
-
-Definition TRVproduct (r1 r2: RowVec): RowVec :=
-  {|
-    RVbits := RVbits r1 + RVbits r2;
-    RVinner := fun j => Cmult (
-      RVinner r1 (j / RVsize r2)
-    ) (
-      RVinner r2 (j mod RVsize r2)
-    )
-  |}.
-
-Lemma TRVproduct_bits: forall (r1 r2: RowVec), RVbits (TRVproduct r1 r2) = (RVbits r1 + RVbits r2)%nat.
-Proof. reflexivity. Qed.
-
-Definition TCVproduct (c1 c2: ColVec): ColVec :=
-  {|
-    CVbits := CVbits c1 + CVbits c2;
-    CVinner := fun i => Cmult (
-      CVinner c1 (i / CVsize c2)
-    ) (
-      CVinner c2 (i mod CVsize c2)
-    )
-  |}.
-
-Lemma TCVproduct_bits: forall (c1 c2: ColVec), CVbits (TCVproduct c1 c2) = (CVbits c1 + CVbits c2)%nat.
-Proof. reflexivity. Qed.
-
-Lemma TRVproduct_conjtrans: forall (r1 r2: RowVec),
-  RVconjtrans (TRVproduct r1 r2) = TCVproduct (RVconjtrans r1) (RVconjtrans r2).
+Lemma tprod_conjtrans: forall m n (A: Matrix m) (B: Matrix n), (A ⊗ B)† = A† ⊗ B†.
 Proof.
-  intros.
-  apply CVequal.
-  - rewrite RVconjtrans_bits.
-    rewrite TRVproduct_bits.
-    rewrite TCVproduct_bits.
-    repeat rewrite RVconjtrans_bits.
-    reflexivity.
+  induction A.
   - intros.
-    unfold RVconjtrans, TCVproduct, TRVproduct, RVsize, CVsize.
     simpl.
-    apply Cconj_mult.
-Qed.
-
-Lemma TCVproduct_conjtrans: forall (c1 c2: ColVec),
-  CVconjtrans (TCVproduct c1 c2) = TRVproduct (CVconjtrans c1) (CVconjtrans c2).
-Proof.
-  intros.
-  apply RVequal.
-  - rewrite CVconjtrans_bits.
-    rewrite TCVproduct_bits.
-    rewrite TRVproduct_bits.
-    repeat rewrite CVconjtrans_bits.
-    reflexivity.
+    apply mat_scale_conjtrans.
   - intros.
-    unfold CVconjtrans, TCVproduct, TRVproduct, RVsize, CVsize.
     simpl.
-    apply Cconj_mult.
+    f_equal; generalize B; assumption.
 Qed.
 
-(* ============================================================================================== *)
-(* tactic of simplifying bits =================================================================== *)
-
-Ltac simpl_bits :=
-  unfold MMeqbits, MCeqbits, MReqbits in *;
-  unfold RMeqbits, RCeqbits, RReqbits in *;
-  unfold CMeqbits, CCeqbits, CReqbits in *;
-  unfold Msize, RVsize, CVsize, pow_2 in *;
-  repeat rewrite MVmult_bits_l in *;
-  repeat rewrite MVmult_unsafe_bits_l in *;
-  repeat rewrite VMmult_bits_r in *;
-  repeat rewrite VVmult_bits_l in *;
-  repeat rewrite CVconjtrans_bits in *;
-  repeat rewrite RVconjtrans_bits in *;
-  repeat rewrite Msmul_bits in *;
-  repeat rewrite Mmult_unsafe_bits_l in *;
-  repeat rewrite Mmult_bits_l in *;
-  repeat rewrite Mplus_bits_l in *;
-  repeat rewrite Mminus_bits_l in *;
-  repeat rewrite Mbop_unsafe_bits_l in *;
-  repeat rewrite Mconjtrans_bits in *;
-  repeat rewrite eye_bits in *;
-  repeat rewrite TRVproduct_bits in *;
-  repeat rewrite TCVproduct_bits in *;
-  repeat rewrite TMproduct_bits in *.
-
-(* ============================================================================================== *)
-(* relation between conjugate transpose and tensor product ====================================== *)
-
-Lemma TMproduct_Mconjtrans: forall (m1 m2: Matrix),
-  Mconjtrans (TMproduct m1 m2) = TMproduct (Mconjtrans m1) (Mconjtrans m2).
+Lemma tprod_0_l_impl: forall m n (A: Matrix m) (B: Matrix n), A = mat_0 -> A ⊗ B = mat_0.
 Proof.
   intros.
-  unfold Mconjtrans, TMproduct.
-  simpl.
-  apply Mequal_unsafe.
-  - reflexivity.
-  - unfold Msize, pow_2, Cconj.
-    simpl.
-    rewrite Nat.pow_add_r.
-    intros.
-    lca.
+  subst.
+  apply tprod_0_l.
 Qed.
 
-Lemma TRVproduct_RVconjtrans: forall (r1 r2: RowVec),
-  RVconjtrans (TRVproduct r1 r2) = TCVproduct (RVconjtrans r1) (RVconjtrans r2).
+Lemma tprod_0_r_impl: forall m n (A: Matrix m) (B: Matrix n), B = mat_0 -> A ⊗ B = mat_0.
 Proof.
   intros.
-  unfold RVconjtrans, TRVproduct.
-  simpl.
-  apply CVequal.
-  - reflexivity.
-  - repeat (simpl_bits; simpl).
-    unfold Cconj.
-    intros.
-    lca.
+  subst.
+  apply tprod_0_r.
 Qed.
 
-Lemma TCVproduct_CVconjtrans: forall (c1 c2: ColVec),
-  CVconjtrans (TCVproduct c1 c2) = TRVproduct (CVconjtrans c1) (CVconjtrans c2).
+Lemma tprod_eye_eye: forall m n, (@mat_eye m) ⊗ (@mat_eye n) = mat_eye.
 Proof.
   intros.
-  unfold CVconjtrans, TCVproduct.
-  simpl.
-  apply RVequal.
-  - reflexivity.
-  - repeat (simpl_bits; simpl).
-    unfold Cconj.
-    intros.
-    lca.
-Qed.
-
-(* ============================================================================================== *)
-(* relation between matric addition and tensor product ========================================== *)
-
-Lemma TMproduct_plus_l: forall (m1 m2 m3: Matrix) (H12: _) (H1323: _),
-  Mplus (TMproduct m1 m3) (TMproduct m2 m3) H1323 = TMproduct (Mplus m1 m2 H12) m3.
-Proof.
-  intros.
-  apply Mequal.
-  - repeat simpl_bits.
-    reflexivity.
-  - intros.
-    unfold Mplus, TMproduct.
-    lca.
-Qed.
-
-Lemma TMproduct_plus_r: forall (m1 m2 m3: Matrix) (H12: _) (H3132: _),
-  Mplus (TMproduct m3 m1) (TMproduct m3 m2) H3132 = TMproduct m3 (Mplus m1 m2 H12).
-Proof.
-  intros.
-  apply Mequal.
-  - repeat simpl_bits.
-    reflexivity.
-  - intros.
-    unfold Mplus, TMproduct.
-    simpl_bits.
-    simpl.
-    repeat rewrite H12.
-    lca.
-Qed.
-
-(* ============================================================================================== *)
-(* relation between matrix multiplication and tensor product ==================================== *)
-
-Lemma TMproduct_mult_l: forall
-  (m1 m2 m3: Matrix) (H12: _) (H1234: _),
-  TMproduct (Mmult m1 m3 H12) m2 = Mmult (TMproduct m1 m2) (TMproduct m3 (eye (Mbits m2))) H1234.
-Proof.
-  intros.
-  apply Mequal.
-  - repeat simpl_bits.
-    lia.
-  - intros.
-    unfold Mmult, Mmult_unsafe, Mmult_inner, TMproduct.
-    repeat simpl_bits.
-    simpl.
-    unfold dot_product_suppl.
-    replace (2 ^ (Mbits m1 + Mbits m2))%nat with (2 ^ (Mbits m1) * 2 ^ (Mbits m2))%nat.
-    pose (l1 := (2 ^ Mbits m1)%nat).
-    pose (l2 := (2 ^ Mbits m2)%nat).
-    replace (2 ^ Mbits m1)%nat with l1.
-    replace (2 ^ Mbits m2)%nat with l2.
-    replace (fun i0 : nat =>
-    Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
-    (Minner m3 (i0 / l2) (j / l2) *
-     (if i0 mod l2 =? j mod l2
-      then if i0 mod l2 <? pow_2 (Mbits m2) then 1 else 0
-      else 0))) with
-      (fun i0 : nat => if i0 mod l2 =? j mod l2 then (
-        Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
-        (Minner m3 (i0 / l2) (j / l2) * if i0 mod l2 <? pow_2 (Mbits m2) then 1 else 0)) else 0).
-    rewrite func_sum_mod.
-    replace (fun i0 : nat =>
-      Minner m1 (i / l2) ((i0 * l2 + j mod l2) / l2) *
-      Minner m2 (i mod l2) ((i0 * l2 + j mod l2) mod l2) *
-      (Minner m3 ((i0 * l2 + j mod l2) / l2) (j / l2) *
-      (if (i0 * l2 + j mod l2) mod l2 <? pow_2 (Mbits m2) then 1 else 0))) with
-      (fun i0 : nat =>
-      Minner m1 (i / l2) i0 *
-      Minner m2 (i mod l2) (j mod l2) *
-      Minner m3 i0 (j / l2) *
-      (if j mod l2 <? pow_2 (Mbits m2) then 1 else 0)).
-      dps_unfold.
-      symmetry.
-      replace (
-        func_sum_suppl (fun i0 : nat => Minner m1 (i / l2) i0 * Minner m3 i0 (j / l2)) 0 l1 *
-        Minner m2 (i mod l2) (j mod l2)
-      ) with (
-        Minner m2 (i mod l2) (j mod l2) *
-        func_sum_suppl (fun i0 : nat => Minner m1 (i / l2) i0 * Minner m3 i0 (j / l2)) 0 l1
-      ) by lca.
-      apply func_sum_suppl_scale.
-      intros.
-      assert (j mod l2 < l2).
-      { apply Nat.mod_bound_pos.
-        lia.
-        subst l2.
-        apply pow_2_nonzero. }
-      replace (j mod l2 <? pow_2 (Mbits m2)) with true.
-      lca.
-      symmetry; apply Nat.ltb_lt; unfold pow_2; lia.
-      apply functional_extensionality.
-      intros.
-      replace ((x * l2 + j mod l2) / l2)%nat with x.
-      replace ((x * l2 + j mod l2) mod l2) with (j mod l2).
-      assert (j mod l2 < l2).
-      { apply Nat.mod_bound_pos.
-        lia.
-        subst l2.
-        apply pow_2_nonzero. }
-      replace (j mod l2 <? pow_2 (Mbits m2)) with true.
-      lca.
-      symmetry; apply Nat.ltb_lt; unfold pow_2; lia.
-      rewrite Nat.Div0.add_mod.
-      rewrite Nat.Div0.mul_mod.
-      rewrite Nat.Div0.mod_same.
-      rewrite Nat.mul_0_r.
-      rewrite Nat.Div0.mod_0_l.
-      simpl.
-      assert (l2 > 0) as Hl2.
-      { unfold l2.
-        apply pow_2_nonzero. }
-      assert (j >= 0) as Hj by lia.
-      assert (j mod l2 mod l2 = j mod l2) as Hmod.
-      { apply Nat.mod_small.
-        specialize (Nat.mod_bound_pos j l2 Hj Hl2) as Hmod. lia. }
-      repeat rewrite Hmod.
-      reflexivity.
-      rewrite Nat.div_add_l.
-      rewrite Nat.div_small.
-      2: apply Nat.mod_bound_pos.
-      1-5: unfold l2; specialize (pow_2_nonzero (Mbits m2)) as Hmm2; lia.
-      apply functional_extensionality.
-      intros.
-      destruct (x mod l2 =? j mod l2).
-      1-2: lca.
-      unfold l2. reflexivity.
-      unfold l1. reflexivity.
-      symmetry.
-      apply Nat.pow_add_r.
-Qed.
-
-Lemma TMproduct_mult_r: forall
-  (m1 m2 m3: Matrix) (H12: _) (H1234: _),
-  TMproduct m1 (Mmult m2 m3 H12) = Mmult (TMproduct m1 m2) (TMproduct (eye (Mbits m1)) m3) H1234.
-Proof.
-  intros.
-  apply Mequal_unsafe.
-  - repeat simpl_bits.
-    lia.
-  - intros.
-    unfold Mmult, Mmult_unsafe, Mmult_inner, TMproduct.
-    repeat simpl_bits.
-    simpl.
-    repeat rewrite <- H12.
-    unfold dot_product_suppl.
-    replace (2 ^ (Mbits m1 + Mbits m2))%nat with (2 ^ (Mbits m1) * 2 ^ (Mbits m2))%nat.
-    pose (l1 := (2 ^ Mbits m1)%nat).
-    pose (l2 := (2 ^ Mbits m2)%nat).
-    replace (2 ^ Mbits m1)%nat with l1.
-    replace (2 ^ Mbits m2)%nat with l2.
-    replace (fun i0 : nat =>
-      Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
-      ((if i0 / l2 =? j / l2
-        then if i0 / l2 <? pow_2 (Mbits m1) then 1 else 0
-        else 0) * Minner m3 (i0 mod l2) (j mod l2))) with
-      (fun i0 : nat => if i0 / l2 =? j / l2 then (
-        Minner m1 (i / l2) (i0 / l2) * Minner m2 (i mod l2) (i0 mod l2) *
-        (if i0 / l2 <? pow_2 (Mbits m1) then 1 else 0)
-        * Minner m3 (i0 mod l2) (j mod l2)) else 0).
-    rewrite func_sum_div.
-    rewrite func_sum_f with (f1 := (fun i0 : nat =>
-      Minner m1 (i / l2) ((j / l2 * l2 + i0) / l2) *
-      Minner m2 (i mod l2) ((j / l2 * l2 + i0) mod l2) *
-      (if (j / l2 * l2 + i0) / l2 <? pow_2 (Mbits m1) then 1 else 0) *
-      Minner m3 ((j / l2 * l2 + i0) mod l2) (j mod l2)))
-      (f2 := (fun i0 : nat =>
-      Minner m1 (i / l2) (j / l2) *
-      Minner m2 (i mod l2) i0 *
-      (if j / l2 <? pow_2 (Mbits m1) then 1 else 0) *
-      Minner m3 i0 (j mod l2))).
-    unfold func_sum.
-    unfold func_sum2.
-    repeat rewrite Nat.sub_0_r.
-    symmetry.
-    apply func_sum_suppl_scale.
-    intros.
-    replace (j / l2 <? pow_2 (Mbits m1)) with true.
-    lca.
-    symmetry; apply Nat.ltb_lt.
-    unfold pow_2; subst l2.
-    rewrite Nat.pow_add_r in H0.
-    apply Nat.Div0.div_lt_upper_bound.
-    lia.
-    intros.
-    replace ((j / l2 * l2 + i0) mod l2) with i0.
-    replace ((j / l2 * l2 + i0) / l2)%nat with (j / l2)%nat.
-    reflexivity.
-    rewrite Nat.div_add_l.
-    replace (i0 / l2)%nat with O.
-    lia.
-    rewrite Nat.div_small.
-    1-3: lia.
-    rewrite Nat.Div0.add_mod.
-    rewrite Nat.Div0.mul_mod.
-    rewrite Nat.Div0.mod_same.
-    rewrite Nat.mul_0_r.
-    rewrite Nat.Div0.mod_0_l.
-    simpl.
-    repeat rewrite Nat.mod_small.
-    1-4: nia.
-    specialize (pow_2_nonzero (Mbits m2)) as Hpow.
-    lia.
-    rewrite Nat.pow_add_r in H0.
-    lia.
-    apply functional_extensionality.
-    intros.
-    destruct (x / l2 =? j / l2).
-    1-2: lca.
-    1-2: lia.
-    symmetry.
-    apply Nat.pow_add_r.
-Qed.
-
-Lemma TMproduct_mult: forall
-  (m1 m2 m3 m4: Matrix) (H13: _) (H24: _) (H1234: _),
-  TMproduct (Mmult m1 m3 H13) (Mmult m2 m4 H24) = Mmult (TMproduct m1 m2) (TMproduct m3 m4) H1234.
-Proof.
-  intros.
-  unfold Mmult.
-  assert (
-    TMproduct m3 m4 =
-    Mmult_unsafe (TMproduct m3 (eye (Mbits m4))) (TMproduct (eye (Mbits m3)) m4)
-    ) as H34.
-  { specialize TMproduct_mult_r as Hpr.
-    unfold Mmult in Hpr.
-    rewrite <- Hpr.
-    specialize Mmult_eye_l as Heyel.
-    unfold Mmult in Heyel.
-    rewrite Heyel.
-    all: repeat simpl_bits; reflexivity. }
-  rewrite H34.
-  specialize Mmult_assoc as Hmassoc.
-  unfold Mmult in Hmassoc.
-  rewrite <- Hmassoc.
-  specialize TMproduct_mult_l as Hpl.
-  unfold Mmult in Hpl.
-  rewrite <- H24.
-  rewrite <- Hpl.
-  specialize TMproduct_mult_r as Hpr.
-  unfold Mmult in Hpr.
-  replace (Mbits m3) with (Mbits (Mmult_unsafe m1 m3)).
-  rewrite <- Hpr.
-  reflexivity.
-  apply H24.
-  all: repeat simpl_bits; lia.
-Qed.
-
-(* ============================================================================================== *)
-(* relation between dot product and tensor product ============================================== *)
-
-Lemma TVproduct_dot_product: forall (r1 r2: RowVec) (c1 c2: ColVec) (H1212: _) (H11: _) (H22: _),
-  dot_product (TRVproduct r1 r2) (TCVproduct c1 c2) H1212 = (dot_product r1 c1 H11) * (dot_product r2 c2 H22).
-Proof.
-  intros.
-  unfold dot_product, dot_product_unsafe, TCVproduct, dot_product_suppl.
-  simpl_bits.
-  simpl.
-  simpl_bits.
-  repeat rewrite H11.
-  repeat rewrite H22.
-  replace
-    (fun i : nat =>
-      RVinner r1 (i / 2 ^ CVbits c2) * RVinner r2 (i mod 2 ^ CVbits c2) *
-      (CVinner c1 (i / 2 ^ CVbits c2) * CVinner c2 (i mod 2 ^ CVbits c2))) with
-    (fun i : nat =>
-      (fun j => (RVinner r1 j * CVinner c1 j)) (i / 2 ^ CVbits c2)%nat *
-      (fun j => (RVinner r2 j * CVinner c2 j)) (i mod 2 ^ CVbits c2) ).
-  replace (2 ^ (CVbits c1 + CVbits c2))%nat with (2 ^ CVbits c1 * 2 ^ CVbits c2)%nat.
-  specialize (
-    func_sum_dist (2 ^ CVbits c1) (2 ^ CVbits c2)
-    (fun j => (RVinner r1 j * CVinner c1 j))
-    (fun j => (RVinner r2 j * CVinner c2 j))
-  ) as Hdist.
-  simpl in Hdist.
-  apply Hdist.
-  specialize (pow_2_nonzero (CVbits c2)) as Hnz.
-  lia.
-  rewrite <- Nat.pow_add_r.
-  reflexivity.
-  apply functional_extensionality.
-  intros.
-  lca.
-Qed.
-
-(* ============================================================================================== *)
-(* relation between outer product and tensor product ============================================ *)
-
-Lemma TMVproduct_mult: forall (r1 r2: RowVec) (c1 c2: ColVec) (H1212: _) (H1: _) (H2: _),
-  VVmult (TCVproduct c1 c2) (TRVproduct r1 r2) H1212 =
-  TMproduct (VVmult c1 r1 H1) (VVmult c2 r2 H2).
-Proof.
-  unfold VVmult, TCVproduct, TRVproduct, TMproduct.
-  simpl_bits.
-  simpl.
-  intros.
-  apply Mequal.
-  - reflexivity.
-  - unfold Msize.
-    simpl.
-    intros.
-    ring_simplify.
-    repeat rewrite H1.
-    repeat rewrite H2.
+  induction m.
+  - simpl.
+    apply mat_scale_1.
+  - simpl.
+    repeat rewrite IHm.
+    repeat rewrite tprod_0_l.
     reflexivity.
 Qed.
 
-(* ============================================================================================== *)
-(* tensor product of identity matrices ========================================================== *)
-
-Lemma TMproduct_eye: forall (n m: nat), TMproduct (eye n) (eye m) = eye (n + m).
+Lemma tprod_eye_eye_impl: forall m n (A: Matrix m) (B: Matrix n), A = mat_eye -> B = mat_eye -> A ⊗ B = mat_eye.
 Proof.
-  intros.
-  apply Mequal_unsafe.
-  - repeat simpl_bits.
-    reflexivity.
-  - intros.
-    unfold Minner, TMproduct, eye.
-    simpl.
-    unfold Msize, pow_2.
-    rewrite Nat.pow_add_r.
-    simpl.
-    repeat simpl_bits.
-    rewrite Nat.pow_add_r in H, H0.
-    replace (i mod 2 ^ m <? 2 ^ m) with true.
-    replace (i <? 2 ^ n * 2 ^ m) with true.
-    replace (i / 2 ^ m <? 2 ^ n ) with true.
-    destruct (i =? j) eqn: E.
-    + apply Nat.eqb_eq in E.
-      replace (i / 2 ^ m =? j / 2 ^ m) with true.
-      replace (i mod 2 ^ m =? j mod 2 ^ m) with true.
-      lca.
-      symmetry.
-      apply Nat.eqb_eq.
-      rewrite E.
-      reflexivity.
-      symmetry.
-      apply Nat.eqb_eq.
-      rewrite E.
-      reflexivity.
-    + apply Nat.eqb_neq in E.
-      specialize (neq_iff_div_or_mod i j (2 ^ m)) as Hneq.
-      eapply Hneq in E.
-      destruct E as [Ediv|Emod].
-      * apply <- Nat.eqb_neq in Ediv.
-        rewrite Ediv.
-        lca.
-      * apply <- Nat.eqb_neq in Emod.
-        rewrite Emod.
-        lca.
-      * lia.
-    + symmetry; apply Nat.ltb_lt.
-      apply Nat.Div0.div_lt_upper_bound.
-      lia.
-    + symmetry; apply Nat.ltb_lt.
-      lia.
-    + symmetry; apply Nat.ltb_lt.
-      apply Nat.mod_bound_pos.
-      all: lia.
+  intros. subst. apply tprod_eye_eye.
 Qed.
 
-Lemma TMproduct_eye0_l: forall (m: Matrix), TMproduct (eye 0) m = m.
+Lemma tprod_eye_eye_impl_l: forall m n (A: Matrix n), A = mat_eye -> (@mat_eye m) ⊗ A = mat_eye.
 Proof.
   intros.
-  apply Mequal_unsafe.
-  - repeat simpl_bits.
-    lia.
-  - intros.
-    repeat simpl_bits.
-    unfold TMproduct, eye, Msize, pow_2.
-    simpl in *.
-    replace (i / 2 ^ Mbits m)%nat with O.
-    replace (j / 2 ^ Mbits m)%nat with O.
-    replace (i mod 2 ^ Mbits m)%nat with i.
-    replace (j mod 2 ^ Mbits m)%nat with j.
-    lca.
-    symmetry.
-    apply Nat.mod_small.
-    apply H0.
-    symmetry.
-    apply Nat.mod_small.
-    apply H.
-    symmetry.
-    apply Nat.div_small.
-    apply H0.
-    symmetry.
-    apply Nat.div_small.
-    apply H.
+  apply tprod_eye_eye_impl; auto.
 Qed.
 
-Lemma TMproduct_eye0_r: forall (m: Matrix), TMproduct m (eye 0) = m.
+Lemma tprod_eye_eye_impl_r: forall m n (A: Matrix m), A = mat_eye -> A ⊗ (@mat_eye n) = mat_eye.
 Proof.
   intros.
-  apply Mequal.
-  - repeat simpl_bits.
-    lia.
-  - intros.
-    repeat simpl_bits.
-    unfold TMproduct, eye, Msize.
-    simpl.
-    repeat rewrite divmod_fst_n0m0.
-    repeat rewrite Nat.add_0_r.
+  apply tprod_eye_eye_impl; auto.
+Qed.
+
+Lemma tprod_trace: forall m n (A: Matrix m) (B: Matrix n), \tr (A ⊗ B) = (\tr A * \tr B)%com.
+Proof.
+  intros.
+  induction A.
+  - simpl.
+    apply mat_scale_trace.
+  - simpl.
+    rewrite IHA1; rewrite IHA4.
     lca.
 Qed.
 
-(* ============================================================================================== *)
+End PROPERTIES.
+
+Ltac tprod_assoc := repeat (
+  repeat rewrite tprod_assoc_JMeq;
+  symmetry;
+  repeat rewrite tprod_assoc_JMeq;
+  apply tprod_JMeq; try reflexivity; try lia
+).
+
+Ltac mat_tprod := repeat (
+  rewrite tprod_eye_eye ||
+  rewrite tprod_0_l ||
+  rewrite tprod_0_r ||
+  rewrite tprod_mul ||
+  auto
+).
+
+Ltac mat_conj := repeat (
+  rewrite mat_add_conjtrans ||
+  rewrite mat_mul_conjtrans ||
+  rewrite mat_scale_conjtrans ||
+  rewrite mat_conjtrans_involutive ||
+  rewrite vec_dot_conj ||
+  rewrite mat_vec_mul_conjtrans ||
+  rewrite vec_mat_mul_conjtrans ||
+  rewrite vec_conjtrans_involutive ||
+  rewrite com_conj_add ||
+  rewrite com_conj_mul ||
+  rewrite com_conj_involutive ||
+  rewrite tprod_conjtrans ||
+  auto
+).
+
+Ltac mat_conj_in_all := repeat (
+  rewrite mat_add_conjtrans in * ||
+  rewrite mat_mul_conjtrans in * ||
+  rewrite mat_scale_conjtrans in * ||
+  rewrite mat_conjtrans_involutive in * ||
+  rewrite vec_dot_conj in * ||
+  rewrite mat_vec_mul_conjtrans in * ||
+  rewrite vec_mat_mul_conjtrans in * ||
+  rewrite vec_conjtrans_involutive in * ||
+  rewrite com_conj_add in * ||
+  rewrite com_conj_mul in * ||
+  rewrite com_conj_involutive in * ||
+  rewrite tprod_conjtrans in * ||
+  auto
+).
