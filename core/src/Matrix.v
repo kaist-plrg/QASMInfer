@@ -969,8 +969,9 @@ End EXAMPLE.
 
 Arguments temp {_}.
 
-Ltac mat_simplify :=
+(* Ltac mat_simplify :=
   repeat (
+    simpl ||
     rewrite mat_add_assoc ||
     rewrite mat_add_0_l ||
     rewrite mat_add_0_r ||
@@ -980,4 +981,4 @@ Ltac mat_simplify :=
     rewrite mat_mul_0_r ||
     rewrite mat_mul_eye_l ||
     rewrite mat_mul_eye_r
-  ).
+  ). *)

@@ -388,6 +388,7 @@ Proof.
 Qed.
 
 Ltac mat_simpl := repeat (
+  simpl ||
   rewrite mat_add_0_l ||
   rewrite mat_add_0_r ||
   rewrite mat_add_inv ||

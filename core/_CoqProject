@@ -4,10 +4,10 @@ src/Complex.v
 src/Hermitian.v
 src/Matrix.v
 src/MatrixVector.v
+src/SqOperator.v
 src/Projection.v
 src/Positive.v
 src/Tensor.v
 src/Unitary.v
 src/Vector.v
-src/SqOperator.v
 src/MqOperator.v

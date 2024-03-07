@@ -1,4 +1,4 @@
-Require Export Projection.
+Require Export Positive.
 Require Export Coq.Program.Equality.
 
 Bind Scope Complex_scope with Complex.
@@ -56,64 +56,45 @@ End PROPERTIES.
 
 Section GENERAL.
 
-Definition mat_single (n t: nat) (U : Matrix 1) : Matrix n.
-Proof.
-  destruct (lt_dec t n).
-    replace n with (t + 1 + (n - t - 1))%nat by lia.
-    apply ((@mat_eye t) ⊗ U ⊗ (@mat_eye (n - t - 1))).
-  - apply mat_eye.
-Defined.
+Fixpoint mat_single (n t: nat) (U : Matrix 1) : Matrix n :=
+  match n, t with
+  | 0, _ => mat_eye
+  | S n', 0 => U ⊗ mat_eye
+  | S n', S t' => @mat_eye 1 ⊗ mat_single n' t' U
+  end.
 
 Lemma mat_single_unitary : forall n t (U : Matrix 1), mat_unitary U -> mat_unitary (@mat_single n t U).
 Proof.
-  intros.
   unfold mat_single.
-  destruct (lt_dec t n).
-  - simpl_eq.
-    repeat apply tprod_unitary.
+  induction n.
+  - intros.
     apply mat_eye_unitary.
-    auto.
-    apply mat_eye_unitary.
-  - apply mat_eye_unitary.
+  - intros.
+    destruct t.
+    + apply (@tprod_unitary 1 n).
+      assumption.
+      apply mat_eye_unitary.
+    + apply (@tprod_unitary 1 n).
+      apply mat_eye_unitary.
+      apply IHn.
+      assumption.
 Qed.
 
 Lemma mat_single_Hermitian : forall n t (U : Matrix 1), mat_Hermitian U -> mat_Hermitian (@mat_single n t U).
 Proof.
-  intros.
   unfold mat_single.
-  destruct (lt_dec t n).
-  - simpl_eq.
-    repeat apply tprod_Hermitian.
+  induction n.
+  - intros.
     apply mat_eye_Hermitian.
-    auto.
-    apply mat_eye_Hermitian.
-  - apply mat_eye_Hermitian.
-Qed.
-
-Lemma mat_single_projection : forall n t (U : Matrix 1), mat_projection U -> mat_projection (mat_single n t U).
-Proof.
-  intros.
-  split; [|split].
-  - unfold mat_single.
-    destruct (lt_dec t n).
-    + simpl_eq.
-      destruct H as [H _].
-      repeat rewrite tprod_mul.
-      rewrite H.
-      mat_simpl.
-    + mat_simpl.
-  - destruct H as [_ [H _]].
-    apply mat_single_Hermitian.
-    apply H.
-  - destruct H as [_ [_ H]].
-    unfold mat_single.
-    destruct (lt_dec t n).
-    + simpl_eq.
-      repeat rewrite tprod_trace.
-      repeat apply com_ge0_mul.
-      2: apply H.
-      all: apply mat_trace_positive, mat_eye_positive.
-    + apply mat_trace_positive, mat_eye_positive.
+  - intros.
+    destruct t.
+    + apply (@tprod_Hermitian 1 n).
+      assumption.
+      apply mat_eye_Hermitian.
+    + apply (@tprod_Hermitian 1 n).
+      apply mat_eye_Hermitian.
+      apply IHn.
+      assumption.
 Qed.
 
 End GENERAL.

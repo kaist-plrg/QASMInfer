@@ -82,6 +82,18 @@ Proof.
   exact H.
 Qed.
 
+Lemma unitary_diagonal: forall {n} (U V: Matrix n),
+  mat_unitary U -> mat_unitary V -> mat_unitary (rec_mat U mat_0 mat_0 V).
+Proof.
+  intros n U V [HU1 HU2] [HV1 HV2].
+  split.
+  all: mat_simpl.
+  all: f_equal.
+  all: try assumption.
+  all: rewrite mat_0_Hermitian.
+  all: mat_simpl.
+Qed.
+
 End PROPERTIES.
 
 
