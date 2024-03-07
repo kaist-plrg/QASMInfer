@@ -1,4 +1,4 @@
-Require Export SqOperator.
+Require Export Projection.
 
 Bind Scope Complex_scope with Complex.
 Open Scope Matrix_scope.
@@ -98,64 +98,24 @@ End SWAP_PROPERTIES.
 
 Section CNOT.
 
-Definition mat_cnot2_ct: Matrix 2 :=
-  rec_mat (rec_mat (bas_mat 1) (bas_mat 0)
-                   (bas_mat 0) (bas_mat 1))  (rec_mat (bas_mat 0) (bas_mat 0)
-                                                      (bas_mat 0) (bas_mat 0))
-          (rec_mat (bas_mat 0) (bas_mat 0)
-                   (bas_mat 0) (bas_mat 0))  (rec_mat (bas_mat 0) (bas_mat 1)
-                                                      (bas_mat 1) (bas_mat 0)).
+Definition mat_not2: Matrix 1 := rec_mat (bas_mat 0) (bas_mat 1) (bas_mat 1) (bas_mat 0).
 
-Definition mat_cnot2_tc: Matrix 2 :=
-  rec_mat (rec_mat (bas_mat 1) (bas_mat 0)
-                   (bas_mat 0) (bas_mat 0))  (rec_mat (bas_mat 0) (bas_mat 0)
-                                                      (bas_mat 0) (bas_mat 1))
-          (rec_mat (bas_mat 0) (bas_mat 0)
-                   (bas_mat 0) (bas_mat 1))  (rec_mat (bas_mat 1) (bas_mat 0)
-                                                      (bas_mat 0) (bas_mat 0)).
-
-Definition mat_cnot {n} (qc qt: nat) : Matrix n :=
-match n, qc, qt with
-  | O       , _, _ => mat_eye
-  | S O     , _, _ => mat_eye
-  | S (S n'), 0, 1 => mat_cnot2_ct ⊗ mat_eye
-  | S (S n'), 1, 0 => mat_cnot2_tc ⊗ mat_eye
-  | S (S n'), 0, _ => mat_swap_op 1 qt (mat_cnot2_ct ⊗ mat_eye)
-  | S (S n'), 1, _ => mat_swap_op 0 qt (mat_cnot2_tc ⊗ mat_eye)
-  | S (S n'), _, 0 => mat_swap_op 1 qc (mat_cnot2_tc ⊗ mat_eye)
-  | S (S n'), _, 1 => mat_swap_op 0 qc (mat_cnot2_ct ⊗ mat_eye)
-  | S (S n'), _, _ => mat_swap_op 1 qt (mat_swap_op 0 qc (mat_cnot2_ct ⊗ mat_eye ))
-end.
+Definition mat_cnot {n} (qc qt: nat) : Matrix n := mat_ctrl_single n qc qt mat_not2.
 
 End CNOT.
 
 Section CNOT_PROPERTIES.
 
-Lemma mat_cnot2_ct_unitary : mat_unitary mat_cnot2_ct.
+Lemma mat_not2_unitary : mat_unitary mat_not2.
 Proof.
-  unfold mat_cnot2_ct, mat_unitary, mat_eye; simpl; split.
-  all: repeat f_equal; com_simpl.
-Qed.
-
-Lemma mat_cnot2_tc_unitary : mat_unitary mat_cnot2_tc.
-Proof.
-  unfold mat_cnot2_tc, mat_unitary, mat_eye; simpl; split.
-  all: repeat f_equal; com_simpl.
+  unfold mat_not2, mat_unitary; simpl; split; repeat f_equal; com_simpl.
 Qed.
 
 Lemma mat_cnot_unitary : forall n qc qt, mat_unitary (@mat_cnot n qc qt).
 Proof.
   intros.
-  unfold mat_cnot.
-  destruct n as [|[|n']], qc as [|[|qc']], qt as [|[|qt']].
-  all: repeat (
-    apply mat_swap_op_unitary ||
-    apply mat_eye_unitary ||
-    apply mat_cnot2_ct_unitary ||
-    apply mat_cnot2_tc_unitary ||
-    apply tprod_unitary ||
-    apply (@tprod_unitary 2)
-    ).
+  apply mat_ctrl_single_unitary.
+  apply mat_not2_unitary.
 Qed.
 
 End CNOT_PROPERTIES.
