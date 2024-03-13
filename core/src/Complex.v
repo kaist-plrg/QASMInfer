@@ -198,6 +198,12 @@ Proof.
     lca.
 Qed.
 
+Lemma com_conj_real_l : forall (x: Complex), com_imag x = 0 -> x^* = x.
+Proof. apply com_conj_real. Qed.
+
+Lemma com_conj_real_r : forall (x: Complex), x^* = x -> com_imag x = 0.
+Proof. apply com_conj_real. Qed.
+
 Lemma com_conj_Ione: Ione^* = - Ione.
 Proof. lca. Qed.
 
@@ -275,6 +281,13 @@ Proof.
         lra. }
       nra.
     + nra.
+Qed.
+
+Lemma com_real_ge0: forall x: R, (x >= R0)%R -> (x >= 0)%com.
+Proof.
+  intros.
+  split.
+  all: simpl; auto.
 Qed.
 
 Lemma com_conj_mul_ge0_l: forall (x: Complex), (x^* * x) >= 0.

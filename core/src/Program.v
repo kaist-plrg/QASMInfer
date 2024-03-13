@@ -1,15 +1,9 @@
-Require Export Density.
+Require Import Util.
+Require Export Projection.
 
-Declare Scope Physics_scope.
 Open Scope nat_scope.
 Bind Scope nat_scope with nat.
-Open Scope util_scope.
-Open Scope C_scope.
-Bind Scope C_scope with C.
-Open Scope M_scope.
-Open Scope T_scope.
-Open Scope Qst_scope.
-Open Scope Den_scope.
+Open Scope Matrix_scope.
 Import ListNotations.
 
 
@@ -40,66 +34,75 @@ Record InlinedProgram: Type := {
 (* MWI for program states ======================================================================= *)
 
 Record World: Type := {
-  W_qstate: Matrix; (* density matrix *)
+  W_num_qubits: nat;
+  W_num_clbits: nat;
+  W_qstate: Matrix W_num_qubits; (* density matrix *)
   W_cstate: total_map bool;  (* false for 0, true for 1 *)
   W_prob: R; (* probability of the world *)
-  W_num_qubits: nat;
-  W_qstate_valid: Mbits W_qstate = W_num_qubits;
   W_prob_valid: (W_prob > 0)%R;
 }.
 
 Definition ManyWorld: Type := list World.
 
+Definition qstate_init (n: nat): Matrix n.
+Proof.
+  induction n.
+  - exact mat_eye.
+  - exact (rec_mat IHn mat_0 mat_0 mat_0).
+Defined.
+
 Definition ManyWorld_init (num_q num_c: nat): ManyWorld.
 Proof.
   refine ([{|
-    W_qstate := Den_0_init num_q;
+    W_num_qubits := num_q;
+    W_num_clbits := num_c;
+    W_qstate := qstate_init num_q;
     W_cstate := tm_empty false;
     W_prob := 1;
-    W_num_qubits := num_q;
   |}]).
-  apply Den_0_init_bits.
   lra.
 Defined.
 
 (* ============================================================================================== *)
 (* merging two worlds =========================================================================== *)
 
-Definition Merge_world (w1 w2: World): World.
+Definition Merge_world (w0 w1: World): World.
 Proof.
-  destruct (Nat.eq_dec (w1.(W_num_qubits)) (w2.(W_num_qubits))).
-  - destruct (tmb_equal (w1.(W_cstate)) (w2.(W_cstate)) (w1.(W_num_qubits))) eqn:ec.
-    + refine ({|
-        W_qstate := Den_mix w1.(W_qstate) w2.(W_qstate)  w1.(W_prob) w2.(W_prob) _;
-        W_cstate := w1.(W_cstate);
-        W_prob := w1.(W_prob) + w2.(W_prob);
-        W_num_qubits := w1.(W_num_qubits);
-      |}).
-      rewrite Den_mix_bits.
-      destruct w1; simpl; lia.
-      destruct w1, w2; simpl in *; lra.
-      Unshelve.
-      destruct w1, w2; simpl in *; lia.
-    + exact w1.
-  - exact w1.
+  destruct w0 eqn:ew0, w1.
+  destruct
+    (Nat.eq_dec W_num_qubits0 W_num_qubits1),
+    (Nat.eq_dec W_num_clbits0 W_num_clbits1),
+    (tmb_equal W_cstate0 W_cstate1 W_num_clbits0) eqn:ec.
+  subst W_num_qubits1 W_num_clbits1.
+  refine ({|
+    W_num_qubits := W_num_qubits0;
+    W_num_clbits := W_num_clbits0;
+    W_qstate := W_prob0 .* W_qstate0 + W_prob1 .* W_qstate1;
+    W_cstate := W_cstate0;
+    W_prob := W_prob0 + W_prob1;
+  |}).
+  lra.
+  all: exact w0.
 Defined.
 
 Definition Merge_manyworld_suppl (w: World) (mw: ManyWorld): ManyWorld.
 Proof.
   induction mw.
   - exact [w].
-  - destruct (Nat.eq_dec (W_num_qubits a) (W_num_qubits w)).
-    + destruct (tmb_equal (W_cstate a) (W_cstate w) (W_num_qubits a)).
-      * refine ({|
-          W_qstate := Den_mix (W_qstate a) (W_qstate w) (W_prob a) (W_prob w) _;
-          W_cstate := W_cstate a;
-          W_prob := W_prob a + W_prob w;
-          W_num_qubits := W_num_qubits a;
+  - destruct
+    (Nat.eq_dec (W_num_qubits a) (W_num_qubits w)),
+    (tmb_equal (W_cstate a) (W_cstate w) (W_num_clbits a)).
+    destruct w as [nq nc qst cst p pv], a as [nq' nc' qst' cst' p' pv']; simpl in *.
+    subst nq'.
+        refine ({|
+          W_num_qubits := nq;
+          W_num_clbits := nc;
+          W_qstate := p .* qst + p' .* qst';
+          W_cstate := cst;
+          W_prob := p + p';
         |} :: mw). (* merge *)
-        Unshelve.
-        all: destruct w, a; simpl in *; try lia; try lra.
-      * exact (a :: IHmw).
-    + exact (a :: IHmw).
+        lra.
+    all: exact (a :: IHmw). (* nop *)
 Defined.
 
 Definition Merge_manyworld (mw: ManyWorld): ManyWorld.
