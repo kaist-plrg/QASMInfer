@@ -1,5 +1,5 @@
 Require Import Util.
-Require Export Projection.
+Require Export Density.
 
 Open Scope nat_scope.
 Bind Scope nat_scope with nat.

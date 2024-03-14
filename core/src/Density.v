@@ -1,4 +1,5 @@
 Require Export Projection.
+Require Import Coq.Logic.Eqdep_dec.
 
 Open Scope Matrix_scope.
 
@@ -24,58 +25,45 @@ Proof.
     assumption.
 Qed.
 
-Section BASE.
+Section INIT.
 
-Definition den_0 : Matrix 1 := rec_mat (bas_mat 1) (bas_mat 0) (bas_mat 0) (bas_mat 0).
-Definition den_1 : Matrix 1 := rec_mat (bas_mat 0) (bas_mat 0) (bas_mat 0) (bas_mat 1).
-
-Lemma den_0_Hermitian : mat_Hermitian den_0.
+Definition den_init (n: nat): Matrix n.
 Proof.
-  unfold mat_Hermitian, den_0.
-  mat_simpl; f_equal.
-  all: f_equal; lca.
+  induction n.
+  - exact mat_eye.
+  - exact (rec_mat IHn mat_0 mat_0 mat_0).
+Defined.
+
+Lemma den_init_Hermitian : forall n, mat_Hermitian (den_init n).
+  induction n.
+  - apply mat_eye_Hermitian.
+  - unfold mat_Hermitian; simpl.
+    mat_conj.
+    rewrite mat_0_Hermitian.
+    f_equal.
+    assumption.
 Qed.
 
-Lemma den_1_Hermitian : mat_Hermitian den_1.
-Proof.
-  unfold mat_Hermitian, den_1.
-  mat_simpl; f_equal.
-  all: f_equal; lca.
+Lemma den_init_positive : forall n, mat_positive (den_init n).
+  induction n.
+  - apply mat_eye_positive.
+  - unfold mat_positive; simpl.
+    intros.
+    specialize (vec_S_inv v) as [v0 [v1 Hv]].
+    subst v; simpl.
+    mat_simpl.
 Qed.
 
-Lemma den_0_pure : exists v, v |✕| v|† = den_0.
-Proof.
-  exists (rec_vec (bas_vec 1) (bas_vec 0)).
-  unfold den_0; simpl; f_equal.
-  all: f_equal; lca.
+Lemma den_init_normalized : forall n, den_normlized (den_init n).
+  induction n.
+  - reflexivity.
+  - unfold den_normlized; simpl.
+    rewrite mat_trace_0.
+    rewrite IHn.
+    lca.
 Qed.
 
-Lemma den_1_pure : exists v, v |✕| v|† = den_1.
-Proof.
-  exists (rec_vec (bas_vec 0) (bas_vec 1)).
-  unfold den_1; simpl; f_equal.
-  all: f_equal; lca.
-Qed.
-
-Lemma den_0_positive : mat_positive den_0.
-Proof.
-  apply mat_pure_positive_impl.
-  apply den_0_pure.
-Qed.
-
-Lemma den_1_positive : mat_positive den_1.
-Proof.
-  apply mat_pure_positive_impl.
-  apply den_1_pure.
-Qed.
-
-Lemma den_0_normalized : den_normlized den_0.
-Proof. lca. Qed.
-
-Lemma den_1_normalized : den_normlized den_1.
-Proof. lca. Qed.
-
-End BASE.
+End INIT.
 
 Section UOP.
 
@@ -137,11 +125,20 @@ Definition den_measure_1 {n: nat} (t: nat) (den: Matrix n) : Matrix n := den_mea
 Lemma den_measure_Hermitian : forall {n: nat} (proj den: Matrix n),
   mat_projection proj ->
   mat_Hermitian den ->
-  com_imag (den_prob proj den) = R0 ->
   mat_Hermitian (den_measure proj den).
 Proof.
-  intros n pron den [_ Hp] Hd Hc.
+  intros n proj den [_ Hp] Hd.
   unfold den_measure, mat_Hermitian.
+  assert (com_imag (den_prob proj den) = R0) as Hc.
+  { unfold den_prob.
+    apply com_conj_real_r.
+    rewrite <- mat_trace_conjtrans.
+    mat_conj.
+    rewrite mat_mul_trace_comm.
+    f_equal.
+    rewrite Hp, Hd.
+    reflexivity.
+  }
   mat_conj.
   apply com_imag_0_inv in Hc.
   apply com_conj_real in Hc.
@@ -151,34 +148,23 @@ Proof.
   mat_sort.
 Qed.
 
-Lemma den_measure_prob_real : forall {n: nat} (proj den: Matrix n),
-  mat_projection proj ->
-  mat_Hermitian den ->
-  com_imag (den_prob proj den) = R0 ->
-  com_imag (den_prob proj (den_measure proj den)) = R0.
-Proof.
-  intros n proj den [Hp _] Hd Hc.
-  unfold den_prob, den_measure in *.
-  rewrite mat_scale_mul_assoc.
-  rewrite mat_scale_trace.
-  rewrite com_imag_0_mult.
-  reflexivity.
-  apply com_imag_0_inv; assumption.
-  repeat (
-  rewrite mat_mul_trace_comm;
-  mat_sort;
-  rewrite Hp
-  ).
-Qed.
-
 Lemma den_measure_positive : forall {n: nat} (proj den: Matrix n),
   mat_projection proj ->
   mat_positive den ->
-  den_prob proj den >= 0 ->
   mat_positive (den_measure proj den).
 Proof.
-  intros n proj den [Hp Hph] Hd Hc.
+  intros n proj den [Hp Hph] Hd.
   unfold den_measure.
+  assert (den_prob proj den >= 0) as Hc.
+  { unfold den_prob.
+    rewrite <- Hp; mat_sort.
+    rewrite mat_mul_trace_comm; mat_sort.
+    specialize (mat_mul_positive den proj) as H.
+    apply H in Hd.
+    rewrite Hph in Hd.
+    apply mat_trace_positive.
+    assumption.
+  }
   apply mat_scale_positive.
   - replace (proj * den * proj) with (proj * den * proj †).
     apply mat_mul_positive.
@@ -186,25 +172,6 @@ Proof.
     f_equal; assumption.
   - apply com_ge0_inv.
     assumption.
-Qed.
-
-Lemma den_measure_prob_ge0 : forall {n: nat} (proj den: Matrix n),
-  mat_projection proj ->
-  mat_positive den ->
-  den_prob proj den >= 0 ->
-  den_prob proj (den_measure proj den) >= 0.
-Proof.
-  intros n proj den [Hp Hph] Hd Hc.
-  unfold den_measure, den_prob in *.
-  rewrite mat_scale_mul_assoc.
-  rewrite mat_scale_trace.
-  apply com_ge0_mul.
-  apply com_ge0_inv; assumption.
-  repeat (
-  rewrite mat_mul_trace_comm;
-  mat_sort;
-  rewrite Hp
-  ).
 Qed.
 
 Lemma den_measure_normalized : forall {n: nat} (proj den: Matrix n),
@@ -350,3 +317,66 @@ Proof.
 Qed.
 
 End Mix.
+
+Section VALID.
+
+Inductive den_valid {n: nat} : Matrix n -> Prop :=
+  | den_valid_init : den_valid (den_init n)
+
+  | den_valid_uop : forall (uop den: Matrix n),
+                    mat_unitary uop ->
+                    den_valid den ->
+                    den_valid (den_uop uop den)
+
+  | den_valid_measure : forall (proj den: Matrix n),
+                        mat_projection proj ->
+                        den_valid den ->
+                        den_prob proj den <> 0 ->
+                        den_valid (den_measure proj den)
+
+  | den_valid_reset : forall (t: nat) (den: Matrix n),
+                      den_valid den ->
+                      den_valid (den_reset t den)
+
+  | den_valid_mix : forall (p0 p1: R) (den0 den1: Matrix n),
+                    (p0 > 0)%R ->
+                    (p1 > 0)%R ->
+                    den_valid den0 ->
+                    den_valid den1 ->
+                    den_valid (den_mix p0 p1 den0 den1).
+
+
+Theorem den_valid_Hermitian : forall {n: nat} (den: Matrix n), den_valid den -> mat_Hermitian den.
+Proof.
+  intros n den H.
+  induction H.
+  - apply den_init_Hermitian.
+  - apply den_uop_Hermitian; assumption.
+  - apply den_measure_Hermitian; assumption.
+  - apply den_reset_Hermitian; assumption.
+  - apply den_mix_Hermitian; assumption.
+Qed.
+
+Theorem den_valid_positive : forall {n: nat} (den: Matrix n), den_valid den -> mat_positive den.
+Proof.
+  intros n den H.
+  induction H.
+  - apply den_init_positive.
+  - apply den_uop_positive; assumption.
+  - apply den_measure_positive; assumption.
+  - apply den_reset_positive; assumption.
+  - apply den_mix_positive; assumption.
+Qed.
+
+Theorem den_valid_normalized : forall {n: nat} (den: Matrix n), den_valid den -> den_normlized den.
+Proof.
+  intros n den H.
+  induction H.
+  - apply den_init_normalized.
+  - apply den_uop_normalized; assumption.
+  - apply den_measure_normalized; assumption.
+  - apply den_reset_normalized; assumption.
+  - apply den_mix_normalized; assumption.
+Qed.
+
+End VALID.

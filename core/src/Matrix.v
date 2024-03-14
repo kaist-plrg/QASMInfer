@@ -651,6 +651,27 @@ Proof.
     lca.
 Qed.
 
+Lemma mat_trace_conjtrans : forall {n} (A : Matrix n), \tr (A†) = (\tr A) ^*.
+Proof.
+  intros.
+  induction A.
+  - reflexivity.
+  - simpl.
+    rewrite com_conj_add.
+    rewrite IHA1, IHA4.
+    reflexivity.
+Qed.
+
+Lemma mat_trace_0 : forall {n}, \tr (@mat_0 n) = 0.
+Proof.
+  intros.
+  induction n.
+  - simpl; lca.
+  - simpl.
+    rewrite IHn.
+    lca.
+Qed.
+
 Hint Extern 1 => (rewrite mat_mul_trace_comm) : comm_db.
 
 Lemma mat_eq_imp_mul_l : forall {n: nat} {A B: Matrix n} (C: Matrix n),
