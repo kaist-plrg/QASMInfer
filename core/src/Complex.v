@@ -22,7 +22,7 @@ Delimit Scope Complex_scope with com.
 
 Definition Complex := (R * R)%type.
 
-Definition Cmake (re im: R) := (re, im).
+Definition com_make (re im: R) := (re, im).
 
 Definition Czero : Complex := (0, 0).
 Definition Cone : Complex := (1, 0).

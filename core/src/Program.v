@@ -1,11 +1,15 @@
 Require Import Util.
 Require Export Density.
+Require Import MqOperator.
 
 Open Scope nat_scope.
 Bind Scope nat_scope with nat.
 Open Scope Matrix_scope.
 Import ListNotations.
 
+Section PROGRAM.
+
+Variable nq : nat. (* number of qubits *)
 
 (* inlined QASM2.0 instructions ================================================================= *)
 
@@ -24,7 +28,6 @@ Inductive Instruction: Type :=
 (* inlined QASM2.0 program ====================================================================== *)
 
 Record InlinedProgram: Type := {
-  IP_num_qbits: nat;
   IP_num_cbits: nat;
   IP_num_subinstrs: nat;  (* numbers of all subinstructions, to prove decreasing argument of fix *)
   IP_instrs: Instruction;
@@ -34,29 +37,25 @@ Record InlinedProgram: Type := {
 (* MWI for program states ======================================================================= *)
 
 Record World: Type := {
-  W_num_qubits: nat;
   W_num_clbits: nat;
-  W_qstate: Matrix W_num_qubits; (* density matrix *)
+  W_qstate: Matrix nq; (* density matrix *)
   W_cstate: total_map bool;  (* false for 0, true for 1 *)
   W_prob: R; (* probability of the world *)
   W_prob_valid: (W_prob > 0)%R;
 }.
 
-Definition ManyWorld: Type := list World.
+Definition qstate_valid (w: World): Prop := den_valid (W_qstate w).
 
-Definition qstate_init (n: nat): Matrix n.
-Proof.
-  induction n.
-  - exact mat_eye.
-  - exact (rec_mat IHn mat_0 mat_0 mat_0).
-Defined.
+(* ============================================================================================== *)
+(* ManyWorlds for program states =============================================================== *)
+
+Definition ManyWorld: Type := list World.
 
 Definition ManyWorld_init (num_q num_c: nat): ManyWorld.
 Proof.
   refine ([{|
-    W_num_qubits := num_q;
     W_num_clbits := num_c;
-    W_qstate := qstate_init num_q;
+    W_qstate := den_init nq;
     W_cstate := tm_empty false;
     W_prob := 1;
   |}]).
@@ -70,12 +69,10 @@ Definition Merge_world (w0 w1: World): World.
 Proof.
   destruct w0 eqn:ew0, w1.
   destruct
-    (Nat.eq_dec W_num_qubits0 W_num_qubits1),
     (Nat.eq_dec W_num_clbits0 W_num_clbits1),
     (tmb_equal W_cstate0 W_cstate1 W_num_clbits0) eqn:ec.
-  subst W_num_qubits1 W_num_clbits1.
+  subst W_num_clbits1.
   refine ({|
-    W_num_qubits := W_num_qubits0;
     W_num_clbits := W_num_clbits0;
     W_qstate := W_prob0 .* W_qstate0 + W_prob1 .* W_qstate1;
     W_cstate := W_cstate0;
@@ -90,19 +87,16 @@ Proof.
   induction mw.
   - exact [w].
   - destruct
-    (Nat.eq_dec (W_num_qubits a) (W_num_qubits w)),
     (tmb_equal (W_cstate a) (W_cstate w) (W_num_clbits a)).
-    destruct w as [nq nc qst cst p pv], a as [nq' nc' qst' cst' p' pv']; simpl in *.
-    subst nq'.
-        refine ({|
-          W_num_qubits := nq;
-          W_num_clbits := nc;
-          W_qstate := p .* qst + p' .* qst';
-          W_cstate := cst;
-          W_prob := p + p';
-        |} :: mw). (* merge *)
-        lra.
-    all: exact (a :: IHmw). (* nop *)
+    destruct w as [nc qst cst p pv], a as [nc' qst' cst' p' pv']; simpl in *.
+    refine ({|
+      W_num_clbits := nc;
+      W_qstate := (p / (p + p'))%com .* qst + (p' / (p + p'))%com .* qst';
+      W_cstate := cst;
+      W_prob := p + p';
+    |} :: mw). (* merge *)
+      lra.
+    exact (a :: IHmw). (* nop *)
 Defined.
 
 Definition Merge_manyworld (mw: ManyWorld): ManyWorld.
@@ -114,54 +108,40 @@ Proof.
     + exact (Merge_manyworld_suppl w (Merge_manyworld_suppl w0 mw)).
 Defined.
 
-Lemma Merge_manyworld_suppl_quantum_state_density:
-  forall (w: World) (mw: ManyWorld) (n: nat),
-  DensityMatrix n (W_qstate w) ->
-  Forall (fun world => DensityMatrix n (W_qstate world)) mw ->
-  Forall (fun world => DensityMatrix n (W_qstate world))
-    (Merge_manyworld_suppl w mw).
+Lemma Merge_manyworld_suppl_qstate_valid:
+  forall (w: World) (mw: ManyWorld),
+  den_valid (W_qstate w) -> Forall qstate_valid mw -> Forall qstate_valid (Merge_manyworld_suppl w mw).
 Proof.
   induction mw.
-  - intros.
-    simpl.
+  - intros; simpl.
     apply Forall_cons.
     apply H.
     apply Forall_nil.
-  - intros.
-    simpl.
+  - intros; simpl.
     apply Forall_cons_iff in H0.
     destruct H0.
-    destruct (Nat.eq_dec (W_num_qubits a) (W_num_qubits w)), (tmb_equal (W_cstate a) (W_cstate w) (W_num_qubits a)).
-    + apply Forall_cons.
-      * simpl.
-        apply DensityMatrix_mix.
-        all: destruct w, a; simpl; try lra; auto.
+    destruct (tmb_equal (W_cstate a) (W_cstate w) (W_num_clbits a)).
+    + destruct w as [nc qst cst p pv], a as [nc' qst' cst' p' pv']; simpl in *.
+      apply Forall_cons.
+      * apply den_valid_mix.
+        all: assumption.
       * apply H1.
-    + all: apply Forall_cons; auto; auto.
-    + all: apply Forall_cons; auto; auto.
-    + all: apply Forall_cons; auto; auto.
+    + apply Forall_cons; auto; auto.
 Qed.
 
-Lemma Merge_manyworld_quantum_state_density:
-  forall (worlds: ManyWorld) (n: nat),
-  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => DensityMatrix n (W_qstate world))
-    (Merge_manyworld worlds).
+Lemma Merge_manyworld_qstate_valid:
+  forall (worlds: ManyWorld),
+  Forall qstate_valid worlds -> Forall qstate_valid (Merge_manyworld worlds).
 Proof.
+  intros; simpl.
   induction worlds as [|w0[|w1 t] ].
-  - intros.
-    simpl.
-    apply Forall_nil.
-  - intros.
-    simpl.
-    apply H.
-  - intros.
-    simpl.
-    apply Forall_cons_iff in H; destruct H.
+  - apply Forall_nil.
+  - apply H.
+  - apply Forall_cons_iff in H; destruct H.
     apply Forall_cons_iff in H0; destruct H0.
-    apply Merge_manyworld_suppl_quantum_state_density.
+    apply Merge_manyworld_suppl_qstate_valid.
     all: auto.
-    apply Merge_manyworld_suppl_quantum_state_density.
+    apply Merge_manyworld_suppl_qstate_valid.
     all: auto.
 Qed.
 
@@ -170,161 +150,127 @@ Qed.
 
 Fixpoint Execute_rotate_instr (theta phi lambda: R) (target: nat) (worlds: ManyWorld): ManyWorld.
 Proof.
-  destruct worlds as [|[qstate cstate prob nq Hq] t].
+  destruct worlds as [|[nc qstate cstate prob Hp] t].
   - exact [].
   - destruct (lt_dec target nq).
-    + refine ({|
-        W_qstate := Den_unitary qstate (Qop_sq nq target (Qop_rot theta phi lambda) l _) _ _;
+    + exact ({|
+        W_num_clbits := nc;
+        W_qstate := den_uop (mat_single nq target (mat_rot theta phi lambda)) qstate ;
         W_cstate := cstate;
         W_prob := prob;
-        W_num_qubits := nq;
+        W_prob_valid := Hp;
       |} :: (Execute_rotate_instr theta phi lambda target t)).
-      Unshelve.
-      rewrite Den_unitary_bits.
-      apply Hq.
-      lra.
-      apply Qop_rot_bits.
-      simpl_bits.
-      rewrite Qop_sq_bits.
-      lia.
-      simpl_bits.
-      reflexivity.
-    + refine ({|
+    + exact ({|
+        W_num_clbits := nc;
         W_qstate := qstate;
         W_cstate := cstate;
         W_prob := prob;
-        W_num_qubits := nq;
-        W_qstate_valid := Hq;
+        W_prob_valid := Hp;
       |} :: (Execute_rotate_instr theta phi lambda target t)).  (* nop *)
-      lra.
 Defined.
 
 Fixpoint Execute_cnot_instr (control target: nat) (worlds: ManyWorld): ManyWorld.
 Proof.
-  destruct worlds as [|[qstate cstate prob nq Hq] t].
+  destruct worlds as [|[nc qstate cstate prob Hp] t].
   - exact [].
   - destruct (ge_dec nq 2), (lt_dec control nq), (lt_dec target nq).
-    refine ({|
-      W_qstate := Den_unitary qstate (Qop_cnot nq control target g l l0) _ _;
+    exact ({|
+      W_num_clbits := nc;
+      W_qstate := den_uop (mat_cnot control target) qstate;
       W_cstate := cstate;
       W_prob := prob;
-      W_num_qubits := nq;
+      W_prob_valid := Hp;
       |} :: (Execute_cnot_instr control target t)).
-    3-9: refine ({|
-        W_qstate := qstate;
-        W_cstate := cstate;
-        W_prob := prob;
-        W_num_qubits := nq;
-        W_qstate_valid := Hq;
-      |} :: (Execute_cnot_instr control target t)).  (* nop *)
-    Unshelve.
-    all: try lra.
-    rewrite Den_unitary_bits.
-    apply Hq.
-    simpl_bits.
-    rewrite Qop_cnot_bits.
-    lia.
-    simpl_bits.
-    reflexivity.
+    all: refine ({|
+      W_num_clbits := nc;
+      W_qstate := qstate;
+      W_cstate := cstate;
+      W_prob := prob;
+      W_prob_valid := Hp;
+    |} :: (Execute_cnot_instr control target t)).  (* nop *)
 Defined.
 
 Fixpoint Execute_swap_instr (q1 q2: nat) (worlds: ManyWorld): ManyWorld.
 Proof.
-  destruct worlds as [|[qstate cstate prob nq Hq] t].
+  destruct worlds as [|[nc qstate cstate prob Hp] t].
   - exact [].
   - destruct (lt_dec q1 nq), (lt_dec q2 nq).
-    refine ({|
-      W_qstate := Den_unitary qstate (Qop_swap nq q1 q2 l l0) _ _;
+    exact ({|
+      W_num_clbits := nc;
+      W_qstate := den_uop (mat_swap q1 q2) qstate;
       W_cstate := cstate;
       W_prob := prob;
-      W_num_qubits := nq;
+      W_prob_valid := Hp;
       |} :: (Execute_swap_instr q1 q2 t)).
-    3-5: refine ({|
+    all: exact ({|
+        W_num_clbits := nc;
         W_qstate := qstate;
         W_cstate := cstate;
         W_prob := prob;
-        W_num_qubits := nq;
-        W_qstate_valid := Hq;
+        W_prob_valid := Hp;
       |} :: (Execute_swap_instr q1 q2 t)).  (* nop *)
-    Unshelve.
-    all: try lra.
-    rewrite Den_unitary_bits.
-    apply Hq.
-    simpl_bits.
-    rewrite Qop_swap_bits.
-    lia.
-    simpl_bits.
-    reflexivity.
 Defined.
 
 Fixpoint Execute_measure_instr (qbit cbit: nat) (worlds: ManyWorld): ManyWorld.
 Proof.
-  destruct worlds as [|[qstate cstate prob nq Hq] t].
+  destruct worlds as [|[nc qstate cstate prob Hp] t].
   - exact [].
   - destruct (lt_dec qbit nq).
-    + specialize (Creal (Den_prob_0 qstate nq qbit l Hq)) as prob0.
-      specialize (Creal (Den_prob_1 qstate nq qbit l Hq)) as prob1.
+    + specialize (com_real (den_prob_0 qbit qstate)) as prob0.
+      specialize (com_real (den_prob_1 qbit qstate)) as prob1.
       destruct (Rgt_dec prob0 0), (Rgt_dec prob1 0).
       * refine ({|
-          W_qstate := Den_measure_0 qstate nq qbit l Hq;
+          W_num_clbits := nc;
+          W_qstate := den_measure_0 qbit qstate;
           W_cstate := tm_update cstate cbit false;
           W_prob := prob * prob0;
-          W_num_qubits := nq;
         |} :: {|
-          W_qstate := Den_measure_1 qstate nq qbit l Hq;
+          W_num_clbits := nc;
+          W_qstate := den_measure_1 qbit qstate;
           W_cstate := tm_update cstate cbit true;
           W_prob := prob * prob1;
-          W_num_qubits := nq;
         |} ::
         (Execute_measure_instr qbit cbit t)).
         all: try nra.
-        apply Den_measure_0_bits.
-        apply Den_measure_1_bits.
       * refine ({|
-          W_qstate := Den_measure_0 qstate nq qbit l Hq;
+          W_num_clbits := nc;
+          W_qstate := den_measure_0 qbit qstate;
           W_cstate := tm_update cstate cbit false;
           W_prob := prob * prob0;
-          W_num_qubits := nq;
         |} ::
         (Execute_measure_instr qbit cbit t)).
-        apply Den_measure_0_bits.
         nra.
       * refine ({|
-          W_qstate := Den_measure_1 qstate nq qbit l Hq;
+          W_num_clbits := nc;
+          W_qstate := den_measure_1 qbit qstate;
           W_cstate := tm_update cstate cbit true;
           W_prob := prob * prob1;
-          W_num_qubits := nq;
         |} ::
         (Execute_measure_instr qbit cbit t)).
-        apply Den_measure_1_bits.
         nra.
-      * apply (Execute_measure_instr qbit cbit t).  (* nop *)
-  + apply (Execute_measure_instr qbit cbit t).  (* nop *)
+      * exact (Execute_measure_instr qbit cbit t).  (* nop *)
+  + exact (Execute_measure_instr qbit cbit t).  (* nop *)
 Defined.
 
 Fixpoint Execute_reset_instr (target: nat) (worlds: ManyWorld): ManyWorld.
 Proof.
-  destruct worlds as [|[qstate cstate prob nq Hq] t].
+  destruct worlds as [|[nc qstate cstate prob Hp] t].
   - exact [].
   - destruct (lt_dec target nq).
-    + refine ({|
-        W_qstate := Den_reset qstate target _;
+    + exact ({|
+        W_num_clbits := nc;
+        W_qstate := den_reset target qstate;
         W_cstate := cstate;
         W_prob := prob;
-        W_num_qubits := nq;
+        W_prob_valid := Hp;
       |} :: (Execute_reset_instr target t)).
-      Unshelve.
-      all: try lra; try lia.
-      rewrite Den_reset_bits.
-      apply Hq.
-    + refine ({|
+    + exact ({|
+        W_num_clbits := nc;
         W_qstate := qstate;
         W_cstate := cstate;
         W_prob := prob;
-        W_num_qubits := nq;
-        W_qstate_valid := Hq;
+        W_prob_valid := Hp;
       |} :: (Execute_reset_instr target t)).  (* nop *)
-      lra.
 Defined.
 
 Fixpoint Execute_suppl (ir: nat) (instr: Instruction) (worlds: ManyWorld): ManyWorld :=
@@ -353,7 +299,7 @@ Definition Execute (program: InlinedProgram): ManyWorld :=
   Execute_suppl
     (IP_num_subinstrs program)
     (IP_instrs program)
-    (ManyWorld_init (IP_num_qbits program) (IP_num_cbits program)).
+    (ManyWorld_init nq (IP_num_cbits program)).
 
 Fixpoint Cstate_to_binary_little_endian (n: nat) (cstate: total_map bool) (acc: nat): nat := match n with
   | O => acc
@@ -385,55 +331,48 @@ Definition Execute_and_calculate_prob (program: InlinedProgram): total_map R :=
 (* Proof about quantum states =================================================================== *)
 
 Lemma Execute_rotate_instr_quantum_state_density:
-  forall (theta phi lambda: R) (n target: nat) (worlds: ManyWorld),
-  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => DensityMatrix n (W_qstate world))
-    (Execute_rotate_instr theta phi lambda target worlds).
+  forall (theta phi lambda: R) (target: nat) (worlds: ManyWorld),
+  Forall qstate_valid worlds ->
+  Forall qstate_valid (Execute_rotate_instr theta phi lambda target worlds).
 Proof.
   intros.
   induction worlds.
-  - simpl.
-    apply H.
+  - apply H.
   - destruct a.
     apply Forall_cons_iff in H.
     destruct H as [H Ht].
     simpl in *.
-    destruct (lt_dec target (W_num_qubits0)).
-    + apply Forall_cons.
-      simpl.
-      apply DensityMatrix_unitary.
-      apply H.
-      apply Qop_sq_unitary.
-      apply Qop_rot_unitary.
+    destruct (lt_dec target nq).
+    + apply Forall_cons; simpl.
+      apply den_valid_uop.
+      apply mat_single_unitary.
+      apply mat_rot_unitary.
+      assumption.
       apply IHworlds.
       apply Ht.
-    + apply Forall_cons.
-      simpl.
+    + apply Forall_cons; simpl.
       apply H.
       apply IHworlds.
       apply Ht.
 Qed.
 
 Lemma Execute_cnot_instr_quantum_state_density:
-  forall (n control target: nat) (worlds: ManyWorld),
-  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => DensityMatrix n (W_qstate world))
-    (Execute_cnot_instr control target worlds).
+  forall (control target: nat) (worlds: ManyWorld),
+  Forall qstate_valid worlds -> Forall qstate_valid (Execute_cnot_instr control target worlds).
 Proof.
   intros.
   induction worlds.
-  - simpl.
-    apply H.
+  - apply H.
   - destruct a.
     apply Forall_cons_iff in H.
     destruct H as [H Ht].
     simpl in *.
-    destruct (ge_dec W_num_qubits0 2), (lt_dec control W_num_qubits0), (lt_dec target W_num_qubits0).
+    destruct (ge_dec nq 2), (lt_dec control nq), (lt_dec target nq).
     { apply Forall_cons.
       simpl.
-      apply DensityMatrix_unitary.
-      apply H.
-      apply Qop_cnot_unitary.
+      apply den_valid_uop.
+      apply mat_cnot_unitary.
+      assumption.
       apply IHworlds.
       apply Ht. }
       all: apply Forall_cons.
@@ -443,25 +382,22 @@ Proof.
 Qed.
 
 Lemma Execute_swap_instr_quantum_state_density:
-  forall (n q1 q2: nat) (worlds: ManyWorld),
-  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => DensityMatrix n (W_qstate world))
-    (Execute_swap_instr q1 q2 worlds).
+  forall (q1 q2: nat) (worlds: ManyWorld),
+  Forall qstate_valid worlds -> Forall qstate_valid (Execute_swap_instr q1 q2 worlds).
 Proof.
   intros.
   induction worlds.
-  - simpl.
-    apply H.
+  - apply H.
   - destruct a.
     apply Forall_cons_iff in H.
     destruct H as [H Ht].
     simpl in *.
-    destruct (lt_dec q1 W_num_qubits0), (lt_dec q2 W_num_qubits0).
+    destruct (lt_dec q1 nq), (lt_dec q2 nq).
     { apply Forall_cons.
       simpl.
-      apply DensityMatrix_unitary.
-      apply H.
-      apply Qop_swap_unitary.
+      apply den_valid_uop.
+      apply mat_swap_unitary.
+      assumption.
       apply IHworlds.
       apply Ht. }
       all: apply Forall_cons.
@@ -471,35 +407,29 @@ Proof.
 Qed.
 
 Lemma Execute_measure_instr_quantum_state_density:
-  forall (n qbit cbit: nat) (worlds: ManyWorld),
-  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => DensityMatrix n (W_qstate world))
-    (Execute_measure_instr qbit cbit worlds).
+  forall (qbit cbit: nat) (worlds: ManyWorld),
+  Forall qstate_valid worlds -> Forall qstate_valid (Execute_measure_instr qbit cbit worlds).
 Proof.
   intros.
   induction worlds.
-  - simpl.
-    apply H.
+  - apply H.
   - destruct a.
     apply Forall_cons_iff in H.
     destruct H as [H Ht].
     simpl in *.
-    specialize DensityMatrix_prob_pos as Hpos.
-    destruct (lt_dec qbit W_num_qubits0).
+    destruct (lt_dec qbit nq).
     + destruct
-      (Rgt_dec (Creal (Den_prob_0 W_qstate0 W_num_qubits0 qbit l W_qstate_valid0)) 0),
-      (Rgt_dec (Creal (Den_prob_1 W_qstate0 W_num_qubits0 qbit l W_qstate_valid0)) 0).
+      (Rgt_dec (com_real (den_prob_0 qbit W_qstate0)) 0),
+      (Rgt_dec (com_real (den_prob_1 qbit W_qstate0)) 0).
       all: try repeat apply Forall_cons; simpl.
-      all: unfold Den_measure_0, Den_measure_1 in *.
-      all: try apply DensityMatrix_measure.
-      all: unfold Den_prob_0, Den_prob_1, Den_prob, Mmult in *.
+      all: unfold den_measure_0, den_measure_1 in *.
+      all: try apply den_valid_measure.
+      all: unfold den_prob_0, den_prob_1, den_prob in *.
       all: try apply H.
-      all: try apply Qproj0_n_t_proj.
-      all: try apply Qproj1_n_t_proj.
-      all: unfold Creal in *.
-      all: try apply c_proj_neq_fst.
-      all: unfold NTC, INR; simpl.
-      all: try lra.
+      all: try apply mat_proj0_projection; try apply mat_proj1_projection.
+      all: unfold com_real in *.
+      all: try apply com_proj_neq_fst.
+      all: unfold NTC, INR; simpl; try lra.
       all: apply IHworlds.
       all: apply Ht.
     + apply IHworlds.
@@ -507,10 +437,8 @@ Proof.
 Qed.
 
 Lemma Execute_reset_instr_quantum_state_density:
-  forall (n target: nat) (worlds: ManyWorld),
-  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => DensityMatrix n (W_qstate world))
-    (Execute_reset_instr target worlds).
+  forall (target: nat) (worlds: ManyWorld),
+  Forall qstate_valid worlds -> Forall qstate_valid (Execute_reset_instr target worlds).
 Proof.
   intros.
   induction worlds.
@@ -520,15 +448,13 @@ Proof.
     apply Forall_cons_iff in H.
     destruct H as [H Ht].
     simpl in *.
-    destruct (lt_dec target (W_num_qubits0)).
+    destruct (lt_dec target nq).
     + apply Forall_cons.
-      simpl.
-      apply DensityMatrix_reset.
+      apply den_valid_reset.
       apply H.
       apply IHworlds.
       apply Ht.
     + apply Forall_cons.
-      simpl.
       apply H.
       apply IHworlds.
       apply Ht.
@@ -557,51 +483,32 @@ Arguments Execute_swap_instr _ _ _ : simpl never.
 Arguments Execute_measure_instr _ _ _ : simpl never.
 
 Lemma Execute_suppl_quantum_state_density:
-  forall (n ir: nat) (instr: Instruction) (worlds: ManyWorld),
-  Forall (fun world => DensityMatrix n (W_qstate world)) worlds ->
-  Forall (fun world => DensityMatrix n (W_qstate world)) (Execute_suppl ir instr worlds).
+  forall (ir: nat) (instr: Instruction) (worlds: ManyWorld),
+  Forall qstate_valid worlds -> Forall qstate_valid (Execute_suppl ir instr worlds).
 Proof.
-  intros n ir instr.
+  intros ir instr.
   revert ir.
   induction instr.
   all: intros; destruct ir; [simpl; apply H|].
   - rewrite Execute_suppl_nop.
     apply H.
-  - simpl.
-    apply Execute_rotate_instr_quantum_state_density.
-    apply H.
-  - simpl.
-    apply Execute_cnot_instr_quantum_state_density.
-    apply H.
-  - simpl.
-    apply Execute_swap_instr_quantum_state_density.
-    apply H.
-  - simpl.
-    apply Merge_manyworld_quantum_state_density.
-    apply Execute_measure_instr_quantum_state_density.
-    apply H.
-  - simpl.
-    apply IHinstr2.
-    apply IHinstr1.
-    apply H.
-  - simpl.
-    apply Forall_concat.
+  - apply Execute_rotate_instr_quantum_state_density; apply H.
+  - apply Execute_cnot_instr_quantum_state_density; apply H.
+  - apply Execute_swap_instr_quantum_state_density; apply H.
+  - apply Merge_manyworld_qstate_valid.
+    apply Execute_measure_instr_quantum_state_density; apply H.
+  - apply IHinstr2; apply IHinstr1; apply H.
+  - apply Forall_concat.
     apply Forall_map.
     induction worlds.
     + apply Forall_nil.
     + apply Forall_cons.
-      * destruct (eqb (W_cstate a n0) b).
-        { apply IHinstr.
-          apply Forall_cons_iff in H.
-          destruct H.
-          apply Forall_cons.
-          apply H.
-          apply Forall_nil. }
-        { apply Forall_cons_iff in H.
-          destruct H.
-          apply Forall_cons.
-          apply H.
-          apply Forall_nil. }
+      * destruct (eqb (W_cstate a n) b).
+        apply IHinstr.
+        all: apply Forall_cons_iff in H.
+        all: destruct H.
+        all: apply Forall_cons.
+        all: try apply H; try apply Forall_nil.
       * apply IHworlds.
         apply Forall_cons_iff in H.
         destruct H.
@@ -613,15 +520,15 @@ Qed.
 
 
 Theorem Execute_quantum_state_density: forall (program: InlinedProgram),
-  Forall (fun world => DensityMatrix program.(IP_num_qbits) (W_qstate world)) (Execute program).
+  Forall qstate_valid (Execute program).
 Proof.
   intros.
   unfold Execute.
-  simpl.
   apply Execute_suppl_quantum_state_density.
   unfold ManyWorld_init.
   apply Forall_cons.
-  simpl.
-  apply Den_0_init_DensityMatrix.
+  apply den_valid_init.
   apply Forall_nil.
 Qed.
+
+End PROGRAM.

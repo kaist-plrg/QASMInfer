@@ -9,7 +9,7 @@ Extract Inlined Constant Nat.sub => "(fun n m -> Stdlib.max 0 (n-m))".
 Extract Inlined Constant Nat.mul => "( * )".
 Extract Inlined Constant Nat.div => "(/)".
 Extract Inlined Constant Nat.modulo => "(mod)".
-Extract Inlined Constant pow_2 => "(fun n -> Int.shift_left 1 n)".
+(* Extract Inlined Constant pow_2 => "(fun n -> Int.shift_left 1 n)". *)
 
 Extract Constant Pos.succ => "Stdlib.succ".
 
@@ -44,18 +44,19 @@ Extract Constant NTC => "fun n -> {re=float_of_int n; im=0.0}".
 
 Extract Inlined Constant sin => "Stdlib.sin".
 Extract Inlined Constant cos => "Stdlib.cos".
-Extract Inlined Constant atan2 => "Stdlib.atan2".
+(* Extract Inlined Constant atan2 => "Stdlib.atan2". *)
 Extract Inlined Constant exp => "Stdlib.exp".
 Extract Inlined Constant PI => "(4. *. Stdlib.atan 1.)".
 
-Extract Inlined Constant C => "Complex.t".
-Extract Inlined Constant Cmake => "(fun re im -> {re=re; im=im})".
-Extract Inlined Constant Cplus => "Complex.add".
-Extract Inlined Constant Cminus => "Complex.sub".
-Extract Inlined Constant Cmult => "Complex.mul".
-Extract Inlined Constant Cconj => "Complex.conj".
-Extract Inlined Constant Creal => "(fun x -> x.re)".
-Extract Inlined Constant Cexp => "Complex.exp".
-Extract Inlined Constant Cinv => "Complex.inv".
+Extract Inlined Constant Complex => "Complex.t".
+Extract Inlined Constant com_make => "(fun re im -> {re=re; im=im})".
+Extract Inlined Constant com_add => "Complex.add".
+Extract Inlined Constant com_neg => "Complex.neg".
+Extract Inlined Constant com_sub => "Complex.sub".
+Extract Inlined Constant com_mul => "Complex.mul".
+Extract Inlined Constant com_conj => "Complex.conj".
+Extract Inlined Constant com_real => "(fun x -> x.re)".
+Extract Inlined Constant com_exp => "Complex.exp".
+Extract Inlined Constant com_inv => "Complex.inv".
 
 Extraction "../qasm/lib/core/quantum_core.ml" Execute_and_calculate_prob.

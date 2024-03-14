@@ -1,16 +1,3 @@
-open Complex
-
-let memoize2 f =
-  let b = 10 in
-  let memo_table = Hashtbl.create (Int.shift_left 1 (b + b)) in
-  fun x y ->
-    let xy = Int.shift_left x b + y in
-    try Hashtbl.find memo_table xy
-    with Not_found ->
-      let result = f x y in
-      Hashtbl.add memo_table xy result;
-      result
-
 
 type __ = Obj.t
 let __ = let rec f _ = Obj.repr f in Obj.repr f
@@ -42,11 +29,6 @@ let eqb b1 b2 =
 
 module Nat =
  struct
-  (** val ltb : int -> int -> bool **)
-
-  let ltb n m =
-    (<=) (Stdlib.Int.succ n) m
-
   (** val pow : int -> int -> int **)
 
   let rec pow n m =
@@ -54,18 +36,6 @@ module Nat =
       (fun _ -> Stdlib.Int.succ 0)
       (fun m0 -> ( * ) n (pow n m0))
       m
-
-  (** val divmod : int -> int -> int -> int -> int * int **)
-
-  let rec divmod x y q0 u =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> (q0, u))
-      (fun x' ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ -> divmod x' y (Stdlib.Int.succ q0) y)
-        (fun u' -> divmod x' y q0 u')
-        u)
-      x
  end
 
 (** val lt_eq_lt_dec : int -> int -> bool option **)
@@ -721,583 +691,445 @@ let rec tmb_equal m1 m2 size =
 
 let rTC = fun x -> {re=x; im=0.0}
 
+(** val rTIm : RbaseSymbolsImpl.coq_R -> Complex.t **)
+
+let rTIm = fun y -> {re=0.0; im=y}
+
 (** val nTC : int -> Complex.t **)
 
 let nTC = fun n -> {re=float_of_int n; im=0.0}
 
-(** val cdiv : Complex.t -> Complex.t -> Complex.t **)
+(** val com_div : Complex.t -> Complex.t -> Complex.t **)
 
-let cdiv x y =
+let com_div x y =
   Complex.mul x (Complex.inv y)
 
-(** val func_sum_suppl : (int -> Complex.t) -> int -> int -> Complex.t **)
+(** val com_iexp : RbaseSymbolsImpl.coq_R -> Complex.t **)
 
-let rec func_sum_suppl f m n =
+let com_iexp theta =
+  Complex.add (rTC (Stdlib.cos theta)) (rTIm (Stdlib.sin theta))
+
+
+
+type matrix =
+| Bas_mat of Complex.t
+| Rec_mat of int * matrix * matrix * matrix * matrix
+
+(** val mat_case0 : (Complex.t -> 'a1) -> matrix -> 'a1 **)
+
+let mat_case0 h = function
+| Bas_mat a0 -> h a0
+| Rec_mat (x, x0, x1, x2, x3) -> Obj.magic __ x x0 x1 x2 x3
+
+(** val mat_caseS_ :
+    int -> matrix -> (matrix -> matrix -> matrix -> matrix -> 'a1) -> 'a1 **)
+
+let mat_caseS_ _ a h =
+  match a with
+  | Bas_mat x -> Obj.magic __ x __ h
+  | Rec_mat (_, a1, a2, a3, a4) -> h a1 a2 a3 a4
+
+(** val mat_rect2 :
+    (Complex.t -> Complex.t -> 'a1) -> (int -> matrix -> matrix -> matrix ->
+    matrix -> matrix -> matrix -> matrix -> matrix -> 'a1 -> 'a1 -> 'a1 ->
+    'a1 -> 'a1) -> int -> matrix -> matrix -> 'a1 **)
+
+let rec mat_rect2 bas rect _ a b =
+  match a with
+  | Bas_mat a0 -> mat_case0 (bas a0) b
+  | Rec_mat (n0, a1, a2, a3, a4) ->
+    mat_caseS_ n0 b (fun b1 b2 b3 b4 ->
+      rect n0 a1 a2 a3 a4 b1 b2 b3 b4 (mat_rect2 bas rect n0 a1 b1)
+        (mat_rect2 bas rect n0 a2 b2) (mat_rect2 bas rect n0 a3 b3)
+        (mat_rect2 bas rect n0 a4 b4))
+
+(** val mat_rect2_gen :
+    (Complex.t -> Complex.t -> 'a1) -> (int -> matrix -> matrix -> matrix ->
+    matrix -> matrix -> matrix -> matrix -> matrix -> 'a1 -> 'a1 -> 'a1 ->
+    'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1
+    -> 'a1 -> 'a1 -> 'a1) -> int -> matrix -> matrix -> 'a1 **)
+
+let rec mat_rect2_gen bas rect _ a b =
+  match a with
+  | Bas_mat a0 -> mat_case0 (bas a0) b
+  | Rec_mat (n0, a1, a2, a3, a4) ->
+    mat_caseS_ n0 b (fun b1 b2 b3 b4 ->
+      rect n0 a1 a2 a3 a4 b1 b2 b3 b4 (mat_rect2_gen bas rect n0 a1 b1)
+        (mat_rect2_gen bas rect n0 a1 b2) (mat_rect2_gen bas rect n0 a1 b3)
+        (mat_rect2_gen bas rect n0 a1 b4) (mat_rect2_gen bas rect n0 a2 b1)
+        (mat_rect2_gen bas rect n0 a2 b2) (mat_rect2_gen bas rect n0 a2 b3)
+        (mat_rect2_gen bas rect n0 a2 b4) (mat_rect2_gen bas rect n0 a3 b1)
+        (mat_rect2_gen bas rect n0 a3 b2) (mat_rect2_gen bas rect n0 a3 b3)
+        (mat_rect2_gen bas rect n0 a3 b4) (mat_rect2_gen bas rect n0 a4 b1)
+        (mat_rect2_gen bas rect n0 a4 b2) (mat_rect2_gen bas rect n0 a4 b3)
+        (mat_rect2_gen bas rect n0 a4 b4))
+
+(** val mat_0 : int -> matrix **)
+
+let rec mat_0 n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> nTC 0)
-    (fun n' -> Complex.add (f ((+) m n')) (func_sum_suppl f m n'))
+    (fun _ -> Bas_mat (nTC 0))
+    (fun n0 -> Rec_mat (n0, (mat_0 n0), (mat_0 n0), (mat_0 n0), (mat_0 n0)))
     n
 
-(** val func_sum2 : (int -> Complex.t) -> int -> int -> Complex.t **)
+(** val mat_eye : int -> matrix **)
 
-let func_sum2 f m n =
-  func_sum_suppl f m (sub n m)
+let rec mat_eye n =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> Bas_mat (nTC (Stdlib.Int.succ 0)))
+    (fun n0 -> Rec_mat (n0, (mat_eye n0), (mat_0 n0), (mat_0 n0),
+    (mat_eye n0)))
+    n
 
-(** val func_sum : (int -> Complex.t) -> int -> Complex.t **)
+(** val mat_map : (Complex.t -> Complex.t) -> int -> matrix -> matrix **)
 
-let func_sum f n =
-  func_sum2 f 0 n
+let rec mat_map f _ = function
+| Bas_mat a0 -> Bas_mat (f a0)
+| Rec_mat (n0, a1, a2, a3, a4) ->
+  Rec_mat (n0, (mat_map f n0 a1), (mat_map f n0 a2), (mat_map f n0 a3),
+    (mat_map f n0 a4))
 
-type matrix = { mbits : int; minner : (int -> int -> Complex.t) }
+(** val mat_map2 :
+    (Complex.t -> Complex.t -> Complex.t) -> int -> matrix -> matrix -> matrix **)
 
-(** val msize : matrix -> int **)
+let mat_map2 g =
+  mat_rect2 (fun a b -> Bas_mat (g a b))
+    (fun n _ _ _ _ _ _ _ _ iH1 iH2 iH3 iH4 -> Rec_mat (n, iH1, iH2, iH3, iH4))
 
-let msize m =
-  (fun n -> Int.shift_left 1 n) m.mbits
+(** val mat_scale : int -> Complex.t -> matrix -> matrix **)
 
-type rowVec = { rVbits : int; rVinner : (int -> Complex.t) }
+let mat_scale n a =
+  mat_map (fun b -> Complex.mul a b) n
 
-type colVec = { cVbits : int; cVinner : (int -> Complex.t) }
+(** val mat_conjtrans : int -> matrix -> matrix **)
 
-(** val extract_row_unsafe : matrix -> int -> rowVec **)
+let rec mat_conjtrans _ = function
+| Bas_mat c -> Bas_mat (Complex.conj c)
+| Rec_mat (n, m0, m1, m2, m3) ->
+  Rec_mat (n, (mat_conjtrans n m0), (mat_conjtrans n m2),
+    (mat_conjtrans n m1), (mat_conjtrans n m3))
 
-let extract_row_unsafe m i =
-  { rVbits = m.mbits; rVinner = (fun j -> m.minner i j) }
+(** val mat_trace : int -> matrix -> Complex.t **)
 
-(** val extract_col_unsafe : matrix -> int -> colVec **)
+let rec mat_trace _ = function
+| Bas_mat c -> c
+| Rec_mat (n, m0, _, _, m1) -> Complex.add (mat_trace n m0) (mat_trace n m1)
 
-let extract_col_unsafe m j =
-  { cVbits = m.mbits; cVinner = (fun i -> m.minner i j) }
+(** val mat_add : int -> matrix -> matrix -> matrix **)
 
-(** val dot_product_suppl :
-    (int -> Complex.t) -> (int -> Complex.t) -> int -> Complex.t **)
+let mat_add n =
+  mat_map2 Complex.add n
 
-let dot_product_suppl r c idx =
-  func_sum (fun i -> Complex.mul (r i) (c i)) idx
+(** val mat_mul : int -> matrix -> matrix -> matrix **)
 
-(** val muop : (Complex.t -> Complex.t) -> matrix -> matrix **)
+let mat_mul =
+  mat_rect2_gen (fun a b -> Bas_mat (Complex.mul a b))
+    (fun n _ _ _ _ _ _ _ _ h11 h12 _ _ _ _ h23 h24 h31 h32 _ _ _ _ h43 h44 ->
+    Rec_mat (n, (mat_add n h11 h23), (mat_add n h12 h24),
+    (mat_add n h31 h43), (mat_add n h32 h44)))
 
-let muop uop m =
-  { mbits = m.mbits; minner = (fun i j -> uop (m.minner i j)) }
+(** val tensor_product : int -> int -> matrix -> matrix -> matrix **)
 
-(** val msmul : Complex.t -> matrix -> matrix **)
+let rec tensor_product _ n a b =
+  match a with
+  | Bas_mat c -> mat_scale n c b
+  | Rec_mat (n0, m, m0, m1, m2) ->
+    Rec_mat (((+) n0 n), (tensor_product n0 n m b),
+      (tensor_product n0 n m0 b), (tensor_product n0 n m1 b),
+      (tensor_product n0 n m2 b))
 
-let msmul s m =
-  muop (Complex.mul s) m
+(** val mat_rot_y : RbaseSymbolsImpl.coq_R -> matrix **)
 
-(** val mbop_unsafe :
-    (Complex.t -> Complex.t -> Complex.t) -> matrix -> matrix -> matrix **)
+let mat_rot_y _UU03b8_ =
+  Rec_mat (0, (Bas_mat
+    (rTC (Stdlib.cos (rdiv _UU03b8_ (float_of_int ((fun p->2*p) 1)))))),
+    (Bas_mat
+    (Complex.neg
+      (rTC (Stdlib.sin (rdiv _UU03b8_ (float_of_int ((fun p->2*p) 1))))))),
+    (Bas_mat
+    (rTC (Stdlib.sin (rdiv _UU03b8_ (float_of_int ((fun p->2*p) 1)))))),
+    (Bas_mat
+    (rTC (Stdlib.cos (rdiv _UU03b8_ (float_of_int ((fun p->2*p) 1)))))))
 
-let mbop_unsafe bop m1 m2 =
-  { mbits = m1.mbits; minner = (fun i j ->
-    bop (m1.minner i j) (m2.minner i j)) }
+(** val mat_rot_z : RbaseSymbolsImpl.coq_R -> matrix **)
 
-(** val mplus : matrix -> matrix -> matrix **)
+let mat_rot_z _UU03b8_ =
+  Rec_mat (0, (Bas_mat
+    (com_iexp
+      (rdiv (RbaseSymbolsImpl.coq_Ropp _UU03b8_)
+        (float_of_int ((fun p->2*p) 1))))), (Bas_mat (rTC (float_of_int 0))),
+    (Bas_mat (rTC (float_of_int 0))), (Bas_mat
+    (com_iexp (rdiv _UU03b8_ (float_of_int ((fun p->2*p) 1))))))
 
-let mplus m1 m2 =
-  mbop_unsafe Complex.add m1 m2
-
-(** val mmult_inner : matrix -> matrix -> int -> int -> Complex.t **)
-
-let mmult_inner m1 m2 i j =
-  dot_product_suppl (extract_row_unsafe m1 i).rVinner
-    (extract_col_unsafe m2 j).cVinner (msize m1)
-
-(** val mmult_unsafe : matrix -> matrix -> matrix **)
-
-let mmult_unsafe m1 m2 =
-  { mbits = m1.mbits; minner = memoize2 (fun i j -> mmult_inner m1 m2 i j) }
-
-(** val mmult : matrix -> matrix -> matrix **)
-
-let mmult =
-  mmult_unsafe
-
-(** val mconjtrans : matrix -> matrix **)
-
-let mconjtrans m =
-  { mbits = m.mbits; minner = (fun i j -> Complex.conj (m.minner j i)) }
-
-(** val mtrace : matrix -> Complex.t **)
-
-let mtrace m =
-  func_sum (fun i -> m.minner i i) (msize m)
-
-(** val eye : int -> matrix **)
-
-let eye bits =
-  { mbits = bits; minner = (fun i j ->
-    if (=) i j
-    then if Nat.ltb i ((fun n -> Int.shift_left 1 n) bits)
-         then nTC (Stdlib.Int.succ 0)
-         else nTC 0
-    else nTC 0) }
-
-(** val tMproduct : matrix -> matrix -> matrix **)
-
-let tMproduct m1 m2 =
-  { mbits = ((+) m1.mbits m2.mbits); minner = (fun i j ->
-    Complex.mul (m1.minner ((/) i (msize m2)) ((/) j (msize m2)))
-      (m2.minner ((mod) i (msize m2)) ((mod) j (msize m2)))) }
-
-(** val qop_ry : RbaseSymbolsImpl.coq_R -> matrix **)
-
-let qop_ry theta =
-  { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ ->
-        rTC (Stdlib.cos (rdiv theta (float_of_int ((fun p->2*p) 1)))))
-        (fun n ->
-        (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ ->
-          rTC
-            (RbaseSymbolsImpl.coq_Ropp
-              (Stdlib.sin (rdiv theta (float_of_int ((fun p->2*p) 1))))))
-          (fun _ -> rTC (float_of_int 0))
-          n)
-        j)
-      (fun n ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ ->
-        (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ ->
-          rTC (Stdlib.sin (rdiv theta (float_of_int ((fun p->2*p) 1)))))
-          (fun n0 ->
-          (fun fO fS n -> if n=0 then fO () else fS (n-1))
-            (fun _ ->
-            rTC (Stdlib.cos (rdiv theta (float_of_int ((fun p->2*p) 1)))))
-            (fun _ -> rTC (float_of_int 0))
-            n0)
-          j)
-        (fun _ -> rTC (float_of_int 0))
-        n)
-      i) }
-
-(** val qop_rz : RbaseSymbolsImpl.coq_R -> matrix **)
-
-let qop_rz theta =
-  { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
-    if (=) i 0
-    then if (=) j 0
-         then Complex.exp
-                ((fun re im -> {re=re; im=im}) (float_of_int 0)
-                  (rdiv (RbaseSymbolsImpl.coq_Ropp theta)
-                    (float_of_int ((fun p->2*p) 1))))
-         else rTC (float_of_int 0)
-    else if (=) j 0
-         then rTC (float_of_int 0)
-         else Complex.exp
-                ((fun re im -> {re=re; im=im}) (float_of_int 0)
-                  (rdiv theta (float_of_int ((fun p->2*p) 1))))) }
-
-(** val qop_rot :
+(** val mat_rot :
     RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
     RbaseSymbolsImpl.coq_R -> matrix **)
 
-let qop_rot theta phi lambda =
-  mmult (mmult (qop_rz phi) (qop_ry theta)) (qop_rz lambda)
+let mat_rot _UU03b8_ _UU03c6_ l =
+  mat_mul (Stdlib.Int.succ 0)
+    (mat_mul (Stdlib.Int.succ 0) (mat_rot_z _UU03c6_) (mat_rot_y _UU03b8_))
+    (mat_rot_z l)
 
-(** val qop_sq : int -> int -> matrix -> matrix **)
+(** val mat_single : int -> int -> matrix -> matrix **)
 
-let qop_sq n t op =
-  tMproduct (tMproduct (eye t) op) (eye (sub (sub n t) (Stdlib.Int.succ 0)))
+let rec mat_single n t u =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> mat_eye 0)
+    (fun n' ->
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ ->
+      tensor_product (Stdlib.Int.succ 0) n' u (mat_eye n'))
+      (fun t' ->
+      tensor_product (Stdlib.Int.succ 0) n' (mat_eye (Stdlib.Int.succ 0))
+        (mat_single n' t' u))
+      t)
+    n
 
-(** val qproj0 : matrix **)
+(** val mat_proj0_base : matrix **)
 
-let qproj0 =
-  { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
+let mat_proj0_base =
+  Rec_mat (0, (Bas_mat (nTC (Stdlib.Int.succ 0))), (Bas_mat (nTC 0)),
+    (Bas_mat (nTC 0)), (Bas_mat (nTC 0)))
+
+(** val mat_proj1_base : matrix **)
+
+let mat_proj1_base =
+  Rec_mat (0, (Bas_mat (nTC 0)), (Bas_mat (nTC 0)), (Bas_mat (nTC 0)),
+    (Bas_mat (nTC (Stdlib.Int.succ 0))))
+
+(** val mat_proj0 : int -> int -> matrix **)
+
+let rec mat_proj0 n p =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> Bas_mat (nTC 0))
+    (fun n' ->
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ ->
+      tensor_product (Stdlib.Int.succ 0) n' mat_proj0_base (mat_eye n'))
+      (fun p' ->
+      tensor_product (Stdlib.Int.succ 0) n' (mat_eye (Stdlib.Int.succ 0))
+        (mat_proj0 n' p'))
+      p)
+    n
+
+(** val mat_proj1 : int -> int -> matrix **)
+
+let rec mat_proj1 n p =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> Bas_mat (nTC (Stdlib.Int.succ 0)))
+    (fun n' ->
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ ->
+      tensor_product (Stdlib.Int.succ 0) n' mat_proj1_base (mat_eye n'))
+      (fun p' ->
+      tensor_product (Stdlib.Int.succ 0) n' (mat_eye (Stdlib.Int.succ 0))
+        (mat_proj1 n' p'))
+      p)
+    n
+
+(** val mat_ctrl_single : int -> int -> int -> matrix -> matrix **)
+
+let rec mat_ctrl_single n c t u =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> mat_eye 0)
+    (fun n' ->
     (fun fO fS n -> if n=0 then fO () else fS (n-1))
       (fun _ ->
       (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ -> nTC (Stdlib.Int.succ 0))
-        (fun _ -> nTC 0)
-        j)
-      (fun _ -> nTC 0)
-      i) }
-
-(** val qproj1 : matrix **)
-
-let qproj1 =
-  { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> nTC 0)
-      (fun n ->
+        (fun _ -> mat_eye (Stdlib.Int.succ n'))
+        (fun t' ->
+        mat_add ((+) (Stdlib.Int.succ 0) n')
+          (tensor_product (Stdlib.Int.succ 0) n' mat_proj0_base (mat_eye n'))
+          (tensor_product (Stdlib.Int.succ 0) n' mat_proj1_base
+            (mat_single n' t' u)))
+        t)
+      (fun c' ->
       (fun fO fS n -> if n=0 then fO () else fS (n-1))
         (fun _ ->
-        (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ -> nTC 0)
-          (fun n0 ->
-          (fun fO fS n -> if n=0 then fO () else fS (n-1))
-            (fun _ -> nTC (Stdlib.Int.succ 0))
-            (fun _ -> nTC 0)
-            n0)
-          j)
-        (fun _ -> nTC 0)
-        n)
-      i) }
+        mat_add ((+) (Stdlib.Int.succ 0) n')
+          (tensor_product (Stdlib.Int.succ 0) n' u (mat_proj0 n' c'))
+          (tensor_product (Stdlib.Int.succ 0) n'
+            (mat_eye (Stdlib.Int.succ 0)) (mat_proj1 n' c')))
+        (fun t' ->
+        tensor_product (Stdlib.Int.succ 0) n' (mat_eye (Stdlib.Int.succ 0))
+          (mat_ctrl_single n' c' t' u))
+        t)
+      c)
+    n
 
-(** val qproj0_n_t : int -> int -> matrix **)
+(** val den_init : int -> matrix **)
 
-let qproj0_n_t n t =
-  qop_sq n t qproj0
-
-(** val qproj1_n_t : int -> int -> matrix **)
-
-let qproj1_n_t n t =
-  qop_sq n t qproj1
-
-(** val qop_swap2 : matrix **)
-
-let qop_swap2 =
-  { mbits = (Stdlib.Int.succ (Stdlib.Int.succ 0)); minner = (fun i j ->
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ -> nTC (Stdlib.Int.succ 0))
-        (fun _ -> nTC 0)
-        j)
-      (fun n ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ ->
-        (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ -> nTC 0)
-          (fun n0 ->
-          (fun fO fS n -> if n=0 then fO () else fS (n-1))
-            (fun _ -> nTC 0)
-            (fun n1 ->
-            (fun fO fS n -> if n=0 then fO () else fS (n-1))
-              (fun _ -> nTC (Stdlib.Int.succ 0))
-              (fun _ -> nTC 0)
-              n1)
-            n0)
-          j)
-        (fun n0 ->
-        (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ ->
-          (fun fO fS n -> if n=0 then fO () else fS (n-1))
-            (fun _ -> nTC 0)
-            (fun n1 ->
-            (fun fO fS n -> if n=0 then fO () else fS (n-1))
-              (fun _ -> nTC (Stdlib.Int.succ 0))
-              (fun _ -> nTC 0)
-              n1)
-            j)
-          (fun n1 ->
-          (fun fO fS n -> if n=0 then fO () else fS (n-1))
-            (fun _ ->
-            (fun fO fS n -> if n=0 then fO () else fS (n-1))
-              (fun _ -> nTC 0)
-              (fun n2 ->
-              (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                (fun _ -> nTC 0)
-                (fun n3 ->
-                (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                  (fun _ -> nTC 0)
-                  (fun n4 ->
-                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                    (fun _ -> nTC (Stdlib.Int.succ 0))
-                    (fun _ -> nTC 0)
-                    n4)
-                  n3)
-                n2)
-              j)
-            (fun _ -> nTC 0)
-            n1)
-          n0)
-        n)
-      i) }
-
-(** val qop_swap1n_suppl : int -> matrix **)
-
-let rec qop_swap1n_suppl n'' =
+let rec den_init n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> qop_swap2)
-    (fun n''' ->
-    mmult_unsafe
-      (mmult_unsafe (tMproduct qop_swap2 (eye n''))
-        (tMproduct (eye (Stdlib.Int.succ 0)) (qop_swap1n_suppl n''')))
-      (tMproduct qop_swap2 (eye n'')))
-    n''
+    (fun _ -> mat_eye 0)
+    (fun n0 -> Rec_mat (n0, (den_init n0), (mat_0 n0), (mat_0 n0),
+    (mat_0 n0)))
+    n
 
-(** val qop_swap1n : int -> matrix **)
+(** val den_uop : int -> matrix -> matrix -> matrix **)
 
-let qop_swap1n n =
+let den_uop n uop den =
+  mat_mul n (mat_mul n uop den) (mat_conjtrans n uop)
+
+(** val den_prob : int -> matrix -> matrix -> Complex.t **)
+
+let den_prob n proj den =
+  mat_trace n (mat_mul n den proj)
+
+(** val den_prob_0 : int -> int -> matrix -> Complex.t **)
+
+let den_prob_0 n t den =
+  den_prob n (mat_proj0 n t) den
+
+(** val den_prob_1 : int -> int -> matrix -> Complex.t **)
+
+let den_prob_1 n t den =
+  den_prob n (mat_proj1 n t) den
+
+(** val den_measure : int -> matrix -> matrix -> matrix **)
+
+let den_measure n proj den =
+  mat_scale n (Complex.inv (den_prob n proj den))
+    (mat_mul n (mat_mul n proj den) proj)
+
+(** val den_measure_0 : int -> int -> matrix -> matrix **)
+
+let den_measure_0 n t den =
+  den_measure n (mat_proj0 n t) den
+
+(** val den_measure_1 : int -> int -> matrix -> matrix **)
+
+let den_measure_1 n t den =
+  den_measure n (mat_proj1 n t) den
+
+(** val den_reset : int -> int -> matrix -> matrix **)
+
+let den_reset n t den =
+  mat_add n (mat_mul n (mat_mul n (mat_proj0 n t) den) (mat_proj0 n t))
+    (den_uop n
+      (mat_single n t
+        (mat_rot (4. *. Stdlib.atan 1.) (float_of_int 0)
+          (4. *. Stdlib.atan 1.)))
+      (mat_mul n (mat_mul n (mat_proj1 n t) den) (mat_proj1 n t)))
+
+(** val mat_swap2 : matrix **)
+
+let mat_swap2 =
+  Rec_mat ((Stdlib.Int.succ 0), (Rec_mat (0, (Bas_mat
+    (nTC (Stdlib.Int.succ 0))), (Bas_mat (nTC 0)), (Bas_mat (nTC 0)),
+    (Bas_mat (nTC 0)))), (Rec_mat (0, (Bas_mat (nTC 0)), (Bas_mat (nTC 0)),
+    (Bas_mat (nTC (Stdlib.Int.succ 0))), (Bas_mat (nTC 0)))), (Rec_mat (0,
+    (Bas_mat (nTC 0)), (Bas_mat (nTC (Stdlib.Int.succ 0))), (Bas_mat
+    (nTC 0)), (Bas_mat (nTC 0)))), (Rec_mat (0, (Bas_mat (nTC 0)), (Bas_mat
+    (nTC 0)), (Bas_mat (nTC 0)), (Bas_mat (nTC (Stdlib.Int.succ 0))))))
+
+(** val mat_swap_1n_suppl : int -> matrix **)
+
+let rec mat_swap_1n_suppl n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> eye 0)
+    (fun _ -> mat_swap2)
+    (fun n0 ->
+    mat_mul
+      ((+) (Stdlib.Int.succ (Stdlib.Int.succ 0)) (Stdlib.Int.succ
+        (let rec add0 n1 m =
+           (fun fO fS n -> if n=0 then fO () else fS (n-1))
+             (fun _ -> m)
+             (fun p -> Stdlib.Int.succ (add0 p m))
+             n1
+         in add0 0 n0)))
+      (mat_mul
+        ((+) (Stdlib.Int.succ (Stdlib.Int.succ 0)) (Stdlib.Int.succ
+          (let rec add0 n1 m =
+             (fun fO fS n -> if n=0 then fO () else fS (n-1))
+               (fun _ -> m)
+               (fun p -> Stdlib.Int.succ (add0 p m))
+               n1
+           in add0 0 n0)))
+        (tensor_product (Stdlib.Int.succ (Stdlib.Int.succ 0))
+          (Stdlib.Int.succ
+          (let rec add0 n1 m =
+             (fun fO fS n -> if n=0 then fO () else fS (n-1))
+               (fun _ -> m)
+               (fun p -> Stdlib.Int.succ (add0 p m))
+               n1
+           in add0 0 n0)) mat_swap2
+          (mat_eye (Stdlib.Int.succ
+            (let rec add0 n1 m =
+               (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                 (fun _ -> m)
+                 (fun p -> Stdlib.Int.succ (add0 p m))
+                 n1
+             in add0 0 n0))))
+        (tensor_product (Stdlib.Int.succ 0)
+          ((+) (Stdlib.Int.succ (Stdlib.Int.succ 0)) n0)
+          (mat_eye (Stdlib.Int.succ 0)) (mat_swap_1n_suppl n0)))
+      (tensor_product (Stdlib.Int.succ (Stdlib.Int.succ 0)) (Stdlib.Int.succ
+        (let rec add0 n1 m =
+           (fun fO fS n -> if n=0 then fO () else fS (n-1))
+             (fun _ -> m)
+             (fun p -> Stdlib.Int.succ (add0 p m))
+             n1
+         in add0 0 n0)) mat_swap2
+        (mat_eye (Stdlib.Int.succ
+          (let rec add0 n1 m =
+             (fun fO fS n -> if n=0 then fO () else fS (n-1))
+               (fun _ -> m)
+               (fun p -> Stdlib.Int.succ (add0 p m))
+               n1
+           in add0 0 n0)))))
+    n
+
+(** val mat_swap_1n : int -> matrix **)
+
+let mat_swap_1n n =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> mat_eye 0)
     (fun n0 ->
     (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> eye (Stdlib.Int.succ 0))
-      (fun n1 -> qop_swap1n_suppl n1)
+      (fun _ -> mat_eye (Stdlib.Int.succ 0))
+      (fun n1 -> mat_swap_1n_suppl n1)
       n0)
     n
 
-(** val qop_swap : int -> int -> int -> matrix **)
+(** val mat_swap : int -> int -> int -> matrix **)
 
-let qop_swap n q1 q2 =
-  let s = lt_eq_lt_dec q1 q2 in
-  (match s with
-   | Some s0 ->
-     if s0
-     then tMproduct
-            (tMproduct (eye q1)
-              (qop_swap1n ((+) (sub q2 q1) (Stdlib.Int.succ 0))))
-            (eye (sub (sub n q2) (Stdlib.Int.succ 0)))
-     else eye n
-   | None ->
-     tMproduct
-       (tMproduct (eye q2) (qop_swap1n ((+) (sub q1 q2) (Stdlib.Int.succ 0))))
-       (eye (sub (sub n q1) (Stdlib.Int.succ 0))))
-
-(** val qop_swap_op : int -> int -> int -> matrix -> matrix **)
-
-let qop_swap_op n q1 q2 op =
-  mmult (mmult (qop_swap n q1 q2) op) (qop_swap n q1 q2)
-
-(** val qop_cnot_ct : matrix **)
-
-let qop_cnot_ct =
-  { mbits = (Stdlib.Int.succ (Stdlib.Int.succ 0)); minner = (fun i j ->
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ -> nTC (Stdlib.Int.succ 0))
-        (fun _ -> nTC 0)
-        j)
-      (fun n ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ ->
-        (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ -> nTC 0)
-          (fun n0 ->
-          (fun fO fS n -> if n=0 then fO () else fS (n-1))
-            (fun _ -> nTC (Stdlib.Int.succ 0))
-            (fun _ -> nTC 0)
-            n0)
-          j)
-        (fun n0 ->
-        (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ ->
-          (fun fO fS n -> if n=0 then fO () else fS (n-1))
-            (fun _ -> nTC 0)
-            (fun n1 ->
-            (fun fO fS n -> if n=0 then fO () else fS (n-1))
-              (fun _ -> nTC 0)
-              (fun n2 ->
-              (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                (fun _ -> nTC 0)
-                (fun n3 ->
-                (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                  (fun _ -> nTC (Stdlib.Int.succ 0))
-                  (fun _ -> nTC 0)
-                  n3)
-                n2)
-              n1)
-            j)
-          (fun n1 ->
-          (fun fO fS n -> if n=0 then fO () else fS (n-1))
-            (fun _ ->
-            (fun fO fS n -> if n=0 then fO () else fS (n-1))
-              (fun _ -> nTC 0)
-              (fun n2 ->
-              (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                (fun _ -> nTC 0)
-                (fun n3 ->
-                (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                  (fun _ -> nTC (Stdlib.Int.succ 0))
-                  (fun _ -> nTC 0)
-                  n3)
-                n2)
-              j)
-            (fun _ -> nTC 0)
-            n1)
-          n0)
-        n)
-      i) }
-
-(** val qop_cnot_tc : matrix **)
-
-let qop_cnot_tc =
-  { mbits = (Stdlib.Int.succ (Stdlib.Int.succ 0)); minner = (fun i j ->
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ -> nTC (Stdlib.Int.succ 0))
-        (fun _ -> nTC 0)
-        j)
-      (fun n ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ ->
-        (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ -> nTC 0)
-          (fun n0 ->
-          (fun fO fS n -> if n=0 then fO () else fS (n-1))
-            (fun _ -> nTC 0)
-            (fun n1 ->
-            (fun fO fS n -> if n=0 then fO () else fS (n-1))
-              (fun _ -> nTC 0)
-              (fun n2 ->
-              (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                (fun _ -> nTC (Stdlib.Int.succ 0))
-                (fun _ -> nTC 0)
-                n2)
-              n1)
-            n0)
-          j)
-        (fun n0 ->
-        (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ ->
-          (fun fO fS n -> if n=0 then fO () else fS (n-1))
-            (fun _ -> nTC 0)
-            (fun n1 ->
-            (fun fO fS n -> if n=0 then fO () else fS (n-1))
-              (fun _ -> nTC 0)
-              (fun n2 ->
-              (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                (fun _ -> nTC (Stdlib.Int.succ 0))
-                (fun _ -> nTC 0)
-                n2)
-              n1)
-            j)
-          (fun n1 ->
-          (fun fO fS n -> if n=0 then fO () else fS (n-1))
-            (fun _ ->
-            (fun fO fS n -> if n=0 then fO () else fS (n-1))
-              (fun _ -> nTC 0)
-              (fun n2 ->
-              (fun fO fS n -> if n=0 then fO () else fS (n-1))
-                (fun _ -> nTC (Stdlib.Int.succ 0))
-                (fun _ -> nTC 0)
-                n2)
-              j)
-            (fun _ -> nTC 0)
-            n1)
-          n0)
-        n)
-      i) }
-
-(** val qop_cnot_ct_n : int -> matrix **)
-
-let qop_cnot_ct_n n =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> eye 0)
-    (fun n0 ->
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> eye (Stdlib.Int.succ 0))
-      (fun n1 -> tMproduct qop_cnot_ct (eye n1))
-      n0)
-    n
-
-(** val qop_cnot_tc_n : int -> matrix **)
-
-let qop_cnot_tc_n n =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> eye 0)
-    (fun n0 ->
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> eye (Stdlib.Int.succ 0))
-      (fun n1 -> tMproduct qop_cnot_tc (eye n1))
-      n0)
-    n
-
-(** val qop_cnot : int -> int -> int -> matrix **)
-
-let qop_cnot n qc qt =
-  let s = (=) qc 0 in
+let mat_swap n q1 q2 =
+  let s = (<) q1 n in
   if s
-  then let s0 = (=) qt (Stdlib.Int.succ 0) in
+  then let s0 = (<) q2 n in
        if s0
-       then qop_cnot_ct_n n
-       else qop_swap_op n (Stdlib.Int.succ 0) qt (qop_cnot_ct_n n)
-  else let s0 = (=) qc (Stdlib.Int.succ 0) in
-       if s0
-       then let s1 = (=) qt 0 in
-            if s1
-            then qop_cnot_tc_n n
-            else qop_swap_op n 0 qt (qop_cnot_tc_n n)
-       else let s1 = (=) qt 0 in
-            if s1
-            then qop_swap_op n (Stdlib.Int.succ 0) qc (qop_cnot_tc_n n)
-            else let s2 = (=) qt (Stdlib.Int.succ 0) in
-                 if s2
-                 then qop_swap_op n 0 qc (qop_cnot_ct_n n)
-                 else qop_swap_op n (Stdlib.Int.succ 0) qt
-                        (qop_swap_op n 0 qc (qop_cnot_ct_n n))
+       then let s1 = lt_eq_lt_dec q1 q2 in
+            (match s1 with
+             | Some s2 ->
+               if s2
+               then tensor_product
+                      ((+) q1 ((+) (sub q2 q1) (Stdlib.Int.succ 0)))
+                      (sub (sub n q2) (Stdlib.Int.succ 0))
+                      (tensor_product q1
+                        ((+) (sub q2 q1) (Stdlib.Int.succ 0)) (mat_eye q1)
+                        (mat_swap_1n ((+) (sub q2 q1) (Stdlib.Int.succ 0))))
+                      (mat_eye (sub (sub n q2) (Stdlib.Int.succ 0)))
+               else mat_eye n
+             | None ->
+               tensor_product ((+) q2 ((+) (sub q1 q2) (Stdlib.Int.succ 0)))
+                 (sub (sub n q1) (Stdlib.Int.succ 0))
+                 (tensor_product q2 ((+) (sub q1 q2) (Stdlib.Int.succ 0))
+                   (mat_eye q2)
+                   (mat_swap_1n ((+) (sub q1 q2) (Stdlib.Int.succ 0))))
+                 (mat_eye (sub (sub n q1) (Stdlib.Int.succ 0))))
+       else mat_eye n
+  else mat_eye n
 
-(** val den_0 : matrix **)
+(** val mat_not2 : matrix **)
 
-let den_0 =
-  { mbits = (Stdlib.Int.succ 0); minner = (fun i j ->
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ -> nTC (Stdlib.Int.succ 0))
-        (fun _ -> nTC 0)
-        j)
-      (fun _ -> nTC 0)
-      i) }
+let mat_not2 =
+  Rec_mat (0, (Bas_mat (nTC 0)), (Bas_mat (nTC (Stdlib.Int.succ 0))),
+    (Bas_mat (nTC (Stdlib.Int.succ 0))), (Bas_mat (nTC 0)))
 
-(** val den_unitary : matrix -> matrix -> matrix **)
+(** val mat_cnot : int -> int -> int -> matrix **)
 
-let den_unitary den uop =
-  mmult (mmult uop den) (mconjtrans uop)
-
-(** val den_reset : matrix -> int -> matrix **)
-
-let den_reset den t =
-  mplus (mmult (mmult (qproj0_n_t den.mbits t) den) (qproj0_n_t den.mbits t))
-    (den_unitary
-      (mmult (mmult (qproj1_n_t den.mbits t) den) (qproj1_n_t den.mbits t))
-      (qop_sq den.mbits t
-        (qop_rot (4. *. Stdlib.atan 1.) (float_of_int 0)
-          (4. *. Stdlib.atan 1.))))
-
-(** val den_mix :
-    matrix -> matrix -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
-    matrix **)
-
-let den_mix den1 den2 p1 p2 =
-  mplus (msmul (cdiv (rTC p1) (Complex.add (rTC p1) (rTC p2))) den1)
-    (msmul (cdiv (rTC p2) (Complex.add (rTC p1) (rTC p2))) den2)
-
-(** val den_prob : matrix -> matrix -> Complex.t **)
-
-let den_prob den proj =
-  mtrace (mmult den proj)
-
-(** val den_prob_0 : matrix -> int -> int -> Complex.t **)
-
-let den_prob_0 den n t =
-  den_prob den (qproj0_n_t n t)
-
-(** val den_prob_1 : matrix -> int -> int -> Complex.t **)
-
-let den_prob_1 den n t =
-  den_prob den (qproj1_n_t n t)
-
-(** val den_measure : matrix -> matrix -> matrix **)
-
-let den_measure den proj =
-  msmul (Complex.inv (den_prob den proj)) (mmult (mmult proj den) proj)
-
-(** val den_measure_0 : matrix -> int -> int -> matrix **)
-
-let den_measure_0 den n t =
-  den_measure den (qproj0_n_t n t)
-
-(** val den_measure_1 : matrix -> int -> int -> matrix **)
-
-let den_measure_1 den n t =
-  den_measure den (qproj1_n_t n t)
-
-(** val den_0_init : int -> matrix **)
-
-let rec den_0_init n =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> eye 0)
-    (fun n' -> tMproduct den_0 (den_0_init n'))
-    n
+let mat_cnot n qc qt =
+  mat_ctrl_single n qc qt mat_not2
 
 type instruction =
 | NopInstr
@@ -1310,200 +1142,213 @@ type instruction =
 | IfInstr of int * bool * instruction
 | ResetInstr of int
 
-type inlinedProgram = { iP_num_qbits : int; iP_num_cbits : int;
-                        iP_num_subinstrs : int; iP_instrs : instruction }
+type inlinedProgram = { iP_num_cbits : int; iP_num_subinstrs : int;
+                        iP_instrs : instruction }
 
-type world = { w_qstate : matrix; w_cstate : bool total_map;
-               w_prob : RbaseSymbolsImpl.coq_R; w_num_qubits : int }
+type world = { w_num_clbits : int; w_qstate : matrix;
+               w_cstate : bool total_map; w_prob : RbaseSymbolsImpl.coq_R }
 
 type manyWorld = world list
 
-(** val manyWorld_init : int -> int -> manyWorld **)
+(** val manyWorld_init : int -> int -> int -> manyWorld **)
 
-let manyWorld_init num_q _ =
-  { w_qstate = (den_0_init num_q); w_cstate = (tm_empty false); w_prob =
-    (float_of_int 1); w_num_qubits = num_q } :: []
+let manyWorld_init nq _ num_c =
+  { w_num_clbits = num_c; w_qstate = (den_init nq); w_cstate =
+    (tm_empty false); w_prob = (float_of_int 1) } :: []
 
-(** val merge_manyworld_suppl : world -> manyWorld -> manyWorld **)
+(** val merge_manyworld_suppl : int -> world -> manyWorld -> manyWorld **)
 
-let rec merge_manyworld_suppl w = function
+let rec merge_manyworld_suppl nq w = function
 | [] -> w :: []
 | y :: l ->
-  let s = (=) y.w_num_qubits w.w_num_qubits in
-  if s
-  then let b = tmb_equal y.w_cstate w.w_cstate y.w_num_qubits in
-       if b
-       then { w_qstate = (den_mix y.w_qstate w.w_qstate y.w_prob w.w_prob);
-              w_cstate = y.w_cstate; w_prob =
-              (RbaseSymbolsImpl.coq_Rplus y.w_prob w.w_prob); w_num_qubits =
-              y.w_num_qubits } :: l
-       else y :: (merge_manyworld_suppl w l)
-  else y :: (merge_manyworld_suppl w l)
+  let b = tmb_equal y.w_cstate w.w_cstate y.w_num_clbits in
+  if b
+  then let { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+         w_cstate0; w_prob = w_prob0 } = w
+       in
+       let { w_num_clbits = _; w_qstate = w_qstate1; w_cstate = _; w_prob =
+         w_prob1 } = y
+       in
+       { w_num_clbits = w_num_clbits0; w_qstate =
+       (mat_add nq
+         (mat_scale nq
+           (com_div (rTC w_prob0) (Complex.add (rTC w_prob0) (rTC w_prob1)))
+           w_qstate0)
+         (mat_scale nq
+           (com_div (rTC w_prob1) (Complex.add (rTC w_prob0) (rTC w_prob1)))
+           w_qstate1)); w_cstate = w_cstate0; w_prob =
+       (RbaseSymbolsImpl.coq_Rplus w_prob0 w_prob1) } :: l
+  else y :: (merge_manyworld_suppl nq w l)
 
-(** val merge_manyworld : manyWorld -> manyWorld **)
+(** val merge_manyworld : int -> manyWorld -> manyWorld **)
 
-let merge_manyworld = function
+let merge_manyworld nq = function
 | [] -> []
 | w :: l ->
   (match l with
-   | [] -> merge_manyworld_suppl w []
-   | w0 :: l0 -> merge_manyworld_suppl w (merge_manyworld_suppl w0 l0))
+   | [] -> merge_manyworld_suppl nq w []
+   | w0 :: l0 -> merge_manyworld_suppl nq w (merge_manyworld_suppl nq w0 l0))
 
 (** val execute_rotate_instr :
-    RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
+    int -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
     RbaseSymbolsImpl.coq_R -> int -> manyWorld -> manyWorld **)
 
-let rec execute_rotate_instr theta phi lambda target = function
+let rec execute_rotate_instr nq theta phi lambda target = function
 | [] -> []
 | w :: l ->
-  let { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
-    w_num_qubits = w_num_qubits0 } = w
+  let { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+    w_cstate0; w_prob = w_prob0 } = w
   in
-  let s = (<) target w_num_qubits0 in
+  let s = (<) target nq in
   if s
-  then { w_qstate =
-         (den_unitary w_qstate0
-           (qop_sq w_num_qubits0 target (qop_rot theta phi lambda)));
-         w_cstate = w_cstate0; w_prob = w_prob0; w_num_qubits =
-         w_num_qubits0 } :: (execute_rotate_instr theta phi lambda target l)
-  else { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
-         w_num_qubits =
-         w_num_qubits0 } :: (execute_rotate_instr theta phi lambda target l)
+  then { w_num_clbits = w_num_clbits0; w_qstate =
+         (den_uop nq (mat_single nq target (mat_rot theta phi lambda))
+           w_qstate0); w_cstate = w_cstate0; w_prob =
+         w_prob0 } :: (execute_rotate_instr nq theta phi lambda target l)
+  else { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+         w_cstate0; w_prob =
+         w_prob0 } :: (execute_rotate_instr nq theta phi lambda target l)
 
-(** val execute_cnot_instr : int -> int -> manyWorld -> manyWorld **)
+(** val execute_cnot_instr : int -> int -> int -> manyWorld -> manyWorld **)
 
-let rec execute_cnot_instr control target = function
+let rec execute_cnot_instr nq control target = function
 | [] -> []
 | w :: l ->
-  let { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
-    w_num_qubits = w_num_qubits0 } = w
+  let { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+    w_cstate0; w_prob = w_prob0 } = w
   in
-  let s = ge_dec w_num_qubits0 (Stdlib.Int.succ (Stdlib.Int.succ 0)) in
+  let s = ge_dec nq (Stdlib.Int.succ (Stdlib.Int.succ 0)) in
   if s
-  then let s0 = (<) control w_num_qubits0 in
+  then let s0 = (<) control nq in
        if s0
-       then let s1 = (<) target w_num_qubits0 in
+       then let s1 = (<) target nq in
             if s1
-            then { w_qstate =
-                   (den_unitary w_qstate0
-                     (qop_cnot w_num_qubits0 control target)); w_cstate =
-                   w_cstate0; w_prob = w_prob0; w_num_qubits =
-                   w_num_qubits0 } :: (execute_cnot_instr control target l)
-            else { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob =
-                   w_prob0; w_num_qubits =
-                   w_num_qubits0 } :: (execute_cnot_instr control target l)
-       else { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
-              w_num_qubits =
-              w_num_qubits0 } :: (execute_cnot_instr control target l)
-  else { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
-         w_num_qubits =
-         w_num_qubits0 } :: (execute_cnot_instr control target l)
+            then { w_num_clbits = w_num_clbits0; w_qstate =
+                   (den_uop nq (mat_cnot nq control target) w_qstate0);
+                   w_cstate = w_cstate0; w_prob =
+                   w_prob0 } :: (execute_cnot_instr nq control target l)
+            else { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0;
+                   w_cstate = w_cstate0; w_prob =
+                   w_prob0 } :: (execute_cnot_instr nq control target l)
+       else { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+              w_cstate0; w_prob =
+              w_prob0 } :: (execute_cnot_instr nq control target l)
+  else { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+         w_cstate0; w_prob =
+         w_prob0 } :: (execute_cnot_instr nq control target l)
 
-(** val execute_swap_instr : int -> int -> manyWorld -> manyWorld **)
+(** val execute_swap_instr : int -> int -> int -> manyWorld -> manyWorld **)
 
-let rec execute_swap_instr q1 q2 = function
+let rec execute_swap_instr nq q1 q2 = function
 | [] -> []
 | w :: l ->
-  let { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
-    w_num_qubits = w_num_qubits0 } = w
+  let { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+    w_cstate0; w_prob = w_prob0 } = w
   in
-  let s = (<) q1 w_num_qubits0 in
+  let s = (<) q1 nq in
   if s
-  then let s0 = (<) q2 w_num_qubits0 in
+  then let s0 = (<) q2 nq in
        if s0
-       then { w_qstate =
-              (den_unitary w_qstate0 (qop_swap w_num_qubits0 q1 q2));
-              w_cstate = w_cstate0; w_prob = w_prob0; w_num_qubits =
-              w_num_qubits0 } :: (execute_swap_instr q1 q2 l)
-       else { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
-              w_num_qubits = w_num_qubits0 } :: (execute_swap_instr q1 q2 l)
-  else { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
-         w_num_qubits = w_num_qubits0 } :: (execute_swap_instr q1 q2 l)
+       then { w_num_clbits = w_num_clbits0; w_qstate =
+              (den_uop nq (mat_swap nq q1 q2) w_qstate0); w_cstate =
+              w_cstate0; w_prob = w_prob0 } :: (execute_swap_instr nq q1 q2 l)
+       else { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+              w_cstate0; w_prob = w_prob0 } :: (execute_swap_instr nq q1 q2 l)
+  else { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+         w_cstate0; w_prob = w_prob0 } :: (execute_swap_instr nq q1 q2 l)
 
-(** val execute_measure_instr : int -> int -> manyWorld -> manyWorld **)
+(** val execute_measure_instr :
+    int -> int -> int -> manyWorld -> manyWorld **)
 
-let rec execute_measure_instr qbit cbit = function
+let rec execute_measure_instr nq qbit cbit = function
 | [] -> []
 | w :: l ->
-  let { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
-    w_num_qubits = w_num_qubits0 } = w
+  let { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+    w_cstate0; w_prob = w_prob0 } = w
   in
-  let s = (<) qbit w_num_qubits0 in
+  let s = (<) qbit nq in
   if s
-  then let prob0 = (fun x -> x.re) (den_prob_0 w_qstate0 w_num_qubits0 qbit)
-       in
-       let prob1 = (fun x -> x.re) (den_prob_1 w_qstate0 w_num_qubits0 qbit)
-       in
+  then let prob0 = (fun x -> x.re) (den_prob_0 nq qbit w_qstate0) in
+       let prob1 = (fun x -> x.re) (den_prob_1 nq qbit w_qstate0) in
        let s0 = rgt_dec prob0 (float_of_int 0) in
        if s0
        then let s1 = rgt_dec prob1 (float_of_int 0) in
             if s1
-            then { w_qstate = (den_measure_0 w_qstate0 w_num_qubits0 qbit);
-                   w_cstate = (tm_update w_cstate0 cbit false); w_prob =
-                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob0); w_num_qubits =
-                   w_num_qubits0 } :: ({ w_qstate =
-                   (den_measure_1 w_qstate0 w_num_qubits0 qbit); w_cstate =
+            then { w_num_clbits = w_num_clbits0; w_qstate =
+                   (den_measure_0 nq qbit w_qstate0); w_cstate =
+                   (tm_update w_cstate0 cbit false); w_prob =
+                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob0) } :: ({ w_num_clbits =
+                   w_num_clbits0; w_qstate =
+                   (den_measure_1 nq qbit w_qstate0); w_cstate =
                    (tm_update w_cstate0 cbit true); w_prob =
-                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob1); w_num_qubits =
-                   w_num_qubits0 } :: (execute_measure_instr qbit cbit l))
-            else { w_qstate = (den_measure_0 w_qstate0 w_num_qubits0 qbit);
-                   w_cstate = (tm_update w_cstate0 cbit false); w_prob =
-                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob0); w_num_qubits =
-                   w_num_qubits0 } :: (execute_measure_instr qbit cbit l)
+                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob1) } :: (execute_measure_instr
+                                                                    nq qbit
+                                                                    cbit l))
+            else { w_num_clbits = w_num_clbits0; w_qstate =
+                   (den_measure_0 nq qbit w_qstate0); w_cstate =
+                   (tm_update w_cstate0 cbit false); w_prob =
+                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob0) } :: (execute_measure_instr
+                                                                    nq qbit
+                                                                    cbit l)
        else let s1 = rgt_dec prob1 (float_of_int 0) in
             if s1
-            then { w_qstate = (den_measure_1 w_qstate0 w_num_qubits0 qbit);
-                   w_cstate = (tm_update w_cstate0 cbit true); w_prob =
-                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob1); w_num_qubits =
-                   w_num_qubits0 } :: (execute_measure_instr qbit cbit l)
-            else execute_measure_instr qbit cbit l
-  else execute_measure_instr qbit cbit l
+            then { w_num_clbits = w_num_clbits0; w_qstate =
+                   (den_measure_1 nq qbit w_qstate0); w_cstate =
+                   (tm_update w_cstate0 cbit true); w_prob =
+                   (RbaseSymbolsImpl.coq_Rmult w_prob0 prob1) } :: (execute_measure_instr
+                                                                    nq qbit
+                                                                    cbit l)
+            else execute_measure_instr nq qbit cbit l
+  else execute_measure_instr nq qbit cbit l
 
-(** val execute_reset_instr : int -> manyWorld -> manyWorld **)
+(** val execute_reset_instr : int -> int -> manyWorld -> manyWorld **)
 
-let rec execute_reset_instr target = function
+let rec execute_reset_instr nq target = function
 | [] -> []
 | w :: l ->
-  let { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
-    w_num_qubits = w_num_qubits0 } = w
+  let { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+    w_cstate0; w_prob = w_prob0 } = w
   in
-  let s = (<) target w_num_qubits0 in
+  let s = (<) target nq in
   if s
-  then { w_qstate = (den_reset w_qstate0 target); w_cstate = w_cstate0;
-         w_prob = w_prob0; w_num_qubits =
-         w_num_qubits0 } :: (execute_reset_instr target l)
-  else { w_qstate = w_qstate0; w_cstate = w_cstate0; w_prob = w_prob0;
-         w_num_qubits = w_num_qubits0 } :: (execute_reset_instr target l)
+  then { w_num_clbits = w_num_clbits0; w_qstate =
+         (den_reset nq target w_qstate0); w_cstate = w_cstate0; w_prob =
+         w_prob0 } :: (execute_reset_instr nq target l)
+  else { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
+         w_cstate0; w_prob = w_prob0 } :: (execute_reset_instr nq target l)
 
-(** val execute_suppl : int -> instruction -> manyWorld -> manyWorld **)
+(** val execute_suppl :
+    int -> int -> instruction -> manyWorld -> manyWorld **)
 
-let rec execute_suppl ir instr worlds =
+let rec execute_suppl nq ir instr worlds =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> worlds)
     (fun ir' ->
     match instr with
     | NopInstr -> worlds
     | RotateInstr (theta, phi, lambda, target) ->
-      execute_rotate_instr theta phi lambda target worlds
-    | CnotInstr (control, target) -> execute_cnot_instr control target worlds
-    | SwapInstr (q1, q2) -> execute_swap_instr q1 q2 worlds
+      execute_rotate_instr nq theta phi lambda target worlds
+    | CnotInstr (control, target) ->
+      execute_cnot_instr nq control target worlds
+    | SwapInstr (q1, q2) -> execute_swap_instr nq q1 q2 worlds
     | MeasureInstr (qbit, cbit) ->
-      merge_manyworld (execute_measure_instr qbit cbit worlds)
-    | SeqInstr (i1, i2) -> execute_suppl ir' i2 (execute_suppl ir' i1 worlds)
+      merge_manyworld nq (execute_measure_instr nq qbit cbit worlds)
+    | SeqInstr (i1, i2) ->
+      execute_suppl nq ir' i2 (execute_suppl nq ir' i1 worlds)
     | IfInstr (cbit, cond, subinstr) ->
       concat
         (map (fun w ->
           if eqb (w.w_cstate cbit) cond
-          then execute_suppl ir' subinstr (w :: [])
+          then execute_suppl nq ir' subinstr (w :: [])
           else w :: []) worlds)
-    | ResetInstr target -> execute_reset_instr target worlds)
+    | ResetInstr target -> execute_reset_instr nq target worlds)
     ir
 
-(** val execute : inlinedProgram -> manyWorld **)
+(** val execute : int -> inlinedProgram -> manyWorld **)
 
-let execute program =
-  execute_suppl program.iP_num_subinstrs program.iP_instrs
-    (manyWorld_init program.iP_num_qbits program.iP_num_cbits)
+let execute nq program =
+  execute_suppl nq program.iP_num_subinstrs program.iP_instrs
+    (manyWorld_init nq nq program.iP_num_cbits)
 
 (** val cstate_to_binary_little_endian :
     int -> bool total_map -> int -> int **)
@@ -1523,17 +1368,17 @@ let cstate_to_binary num_cbits cstate =
   cstate_to_binary_little_endian num_cbits cstate 0
 
 (** val calculate_prob :
-    int -> manyWorld -> RbaseSymbolsImpl.coq_R total_map **)
+    int -> int -> manyWorld -> RbaseSymbolsImpl.coq_R total_map **)
 
-let rec calculate_prob num_cbits = function
+let rec calculate_prob nq num_cbits = function
 | [] -> tm_empty RbaseSymbolsImpl.coq_R0
 | w :: t ->
-  let prev = calculate_prob num_cbits t in
+  let prev = calculate_prob nq num_cbits t in
   let key = cstate_to_binary num_cbits w.w_cstate in
   tm_update prev key (RbaseSymbolsImpl.coq_Rplus (prev key) w.w_prob)
 
 (** val execute_and_calculate_prob :
-    inlinedProgram -> RbaseSymbolsImpl.coq_R total_map **)
+    int -> inlinedProgram -> RbaseSymbolsImpl.coq_R total_map **)
 
-let execute_and_calculate_prob program =
-  calculate_prob program.iP_num_cbits (execute program)
+let execute_and_calculate_prob nq program =
+  calculate_prob nq program.iP_num_cbits (execute nq program)

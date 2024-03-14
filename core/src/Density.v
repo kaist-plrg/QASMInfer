@@ -116,6 +116,10 @@ Section MEASURE.
 
 Definition den_prob {n: nat} (proj den: Matrix n) : Complex := \tr (den * proj).
 
+Definition den_prob_0 {n: nat} (t: nat) (den: Matrix n) : Complex := den_prob (mat_proj0 n t) den.
+
+Definition den_prob_1 {n: nat} (t: nat) (den: Matrix n) : Complex := den_prob (mat_proj1 n t) den.
+
 Definition den_measure {n: nat} (proj den: Matrix n) : Matrix n := (/ den_prob proj den) .* (proj * den * proj).
 
 Definition den_measure_0 {n: nat} (t: nat) (den: Matrix n) : Matrix n := den_measure (mat_proj0 n t) den.

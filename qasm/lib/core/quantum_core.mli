@@ -16,11 +16,7 @@ val eqb : bool -> bool -> bool
 
 module Nat :
  sig
-  val ltb : int -> int -> bool
-
   val pow : int -> int -> int
-
-  val divmod : int -> int -> int -> int -> int * int
  end
 
 val lt_eq_lt_dec : int -> int -> bool option
@@ -189,115 +185,106 @@ val tmb_equal : bool total_map -> bool total_map -> int -> bool
 
 val rTC : RbaseSymbolsImpl.coq_R -> Complex.t
 
+val rTIm : RbaseSymbolsImpl.coq_R -> Complex.t
+
 val nTC : int -> Complex.t
 
-val cdiv : Complex.t -> Complex.t -> Complex.t
+val com_div : Complex.t -> Complex.t -> Complex.t
 
-val func_sum_suppl : (int -> Complex.t) -> int -> int -> Complex.t
+val com_iexp : RbaseSymbolsImpl.coq_R -> Complex.t
 
-val func_sum2 : (int -> Complex.t) -> int -> int -> Complex.t
 
-val func_sum : (int -> Complex.t) -> int -> Complex.t
 
-type matrix = { mbits : int; minner : (int -> int -> Complex.t) }
+type matrix =
+| Bas_mat of Complex.t
+| Rec_mat of int * matrix * matrix * matrix * matrix
 
-val msize : matrix -> int
+val mat_case0 : (Complex.t -> 'a1) -> matrix -> 'a1
 
-type rowVec = { rVbits : int; rVinner : (int -> Complex.t) }
+val mat_caseS_ :
+  int -> matrix -> (matrix -> matrix -> matrix -> matrix -> 'a1) -> 'a1
 
-type colVec = { cVbits : int; cVinner : (int -> Complex.t) }
+val mat_rect2 :
+  (Complex.t -> Complex.t -> 'a1) -> (int -> matrix -> matrix -> matrix ->
+  matrix -> matrix -> matrix -> matrix -> matrix -> 'a1 -> 'a1 -> 'a1 -> 'a1
+  -> 'a1) -> int -> matrix -> matrix -> 'a1
 
-val extract_row_unsafe : matrix -> int -> rowVec
+val mat_rect2_gen :
+  (Complex.t -> Complex.t -> 'a1) -> (int -> matrix -> matrix -> matrix ->
+  matrix -> matrix -> matrix -> matrix -> matrix -> 'a1 -> 'a1 -> 'a1 -> 'a1
+  -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 -> 'a1 ->
+  'a1 -> 'a1 -> 'a1) -> int -> matrix -> matrix -> 'a1
 
-val extract_col_unsafe : matrix -> int -> colVec
+val mat_0 : int -> matrix
 
-val dot_product_suppl :
-  (int -> Complex.t) -> (int -> Complex.t) -> int -> Complex.t
+val mat_eye : int -> matrix
 
-val muop : (Complex.t -> Complex.t) -> matrix -> matrix
+val mat_map : (Complex.t -> Complex.t) -> int -> matrix -> matrix
 
-val msmul : Complex.t -> matrix -> matrix
+val mat_map2 :
+  (Complex.t -> Complex.t -> Complex.t) -> int -> matrix -> matrix -> matrix
 
-val mbop_unsafe :
-  (Complex.t -> Complex.t -> Complex.t) -> matrix -> matrix -> matrix
+val mat_scale : int -> Complex.t -> matrix -> matrix
 
-val mplus : matrix -> matrix -> matrix
+val mat_conjtrans : int -> matrix -> matrix
 
-val mmult_inner : matrix -> matrix -> int -> int -> Complex.t
+val mat_trace : int -> matrix -> Complex.t
 
-val mmult_unsafe : matrix -> matrix -> matrix
+val mat_add : int -> matrix -> matrix -> matrix
 
-val mmult : matrix -> matrix -> matrix
+val mat_mul : int -> matrix -> matrix -> matrix
 
-val mconjtrans : matrix -> matrix
+val tensor_product : int -> int -> matrix -> matrix -> matrix
 
-val mtrace : matrix -> Complex.t
+val mat_rot_y : RbaseSymbolsImpl.coq_R -> matrix
 
-val eye : int -> matrix
+val mat_rot_z : RbaseSymbolsImpl.coq_R -> matrix
 
-val tMproduct : matrix -> matrix -> matrix
-
-val qop_ry : RbaseSymbolsImpl.coq_R -> matrix
-
-val qop_rz : RbaseSymbolsImpl.coq_R -> matrix
-
-val qop_rot :
+val mat_rot :
   RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
   -> matrix
 
-val qop_sq : int -> int -> matrix -> matrix
+val mat_single : int -> int -> matrix -> matrix
 
-val qproj0 : matrix
+val mat_proj0_base : matrix
 
-val qproj1 : matrix
+val mat_proj1_base : matrix
 
-val qproj0_n_t : int -> int -> matrix
+val mat_proj0 : int -> int -> matrix
 
-val qproj1_n_t : int -> int -> matrix
+val mat_proj1 : int -> int -> matrix
 
-val qop_swap2 : matrix
+val mat_ctrl_single : int -> int -> int -> matrix -> matrix
 
-val qop_swap1n_suppl : int -> matrix
+val den_init : int -> matrix
 
-val qop_swap1n : int -> matrix
+val den_uop : int -> matrix -> matrix -> matrix
 
-val qop_swap : int -> int -> int -> matrix
+val den_prob : int -> matrix -> matrix -> Complex.t
 
-val qop_swap_op : int -> int -> int -> matrix -> matrix
+val den_prob_0 : int -> int -> matrix -> Complex.t
 
-val qop_cnot_ct : matrix
+val den_prob_1 : int -> int -> matrix -> Complex.t
 
-val qop_cnot_tc : matrix
+val den_measure : int -> matrix -> matrix -> matrix
 
-val qop_cnot_ct_n : int -> matrix
+val den_measure_0 : int -> int -> matrix -> matrix
 
-val qop_cnot_tc_n : int -> matrix
+val den_measure_1 : int -> int -> matrix -> matrix
 
-val qop_cnot : int -> int -> int -> matrix
+val den_reset : int -> int -> matrix -> matrix
 
-val den_0 : matrix
+val mat_swap2 : matrix
 
-val den_unitary : matrix -> matrix -> matrix
+val mat_swap_1n_suppl : int -> matrix
 
-val den_reset : matrix -> int -> matrix
+val mat_swap_1n : int -> matrix
 
-val den_mix :
-  matrix -> matrix -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
-  matrix
+val mat_swap : int -> int -> int -> matrix
 
-val den_prob : matrix -> matrix -> Complex.t
+val mat_not2 : matrix
 
-val den_prob_0 : matrix -> int -> int -> Complex.t
-
-val den_prob_1 : matrix -> int -> int -> Complex.t
-
-val den_measure : matrix -> matrix -> matrix
-
-val den_measure_0 : matrix -> int -> int -> matrix
-
-val den_measure_1 : matrix -> int -> int -> matrix
-
-val den_0_init : int -> matrix
+val mat_cnot : int -> int -> int -> matrix
 
 type instruction =
 | NopInstr
@@ -310,41 +297,42 @@ type instruction =
 | IfInstr of int * bool * instruction
 | ResetInstr of int
 
-type inlinedProgram = { iP_num_qbits : int; iP_num_cbits : int;
-                        iP_num_subinstrs : int; iP_instrs : instruction }
+type inlinedProgram = { iP_num_cbits : int; iP_num_subinstrs : int;
+                        iP_instrs : instruction }
 
-type world = { w_qstate : matrix; w_cstate : bool total_map;
-               w_prob : RbaseSymbolsImpl.coq_R; w_num_qubits : int }
+type world = { w_num_clbits : int; w_qstate : matrix;
+               w_cstate : bool total_map; w_prob : RbaseSymbolsImpl.coq_R }
 
 type manyWorld = world list
 
-val manyWorld_init : int -> int -> manyWorld
+val manyWorld_init : int -> int -> int -> manyWorld
 
-val merge_manyworld_suppl : world -> manyWorld -> manyWorld
+val merge_manyworld_suppl : int -> world -> manyWorld -> manyWorld
 
-val merge_manyworld : manyWorld -> manyWorld
+val merge_manyworld : int -> manyWorld -> manyWorld
 
 val execute_rotate_instr :
-  RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
-  -> int -> manyWorld -> manyWorld
+  int -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
+  RbaseSymbolsImpl.coq_R -> int -> manyWorld -> manyWorld
 
-val execute_cnot_instr : int -> int -> manyWorld -> manyWorld
+val execute_cnot_instr : int -> int -> int -> manyWorld -> manyWorld
 
-val execute_swap_instr : int -> int -> manyWorld -> manyWorld
+val execute_swap_instr : int -> int -> int -> manyWorld -> manyWorld
 
-val execute_measure_instr : int -> int -> manyWorld -> manyWorld
+val execute_measure_instr : int -> int -> int -> manyWorld -> manyWorld
 
-val execute_reset_instr : int -> manyWorld -> manyWorld
+val execute_reset_instr : int -> int -> manyWorld -> manyWorld
 
-val execute_suppl : int -> instruction -> manyWorld -> manyWorld
+val execute_suppl : int -> int -> instruction -> manyWorld -> manyWorld
 
-val execute : inlinedProgram -> manyWorld
+val execute : int -> inlinedProgram -> manyWorld
 
 val cstate_to_binary_little_endian : int -> bool total_map -> int -> int
 
 val cstate_to_binary : int -> bool total_map -> int
 
-val calculate_prob : int -> manyWorld -> RbaseSymbolsImpl.coq_R total_map
+val calculate_prob :
+  int -> int -> manyWorld -> RbaseSymbolsImpl.coq_R total_map
 
 val execute_and_calculate_prob :
-  inlinedProgram -> RbaseSymbolsImpl.coq_R total_map
+  int -> inlinedProgram -> RbaseSymbolsImpl.coq_R total_map
