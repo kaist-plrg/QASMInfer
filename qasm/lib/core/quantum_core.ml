@@ -1,3 +1,5 @@
+open Complex
+
 
 type __ = Obj.t
 let __ = let rec f _ = Obj.repr f in Obj.repr f
@@ -947,9 +949,9 @@ let rec mat_ctrl_single n c t u =
       (fun fO fS n -> if n=0 then fO () else fS (n-1))
         (fun _ ->
         mat_add ((+) (Stdlib.Int.succ 0) n')
-          (tensor_product (Stdlib.Int.succ 0) n' u (mat_proj0 n' c'))
           (tensor_product (Stdlib.Int.succ 0) n'
-            (mat_eye (Stdlib.Int.succ 0)) (mat_proj1 n' c')))
+            (mat_eye (Stdlib.Int.succ 0)) (mat_proj0 n' c'))
+          (tensor_product (Stdlib.Int.succ 0) n' u (mat_proj1 n' c')))
         (fun t' ->
         tensor_product (Stdlib.Int.succ 0) n' (mat_eye (Stdlib.Int.succ 0))
           (mat_ctrl_single n' c' t' u))

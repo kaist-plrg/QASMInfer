@@ -361,7 +361,8 @@ let desugar_qasm_qop (assignment_q_rev : int QASMArgMap.t)
   | Reset_dp arg ->
       ResetIr
         (deref_or_fail arg "desugar_qasm_qop: invalid argument" assignment_q_rev)
-  | Uop_dp (Gate_dp _) -> failwith "macro gate should not be here"
+  | Uop_dp (Gate_dp (gate_id, _, _)) ->
+      failwith ("macro gate " ^ gate_id ^ " is not inlined")
 
 let rec desugar_qasm_if (cond_list : (int * bool) list) (qop_ir : qc_ir) : qc_ir
     =
@@ -443,13 +444,12 @@ let desugar qasm =
   let qasm_core, num_qbits = desugar_qcir_program qasm_core_ir num_qbits_tmp in
   let qc_program : inlinedProgram =
     {
-      iP_num_qbits = num_qbits;
       iP_num_cbits = num_cbits;
       iP_num_subinstrs = Int.max_int;
       iP_instrs = qasm_core;
     }
   in
-  (qc_program, assignment_q, assignment_c)
+  (num_qbits, qc_program, assignment_q, assignment_c)
 
 (********************)
 (* 5. for debugging *)

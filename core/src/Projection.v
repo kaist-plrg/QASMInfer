@@ -54,7 +54,7 @@ Fixpoint mat_ctrl_single (n c t: nat) (U: Matrix 1) : Matrix n :=
   match n, c, t with
   | 0, _, _ | S _, 0, 0 => mat_eye
   | S n', 0, S t' => mat_proj0_base ⊗ mat_eye + mat_proj1_base ⊗ mat_single n' t' U
-  | S n', S c', 0 => U ⊗ mat_proj0 n' c' + mat_eye ⊗ mat_proj1 n' c'
+  | S n', S c', 0 => mat_eye ⊗ mat_proj0 n' c' + U ⊗ mat_proj1 n' c'
   | S n', S c', S t' => (@mat_eye 1) ⊗ mat_ctrl_single n' c' t' U
   end.
 
@@ -336,7 +336,7 @@ Proof.
       all: try rewrite HH0; try rewrite HH1.
       all: try rewrite HP0; try rewrite HP1.
       all: try rewrite mat_proj_01_perp; try rewrite mat_proj_10_perp.
-      all: rewrite mat_mul_eye_l.
+      all: rewrite mat_mul_eye_r.
       all: repeat rewrite tprod_0_r.
       all: rewrite mat_add_0_r; rewrite mat_add_0_l.
       all: rewrite <- (tprod_add_dist_l 1 _).

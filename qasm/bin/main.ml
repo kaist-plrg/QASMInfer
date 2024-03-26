@@ -19,11 +19,11 @@ let int_to_binary_fixed_width n width =
 let main () =
   let file_path = Sys.argv.(1) in
   let ast = get_ast file_path in
-  let program, _, _ = desugar ast in
+  let nq, program, _, _ = desugar ast in
   let () = print_endline "QASMCore ========================================" in
   let () = print_endline (string_of_instruction program.iP_instrs) in
   let () = print_endline "RESULT ==========================================" in
-  let prob_map = execute_and_calculate_prob program in
+  let prob_map = execute_and_calculate_prob nq program in
   List.init (Int.shift_left 1 program.iP_num_cbits) (fun x ->
       x |> prob_map |> RbaseSymbolsImpl.coq_Rrepr)
   |> List.iteri (fun i prob ->
