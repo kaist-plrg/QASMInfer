@@ -1,4 +1,4 @@
 (library
  (name desugarer)
- (modules desugar stringify)
+ (modules desugar stringify desugar_option)
  (libraries quantum_core openQASM2))

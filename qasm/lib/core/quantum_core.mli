@@ -138,6 +138,14 @@ module Z :
   val ggcd : int -> int -> int * (int * int)
  end
 
+type 'v total_map = int -> 'v
+
+val tm_empty : 'a1 -> 'a1 total_map
+
+val tm_update : 'a1 total_map -> int -> 'a1 -> 'a1 total_map
+
+val tmb_equal : bool total_map -> bool total_map -> int -> bool
+
 type q = { qnum : int; qden : int }
 
 module type RbaseSymbolsSig =
@@ -174,14 +182,6 @@ val rdiv :
   RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R
 
 val rgt_dec : RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R -> bool
-
-type 'v total_map = int -> 'v
-
-val tm_empty : 'a1 -> 'a1 total_map
-
-val tm_update : 'a1 total_map -> int -> 'a1 -> 'a1 total_map
-
-val tmb_equal : bool total_map -> bool total_map -> int -> bool
 
 val rTC : RbaseSymbolsImpl.coq_R -> Complex.t
 
