@@ -4,6 +4,12 @@ Require Import Reals.
 
 Definition qasm_id : Set := string.
 
+Definition qasm_id_eqb (id1 id2 : qasm_id) : bool :=
+  match string_dec id1 id2 with
+  | left _ => true
+  | right _ => false
+  end.
+
 Inductive qasm_binaryop : Set :=
 | QASM_Plus : qasm_binaryop
 | QASM_Minus : qasm_binaryop
