@@ -1,4 +1,4 @@
-Require Import Program.
+Require Import Desugar.
 Require Import Extraction.
 Require ExtrOcamlNatInt.
 Require ExtrOcamlZInt.
@@ -46,6 +46,9 @@ Extract Inlined Constant sin => "Stdlib.sin".
 Extract Inlined Constant cos => "Stdlib.cos".
 (* Extract Inlined Constant atan2 => "Stdlib.atan2". *)
 Extract Inlined Constant exp => "Stdlib.exp".
+Extract Inlined Constant Rpower => "(fun x y -> x ** y)".
+Extract Inlined Constant ln => "Stdlib.log".
+Extract Inlined Constant R_sqrt.sqrt => "Stdlib.sqrt".
 Extract Inlined Constant PI => "(4. *. Stdlib.atan 1.)".
 
 Extract Inlined Constant Complex => "Complex.t".
@@ -59,4 +62,7 @@ Extract Inlined Constant com_real => "(fun x -> x.re)".
 Extract Inlined Constant com_exp => "Complex.exp".
 Extract Inlined Constant com_inv => "Complex.inv".
 
+Extract Inlined Constant ocaml_max_int => "Int.max_int".
+
 Extraction "../qasm/lib/core/quantum_core.ml" Execute_and_calculate_prob.
+(* Extraction "./desugar.ml" desugar. *)
