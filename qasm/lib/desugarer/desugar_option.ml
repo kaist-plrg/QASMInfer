@@ -300,22 +300,20 @@ let assign_int_arg (assign_seq : (int * (id * int)) Seq.t) : QASMArg.t IntMap.t
     =
   IntMap.of_seq assign_seq
 
-(* let deref_or_fail key msg map =
-   match QASMArgMap.find_opt key map with
-   | Some value -> value
-   | None -> failwith msg *)
-
 let unfold_if (creg_size_map : int IdMap.t)
     (assingment_c_rev : int QASMArgMap.t) (creg_id : id) (cmp : int) :
     (int * bool) list option =
   let rec to_binary n s =
-    if n = 0 then List.init s (fun _ -> false)
-    else (n mod 2 = 1) :: to_binary (n / 2) (s - 1)
+    match (n, s) with
+    | 0, _ -> Some (List.init s (fun _ -> false))
+    | _, 0 -> None
+    | _, _ -> to_binary (n / 2) (s - 1) >>| fun _bits -> (n mod 2 = 1) :: _bits
   in
   IdMap.find_opt creg_id creg_size_map >>= fun _reg_size ->
   List.init _reg_size (fun i -> i)
   |> option_l_map (fun i -> QASMArgMap.find_opt (creg_id, i) assingment_c_rev)
-  >>| fun _cbits -> List.combine _cbits (to_binary cmp _reg_size)
+  >>= fun _cbits ->
+  to_binary cmp _reg_size >>| fun _cmp_bits -> List.combine _cbits _cmp_bits
 
 let rec eval_exp (expr : exp) : float option =
   match expr with

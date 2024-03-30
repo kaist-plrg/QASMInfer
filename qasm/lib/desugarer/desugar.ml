@@ -289,8 +289,10 @@ let unfold_if (creg_size_map : int IdMap.t)
     (assingment_c_rev : int QASMArgMap.t) (creg_id : id) (cmp : int) :
     (int * bool) list =
   let rec to_binary n s =
-    if n = 0 then List.init s (fun _ -> false)
-    else (n mod 2 = 1) :: to_binary (n / 2) (s - 1)
+    match (n, s) with
+    | 0, _ -> List.init s (fun _ -> false)
+    | _, 0 -> failwith "unfold_if: operand too big for creg size"
+    | _, _ -> (n mod 2 = 1) :: to_binary (n / 2) (s - 1)
   in
   let reg_size = get_or_fail creg_id "invalid creg id" creg_size_map in
   let cbits =
