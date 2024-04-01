@@ -1,6 +1,6 @@
 .*
 !.gitignore
-Makefile*
+Makefile.conf
 *.log
 *.aux
 *.glob
