@@ -430,7 +430,7 @@ let rec desugar_qcir_program (qc_ir_program : qc_ir) (acc : int) :
 let count_bits (size_map : int IdMap.t) : int =
   IdMap.fold (fun _ s a -> s + a) size_map 0
 
-let desugar qasm =
+let desugar_option qasm =
   let qreg_order = extract_qreg_order qasm in
   let creg_order = extract_creg_order qasm in
   let qreg_size_map = extract_qreg_size qasm in
