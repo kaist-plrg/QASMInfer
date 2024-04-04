@@ -19,9 +19,11 @@ let int_to_binary_fixed_width n width =
 
 let main () =
   let file_path = Sys.argv.(1) in
-  let ast = get_ast file_path in
+  let ast = get_ast file_path |> inline_qelib in
   let success = desugar_option ast |> Option.is_some in
-  let () = if not success then print_endline "Desugaring_opt returned None" else () in
+  let () =
+    if not success then print_endline "Desugaring_opt returned None" else ()
+  in
   let nq, program, _, _ = desugar ast in
   let () = print_endline "QASMCore ========================================" in
   let () = print_endline (string_of_instruction program.iP_instrs) in
