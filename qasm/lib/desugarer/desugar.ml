@@ -412,7 +412,17 @@ let rec desugar_qcir_program (qc_ir_program : qc_ir) (acc : int) :
   | RotateIr (t, p, l, q) -> (RotateInstr (t, p, l, q), acc)
   | CnotIr (a1, a2) -> (CnotInstr (a1, a2), acc)
   | MeasureIr (q, c) -> (MeasureInstr (q, c), acc)
-  | ResetIr q -> (ResetInstr q, acc)
+  (* | ResetIr q -> (ResetInstr q, acc) *)
+  | ResetIr q ->
+      ( SeqInstr
+          ( MeasureInstr (q, acc),
+            IfInstr
+              ( acc,
+                true,
+                RotateInstr
+                  (float_to_R Float.pi, float_to_R 0.0, float_to_R Float.pi, q)
+              ) ),
+        acc )
   | SeqIr (ir1, ir2) ->
       let qc1, acc1 = desugar_qcir_program ir1 acc in
       let qc2, acc2 = desugar_qcir_program ir2 acc1 in
