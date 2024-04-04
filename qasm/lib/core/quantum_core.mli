@@ -181,15 +181,11 @@ val tm_empty : 'a1 -> 'a1 total_map
 
 val tm_update : 'a1 total_map -> int -> 'a1 -> 'a1 total_map
 
-val tmb_equal : bool total_map -> bool total_map -> int -> bool
-
 val rTC : RbaseSymbolsImpl.coq_R -> Complex.t
 
 val rTIm : RbaseSymbolsImpl.coq_R -> Complex.t
 
 val nTC : int -> Complex.t
-
-val com_div : Complex.t -> Complex.t -> Complex.t
 
 val com_iexp : RbaseSymbolsImpl.coq_R -> Complex.t
 
@@ -306,10 +302,6 @@ type world = { w_num_clbits : int; w_qstate : matrix;
 type manyWorld = world list
 
 val manyWorld_init : int -> int -> int -> manyWorld
-
-val merge_manyworld_suppl : int -> world -> manyWorld -> manyWorld
-
-val merge_manyworld : int -> manyWorld -> manyWorld
 
 val execute_rotate_instr :
   int -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->

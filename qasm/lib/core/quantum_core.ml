@@ -681,14 +681,6 @@ let tm_empty v _ =
 let tm_update m k v x =
   if (=) x k then v else m x
 
-(** val tmb_equal : bool total_map -> bool total_map -> int -> bool **)
-
-let rec tmb_equal m1 m2 size =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> eqb (m1 0) (m2 0))
-    (fun n -> (&&) (eqb (m1 n) (m2 n)) (tmb_equal m1 m2 n))
-    size
-
 (** val rTC : RbaseSymbolsImpl.coq_R -> Complex.t **)
 
 let rTC = fun x -> {re=x; im=0.0}
@@ -700,11 +692,6 @@ let rTIm = fun y -> {re=0.0; im=y}
 (** val nTC : int -> Complex.t **)
 
 let nTC = fun n -> {re=float_of_int n; im=0.0}
-
-(** val com_div : Complex.t -> Complex.t -> Complex.t **)
-
-let com_div x y =
-  Complex.mul x (Complex.inv y)
 
 (** val com_iexp : RbaseSymbolsImpl.coq_R -> Complex.t **)
 
@@ -1158,39 +1145,6 @@ let manyWorld_init nq _ num_c =
   { w_num_clbits = num_c; w_qstate = (den_init nq); w_cstate =
     (tm_empty false); w_prob = (float_of_int 1) } :: []
 
-(** val merge_manyworld_suppl : int -> world -> manyWorld -> manyWorld **)
-
-let rec merge_manyworld_suppl nq w = function
-| [] -> w :: []
-| y :: l ->
-  let b = tmb_equal y.w_cstate w.w_cstate y.w_num_clbits in
-  if b
-  then let { w_num_clbits = w_num_clbits0; w_qstate = w_qstate0; w_cstate =
-         w_cstate0; w_prob = w_prob0 } = w
-       in
-       let { w_num_clbits = _; w_qstate = w_qstate1; w_cstate = _; w_prob =
-         w_prob1 } = y
-       in
-       { w_num_clbits = w_num_clbits0; w_qstate =
-       (mat_add nq
-         (mat_scale nq
-           (com_div (rTC w_prob0) (Complex.add (rTC w_prob0) (rTC w_prob1)))
-           w_qstate0)
-         (mat_scale nq
-           (com_div (rTC w_prob1) (Complex.add (rTC w_prob0) (rTC w_prob1)))
-           w_qstate1)); w_cstate = w_cstate0; w_prob =
-       (RbaseSymbolsImpl.coq_Rplus w_prob0 w_prob1) } :: l
-  else y :: (merge_manyworld_suppl nq w l)
-
-(** val merge_manyworld : int -> manyWorld -> manyWorld **)
-
-let merge_manyworld nq = function
-| [] -> []
-| w :: l ->
-  (match l with
-   | [] -> merge_manyworld_suppl nq w []
-   | w0 :: l0 -> merge_manyworld_suppl nq w (merge_manyworld_suppl nq w0 l0))
-
 (** val execute_rotate_instr :
     int -> RbaseSymbolsImpl.coq_R -> RbaseSymbolsImpl.coq_R ->
     RbaseSymbolsImpl.coq_R -> int -> manyWorld -> manyWorld **)
@@ -1333,8 +1287,7 @@ let rec execute_suppl nq ir instr worlds =
     | CnotInstr (control, target) ->
       execute_cnot_instr nq control target worlds
     | SwapInstr (q1, q2) -> execute_swap_instr nq q1 q2 worlds
-    | MeasureInstr (qbit, cbit) ->
-      merge_manyworld nq (execute_measure_instr nq qbit cbit worlds)
+    | MeasureInstr (qbit, cbit) -> execute_measure_instr nq qbit cbit worlds
     | SeqInstr (i1, i2) ->
       execute_suppl nq ir' i2 (execute_suppl nq ir' i1 worlds)
     | IfInstr (cbit, cond, subinstr) ->
