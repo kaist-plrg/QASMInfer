@@ -1,15 +1,15 @@
 open Complex
 
-let memoize2 f =
-  let b = 10 in
-  let memo_table = Hashtbl.create (Int.shift_left 1 (b + b)) in
-  fun x y ->
-    let xy = Int.shift_left x b + y in
-    try Hashtbl.find memo_table xy
-    with Not_found ->
-      let result = f x y in
-      Hashtbl.add memo_table xy result;
-      result
+let memoize2 f = f
+(* let b = 10 in
+   let memo_table = Hashtbl.create (Int.shift_left 1 (b + b)) in
+   fun x y ->
+     let xy = Int.shift_left x b + y in
+     try Hashtbl.find memo_table xy
+     with Not_found ->
+       let result = f x y in
+       Hashtbl.add memo_table xy result;
+       result *)
 
 type __ = Obj.t
 
