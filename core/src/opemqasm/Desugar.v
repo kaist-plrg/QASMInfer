@@ -473,28 +473,6 @@ Definition desugar (qasm : qasm_program)
       IP_instrs := qasm_core; |} in
   (num_qbits, qc_program, assignment_q, assignment_c).
 
-(* Definition desugar_parallel (qasm : OpenQASM2.AST.program) : program_dp :=
-  let qreg_size_map := extract_qreg_size qasm in
-  let creg_size_map := extract_creg_size qasm in
-  desugar_parallel_program qasm qreg_size_map creg_size_map.
-
-Definition desugar_macro (qasm : OpenQASM2.AST.program) : program_dp :=
-  let qreg_size_map := extract_qreg_size qasm in
-  let creg_size_map := extract_creg_size qasm in
-  let gate_decls := extract_gate_decl_rev qasm in
-  let qasm_dp := desugar_parallel_program qasm qreg_size_map creg_size_map in
-  desugar_macro_program qasm_dp gate_decls.
-
-Definition desugar_qasm (qasm : OpenQASM2.AST.program) : qc_ir :=
-  let qreg_order := extract_qreg_order qasm in
-  let creg_order := extract_creg_order qasm in
-  let qreg_size_map := extract_qreg_size qasm in
-  let creg_size_map := extract_creg_size qasm in
-  let gate_decls := extract_gate_decl_rev qasm in
-  let qasm_dp := desugar_parallel_program qasm qreg_size_map creg_size_map in
-  let qasm_dm := desugar_macro_program qasm_dp gate_decls in
-  let assignment_q_seq := assign_seq qreg_order qreg_size_map in
-  let assignment_q_rev := assign_arg_int assignment_q_seq in
-  let assignment_c_seq := assign_seq creg_order creg_size_map in
-  let assignment_c_rev := assign_arg_int assignment_c_seq in
-  desugar_qasm_program creg_size_map assignment_q_rev assignment_c_rev qasm_dm. *)
+Definition execute_qasm (qasm: qasm_program): option (total_map R) :=
+  desugar qasm >>| fun '(num_qbits, qc_program, assignment_q, assignment_c) =>
+  Execute_and_calculate_prob num_qbits qc_program.
