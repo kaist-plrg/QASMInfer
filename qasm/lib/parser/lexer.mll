@@ -18,8 +18,8 @@ let exp = ['e' 'E'] ['-' '+']? digit+
 let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
 let id = ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
-let real = (digit+'.'digit* | digit*'.'digit+) exp?
 let nninteger = (['1'-'9']+digit*) | '0'
+let real = (digit+'.'digit* | digit*'.'digit+) exp? | nninteger exp
 
 rule token =
   parse
