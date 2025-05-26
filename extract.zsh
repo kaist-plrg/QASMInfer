@@ -12,7 +12,15 @@ make
 # < What is added >
 # open Complex
 
-sed -i '' '1s/^/open Complex\n\n/' ../qasm/lib/core/quantum_core.ml
+FILE="../qasm/lib/core/quantum_core.ml"
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS (BSD sed)
+  sed -i '' $'1s/^/open Complex\\\n\\\n/' "$FILE"
+else
+  # Linux (GNU sed)
+  sed -i '1s/^/open Complex\n\n/' "$FILE"
+fi
 
 # Step 5: Leave the "core" directory
 cd ..
