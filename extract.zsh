@@ -5,7 +5,8 @@ cd core
 
 # Step 2: Run the "make" command
 coq_makefile -f _CoqProject -o Makefile
-make
+make clean
+make COQFLAGS="-w -all"
 
 # Step 3: Add "open Complex" at the beginning of "../qasm/lib/quantum_core.ml"
 
