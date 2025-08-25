@@ -1,0 +1,9 @@
+(library
+ (name openQASM3))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser)
+ (flags --no-dollars --explain --dump)
+ (infer true))

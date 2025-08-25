@@ -1,4 +1,4 @@
 (executable
  (public_name qasm)
  (name main)
- (libraries quantum_core openQASM2 desugarer))
+ (libraries quantum_core openQASM2 openQASM3 desugarer desugarer3))
