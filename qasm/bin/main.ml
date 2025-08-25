@@ -23,22 +23,39 @@ let int_to_binary_fixed_width n width =
 
 let check_qasm_version file_path =
   let ch = open_in file_path in
-  let first_line =
-    try input_line ch
+  let rec find_version_line () =
+    try
+      let line = input_line ch in
+      let trimmed = String.trim line in
+      (* Skip empty lines or lines that are just whitespace *)
+      if trimmed = "" then find_version_line ()
+        (* Skip comment-only lines (lines that start with // after trimming) *)
+      else if String.length trimmed >= 2 && String.sub trimmed 0 2 = "//" then
+        find_version_line ()
+      else line
     with End_of_file ->
       close_in ch;
-      failwith "File is empty"
+      failwith "File is empty or contains only whitespace/comments"
+  in
+  let first_meaningful_line =
+    try find_version_line ()
+    with e ->
+      close_in ch;
+      raise e
   in
   close_in ch;
-  if String.length first_line >= 10 then
-    let prefix = String.sub first_line 0 10 in
+  if String.length first_meaningful_line >= 10 then
+    let prefix = String.sub first_meaningful_line 0 10 in
     if prefix = "OPENQASM 2" then V2
     else if prefix = "OPENQASM 3" then V3
     else
       failwith
         ("Unsupported QASM version. Expected 'OPENQASM 2.x' or 'OPENQASM 3.x', \
-          but found: " ^ first_line)
-  else failwith ("Invalid QASM file format. First line too short: " ^ first_line)
+          but found: " ^ first_meaningful_line)
+  else
+    failwith
+      ("Invalid QASM file format. First line too short: "
+     ^ first_meaningful_line)
 
 let main () =
   let file_path = Sys.argv.(1) in
