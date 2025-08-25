@@ -16,7 +16,7 @@
 %token LBRACKET "[" RBRACKET "]"
 %token OPAQUE BARRIER
 %token IF
-%token QREG CREG QUBIT BIT
+%token QREG CREG QUBIT BIT PHYSICAL
 %token GATE
 %token MEASURE RESET
 %token U CX
@@ -88,6 +88,7 @@ idlist: il = separated_list(",", ID) { il }
 argument:
   | name = ID                     { (name, None) }
   | name = ID "[" idx = NINT "]"  { (name, Some idx) }
+  | PHYSICAL idx = NINT          { ("$", Some idx) }
 
 explist: el = separated_list(",", exp) { el }
 

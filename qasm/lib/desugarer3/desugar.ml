@@ -1,8 +1,49 @@
 open OpenQASM3.AST
 module AST2 = OpenQASM2.AST
 
+(******************************)
+(* 1. Desugar physical qubits *)
+(******************************)
+
+let rec extract_physical_idx prog =
+  match prog with
+  | [] -> []
+  | stmt :: rest -> (
+      match stmt with
+      | Qop (Uop (CX ((name1, Some idx1), (name2, Some idx2)))) ->
+          if name1 = "$" && name2 = "$" then
+            [ idx1; idx2 ] @ extract_physical_idx rest
+          else if name1 = "$" then idx1 :: extract_physical_idx rest
+          else if name2 = "$" then idx2 :: extract_physical_idx rest
+          else extract_physical_idx rest
+      | Qop (Uop (U (_, (name, Some idx)))) ->
+          if name = "$" then idx :: extract_physical_idx rest
+          else extract_physical_idx rest
+      | Qop (Uop (Gate (_, _, args))) ->
+          let physical_indices =
+            List.fold_left
+              (fun acc (arg_name, opt_idx) ->
+                if arg_name = "$" then
+                  match opt_idx with Some idx -> idx :: acc | None -> acc
+                else acc)
+              [] args
+          in
+          physical_indices @ extract_physical_idx rest
+      | Qop (Meas ((name, Some idx), _)) | Qop (Reset (name, Some idx)) ->
+          if name = "$" then idx :: extract_physical_idx rest
+          else extract_physical_idx rest
+      | _ -> extract_physical_idx rest)
+
+let desugar_physical_qubits prog =
+  let physical_indices = extract_physical_idx prog in
+  let max_idx =
+    if physical_indices = [] then 0 else List.fold_left max 0 physical_indices
+  in
+  let qreg_decl = QReg ("$", max_idx + 1) in
+  Decl qreg_decl :: prog
+
 (**************************)
-(* 1. unroll if statement *)
+(* 2. unroll if statement *)
 (**************************)
 
 let desugar3_ty = function
@@ -66,7 +107,9 @@ let desugar3_statement = function
       List.map (fun qop -> AST2.If (id, i, desugar3_qop qop)) qops
   | Barrier args -> [ AST2.Barrier args ]
 
-let desugar3_program prog = List.flatten (List.map desugar3_statement prog)
+let desugar3_program prog =
+  let prog = desugar_physical_qubits prog in
+  List.flatten (List.map desugar3_statement prog)
 
 (*******************************)
 (* 2. desugar classical control *)

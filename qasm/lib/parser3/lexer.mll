@@ -45,6 +45,7 @@ rule token =
 
   | "qreg"            { QREG }
   | "qubit"           { QUBIT }
+  | "$"               { PHYSICAL }
   | "creg"            { CREG }
   | "bit"             { BIT }
 
