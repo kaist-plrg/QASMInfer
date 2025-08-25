@@ -36,11 +36,12 @@ let rec extract_physical_idx prog =
 
 let desugar_physical_qubits prog =
   let physical_indices = extract_physical_idx prog in
-  let max_idx =
-    if physical_indices = [] then 0 else List.fold_left max 0 physical_indices
-  in
-  let qreg_decl = QReg ("$", max_idx + 1) in
-  Decl qreg_decl :: prog
+  match physical_indices with
+  | [] -> prog
+  | _ ->
+      let max_idx = List.fold_left max 0 physical_indices in
+      let qreg_decl = QReg ("$", max_idx + 1) in
+      Decl qreg_decl :: prog
 
 (**************************)
 (* 2. unroll if statement *)
