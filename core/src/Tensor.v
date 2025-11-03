@@ -1,5 +1,5 @@
 Require Export MatrixVector.
-Require Import Coq.Program.Equality.
+From Stdlib Require Import Program.Equality.
 
 Open Scope Matrix_scope.
 

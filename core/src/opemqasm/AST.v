@@ -1,6 +1,6 @@
-Require Import Coq.Strings.String.
-Require Import ZArith.
-Require Import Reals.
+From Stdlib Require Import Strings.String.
+From Stdlib Require Import ZArith.
+From Stdlib Require Import Reals.
 
 Definition qasm_id : Set := string.
 

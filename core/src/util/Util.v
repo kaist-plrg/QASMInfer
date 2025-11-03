@@ -1,7 +1,7 @@
-Require Import Bool.
-Require Import Arith.
-Require Import List.
-Require Import Reals.
+From Stdlib Require Import Bool.
+From Stdlib Require Import Arith.
+From Stdlib Require Import List.
+From Stdlib Require Import Reals.
 Import ListNotations.
 
 Definition total_map (V: Type) := nat -> V.

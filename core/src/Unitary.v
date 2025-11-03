@@ -1,5 +1,5 @@
 Require Export Hermitian.
-Require Import Coq.Logic.Eqdep_dec.
+From Stdlib Require Import Logic.Eqdep_dec.
 
 Open Scope Matrix_scope.
 

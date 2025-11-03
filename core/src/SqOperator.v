@@ -1,5 +1,5 @@
 Require Export Positive.
-Require Export Coq.Program.Equality.
+From Stdlib Require Export Program.Equality.
 
 Bind Scope Complex_scope with Complex.
 Open Scope Matrix_scope.

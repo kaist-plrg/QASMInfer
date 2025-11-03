@@ -1,7 +1,9 @@
 Require Import Desugar.
 Require Import Extraction.
-Require ExtrOcamlNatInt.
-Require ExtrOcamlZInt.
+From Stdlib Require ExtrOcamlNatInt ExtrOcamlZInt.
+
+Set Extraction Output Directory "../qasm/lib/core".
+Set Warnings "-extraction-opaque-accessed".
 
 Extract Inlined Constant Init.Nat.add => "(+)".
 Extract Inlined Constant Nat.add => "(+)".
@@ -64,5 +66,5 @@ Extract Inlined Constant com_inv => "Complex.inv".
 
 Extract Inlined Constant ocaml_max_int => "Int.max_int".
 
-Extraction "../qasm/lib/core/quantum_core.ml" Execute_and_calculate_prob.
+Extraction "quantum_core.ml" Execute_and_calculate_prob.
 (* Extraction "./desugar.ml" desugar. *)

@@ -1,15 +1,15 @@
-Require Export Bool.
-Require Export Arith.
-Require Export NDiv0.
-Require Export Reals.
-Require Export Reals.Rtrigo_facts.
-Require Export Psatz.
-Require Export List.
-Require Export Coq.Logic.ProofIrrelevance.
-Require Export Coq.Logic.PropExtensionality.
+From Stdlib Require Export Bool.
+From Stdlib Require Export Arith.
+From Stdlib Require Export NDiv0.
+From Stdlib Require Export Reals.
+From Stdlib Require Export Reals.Rtrigo_facts.
+From Stdlib Require Export Psatz.
+From Stdlib Require Export List.
+From Stdlib Require Export Logic.ProofIrrelevance.
+From Stdlib Require Export Logic.PropExtensionality.
 Import ListNotations.
-Require Import Classical_Prop.
-Require Export FunctionalExtensionality.
+From Stdlib Require Import Classical_Prop.
+From Stdlib Require Export FunctionalExtensionality.
 
 Declare Scope Complex_scope.
 Open Scope nat_scope.

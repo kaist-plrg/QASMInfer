@@ -6,7 +6,7 @@ Open Scope nat_scope.
 Bind Scope nat_scope with nat.
 Open Scope Complex_scope.
 Bind Scope Complex_scope with Complex.
-Require Import Coq.Program.Equality.
+From Stdlib Require Import Program.Equality.
 
 (* A 2^n * 2^n matrix is a tree of height n, where each leaf is a complex number. *)
 Inductive Matrix : nat -> Type :=
