@@ -1,4 +1,6 @@
-# QASMInfer: Verified Exact Inference of QASM Programs
+# QASMInfer
+
+Verified Exact Inference for Quantum Circuits
 
 ## Prereqs
 
