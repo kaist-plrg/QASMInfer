@@ -1,0 +1,15 @@
+(include_subdirs unqualified)
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser)
+ (flags --no-dollars --dump)
+ (infer true))
+
+(library
+ (name qasm3)
+ (public_name qasminfer.qasm3)
+ (modules :standard)
+ (wrapped true)
+ (libraries extracted qasm2))

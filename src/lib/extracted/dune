@@ -1,0 +1,6 @@
+(rule
+ (deps ../../../theories/extracted.ml)
+ (targets extracted.ml)
+ (mode (promote (until-clean)))
+ (action
+  (copy ../../../theories/extracted.ml extracted.ml)))

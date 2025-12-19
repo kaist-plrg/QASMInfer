@@ -1,9 +1,0 @@
-(library
- (name openQASM2))
-
-(ocamllex lexer)
-
-(menhir
- (modules parser)
- (flags --no-dollars --explain --dump)
- (infer true))

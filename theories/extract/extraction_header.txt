@@ -1,0 +1,5 @@
+(* Lines auto-prepended immediately after extraction. *)
+[@@@warning "-27-33-39"] (* relax unused-variable/open warnings on generated code *)
+
+(* Ensure record labels from Stdlib.Complex are in scope for extracted code. *)
+open Complex

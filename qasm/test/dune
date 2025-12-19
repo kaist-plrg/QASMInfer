@@ -1,3 +1,0 @@
-(test
- (name qasm)
- (libraries quantum_core openQASM2 desugarer))

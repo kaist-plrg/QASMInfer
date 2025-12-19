@@ -1,0 +1,7 @@
+(include_subdirs unqualified)
+
+(library
+ (name extracted)
+ (public_name qasminfer.extracted)
+ (modules :standard)
+ (wrapped false))

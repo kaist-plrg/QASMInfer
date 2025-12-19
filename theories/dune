@@ -1,0 +1,19 @@
+(include_subdirs qualified)
+
+(coq.theory
+ (name QASMInfer)
+ (package qasminfer)
+ (theories Stdlib)
+ (modules :standard))
+
+(rule
+ (alias extract)
+ (targets extracted.ml)
+ (deps
+  extract/Extract.v
+  (:patcher ../scripts/patch_extraction.sh)
+  (:header_txt extract/extraction_header.txt))
+ (action
+  (progn
+   (run %{bin:coqtop} -q -R . QASMInfer -batch -l extract/Extract)
+   (run %{patcher} %{header_txt} extracted.ml))))

@@ -1,0 +1,6 @@
+(executable
+ (name main)
+ (public_name qasminfer)
+ (package qasminfer)
+ (modules main)
+ (libraries extracted qasm2 qasm3))

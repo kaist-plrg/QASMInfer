@@ -1,0 +1,9 @@
+# For VSRocq's linking
+-Q _build/default/theories QASMInfer
+-R _build/default/theories/operator QASMInfer.operator
+-R _build/default/theories/program QASMInfer.program
+-R _build/default/theories/matrix QASMInfer.matrix
+-R _build/default/theories/util QASMInfer.util
+
+
+

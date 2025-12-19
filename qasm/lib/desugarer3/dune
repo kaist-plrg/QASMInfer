@@ -1,4 +1,0 @@
-(library
- (name desugarer3)
- (modules desugar)
- (libraries quantum_core openQASM3 openQASM2 desugarer))
