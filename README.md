@@ -1,12 +1,17 @@
 # QASMInfer
 
-Verified Exact Inference for Quantum Circuits
+QASMInfer is a verified exact inference engine for quantum circuits written in
+OpenQASM. The core inference algorithm is formalized and proven correct in Rocq,
+and extracted to OCaml for execution.
+
+Currently, QASMInfer supports OpenQASM 2 and provides partial support for
+OpenQASM 3.
 
 ## Prereqs
 
 - `dune` (tested with 3.20.x)
 - `rocq`/`coq` (tested with Rocq 9.1.0)
-- `ocaml` (the version used by your Rocq switch)
+- `ocaml`
 
 Suggested install via opam:
 
@@ -16,27 +21,44 @@ opam install dune rocq
 
 ## Layout
 
-- `theories/`: Rocq theory (`Core.v`) plus extraction driver (`Extract.v`) and header fragments that get prepended to the generated files.
-- `scripts/patch_extraction.sh`: simple helper that prepends a header file to a generated file.
-- `src/lib/`: OCaml library that copies in the extracted sources and re-exports a small API.
-- `src/bin/`: OCaml executable using the library.
+```
+theories/
+  extract/Extract.v              # extraction driver
+  extract/extraction_header.txt  # header prepended to extracted OCaml
+  ...                            # QASMInfer theories and implementation
+scripts/patch_extraction.sh      # prepends header to generated file
+src/lib/
+  extracted/                     # extracted QASMInfer
+  qasm2/                         # OpenQASM 2 parser/desugar/stringifier
+  qasm3/                         # OpenQASM 3 parser/desugar (partial)
+src/bin/                         # CLI that parses QASM, runs QASMInfer, prints result
+```
 
 ## Build and run
 
+The build pipeline ensures that the executable is always generated from the verified Rocq development.
+
 ```bash
-dune build                # builds Rocq theory, extracts to OCaml, builds library + exe
-dune exec ocaml/app/main.exe
+dune build             # builds Rocq theory, extracts to OCaml, builds library + exe
+dune exec qasminfer test.qasm
 ```
 
-## Customizing the injected headers
+After installing into your opam switch:
 
-Edit `rocq/extraction_header.ml` / `rocq/extraction_header.mli` to add whatever lines you need at the top of every extracted file (e.g. warning controls, shared `open`s). The `scripts/patch_extraction.sh` script prepends them right after extraction.
+```bash
+dune install           # installs library + executable
+qasminfer test.qasm    # run the installed executable
+```
 
-## How it fits together
+Example output:
 
-1. `theories/dune` builds the theory (with `include_subdirs qualified` so you can nest `theories/foo/*.v` and refer to them as `From QASMInfer.foo Require ...`) and runs `coqtop` on `Extract.v`, which drops `extracted/extracted.ml` into the build dir. Immediately after, the header snippets are prepended.
-2. `src/lib/extracted/dune` copies that generated file into `src/lib/extracted/` (with `mode promote-until-clean` so editors/LSPs can see it) so the OCaml library can use it.
-3. The library `qasminfer.extracted` exposes the generated module as `Extracted`.
-4. `src/bin/main.ml` links against that library to produce the executable.
+```
+00: 0.5                # probability for creg being [00]
+01: 0.0                # probability for creg being [01]
+10: 0.0                # probability for creg being [10]
+11: 0.5                # probability for creg being [11]
+```
 
-Running `dune clean` wipes everything under `_build/`; the extracted files are not checked in.
+## Publication
+
+_Exact Inference for Quantum Circuits: A Testing Oracle for Quantum Software Stacks_, ASE 2025
