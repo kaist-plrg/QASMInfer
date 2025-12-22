@@ -1,7 +1,39 @@
 From QASMInfer.matrix Require Export Vector.
-From QASMInfer.matrix Require Export RingUtil.
 
 Open Scope Matrix_scope.
+
+Section PREREQ.
+
+Variable n: nat.
+
+Add Ring MRing: (mat_ring n).
+Add Ring VRing: (vec_ring n).
+
+Property prereq_1: forall (v1 v2: Vector n) A1 B1 A3 B3,
+(v1 |* A1 |+| v1 |* B1) |+| (v2 |* A3 |+| v2 |* B3) = (v1 |* A1 |+| v2 |* A3) |+| (v1 |* B1 |+| v2 |* B3).
+Proof. intros; ring. Qed.
+
+Property prereq_2: forall (v1 v2: Vector n) A1 B1 A2 B2,
+(A1 *| v1 |+| B1 *| v1) |+| (A2 *| v2 |+| B2 *| v2) = (A1 *| v1 |+| A2 *| v2) |+| (B1 *| v1 |+| B2 *| v2).
+Proof. intros; ring. Qed.
+
+Property prereq_3: forall (v1 v2 w1 w2: Vector n) A1 A3,
+(v1 |* A1 |+| w1 |* A1) |+| (v2 |* A3 |+| w2 |* A3) = (v1 |* A1 |+| v2 |* A3) |+| (w1 |* A1 |+| w2 |* A3).
+Proof. intros; ring. Qed.
+
+Property prereq_4: forall (v1 v2 w1 w2: Vector n) A1 A2,
+(A1 *| v1 |+| A1 *| w1) |+| (A2 *| v2 |+| A2 *| w2) = (A1 *| v1 |+| A2 *| v2) |+| (A1 *| w1 |+| A2 *| w2).
+Proof. intros; ring. Qed.
+
+Property prereq_5: forall (v1 v2: Vector n) A1 A2 A3 A4 B1 B3,
+((v1 |* A1) |* B1 |+| (v1 |* A2) |* B3) |+| ((v2 |* A3) |* B1 |+| (v2 |* A4) |* B3) = ((v1 |* A1) |* B1 |+| (v2 |* A3) |* B1) |+| ((v1 |* A2) |* B3 |+| (v2 |* A4) |* B3).
+Proof. intros; ring. Qed.
+
+Property prereq_6: forall (v1 v2: Vector n) A1 A2 B1 B2 B3 B4,
+(A1 *| (B1 *| v1) |+| A2 *| (B3 *| v1)) |+| (A1 *| (B2 *| v2) |+| A2 *| (B4 *| v2)) = (A1 *| (B1 *| v1) |+| A1 *| (B2 *| v2)) |+| (A2 *| (B3 *| v1) |+| A2 *| (B4 *| v2)).
+Proof. intros; ring. Qed.
+
+End PREREQ.
 
 Definition mat_trace_1 {n} (A : Matrix n) : Prop := mat_trace A = 1.
 
@@ -23,7 +55,7 @@ Proof.
     simpl.
     repeat rewrite IHn.
     f_equal.
-    all: apply ring_util_1.
+    all: apply prereq_1.
 Qed.
 
 Lemma vec_mat_mul_dist_r: forall {n} (v w: Vector n) (A: Matrix n),
@@ -43,7 +75,7 @@ Proof.
     simpl.
     repeat rewrite IHn.
     f_equal.
-    all: apply ring_util_3.
+    all: apply prereq_3.
 Qed.
 
 Lemma mat_vec_mul_dist_l: forall {n} (A: Matrix n) (v w: Vector n),
@@ -63,7 +95,7 @@ Proof.
     simpl.
     repeat rewrite IHn.
     f_equal.
-    all: apply ring_util_4.
+    all: apply prereq_4.
 Qed.
 
 Lemma mat_vec_mul_dist_r: forall {n} (A B: Matrix n) (v: Vector n),
@@ -83,7 +115,7 @@ Proof.
     simpl.
     repeat rewrite IHn.
     f_equal.
-    all: apply ring_util_2.
+    all: apply prereq_2.
 Qed.
 
 Ltac mat_expand := repeat (
@@ -140,7 +172,7 @@ Proof.
     mat_expand.
     repeat rewrite IHn.
     f_equal.
-    all: apply ring_util_6.
+    all: apply prereq_6.
 Qed.
 
 Hint Extern 1 => (rewrite mat_mat_vec_mul_assoc) : assoc_db.
@@ -164,7 +196,7 @@ Proof.
     mat_expand.
     repeat rewrite IHn.
     f_equal.
-    all: apply ring_util_5.
+    all: apply prereq_5.
 Qed.
 
 Hint Extern 1 => (rewrite vec_mat_mat_mul_assoc) : assoc_db.
@@ -527,4 +559,3 @@ Ltac mat_sort_rev_in_all := repeat (
   f_equal ||
   auto
 ).
-
