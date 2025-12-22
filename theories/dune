@@ -11,9 +11,13 @@
  (targets extracted.ml)
  (deps
   extract/Extract.v
+  program/Program.vo
+  matrix/Complex.vo
+  (source_tree .)
   (:patcher ../scripts/patch_extraction.sh)
   (:header_txt extract/extraction_header.txt))
  (action
-  (progn
-   (run %{bin:coqtop} -q -R . QASMInfer -batch -l extract/Extract)
-   (run %{patcher} %{header_txt} extracted.ml))))
+  (chdir %{workspace_root}/_build/default/theories
+   (progn
+    (run %{bin:coqtop} -q -Q . QASMInfer -batch -l extract/Extract)
+    (run %{patcher} %{header_txt} extracted.ml)))))
