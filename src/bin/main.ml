@@ -4,6 +4,10 @@ module Q3 = Qasm3.Api
 
 type version = V2 | V3
 
+let usage () =
+  prerr_endline "usage: qasminfer <qasm_file>";
+  exit 1
+
 let rec to_binary n =
   if n = 0 then "0"
   else if n = 1 then "1"
@@ -54,6 +58,7 @@ let check_qasm_version file_path =
      ^ first_meaningful_line)
 
 let main () =
+  if Array.length Sys.argv < 2 then usage ();
   let file_path = Sys.argv.(1) in
   let ast =
     (match check_qasm_version file_path with
