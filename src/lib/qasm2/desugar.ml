@@ -449,7 +449,6 @@ let desugar qasm =
   let qc_program : inlinedProgram =
     {
       iP_num_cbits = num_cbits;
-      iP_num_subinstrs = Int.max_int;
       iP_instrs = qasm_core;
     }
   in

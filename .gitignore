@@ -2,5 +2,7 @@
 /.dune/
 /src/lib/extracted/extracted.ml
 
+.*.qasm
+
 *.cache
 .DS_Store

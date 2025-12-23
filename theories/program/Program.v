@@ -32,7 +32,6 @@ Inductive Instruction: Type :=
 
 Record InlinedProgram: Type := {
   IP_num_cbits: nat;
-  IP_num_subinstrs: nat;  (* numbers of all subinstructions, to prove decreasing argument of fix *)
   IP_instrs: Instruction;
 }.
 
@@ -66,7 +65,7 @@ Proof.
 Defined.
 
 (* ============================================================================================== *)
-(* merging two branches =========================================================================== *)
+(* merging two branches ========================================================================= *)
 
 Definition Merge_branch (b0 b1: Branch): Branch.
 Proof.
@@ -276,7 +275,7 @@ Proof.
       |} :: (Execute_reset_instr target t)).  (* nop *)
 Defined.
 
-Fixpoint Execute_suppl (ir: nat) (instr: Instruction) (branches: ProgramState): ProgramState :=
+Fixpoint Execute_suppl_old (ir: nat) (instr: Instruction) (branches: ProgramState): ProgramState :=
   match ir with
   | O => branches
   | S ir' => (
@@ -286,11 +285,11 @@ Fixpoint Execute_suppl (ir: nat) (instr: Instruction) (branches: ProgramState): 
     | CnotInstr control target            => Execute_cnot_instr control target branches
     | SwapInstr q1 q2                     => Execute_swap_instr q1 q2 branches
     | MeasureInstr qbit cbit              => Merge_program_state (Execute_measure_instr qbit cbit branches)
-    | SeqInstr i1 i2                      => Execute_suppl ir' i2 (Execute_suppl ir' i1 branches)
+    | SeqInstr i1 i2                      => Execute_suppl_old ir' i2 (Execute_suppl_old ir' i1 branches)
     | IfInstr cbit cond subinstr          => (
         concat (map (fun b =>
           if (eqb (B_cstate b cbit) cond)
-          then Execute_suppl ir' subinstr [b]
+          then Execute_suppl_old ir' subinstr [b]
           else [b]) branches)
     )
     | ResetInstr target                   => Execute_reset_instr target branches
@@ -298,9 +297,25 @@ Fixpoint Execute_suppl (ir: nat) (instr: Instruction) (branches: ProgramState): 
   )
   end.
 
+Fixpoint Execute_suppl (instr: Instruction) (branches: ProgramState): ProgramState :=
+    match instr with
+    | NopInstr                            => branches
+    | RotateInstr theta phi lambda target => Execute_rotate_instr theta phi lambda target branches
+    | CnotInstr control target            => Execute_cnot_instr control target branches
+    | SwapInstr q1 q2                     => Execute_swap_instr q1 q2 branches
+    | MeasureInstr qbit cbit              => Merge_program_state (Execute_measure_instr qbit cbit branches)
+    | SeqInstr i1 i2                      => Execute_suppl i2 (Execute_suppl i1 branches)
+    | IfInstr cbit cond subinstr          => (
+        concat (map (fun b =>
+          if (eqb (B_cstate b cbit) cond)
+          then Execute_suppl subinstr [b]
+          else [b]) branches)
+    )
+    | ResetInstr target                   => Execute_reset_instr target branches
+    end.
+
 Definition Execute (program: InlinedProgram): ProgramState :=
   Execute_suppl
-    (IP_num_subinstrs program)
     (IP_instrs program)
     (ProgramState_init nq (IP_num_cbits program)).
 
@@ -463,20 +478,21 @@ Proof.
       apply Ht.
 Qed.
 
-Lemma Execute_suppl_empty_branch: forall (ir: nat) (instr: Instruction),
-  Execute_suppl ir instr [] = [].
+Lemma Execute_suppl_empty_branch: forall (instr: Instruction),
+  Execute_suppl instr [] = [].
 Proof.
-  induction ir, instr.
+  induction instr.
   all: try reflexivity.
   simpl.
-  repeat rewrite IHir.
+  rewrite IHinstr1.
+  rewrite IHinstr2.
   reflexivity.
 Qed.
 
-Lemma Execute_suppl_nop: forall (ir: nat) (branches: ProgramState),
-  Execute_suppl ir NopInstr branches = branches.
+Lemma Execute_suppl_nop: forall (branches: ProgramState),
+  Execute_suppl NopInstr branches = branches.
 Proof.
-  destruct ir, branches.
+  destruct branches.
   all: reflexivity.
 Qed.
 
@@ -486,15 +502,12 @@ Arguments Execute_swap_instr _ _ _ : simpl never.
 Arguments Execute_measure_instr _ _ _ : simpl never.
 
 Lemma Execute_suppl_quantum_state_density:
-  forall (ir: nat) (instr: Instruction) (branches: ProgramState),
-  Forall qstate_valid branches -> Forall qstate_valid (Execute_suppl ir instr branches).
+  forall (instr: Instruction) (branches: ProgramState),
+  Forall qstate_valid branches -> Forall qstate_valid (Execute_suppl instr branches).
 Proof.
-  intros ir instr.
-  revert ir.
   induction instr.
-  all: intros; destruct ir; [simpl; apply H|].
-  - rewrite Execute_suppl_nop.
-    apply H.
+  all: intros; simpl.
+  - exact H.
   - apply Execute_rotate_instr_quantum_state_density; apply H.
   - apply Execute_cnot_instr_quantum_state_density; apply H.
   - apply Execute_swap_instr_quantum_state_density; apply H.
