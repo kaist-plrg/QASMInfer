@@ -104,13 +104,13 @@ let desugar_parallel_uop (operation : uop) (qreg_size : int IdMap.t) :
   | U (exp_list, (qid, Some i)) -> [ U_dp (exp_list, (qid, i)) ]
   | Gate (gid, exp_list, arg_list) ->
       desugar_parallel_arg_list arg_list qreg_size
-      |> map (fun arg_list_instantiated ->
+      |> List.map (fun arg_list_instantiated ->
              Gate_dp (gid, exp_list, arg_list_instantiated))
 
 let desugar_parallel_qop (operation : qop) (qreg_size : int IdMap.t)
     (creg_size : int IdMap.t) : qop_dp list =
   match operation with
-  | Uop uop -> map (fun u -> Uop_dp u) (desugar_parallel_uop uop qreg_size)
+  | Uop uop -> List.map (fun u -> Uop_dp u) (desugar_parallel_uop uop qreg_size)
   | Meas ((qid, None), (cid, None)) -> (
       match (IdMap.find_opt qid qreg_size, IdMap.find_opt cid creg_size) with
       | Some s1, Some s2 ->
@@ -130,7 +130,7 @@ let rec desugar_parallel_program (qasm_program : program)
   match qasm_program with
   | [] -> []
   | Qop qop :: tail ->
-      map (fun o -> Qop_dp o) (desugar_parallel_qop qop qreg_size creg_size)
+      List.map (fun o -> Qop_dp o) (desugar_parallel_qop qop qreg_size creg_size)
       @ desugar_parallel_program tail qreg_size creg_size
   | If (cid, i, qop) :: tail ->
       IfList_dp (cid, i, desugar_parallel_qop qop qreg_size creg_size)
@@ -172,13 +172,13 @@ let instantiate_gop (exp_map : exp IdMap.t) (arg_map : argument_dp IdMap.t)
   | GUop (U (exp_list, arg)) ->
       Some
         (U_dp
-           (map (instantiate_exp exp_map) exp_list, instantiate_arg arg_map arg))
+           (List.map (instantiate_exp exp_map) exp_list, instantiate_arg arg_map arg))
   | GUop (Gate (id, exp_list, arg_list)) ->
       Some
         (Gate_dp
            ( id,
-             map (instantiate_exp exp_map) exp_list,
-             map (instantiate_arg arg_map) arg_list ))
+             List.map (instantiate_exp exp_map) exp_list,
+             List.map (instantiate_arg arg_map) arg_list ))
   | GBarrier _ -> None
 
 let instantiate_gate_decl (decl_head : gatedecl) (decl_body : gop list)
@@ -211,7 +211,7 @@ let rec desugar_macro_qop_list (decl_head : gatedecl) (decl_body : gop list)
   match qop_list with
   | [] -> []
   | Uop_dp op :: tail ->
-      desugar_macro_uop decl_head decl_body op |> map (fun x -> Uop_dp x)
+      desugar_macro_uop decl_head decl_body op |> List.map (fun x -> Uop_dp x)
       |> fun x ->
       List.append x (desugar_macro_qop_list decl_head decl_body tail)
   | x :: tail -> x :: desugar_macro_qop_list decl_head decl_body tail
@@ -223,7 +223,7 @@ let rec desugar_macro_program (qasm_dp : program_dp)
     | [] -> []
     | Qop_dp (Uop_dp op) :: tail ->
         desugar_macro_uop decl_head decl_body op
-        |> map (fun x -> Qop_dp (Uop_dp x))
+        |> List.map (fun x -> Qop_dp (Uop_dp x))
         |> fun x -> List.append x (inline decl_head decl_body tail)
     | IfList_dp (cid, i, qop_list) :: tail ->
         IfList_dp (cid, i, desugar_macro_qop_list decl_head decl_body qop_list)
@@ -446,13 +446,7 @@ let desugar qasm =
   let num_qbits_tmp = count_bits qreg_size_map in
   let num_cbits = count_bits creg_size_map in
   let qasm_core, num_qbits = desugar_qcir_program qasm_core_ir num_qbits_tmp in
-  let qc_program : inlinedProgram =
-    {
-      iP_num_cbits = num_cbits;
-      iP_instrs = qasm_core;
-    }
-  in
-  (num_qbits, qc_program, assignment_q, assignment_c)
+  (num_qbits, num_cbits, qasm_core, assignment_q, assignment_c)
 
 (********************)
 (* 5. for debugging *)

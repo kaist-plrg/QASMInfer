@@ -2,6 +2,8 @@ open Extracted
 module Q2 = Qasm2.Api
 module Q3 = Qasm3.Api
 
+module IntMap = Map.Make(Int)
+
 type version = V2 | V3
 
 let usage () =
@@ -12,6 +14,30 @@ let rec to_binary n =
   if n = 0 then "0"
   else if n = 1 then "1"
   else to_binary (n / 2) ^ string_of_int (n mod 2)
+
+let _print_int_float_list lst =
+  (* 1. Convert each pair (int, float) to a string like "(1, 3.14)" *)
+  let content =
+    lst
+    |> List.map (fun (k, v) -> Printf.sprintf "(%d, %.4f)" k v)
+    |> String.concat "; "
+  in
+  (* 2. Wrap in brackets and print *)
+  Printf.printf "[%s]\n" content
+
+let to_map = List.fold_left (fun acc (k, v) -> IntMap.add k v acc) IntMap.empty
+
+let dense_list (nc: int) (exec_res: (int * float) list): float list =
+  let sparse_map = to_map exec_res in
+  (* interpreted value of IH of Rocq's positive, also # of possible classical states *)
+  let num_classical_states = Int.shift_left 1 nc in
+  let positive_base = Int.shift_left 1 nc in
+  let full_list =
+    List.init num_classical_states (fun i ->
+      match IntMap.find_opt (positive_base + i) sparse_map with
+      | Some v -> v
+      | None -> 0.0) in
+  full_list
 
 let int_to_binary_fixed_width n width =
   let binary = to_binary n in
@@ -66,16 +92,17 @@ let main () =
     | V3 -> Q3.get_ast file_path |> Q3.desugar)
     |> Q2.inline_qelib
   in
-  let nq, program, _, _ = Q2.desugar ast in
+  let nq, nc, instr, _, _ = Q2.desugar ast in
+  (* Optional Part start *)
   let () = print_endline "QASMCore ========================================" in
-  let () = print_endline (Q2.string_of_instruction program.iP_instrs) in
+  let () = print_endline (Q2.string_of_instruction instr) in
+  (* Optional Part end *)
   let () = print_endline "RESULT ==========================================" in
-  let prob_map = execute_and_calculate_prob nq program in
-  List.init (Int.shift_left 1 program.iP_num_cbits) (fun x ->
-      x |> prob_map |> RbaseSymbolsImpl.coq_Rrepr)
-  |> List.iteri (fun i prob ->
-         Printf.printf "%s : %.16e\n"
-           (int_to_binary_fixed_width i program.iP_num_cbits)
-           prob)
+  let prob_map = execute_and_calculate_prob nq nc instr in
+  prob_map
+  |> dense_list nc
+  |> List.iteri (
+    fun i prob -> Printf.printf "%s : %.16e\n" (int_to_binary_fixed_width i nc) prob
+    )
 
 let _ = main ()

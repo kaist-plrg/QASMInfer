@@ -34,14 +34,6 @@ Inductive Instruction : Type :=
 
 
 (* ============================================================================================== *)
-(* desugared QASM program ======================================================================= *)
-
-Record InlinedProgram : Type := {
-  IP_num_cbits: nat; (* TODO: Remove? *)
-  IP_instrs: Instruction;
-}.
-
-(* ============================================================================================== *)
 (* classical state as positive numbers ========================================================= *)
 (* `positive` is defined inductively as:
    1. xH    (base, i.e., 1)
@@ -112,14 +104,6 @@ Proof.
   all: rewrite Hc0, Hc1.
   all: apply IHidx.
 Qed.
-
-(* Example tests:
-Compute (CState_read 0 (1~0~1)%positive).  (* expect true *)
-Compute (CState_read 1 (1~0~1)%positive).  (* expect false *)
-Compute (CState_read 2 (1~0~1)%positive).  (* expect false (idx overflow) *)
-Compute (CState_branch 1 (CState_init_suppl 10)).  (* expect ((1~)0~0, (1~)1~0) *)
-Compute (CState_branch 3 (1~1~0)%positive).  (* expect (1~0~0~1~0, 1~1~0~1~0) *)
-*)
 
 
 (* ============================================================================================== *)
@@ -314,14 +298,17 @@ Fixpoint Execute_suppl (instr: Instruction) (ps: ProgramState): ProgramState :=
     | SeqInstr i1 i2                      => Execute_suppl i2 (Execute_suppl i1 ps)
     | IfInstr cbit cond subinstr          => PositiveMap.fold (fun cstate b acc =>
         let ps_single := PositiveMap.add cstate b (PositiveMap.empty Branch) in
-        if (eqb (CState_read cbit cstate) cond)
-        then Execute_suppl subinstr ps_single
-        else ps_single) ps (PositiveMap.empty Branch)
+        ProgramState_merge acc (
+          if (eqb (CState_read cbit cstate) cond)
+          then Execute_suppl subinstr ps_single
+          else ps_single
+        )
+      ) ps (PositiveMap.empty Branch)
     | ResetInstr target                   => Execute_reset_instr target ps
     end.
 
-Definition Execute (program: InlinedProgram): ProgramState :=
-  Execute_suppl (IP_instrs program) ProgramState_init.
+Definition Execute (instr: Instruction): ProgramState :=
+  Execute_suppl instr ProgramState_init.
 
 Fixpoint Cstate_to_binary_little_endian (n: nat) (cstate: CState) (acc: nat): nat := match n with
   | O => acc
@@ -336,11 +323,8 @@ Definition Cstate_to_binary (num_cbits: nat) (cstate: CState) := Cstate_to_binar
     2 -> true      ===> In qasm, they use little endian so have to reverse it
     3 -> true *)
 
-Definition Calculate_prob (ps: ProgramState): PositiveMap.t R :=
-  PositiveMap.map (fun b => B_prob b) ps.
-
-Definition Execute_and_calculate_prob (program: InlinedProgram): PositiveMap.t R :=
-  Calculate_prob (Execute program).
+Definition Execute_and_calculate_prob (instr: Instruction) :=
+  PositiveMap.elements (PositiveMap.map (fun b => B_prob b) (Execute instr)).
 
 (* ============================================================================================== *)
 (* Proof about quantum states =================================================================== *)
@@ -520,6 +504,7 @@ Proof.
       contradiction.
     + intros cstate_fold branch_fold acc Hmaps_fold Hacc_valid.
       destruct (eqb (CState_read n cstate_fold) b) eqn:Hcond.
+      all: apply (ProgramState_merge_valid _ _ Hacc_valid).
       1: apply IHinstr.
       all: intros cstate' branch' Hmaps'.
       all: apply PFacts.add_mapsto_iff in Hmaps'.
@@ -532,8 +517,8 @@ Proof.
 Qed.
 
 
-Theorem Execute_valid: forall (program: InlinedProgram),
-  ProgramState_valid (Execute program).
+Theorem Execute_valid: forall (instr: Instruction),
+  ProgramState_valid (Execute instr).
 Proof.
   intros.
   unfold Execute.
