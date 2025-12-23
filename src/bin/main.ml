@@ -6,24 +6,28 @@ module IntMap = Map.Make(Int)
 
 type version = V2 | V3
 
-let usage () =
-  prerr_endline "usage: qasminfer <qasm_file>";
-  exit 1
+(* 1. Define a reference for the verbose flag *)
+let verbose = ref false
+let input_file = ref ""
+
+(* 2. Define the usage message *)
+let usage_msg = "usage: qasminfer <qasm_file> [--verbose]"
+
+(* 3. Define the list of options *)
+let speclist = [
+  ("--verbose", Arg.Set verbose, "Print intermediate QASMCore representation");
+  ("-v", Arg.Set verbose, "Short for --verbose");
+]
+
+(* 4. Define what to do with anonymous arguments (the file path) *)
+let set_input_file s =
+  if !input_file = "" then input_file := s
+  else raise (Arg.Bad "Multiple input files are not supported")
 
 let rec to_binary n =
   if n = 0 then "0"
   else if n = 1 then "1"
   else to_binary (n / 2) ^ string_of_int (n mod 2)
-
-let _print_int_float_list lst =
-  (* 1. Convert each pair (int, float) to a string like "(1, 3.14)" *)
-  let content =
-    lst
-    |> List.map (fun (k, v) -> Printf.sprintf "(%d, %.4f)" k v)
-    |> String.concat "; "
-  in
-  (* 2. Wrap in brackets and print *)
-  Printf.printf "[%s]\n" content
 
 let to_map = List.fold_left (fun acc (k, v) -> IntMap.add k v acc) IntMap.empty
 
@@ -53,9 +57,7 @@ let check_qasm_version file_path =
     try
       let line = input_line ch in
       let trimmed = String.trim line in
-      (* Skip empty lines or lines that are just whitespace *)
       if trimmed = "" then find_version_line ()
-        (* Skip comment-only lines (lines that start with // after trimming) *)
       else if String.length trimmed >= 2 && String.sub trimmed 0 2 = "//" then
         find_version_line ()
       else line
@@ -75,17 +77,21 @@ let check_qasm_version file_path =
     if prefix = "OPENQASM 2" then V2
     else if prefix = "OPENQASM 3" then V3
     else
-      failwith
-        ("Unsupported QASM version. Expected 'OPENQASM 2.x' or 'OPENQASM 3.x', \
-          but found: " ^ first_meaningful_line)
+      failwith ("Unsupported QASM version: " ^ first_meaningful_line)
   else
-    failwith
-      ("Invalid QASM file format. First line too short: "
-     ^ first_meaningful_line)
+    failwith ("Invalid QASM file format: " ^ first_meaningful_line)
 
 let main () =
-  if Array.length Sys.argv < 2 then usage ();
-  let file_path = Sys.argv.(1) in
+  (* 5. Parse arguments *)
+  Arg.parse speclist set_input_file usage_msg;
+
+  (* Check if a file was actually provided *)
+  if !input_file = "" then (
+    Arg.usage speclist usage_msg;
+    exit 1
+  );
+
+  let file_path = !input_file in
   let ast =
     (match check_qasm_version file_path with
     | V2 -> Q2.get_ast file_path
@@ -93,11 +99,16 @@ let main () =
     |> Q2.inline_qelib
   in
   let nq, nc, instr, _, _ = Q2.desugar ast in
-  (* Optional Part start *)
-  let () = print_endline "QASMCore ========================================" in
-  let () = print_endline (Q2.string_of_instruction instr) in
-  (* Optional Part end *)
-  let () = print_endline "RESULT ==========================================" in
+
+  (* 6. Optional Part: Only run if !verbose is true *)
+  if !verbose then (
+    print_endline "QASMCore ========================================";
+    print_endline (Q2.string_of_instruction instr)
+  );
+
+  (* Always run execution part *)
+  if !verbose then print_endline "RESULT ==========================================";
+
   let prob_map = execute_and_calculate_prob nq nc instr in
   prob_map
   |> dense_list nc
