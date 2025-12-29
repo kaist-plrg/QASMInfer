@@ -542,6 +542,8 @@ Proof.
     apply (Hpsvalid cstate_fold branch_fold Hmaps_fold).
 Qed.
 
+(* Measure should preverse probability *)
+(* prob0 + prob1 = 1 should be proven before in Execute_measure_instr_branch *)
 Lemma Execute_measure_instr_preverse_prob:
   forall (qbit cbit: nat) (b: Branch),
   (B_prob b = ProgramState_prob_sum (Execute_measure_instr_branch qbit cbit CState_init b))%R.
