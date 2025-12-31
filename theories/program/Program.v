@@ -216,32 +216,23 @@ Proof.
   apply PositiveMap_xfoldi_xmapi.
 Qed.
 
-Lemma PositiveMap_xelements_add_empty {A} (k : positive) (v : A) (i : positive) :
-  PositiveMap.xelements (PositiveMap.add k v (PositiveMap.empty A)) i = [(append i k, v)].
-Proof.
-  revert i.
-  induction k as [k IH | k IH |]; intro i; simpl.
-  - rewrite IH. rewrite <- append_assoc_1. reflexivity.
-  - rewrite IH. rewrite <- append_assoc_0. reflexivity.
-  - now rewrite append_neutral_r.
-Qed.
-
-Corollary PositiveMap_elements_add_empty {A} (k : positive) (v : A) :
-  PositiveMap.elements (PositiveMap.add k v (PositiveMap.empty A)) = [(k, v)].
-Proof.
-  unfold PositiveMap.elements.
-  rewrite PositiveMap_xelements_add_empty.
-  now rewrite append_neutral_l.
-Qed.
-
 Lemma ProgramState_init_prob_valid: ProgramState_prob_valid ProgramState_init.
 Proof.
   unfold ProgramState_init, ProgramState_prob_valid, ProgramState_sum_prob.
   rewrite PositiveMap_fold_map.
-  rewrite PositiveMap.fold_1.
-  rewrite PositiveMap_elements_add_empty.
-  simpl.
-  lra.
+  rewrite PProperties.fold_Add
+  with (m1 := PositiveMap.empty Branch) (k := CState_init) (e := Branch_init).
+  - unfold PositiveMap.fold, PositiveMap.xfoldi, PositiveMap.empty.
+    simpl. lra.
+  - apply eq_equivalence.
+  - unfold Proper. reflexivity.
+  - unfold PProperties.transpose_neqkey.
+    intros. lra.
+  - intro H.
+    apply PFacts.empty_in_iff in H.
+    apply H.
+  - unfold PProperties.Add.
+    intros. reflexivity.
 Qed.
 
 Lemma ProgramState_map_valid: forall (f: Branch -> Branch) (ps: ProgramState),
@@ -382,7 +373,8 @@ Lemma ProgramState_fold_add (k: positive) (b: Branch) (ps: ProgramState) :
 Proof.
   intros Hfind.
   rewrite <- PFacts.not_find_in_iff in Hfind.
-  rewrite PProperties.fold_Add.
+  rewrite PProperties.fold_Add
+  with (m1 := ps) (k := k) (e := b).
   - reflexivity.
   - apply eq_equivalence.
   - unfold Proper. reflexivity.
@@ -729,6 +721,45 @@ Proof.
     apply (Hpsvalid cstate_fold branch_fold Hmaps_fold).
 Qed.
 
+Lemma Execute_measure_instr_branch_prob_valid:
+  forall (qbit cbit: nat) (cstate: CState) (branch: Branch),
+  Branch_valid branch ->
+  B_prob branch = 
+  ProgramState_sum_prob (Execute_measure_instr_branch qbit cbit cstate branch).
+Proof.
+  intros qbit cbit cstate branch Hbranch_valid.
+  unfold Execute_measure_instr_branch, ProgramState_sum_prob.
+  remember (com_real (den_prob_0 qbit (B_qstate branch))) as prob0.
+  remember (com_real (den_prob_1 qbit (B_qstate branch))) as prob1.
+  assert (Hprob_sum: (prob0 + prob1 = 1)%R).
+  {
+    shelve.
+  }
+  destruct (Rgt_dec prob0 0) eqn:Hdec0,
+           (Rgt_dec prob1 0) eqn:Hdec1;
+           unfold den_prob_0, den_prob_1, com_real in *.
+  - rewrite PositiveMap_fold_map.
+    rewrite PProperties.fold_Add.
+    rewrite PProperties.fold_Add.
+Admitted.
+
+Lemma Execute_measure_instr_prob_valid:
+  forall (qbit cbit: nat) (ps: ProgramState),
+  ProgramState_prob_valid ps -> ProgramState_prob_valid (Execute_measure_instr qbit cbit ps).
+Proof.
+  intros qbit cbit ps.
+  unfold Execute_measure_instr, ProgramState_prob_valid, ProgramState_sum_prob.
+  rewrite PositiveMap_fold_map, PositiveMap_fold_map.
+  intros Hpsprob.
+  rewrite <- Hpsprob.
+  rewrite (PositiveMap.fold_1 ps), (PositiveMap.fold_1 ps).
+  induction (PositiveMap.elements ps) as [| (cstate, branch) rest IH]; simpl.
+  - reflexivity.
+  - rewrite fold_left_add_const.
+    rewrite <- IH.
+    rewrite (Execute_measure_instr_branch_prob_valid qbit cbit cstate branch).
+    unfold ProgramState_sum_prob.
+Admitted.
 
 Lemma Execute_reset_instr_valid:
   forall (target: nat) (ps: ProgramState),
