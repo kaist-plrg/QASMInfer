@@ -170,14 +170,14 @@ Definition ProgramState_prob_valid (ps: ProgramState): Prop :=
 Definition ProgramState_init: ProgramState :=
   PositiveMap.add CState_init Branch_init (PositiveMap.empty Branch).
 
+Definition merge_step (cstate: positive) (branch:Branch) (acc: PositiveMap.t Branch) :=
+  match PositiveMap.find cstate acc with
+  | Some branch' => PositiveMap.add cstate (Branch_merge branch branch') acc
+  | None         => PositiveMap.add cstate branch acc
+  end.
+
 Definition ProgramState_merge (ps0 ps1: ProgramState): ProgramState :=
-  PositiveMap.fold (fun cstate branch acc =>
-    match PositiveMap.find cstate acc with
-    | Some branch' =>
-        PositiveMap.add cstate (Branch_merge branch branch') acc
-    | None =>
-        PositiveMap.add cstate branch acc
-    end) ps0 ps1.
+  PositiveMap.fold merge_step ps0 ps1.
 
 Lemma ProgramState_init_valid: ProgramState_valid ProgramState_init.
 Proof.
@@ -305,6 +305,7 @@ Proof.
   apply PProperties.fold_rec_nodep.
   assumption.
   intros cstate_fold branch_fold acc Hmaps_fold Hacc_valid.
+  unfold merge_step.
   destruct (PositiveMap.find cstate_fold acc) eqn:Hfind.
   - apply PFacts.find_mapsto_iff in Hfind.
     intros cstate' branch' Hmaps'.
@@ -328,15 +329,121 @@ Proof.
     + apply (Hacc_valid cstate' branch' Hmaps_acc).
 Qed.
 
-Lemma ProgramState_merge_prob_sum:
-  forall (ps0 ps1: ProgramState),
-    ProgramState_sum_prob (ProgramState_merge ps0 ps1) =
-    (ProgramState_sum_prob ps0 + ProgramState_sum_prob ps1)%R.
+Lemma PositiveMap_add_remove (k: positive) (old: Branch) (ps: ProgramState) (acc: R) :
+  PositiveMap.find k ps = Some old ->
+  (PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k old (PositiveMap.remove k ps)) acc
+  = PositiveMap.fold (fun _ b acc => acc + B_prob b) ps acc)%R.
 Proof.
-  intros ps0 ps1.
-  unfold ProgramState_merge, ProgramState_sum_prob.
-  rewrite PositiveMap_fold_map, PositiveMap_fold_map, PositiveMap_fold_map.
-Admitted.
+  intros Hfind.
+  apply PProperties.fold_Equal.
+  - apply eq_equivalence.
+  - unfold Proper. reflexivity.
+  - unfold PProperties.transpose_neqkey.
+    intros. lra.
+  - intros x.
+    destruct (PositiveMap.E.eq_dec x k) as [Hkeq | Hkneq].
+    + rewrite Hkeq.
+      rewrite PProperties.F.add_eq_o.
+      * symmetry. assumption.
+      * reflexivity.
+    + rewrite PProperties.F.add_neq_o.
+      rewrite PProperties.F.remove_neq_o.
+      * reflexivity.
+      * intro H. subst. contradiction.
+      * intro H. subst. contradiction.
+Qed.
+
+Lemma PositiveMap_add_remove_equal (k: positive) (new: Branch) (ps: ProgramState) (acc: R) :
+  (PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k new ps) acc =
+  PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k new (PositiveMap.remove k ps)) acc)%R.
+Proof.
+  apply PProperties.fold_Equal.
+  - apply eq_equivalence.
+  - unfold Proper. reflexivity.
+  - unfold PProperties.transpose_neqkey.
+    intros. lra.
+  - intros x.
+    destruct (PositiveMap.E.eq_dec x k) as [Hkeq | Hkneq].
+    + rewrite Hkeq.
+      rewrite PProperties.F.add_eq_o.
+      rewrite PProperties.F.add_eq_o.
+      all: reflexivity.
+    + rewrite PProperties.F.add_neq_o.
+      rewrite PProperties.F.add_neq_o.
+      rewrite PProperties.F.remove_neq_o.
+      all: try (intro H; subst; contradiction).
+      reflexivity.
+Qed.
+
+Lemma ProgramState_fold_add (k: positive) (b: Branch) (ps: ProgramState) :
+  PositiveMap.find k ps = None ->
+  (PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k b ps) 0)%R =
+  (PositiveMap.fold (fun _ b acc => acc + B_prob b) ps 0 + B_prob b)%R.
+Proof.
+  intros Hfind.
+  rewrite <- PFacts.not_find_in_iff in Hfind.
+  rewrite PProperties.fold_Add.
+  - reflexivity.
+  - apply eq_equivalence.
+  - unfold Proper. reflexivity.
+  - unfold PProperties.transpose_neqkey.
+    intros. lra.
+  - apply Hfind.
+  - unfold PProperties.Add.
+    intros. reflexivity.
+Qed.
+
+Lemma ProgramState_merge_step
+  (k:positive) (b:Branch) (ps: ProgramState) :
+  ProgramState_sum_prob (merge_step k b ps)
+  = (ProgramState_sum_prob ps + B_prob b)%R.
+Proof.
+  unfold merge_step, ProgramState_sum_prob.
+  rewrite PositiveMap_fold_map, PositiveMap_fold_map.
+  destruct (PositiveMap.find k ps) eqn:Hfind.
+  - rewrite -> PositiveMap_add_remove_equal.
+    rewrite <- PositiveMap_add_remove with (k:=k) (old:=b0) (ps:=ps).
+    rewrite ProgramState_fold_add.
+    rewrite ProgramState_fold_add.
+    + rewrite Branch_merge_prob_sum.
+      lra.
+    + rewrite PProperties.F.remove_eq_o; reflexivity.
+    + rewrite PProperties.F.remove_eq_o; reflexivity.
+    + assumption.
+  - rewrite ProgramState_fold_add.
+    + reflexivity.
+    + assumption.
+Qed.
+
+Lemma fold_left_add_const {A} (w : A -> R) (l : list A) (a c : R) :
+  (fold_left (fun acc x => acc + w x) l (a + c)
+  = fold_left (fun acc x => acc + w x) l a + c)%R.
+Proof.
+  revert a.
+  induction l as [|x xs IH]; intro a; simpl.
+  - lra.
+  - rewrite <- IH. f_equal. lra.
+Qed.
+
+Lemma ProgramState_merge_prob_sum (ps0 ps1: ProgramState) :
+  ProgramState_sum_prob (ProgramState_merge ps0 ps1) =
+  (ProgramState_sum_prob ps0 + ProgramState_sum_prob ps1)%R.
+Proof.
+  unfold ProgramState_merge.
+  unfold ProgramState_sum_prob at 1 2.
+  rewrite PositiveMap_fold_map, PositiveMap_fold_map.
+  rewrite PositiveMap.fold_1, PositiveMap.fold_1, PositiveMap.fold_1.
+  revert ps1.
+  induction (PositiveMap.elements ps0) as [| (k, b) rest IH]; intros ps1; simpl.
+  - unfold ProgramState_sum_prob.
+    rewrite PositiveMap_fold_map.
+    rewrite PositiveMap.fold_1. 
+    lra.
+  - rewrite IH.
+    rewrite ProgramState_merge_step.
+    rewrite fold_left_add_const.
+    lra.
+Qed.
 
 (* ============================================================================================== *)
 (* execution ==================================================================================== *)
