@@ -148,24 +148,9 @@ Qed.
 Definition ProgramState: Type := PositiveMap.t Branch.
 
 (* every qstate in ProgramState is valid *)
-Definition ProgramState_Branch_valid (ps: ProgramState): Prop :=
+Definition ProgramState_valid (ps: ProgramState): Prop :=
   forall (cstate: positive) (branch: Branch),
     PositiveMap.MapsTo cstate branch ps -> Branch_valid branch.
-
-Definition ProgramState_prob_sum (ps: ProgramState): R :=
-  (PositiveMap.fold (fun _ b acc => b + acc) (PositiveMap.map B_prob ps) 0)%R.
-
-Definition ProgramState_prob_valid (ps: ProgramState): Prop :=
-  (ProgramState_prob_sum ps = 1)%R.
-
-Definition ProgramState_valid (ps: ProgramState): Prop :=
-  ProgramState_Branch_valid ps /\ ProgramState_prob_valid ps.
-
-Definition Preserve_Branch_valid (f: Branch -> Branch) :=
-  forall b, Branch_valid b -> Branch_valid (f b).
-
-Definition Preserve_prob (f: Branch -> Branch) :=
-  forall b, B_prob b = B_prob (f b).
 
 Definition ProgramState_init: ProgramState :=
   PositiveMap.add CState_init Branch_init (PositiveMap.empty Branch).
@@ -179,12 +164,11 @@ Definition ProgramState_merge (ps0 ps1: ProgramState): ProgramState :=
         PositiveMap.add cstate branch acc
     end) ps0 ps1.
 
-Lemma ProgramState_map_Branch_valid: forall (f: Branch -> Branch) (ps: ProgramState),
-  ProgramState_Branch_valid ps ->
-  Preserve_Branch_valid f ->
-  ProgramState_Branch_valid (PositiveMap.map f ps).
+Lemma ProgramState_map_valid: forall (f: Branch -> Branch) (ps: ProgramState),
+  ProgramState_valid ps -> (forall b, Branch_valid b -> Branch_valid (f b)) ->
+  ProgramState_valid (PositiveMap.map f ps).
 Proof.
-  unfold ProgramState_Branch_valid.
+  unfold ProgramState_valid.
   intros f ps Hps Hf_valid cstate branch' Hmaps.
   apply PFacts.map_mapsto_iff in Hmaps.
   destruct Hmaps as [branch [Hb' Hfind]].
@@ -195,59 +179,9 @@ Proof.
   apply Hfind.
 Qed.
 
-Lemma ProgramState_xmapi_lemma: forall (ps: ProgramState) (f: Branch -> Branch) (c: positive),
-  Preserve_prob f ->
-  PositiveMap.xmapi (fun _ : PositiveMap.key => B_prob) ps c =
-  PositiveMap.xmapi (fun _ : PositiveMap.key => B_prob) (PositiveMap.xmapi (fun _ : PositiveMap.key => f) ps c) c.
-Proof.
-  intros ps f c Hf_prob.
-  generalize dependent c.
-  induction ps.
-  - intros c. reflexivity.
-  - intros c.
-    simpl.
-    f_equal.
-    + apply IHps1.
-    + destruct o.
-      * simpl.
-        rewrite Hf_prob.
-        reflexivity.
-      * simpl.
-        reflexivity.
-    + apply IHps2.
-Qed.
-
-Lemma ProgramState_map_prob_valid: forall (f: Branch -> Branch) (ps: ProgramState),
-  ProgramState_prob_valid ps ->
-  Preserve_prob f ->
-  ProgramState_prob_valid (PositiveMap.map f ps).
-Proof.
-  unfold ProgramState_prob_valid.
-  intros f ps Hps Hf_prob.
-  rewrite <- Hps.
-  unfold ProgramState_prob_sum.
-  f_equal.
-  unfold PositiveMap.map, PositiveMap.mapi in *.
-  symmetry.
-  apply (ProgramState_xmapi_lemma ps f _).
-  apply Hf_prob.
-Qed.
-
-Lemma ProgramState_map_valid: forall (f: Branch -> Branch) (ps: ProgramState),
-  ProgramState_valid ps ->
-  Preserve_Branch_valid f ->
-  Preserve_prob f ->
-  ProgramState_valid (PositiveMap.map f ps).
-Proof.
-  intros f ps [Hps_Bvalid Hps_probvalid] Hf_valid Hf_prob.
-  split.
-  - apply (ProgramState_map_Branch_valid _ _ Hps_Bvalid Hf_valid).
-  - apply (ProgramState_map_prob_valid _ _ Hps_probvalid Hf_prob).
-Qed.
-
-Lemma ProgramState_merge_Branch_valid: forall (ps0 ps1: ProgramState),
-  ProgramState_Branch_valid ps0 -> ProgramState_Branch_valid ps1 ->
-  ProgramState_Branch_valid (ProgramState_merge ps0 ps1).
+Lemma ProgramState_merge_valid: forall (ps0 ps1: ProgramState),
+  ProgramState_valid ps0 -> ProgramState_valid ps1 ->
+  ProgramState_valid (ProgramState_merge ps0 ps1).
 Proof.
   intros ps0 ps1 Hps0 Hps1.
   unfold ProgramState_merge.
@@ -410,10 +344,6 @@ Proof.
   apply mat_rot_unitary.
   assumption.
   assumption.
-  unfold Preserve_prob.
-  intros b.
-  simpl.
-  reflexivity.
 Qed.
 
 Lemma Execute_cnot_instr_valid:
@@ -430,10 +360,6 @@ Proof.
   apply mat_cnot_unitary.
   assumption.
   assumption.
-  unfold Preserve_prob.
-  intros b.
-  simpl.
-  reflexivity.
 Qed.
 
 Lemma Execute_swap_instr_valid:
@@ -449,17 +375,13 @@ Proof.
   apply mat_swap_unitary.
   assumption.
   assumption.
-  unfold Preserve_prob.
-  intros b.
-  simpl.
-  reflexivity.
 Qed.
 
 
 Lemma Execute_measure_instr_branch_valid:
   forall (qbit cbit: nat) (cstate: CState) (branch: Branch),
   Branch_valid branch ->
-  ProgramState_Branch_valid (Execute_measure_instr_branch qbit cbit cstate branch).
+  ProgramState_valid (Execute_measure_instr_branch qbit cbit cstate branch).
 Proof.
   intros qbit cbit cstate branch [Hvalid Hprob].
   unfold Execute_measure_instr_branch, ProgramState_valid.
@@ -526,43 +448,22 @@ Proof.
     contradiction.
 Qed.
 
-Lemma Execute_measure_instr_Branch_valid:
-  forall (qbit cbit: nat) (ps: ProgramState),
-  ProgramState_Branch_valid ps -> ProgramState_Branch_valid (Execute_measure_instr qbit cbit ps).
-Proof.
-  intros qbit cbit ps Hpsvalid.
-  unfold Execute_measure_instr.
-  apply PProperties.fold_rec_nodep.
-  - unfold ProgramState_Branch_valid; intros.
-    apply PFacts.empty_mapsto_iff in H.
-    contradiction.
-  - intros cstate_fold branch_fold acc Hmaps_fold Hacc_valid.
-    apply (ProgramState_merge_Branch_valid _ _ Hacc_valid).
-    apply Execute_measure_instr_branch_valid.
-    apply (Hpsvalid cstate_fold branch_fold Hmaps_fold).
-Qed.
-
-(* Measure should preverse probability *)
-(* prob0 + prob1 = 1 should be proven before in Execute_measure_instr_branch *)
-Lemma Execute_measure_instr_preverse_prob:
-  forall (qbit cbit: nat) (b: Branch),
-  (B_prob b = ProgramState_prob_sum (Execute_measure_instr_branch qbit cbit CState_init b))%R.
-Proof.
-  intros qbit cbit b.
-  unfold Execute_measure_instr_branch, ProgramState_prob_sum.
-
-
 Lemma Execute_measure_instr_valid:
   forall (qbit cbit: nat) (ps: ProgramState),
   ProgramState_valid ps -> ProgramState_valid (Execute_measure_instr qbit cbit ps).
 Proof.
-  unfold ProgramState_valid.
-  intros qbit cbit ps [H_valid H_prob].
-  split.
-  - apply Execute_measure_instr_Branch_valid; apply H_valid.
-  - unfold ProgramState_prob_valid in *.
-    unfold Execute_measure_instr.
+  intros qbit cbit ps Hpsvalid.
+  unfold Execute_measure_instr.
+  apply PProperties.fold_rec_nodep.
+  - unfold ProgramState_valid; intros.
+    apply PFacts.empty_mapsto_iff in H.
+    contradiction.
+  - intros cstate_fold branch_fold acc Hmaps_fold Hacc_valid.
+    apply (ProgramState_merge_valid _ _ Hacc_valid).
+    apply Execute_measure_instr_branch_valid.
+    apply (Hpsvalid cstate_fold branch_fold Hmaps_fold).
 Qed.
+
 
 Lemma Execute_reset_instr_valid:
   forall (target: nat) (ps: ProgramState),
@@ -576,10 +477,6 @@ Proof.
   apply den_valid_reset.
   apply Hvalid.
   assumption.
-  unfold Preserve_prob.
-  intros b.
-  simpl.
-  reflexivity.
 Qed.
 
 
