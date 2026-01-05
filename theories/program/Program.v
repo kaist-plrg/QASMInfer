@@ -736,11 +736,99 @@ Proof.
     shelve.
   }
   destruct (Rgt_dec prob0 0) eqn:Hdec0,
-           (Rgt_dec prob1 0) eqn:Hdec1;
-           unfold den_prob_0, den_prob_1, com_real in *.
+           (Rgt_dec prob1 0) eqn:Hdec1.
   - rewrite PositiveMap_fold_map.
-    rewrite PProperties.fold_Add.
-    rewrite PProperties.fold_Add.
+    remember (CState_branch cbit cstate) as cstates.
+    destruct cstates as [cstate0 cstate1].
+    remember {|
+      B_qstate := den_measure_0 qbit (B_qstate branch);
+      B_prob := B_prob branch * prob0;
+    |} as branch0.
+    remember {|
+      B_qstate := den_measure_1 qbit (B_qstate branch);
+      B_prob := B_prob branch * prob1;
+    |} as branch1.
+    assert (H_state_diff: cstate0 <> cstate1).
+    {
+      shelve.
+    }
+    rewrite PProperties.fold_add
+    with (m := PositiveMap.add cstate1 branch1 (PositiveMap.empty Branch)) (k := cstate0) (e := branch0).
+    rewrite PProperties.fold_add
+    with (m := PositiveMap.empty Branch) (k := cstate1) (e := branch1).
+    all: try exact eq_equivalence.
+    all: try (unfold Proper; reflexivity).
+    all: try (unfold PProperties.transpose_neqkey; intros; lra).
+    + unfold PositiveMap.fold, PositiveMap.xfoldi, PositiveMap.empty.
+      rewrite Heqbranch0, Heqbranch1.
+      simpl.
+      rewrite Rplus_assoc, <- Rmult_plus_distr_l.
+      rewrite (Rplus_comm prob1 prob0), Hprob_sum.
+      lra.
+    + intro H.
+      apply PFacts.empty_in_iff in H.
+      apply H.
+    + apply PFacts.not_find_in_iff.
+      rewrite PProperties.F.add_neq_o.
+      * rewrite PProperties.F.empty_o. reflexivity.
+      * intro H. subst. contradiction.
+  - rewrite PositiveMap_fold_map.
+    remember (CState_branch cbit cstate) as cstates.
+    destruct cstates as [cstate0 cstate1].
+    remember {|
+      B_qstate := den_measure_0 qbit (B_qstate branch);
+      B_prob := B_prob branch * prob0;
+    |} as branch0.
+    rewrite PProperties.fold_add
+    with (m := PositiveMap.empty Branch) (k := cstate0) (e := branch0).
+    all: try exact eq_equivalence.
+    all: try (unfold Proper; reflexivity).
+    all: try (unfold PProperties.transpose_neqkey; intros; lra).
+    + unfold PositiveMap.fold, PositiveMap.xfoldi, PositiveMap.empty.
+      rewrite Heqbranch0.
+      simpl.
+      apply (Execute_measure_instr_branch_valid qbit cbit cstate) in Hbranch_valid.
+      unfold ProgramState_valid in Hbranch_valid.
+      specialize (Hbranch_valid cstate0 branch0).
+      assert (Heq1: prob1 = 0%R).
+      {
+        shelve.
+      }
+      rewrite Heq1 in Hprob_sum.
+      rewrite Rplus_0_r in Hprob_sum.
+      rewrite Hprob_sum.
+      lra.
+    + intro H.
+      apply PFacts.empty_in_iff in H.
+      apply H.
+  - rewrite PositiveMap_fold_map.
+    remember (CState_branch cbit cstate) as cstates.
+    destruct cstates as [cstate0 cstate1].
+    remember {|
+      B_qstate := den_measure_1 qbit (B_qstate branch);
+      B_prob := B_prob branch * prob1;
+    |} as branch1.
+    rewrite PProperties.fold_add
+    with (m := PositiveMap.empty Branch) (k := cstate1) (e := branch1).
+    all: try exact eq_equivalence.
+    all: try (unfold Proper; reflexivity).
+    all: try (unfold PProperties.transpose_neqkey; intros; lra).
+    + unfold PositiveMap.fold, PositiveMap.xfoldi, PositiveMap.empty.
+      rewrite Heqbranch1.
+      simpl.
+      apply (Execute_measure_instr_branch_valid qbit cbit cstate) in Hbranch_valid.
+      unfold ProgramState_valid in Hbranch_valid.
+      specialize (Hbranch_valid cstate1 branch1).
+      assert (Heq0: prob0 = 0%R).
+      { shelve. }
+      rewrite Heq0 in Hprob_sum.
+      rewrite Rplus_0_l in Hprob_sum.
+      rewrite Hprob_sum.
+      lra.
+    + intro H.
+      apply PFacts.empty_in_iff in H.
+      apply H.
+  - 
 Admitted.
 
 Lemma Execute_measure_instr_prob_valid:
