@@ -919,20 +919,70 @@ Proof.
     lra.
 Qed.
 
+Lemma ProgramState_sum_prob_empty:
+  forall (ps: ProgramState),
+  PositiveMap.Empty ps ->
+  ProgramState_sum_prob ps = 0%R.
+Proof.
+  intros ps Hempty.
+  unfold ProgramState_sum_prob.
+  rewrite PositiveMap_fold_map.
+  rewrite PositiveMap.fold_1.
+  apply PProperties.elements_Empty in Hempty.
+  rewrite Hempty.
+  reflexivity.
+Qed.
+
+Lemma ProgramState_fold_merge_prob_preserve:
+  forall (ps: ProgramState) (f: CState -> Branch -> ProgramState),
+  (forall cstate b, Branch_valid b -> B_prob b = ProgramState_sum_prob (f cstate b)) ->
+  ProgramState_valid ps ->
+  ProgramState_sum_prob ps = ProgramState_sum_prob (PositiveMap.fold (fun cstate branch acc =>
+    ProgramState_merge acc (f cstate branch)) ps (PositiveMap.empty Branch)).
+Proof.
+  intros ps f Hf_prob Hpsvalid.
+  apply PProperties.fold_rec.
+  - intros m E.
+    rewrite ProgramState_sum_prob_empty.
+    rewrite ProgramState_sum_prob_empty.
+    + reflexivity.
+    + apply PositiveMap.empty_1.
+    + apply E.
+  - intros k e a m m' H1 H2 H3 H4.
+    rewrite ProgramState_merge_prob_sum.
+    rewrite <- H4.
+    rewrite <- Hf_prob.
+    + assert (HE: PositiveMap.Equal m' (PositiveMap.add k e m)).
+      { unfold PositiveMap.Equal. apply H3. }
+      unfold ProgramState_sum_prob.
+      rewrite PositiveMap_fold_map, PositiveMap_fold_map.
+      rewrite PProperties.fold_Equal with (m2 := PositiveMap.add k e m).
+      1: rewrite PProperties.fold_add.
+      * reflexivity.
+      * apply eq_equivalence.
+      * (unfold Proper; reflexivity).
+      * (unfold PProperties.transpose_neqkey; intros; lra).
+      * assumption.
+      * apply eq_equivalence.
+      * (unfold Proper; reflexivity).
+      * (unfold PProperties.transpose_neqkey; intros; lra).
+      * assumption. 
+    + unfold ProgramState_valid in Hpsvalid.
+      apply Hpsvalid with (cstate := k) (branch := e).
+      apply H1.
+Qed.
+
 Lemma Execute_measure_instr_prob_preserve:
   forall (qbit cbit: nat) (ps: ProgramState),
   ProgramState_valid ps ->
   ProgramState_sum_prob ps = ProgramState_sum_prob (Execute_measure_instr qbit cbit ps).
 Proof.
-  intros qbit cbit ps.
-  unfold Execute_measure_instr, ProgramState_prob_valid, ProgramState_sum_prob.
-  rewrite PositiveMap_fold_map, PositiveMap_fold_map.
-  intros Hpsvalid.
-  rewrite (PositiveMap.fold_1 ps), (PositiveMap.fold_1 ps).
-  induction (PositiveMap.elements ps) as [| (cstate_fold, branch_fold) rest IH]; simpl.
-  - reflexivity.
-  - rewrite fold_left_add_const, IH.
- Admitted.
+  unfold Execute_measure_instr.
+  intros qbit cbit ps Hpsvalid.
+  apply (ProgramState_fold_merge_prob_preserve ps (Execute_measure_instr_branch qbit cbit)).
+  - apply Execute_measure_instr_branch_prob_preserve.
+  - apply Hpsvalid.
+Qed.
 
 Lemma Execute_reset_instr_valid:
   forall (target: nat) (ps: ProgramState),
@@ -999,15 +1049,37 @@ Proof.
     + reflexivity.
     + apply Execute_suppl_valid. apply H.
     + apply H.
-  - unfold ProgramState_sum_prob.
-    rewrite PositiveMap_fold_map, PositiveMap_fold_map.
-    rewrite (PositiveMap.fold_1 ps), (PositiveMap.fold_1 ps).
-    induction (PositiveMap.elements ps) as [| (cstate_fold, branch_fold) rest IH]; simpl.
-    + reflexivity.
-    + rewrite fold_left_add_const.
-      rewrite IH.
-      destruct (eqb (CState_read n cstate_fold) b) eqn:Hcond.
-Admitted.
+  - apply ProgramState_fold_merge_prob_preserve.
+    + intros cstate branch Hbvalid.
+      destruct (eqb (CState_read n cstate) b).
+      * rewrite <- IHinstr.
+        unfold ProgramState_sum_prob.
+        rewrite PositiveMap_fold_map, PProperties.fold_add.
+        -- rewrite <- PositiveMap_fold_map with (f:=(fun _ v acc => (acc + v)%R)) (g:=B_prob).
+           change (B_prob branch = ProgramState_sum_prob (PositiveMap.empty Branch) + B_prob branch)%R.
+           rewrite ProgramState_sum_prob_empty.
+           lra. apply PositiveMap.empty_1.
+        -- apply eq_equivalence.
+        -- unfold Proper. reflexivity.
+        -- unfold PProperties.transpose_neqkey. intros. lra.
+        -- intros HI. apply PFacts.empty_in_iff in HI. apply HI.
+        -- unfold ProgramState_valid.
+           intros cstate' branch' Hmapsto.
+           rewrite PFacts.add_mapsto_iff in Hmapsto.
+           destruct Hmapsto as [[Hcstate Hbranch] | [Hcstate Hbranch]].
+           { rewrite <- Hbranch. apply Hbvalid. }
+           { rewrite PFacts.empty_mapsto_iff in Hbranch. contradiction. }
+      * unfold ProgramState_sum_prob.
+        rewrite PositiveMap_fold_map, PProperties.fold_add.
+        -- change (B_prob branch = ProgramState_sum_prob (PositiveMap.empty Branch) + B_prob branch)%R.
+           rewrite ProgramState_sum_prob_empty.
+           lra. apply PositiveMap.empty_1.
+        -- apply eq_equivalence.
+        -- unfold Proper. reflexivity.
+        -- unfold PProperties.transpose_neqkey. intros. lra.
+        -- intros HI. apply PFacts.empty_in_iff in HI. apply HI.
+    + apply H.
+Qed.
 
 Lemma Execute_suppl_valid_prob:
   forall (instr: Instruction) (ps: ProgramState),
