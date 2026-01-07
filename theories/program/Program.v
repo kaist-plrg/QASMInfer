@@ -1132,6 +1132,27 @@ Proof.
   apply H.
 Qed.
 
+Lemma ProgramState_valid_sum_prob_nonnegative:
+  forall (ps: ProgramState),
+  ProgramState_valid ps -> (Rge (ProgramState_sum_prob ps) 0)%R.
+Proof.
+  intros ps Hpsvalid.
+  unfold ProgramState_valid in Hpsvalid.
+  unfold ProgramState_sum_prob.
+  rewrite PositiveMap_fold_map.
+  apply PProperties.fold_rec.
+  - intros m Hm.
+    lra.
+  - intros k e a m m' H1 H2 H3 H4.
+    assert (H: Rge (B_prob e) 0).
+    {
+      unfold Branch_valid in Hpsvalid.
+      apply Rgt_ge.
+      eapply (proj2 (Hpsvalid k e H1)). 
+    }
+    lra.
+Qed. 
+
 Lemma ProgramState_valid_invariant:
   forall (ps: ProgramState),
   ProgramState_valid ps /\ ProgramState_prob_valid ps -> ProgramState_invariant ps.
@@ -1148,10 +1169,28 @@ Proof.
     + apply Hvalid with (cstate:=cstate). apply Hmapsto.
     + unfold ProgramState_prob_valid, ProgramState_sum_prob in Hprob.
       rewrite PositiveMap_fold_map, <- (PositiveMap_add_remove cstate branch) in Hprob.
-      * shelve.
+      * remember (PositiveMap.remove cstate ps) as ps'.
+        rewrite PProperties.fold_add with (eqA := @eq R) in Hprob.
+        -- assert (Hge: Rge (ProgramState_sum_prob ps') 0).
+           {
+             apply ProgramState_valid_sum_prob_nonnegative.
+             unfold ProgramState_valid.
+             intros cstate' branch' Hmapsto'.
+             apply (Hvalid cstate' branch').
+             rewrite Heqps' in Hmapsto'.
+             apply PositiveMap.remove_3 with (x:= cstate).
+             apply Hmapsto'.
+           }
+           unfold ProgramState_sum_prob in Hge.
+           rewrite PositiveMap_fold_map in Hge.
+           lra.
+        -- apply eq_equivalence.
+        -- unfold Proper. reflexivity.
+        -- unfold PProperties.transpose_neqkey. intros. lra.
+        -- rewrite Heqps'. apply PositiveMap.remove_1. reflexivity. 
       * rewrite <- PFacts.find_mapsto_iff. apply Hmapsto. 
   - apply Hprob.
-Admitted.
+Qed.
 
 Lemma Execute_suppl_valid_invariant:
   forall (instr: Instruction) (ps: ProgramState),
