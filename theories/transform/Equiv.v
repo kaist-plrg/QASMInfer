@@ -35,6 +35,10 @@ Definition Instruction_equiv (instr1 instr2: Instruction): Prop :=
   (Execute_suppl nq instr1 ps)
   (Execute_suppl nq instr2 ps).
 
+(* Equality of result, weakest equality definition *)
+Definition Instruction_result_equiv (instr1 instr2: Instruction): Prop :=
+  Execute_and_calculate_prob nq nc instr1 = Execute_and_calculate_prob nq nc instr2.
+
 Lemma ProgramState_equiv_implies_behavioral_equiv:
   forall (ps1 ps2: ProgramState nq),
   ProgramState_equiv ps1 ps2 -> ProgramState_behavioral_equiv ps1 ps2.

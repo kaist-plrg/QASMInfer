@@ -49,19 +49,9 @@ Proof.
   destruct b eqn:Hb.
   simpl.
   f_equal.
-  change (mat_single nq qbit (mat_rot PI 0 PI)) with (Gate_X_matrix nq qbit).
-  remember (Gate_X_matrix nq qbit) as A.
-  unfold den_uop.
-  rewrite (mat_mul_assoc A _ _), (mat_mul_assoc A _ _), <- (mat_mul_assoc _ (A†) (A†)).
-  rewrite <- mat_mul_conjtrans.
-  rewrite HeqA.
-  rewrite (Gate_X_matrix_square _ _ H).
-  rewrite mat_scale_conjtrans, mat_scale_mul_assoc, mat_mul_eye_l.
-  rewrite mat_scale_mul_comm, <- mat_scale_cmul_assoc, mat_eye_conjtrans.
-  rewrite <- mat_scale_mul_comm, mat_mul_eye_r.
-  com_simpl.
-  assert (Hcom: ((-1)%R * (-1)%R = Cone)%com). unfold com_mul, Cone. simpl. f_equal. lra. lra.
-  rewrite Hcom, mat_scale_1. reflexivity. 
+  symmetry.
+  apply (Pauli_Gate_matrix_den_uop nq qbit H).
+  apply Gate_X_rot_matrix_square.
 Qed.
 
 Lemma Transform_X_X: forall (qbit: nat),
@@ -83,6 +73,86 @@ Proof.
     apply PositiveMap.map_1 with (f:=Execute_rotate_instr_branch nq PI 0 PI qbit) in Hfind.
     remember (Execute_rotate_instr_branch nq PI 0 PI qbit (Execute_rotate_instr_branch nq PI 0 PI qbit b)) as b'.
     rewrite <- (Transform_X_X_Branch _ _ H) in Heqb'.
+    rewrite <- Heqb'.
+    apply Hfind.
+  - unfold Execute_rotate_instr.
+    rewrite PFacts.map_o, PFacts.map_o.
+    rewrite Hfind.
+    simpl. reflexivity.
+Qed.
+
+Lemma Transform_Y_Y_Branch:
+  forall (b: Branch nq) (qbit: nat),
+  Qbit_index_valid qbit ->
+  b = Execute_rotate_instr_branch nq PI PI2 PI2 qbit (Execute_rotate_instr_branch nq PI PI2 PI2 qbit b).
+Proof.
+  intros b qbit H.
+  unfold Execute_rotate_instr_branch.
+  destruct b eqn:Hb.
+  simpl. f_equal. symmetry.
+  apply (Pauli_Gate_matrix_den_uop nq qbit H).
+  apply Gate_Y_rot_matrix_square.
+Qed.
+
+Lemma Transform_Y_Y: forall (qbit: nat),
+  Qbit_index_valid qbit ->
+  Instruction_equiv nq
+  (SeqInstr (Gate_Y qbit) (Gate_Y qbit))
+  (Gate_I qbit).
+Proof.
+  intros qbit.
+  unfold Instruction_equiv, ProgramState_equiv.
+  intros H ps Hinv.
+  unfold PositiveMap.Equal.
+  intros cstate. simpl.
+  destruct (PositiveMap.find cstate ps) eqn:Hfind.
+  - rewrite <- PFacts.find_mapsto_iff.
+    rewrite <- PFacts.find_mapsto_iff in Hfind.
+    unfold Execute_rotate_instr.
+    apply PositiveMap.map_1 with (f:=Execute_rotate_instr_branch nq PI PI2 PI2 qbit) in Hfind.
+    apply PositiveMap.map_1 with (f:=Execute_rotate_instr_branch nq PI PI2 PI2 qbit) in Hfind.
+    remember (Execute_rotate_instr_branch nq PI PI2 PI2 qbit (Execute_rotate_instr_branch nq PI PI2 PI2 qbit b)) as b'.
+    rewrite <- (Transform_Y_Y_Branch _ _ H) in Heqb'.
+    rewrite <- Heqb'.
+    apply Hfind.
+  - unfold Execute_rotate_instr.
+    rewrite PFacts.map_o, PFacts.map_o.
+    rewrite Hfind.
+    simpl. reflexivity.
+Qed.
+
+Lemma Transform_Z_Z_Branch:
+  forall (b: Branch nq) (qbit: nat),
+  Qbit_index_valid qbit ->
+  b = Execute_rotate_instr_branch nq 0 0 PI qbit (Execute_rotate_instr_branch nq 0 0 PI qbit b).
+Proof.
+  intros b qbit H.
+  unfold Execute_rotate_instr_branch.
+  destruct b eqn:Hb.
+  simpl. f_equal. symmetry.
+  apply (Pauli_Gate_matrix_den_uop nq qbit H).
+  apply Gate_Z_rot_matrix_square.
+Qed.
+
+Lemma Transform_Z_Z: forall (qbit: nat),
+  Qbit_index_valid qbit ->
+  Instruction_equiv nq
+  (SeqInstr (Gate_Z qbit) (Gate_Z qbit))
+  (Gate_I qbit).
+Proof.
+  intros qbit.
+  unfold Instruction_equiv, ProgramState_equiv.
+  intros H ps Hinv.
+  unfold PositiveMap.Equal.
+  intros cstate. simpl.
+  destruct (PositiveMap.find cstate ps) eqn:Hfind.
+  - rewrite <- PFacts.find_mapsto_iff.
+    rewrite <- PFacts.find_mapsto_iff in Hfind.
+    unfold Execute_rotate_instr.
+    apply PositiveMap.map_1 with (f:=Execute_rotate_instr_branch nq 0 0 PI qbit) in Hfind.
+    apply PositiveMap.map_1 with (f:=Execute_rotate_instr_branch nq 0 0 PI qbit) in Hfind.
+    remember (Execute_rotate_instr_branch nq 0 0 PI qbit (Execute_rotate_instr_branch nq 0 0 PI qbit b)) as b'.
+    rewrite <- (Transform_Z_Z_Branch _ _ H) in Heqb'.
     rewrite <- Heqb'.
     apply Hfind.
   - unfold Execute_rotate_instr.
