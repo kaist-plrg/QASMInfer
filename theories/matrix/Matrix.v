@@ -547,6 +547,20 @@ Proof.
   - simpl. f_equal; assumption.
 Qed.
 
+Lemma mat_0_conjtrans : forall {n}, (@mat_0 n)† = mat_0.
+Proof.
+  induction n.
+  - simpl. f_equal. com_simpl.
+  - simpl. f_equal; apply IHn.
+Qed.
+
+Lemma mat_eye_conjtrans : forall {n}, (@mat_eye n)† = mat_eye.
+Proof.
+  induction n.
+  - simpl. f_equal. com_simpl.
+  - simpl. f_equal; try apply IHn; try apply mat_0_conjtrans.
+Qed.
+
 Lemma mat_conjtrans_involutive : forall {n} (A : Matrix n), A†† = A.
 Proof.
   intros.

@@ -98,4 +98,49 @@ Proof.
       assumption.
 Qed.
 
+Lemma mat_single_factorized : forall n t (U1 U2 : Matrix 1),
+  (mat_single n t U1) * (mat_single n t U2) = mat_single n t (U1 * U2).
+Proof.
+  intros.
+  revert n t.
+  induction n.
+  - intros t. simpl. f_equal. com_simpl.
+  - induction t.
+    + simpl. rewrite <- (mat_mul_eye_r mat_eye) at 3.
+      apply (tprod_mul 1 n).
+    + simpl. repeat rewrite mat_scale_0, mat_scale_1.
+      repeat (progress (rewrite mat_mul_0_l || rewrite mat_mul_0_r || rewrite mat_add_0_r || rewrite mat_add_0_l)).
+      f_equal.
+      apply IHn. apply IHn.
+Qed.
+
+Lemma mat_single_scale : forall n t (U : Matrix 1) (c : Complex),
+  n > t ->
+  mat_single n t (c .* U) = c .* (mat_single n t U).
+Proof.
+  intros.
+  generalize dependent t.
+  induction n.
+  - intros t H. lia.
+  - induction t.
+    + simpl. intros H. symmetry. apply (tprod_scale_assoc U mat_eye c).
+    + intros H. simpl. repeat rewrite mat_scale_0, mat_scale_1. repeat rewrite mat_0_scale.
+      assert (H': n > t). lia.
+      f_equal.
+      apply IHn, H'. apply IHn, H'.
+Qed.
+
+Lemma mat_single_eye : forall n t,
+  mat_single n t mat_eye = mat_eye.
+Proof.
+  intros n.
+  induction n.
+  - intros t. simpl. reflexivity.
+  - intros t.
+    induction t.
+    + simpl. repeat rewrite mat_scale_0, mat_scale_1. reflexivity.
+    + simpl. repeat rewrite mat_scale_0, mat_scale_1.
+      f_equal. apply IHn. apply IHn.
+Qed. 
+
 End GENERAL.

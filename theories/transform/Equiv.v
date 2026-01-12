@@ -20,7 +20,6 @@ Section Equivalence.
 Variable nq: nat.
 Variable nc: nat.
 
-(* Some thoughts: is this good definition? *)
 Definition ProgramState_equiv (ps1 ps2: ProgramState nq): Prop :=
   PositiveMap.Equal ps1 ps2.
 

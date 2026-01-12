@@ -57,21 +57,40 @@ Proof.
   apply mat_rot_unitary.
 Qed.
 
-Lemma Gate_X_matrix_Hermitian:
-  forall (qbit: nat), mat_Hermitian (Gate_X_matrix qbit).
+Lemma Gate_X_rot_matrix:
+  mat_rot PI 0 PI = -(RTIm 1) .* rec_mat (bas_mat 0) (bas_mat 1) (bas_mat 1) (bas_mat 0).
 Proof.
-  intros qbit.
-  unfold Gate_X_matrix.
-  apply mat_single_Hermitian.
-  unfold mat_rot.
-  simpl. com_simpl.
+  unfold mat_rot. simpl.
   replace (- 0 / 2)%R with 0%R by field.
   replace (0 / 2)%R with 0%R by field.
   rewrite com_iexp_0, cos_PI2, sin_PI2.
   com_simpl.
-  (* mat_rot PI 0 PI is NOT Hermitian. *)
-  (* [ 0 -i ] *)
-  (* [ -i 0 ] *)
-Admitted.
+  f_equal; f_equal; try com_simpl.
+  - unfold com_iexp. rewrite cos_PI2, sin_PI2. com_simpl.
+  - unfold com_iexp.
+    replace (- PI / 2)%R with (- (PI / 2))%R by field.
+    rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. com_simpl.
+Qed.
+
+Lemma Gate_X_rot_matrix_square:
+  (mat_rot PI 0 PI) * (mat_rot PI 0 PI) = (-1)%R .* mat_eye.
+Proof.
+  rewrite Gate_X_rot_matrix.
+  simpl. com_simpl.
+  f_equal; f_equal; com_simpl.
+Qed.
+
+Lemma Gate_X_matrix_square:
+  forall (qbit: nat), nq > qbit ->
+  (Gate_X_matrix qbit) * (Gate_X_matrix qbit) = (-1)%R .* mat_eye.
+Proof.
+  intros qbit H.
+  unfold Gate_X_matrix.
+  rewrite mat_single_factorized.
+  rewrite Gate_X_rot_matrix_square.
+  rewrite (mat_single_scale nq qbit mat_eye _ H).
+  rewrite mat_single_eye.
+  reflexivity.
+Qed.
 
 End Gate_properties.
