@@ -36,7 +36,7 @@ Definition Gate_H (qbit: nat): Instruction :=
 Definition Gate_S (qbit: nat): Instruction :=
   Gate_P PI2 qbit.
 
-Definition Gate_SDG (qbit: nat): Instruction :=
+Definition Gate_Sdg (qbit: nat): Instruction :=
   Gate_P (-PI2) qbit.
 
 End Gates.
@@ -156,11 +156,53 @@ Proof.
   com_simpl.
   f_equal; f_equal; try lca.
   - replace (- PI / 2)%R with (- (PI / 2))%R by field.
-    replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
+    replace PI2 with (PI / 2)%R by (unfold PI; field).
     reflexivity.
-  - replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
+  - replace PI2 with (PI / 2)%R by (unfold PI; field).
     unfold gphase, com_iexp.
     rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. lca.
+Qed.
+
+Definition Gate_H_matrix: Matrix 1 :=
+  (/ sqrt 2)%R .*
+  rec_mat (bas_mat 1) (bas_mat 1)
+          (bas_mat 1) (bas_mat (-1)%R).
+
+Lemma Gate_H_matrix_Hermitian: mat_Hermitian Gate_H_matrix.
+Proof.
+  unfold mat_Hermitian, Gate_H_matrix. simpl.
+  f_equal; f_equal; lca.
+Qed.
+
+Lemma Gate_H_matrix_unitary: mat_unitary Gate_H_matrix.
+Proof.
+  unfold mat_unitary.
+  rewrite Gate_H_matrix_Hermitian.
+  unfold Gate_H_matrix. simpl.
+  split; f_equal; f_equal; com_simpl.
+  all: apply com_proj_eq.
+  all: simpl.
+  all: try lra.
+  all: ring_simplify; simpl.
+  all: rewrite Rmult_1_r, <- Rinv_mult, sqrt_sqrt.
+  all: lra.
+Qed.
+
+Lemma Gate_H_matrix_gphase:
+  mat_rot PI2 0 PI = gphase (- PI2) .* Gate_H_matrix.
+Proof.
+  unfold mat_rot.
+  rewrite mat_rot_z_0_eye, mat_mul_eye_l.
+  simpl. com_simpl.
+  f_equal; f_equal.
+  all: replace (PI2 / 2)%R with (PI / 4)%R by (unfold PI; field).
+  all: try rewrite sin_PI4.
+  all: try rewrite cos_PI4.
+  all: unfold gphase, com_iexp.
+  all: replace (- PI / 2)%R with (- (PI / 2))%R by field.
+  all: replace PI2 with (PI / 2)%R by (unfold PI; field).
+  all: repeat progress (rewrite cos_neg || rewrite sin_neg || rewrite cos_PI2 || rewrite sin_PI2).
+  all: lca.
 Qed.
 
 Lemma Gate_P_matrix_mul:
@@ -218,6 +260,28 @@ Proof.
   rewrite H.
   rewrite mat_scale_1.
   reflexivity.
+Qed.
+
+Lemma Gate_matrix_X_Y__eq__Z:
+  Gate_X_matrix * Gate_Y_matrix = gphase PI2 .* Gate_Z_matrix.
+Proof.
+  simpl; unfold gphase; com_simpl.
+  f_equal; f_equal.
+  all: unfold com_iexp;
+       replace PI2 with (PI / 2)%R by (unfold PI; field);
+       rewrite cos_PI2, sin_PI2.
+  all: lca.
+Qed.
+
+Lemma Gate_matrix_Y_X__eq__Z:
+  Gate_Y_matrix * Gate_X_matrix = gphase (-PI2) .* Gate_Z_matrix.
+Proof.
+  simpl; unfold gphase; com_simpl.
+  f_equal; f_equal.
+  all: unfold com_iexp;
+       replace (-PI2)%R with (- (PI / 2))%R by (unfold PI; field);
+       rewrite cos_neg, sin_neg, cos_PI2, sin_PI2.
+  all: lca.
 Qed.
 
 End Gate_properties.

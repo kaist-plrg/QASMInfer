@@ -113,6 +113,14 @@ Proof.
   all: assumption.
 Qed.
 
+Lemma den_uop_den_uop : forall {n: nat} (uop1 uop2 den: Matrix n),
+  den_uop uop1 (den_uop uop2 den) = den_uop (uop1 * uop2) den.
+Proof.
+  intros. unfold den_uop.
+  rewrite mat_mul_conjtrans.
+  mat_sort.
+Qed.
+
 End UOP.
 
 Section MEASURE.
