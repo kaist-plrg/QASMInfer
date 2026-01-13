@@ -12,12 +12,12 @@ Section Gates.
 (* Defining Standard Gates *)
 (* https://github.com/Qiskit/qiskit/blob/main/qiskit/qasm/libs/qelib1.inc *)
 
-Definition Gate_I (a: nat): Instruction :=
-  NopInstr.
-
 (* QE Standard Gates *)
 Definition Gate_P (lambda: R) (qbit: nat): Instruction :=
   RotateInstr 0 0 lambda qbit.
+
+Definition Gate_I (qbit: nat): Instruction :=
+  Gate_P 0 qbit.
 
 (* Pauli Gates *)
 Definition Gate_X (qbit: nat): Instruction :=
@@ -163,7 +163,7 @@ Proof.
     rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. lca.
 Qed.
 
-Lemma Gate_P_rot_matrix_mul:
+Lemma Gate_P_matrix_mul:
   forall (l1 l2: R),
   (mat_rot 0 0 l1) * (mat_rot 0 0 l2) = mat_rot 0 0 (l1 + l2)%R.
 Proof.
@@ -173,7 +173,30 @@ Proof.
   repeat rewrite mat_mul_eye_l.
   unfold mat_rot_z.
   simpl.
-  f_equal; f_equal; com_simpl.
+  f_equal; f_equal; com_simpl; f_equal; lra.
+Qed.
+
+Lemma Gate_P_matrix_0_eye:
+  mat_rot 0 0 0 = mat_eye.
+Proof.
+  unfold mat_rot.
+  rewrite mat_rot_y_0_eye, mat_rot_z_0_eye.
+  repeat rewrite mat_mul_eye_l.
+  reflexivity.
+Qed.
+
+Lemma Gate_P_matrix_periodic:
+  forall (l: R),
+  mat_rot 0 0 l = gphase PI .* mat_rot 0 0 (l + 2 * PI).
+Proof.
+  intros l.
+  unfold mat_rot.
+  rewrite mat_rot_y_0_eye, mat_rot_z_0_eye.
+  repeat rewrite mat_mul_eye_l.
+  unfold mat_rot_z.
+  simpl. com_simpl.
+  f_equal; f_equal.
+  - 
 Admitted.
 
 End Gate_properties.

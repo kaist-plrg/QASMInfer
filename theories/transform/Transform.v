@@ -25,6 +25,23 @@ Variable nq: nat.
 Definition Qbit_index_valid (qbit: nat): Prop :=
   nq > qbit.
 
+Lemma Transform_I_Branch:
+  forall (b: Branch nq) (qbit: nat),
+  b = Execute_rotate_instr_branch nq 0 0 0 qbit b.
+Proof.
+  intros b qbit.
+  unfold Execute_rotate_instr_branch.
+  destruct b eqn:Hb.
+  simpl.
+  f_equal.
+  rewrite Gate_P_matrix_0_eye.
+  rewrite mat_single_eye.
+  unfold den_uop.
+  rewrite mat_eye_conjtrans.
+  rewrite mat_mul_eye_l, mat_mul_eye_r.
+  reflexivity.
+Qed.
+
 Lemma Transform_I: forall (qbit: nat),
   Instruction_equiv nq
   (Gate_I qbit)
@@ -36,7 +53,17 @@ Proof.
   unfold PositiveMap.Equal.
   intros cstate.
   simpl.
-  reflexivity.
+  destruct (PositiveMap.find cstate ps) eqn:Hfind.
+  - rewrite <- PFacts.find_mapsto_iff.
+    rewrite <- PFacts.find_mapsto_iff in Hfind.
+    unfold Execute_rotate_instr.
+    rewrite (Transform_I_Branch b qbit).
+    apply PositiveMap.map_1.
+    apply Hfind.
+  - unfold Execute_rotate_instr.
+    rewrite PFacts.map_o.
+    rewrite Hfind.
+    simpl. reflexivity.
 Qed.
 
 Lemma Transform_den_uop_involutive:
@@ -76,7 +103,7 @@ Lemma Transform_X_X: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
   (SeqInstr (Gate_X qbit) (Gate_X qbit))
-  (Gate_I qbit).
+  NopInstr.
 Proof.
   intros qbit.
   unfold Instruction_equiv, ProgramState_equiv.
@@ -119,7 +146,7 @@ Lemma Transform_Y_Y: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
   (SeqInstr (Gate_Y qbit) (Gate_Y qbit))
-  (Gate_I qbit).
+  NopInstr.
 Proof.
   intros qbit.
   unfold Instruction_equiv, ProgramState_equiv.
@@ -162,7 +189,7 @@ Lemma Transform_Z_Z: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
   (SeqInstr (Gate_Z qbit) (Gate_Z qbit))
-  (Gate_I qbit).
+  NopInstr.
 Proof.
   intros qbit.
   unfold Instruction_equiv, ProgramState_equiv.
