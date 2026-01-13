@@ -438,6 +438,40 @@ Qed.
 Lemma com_iexp_0_impl: forall (x: R), x = 0 -> com_iexp x = 1.
 Proof. intros. subst. apply com_iexp_0. Qed.
 
+Lemma com_iexp_PI: com_iexp PI = -1.
+Proof.
+  unfold com_iexp.
+  rewrite cos_PI, sin_PI.
+  lca.
+Qed.
+
+Lemma com_iexp_PI2: com_iexp (PI / 2)%R = Ione.
+Proof.
+  unfold com_iexp.
+  rewrite cos_PI2, sin_PI2.
+  lca.
+Qed.
+
+Lemma com_iexp_pi2: com_iexp PI2 = Ione.
+Proof.
+  replace PI2 with (PI / 2)%R by (unfold PI; field).
+  apply com_iexp_PI2.
+Qed.
+
+Lemma com_iexp_neg_PI2: com_iexp (- PI / 2)%R = - Ione.
+Proof.
+  unfold com_iexp.
+  replace (- PI / 2)%R with (- (PI / 2))%R by field.
+  rewrite cos_neg, sin_neg, cos_PI2, sin_PI2.
+  lca.
+Qed.
+
+Lemma com_iexp_neg_pi2: com_iexp (- PI2) = - Ione.
+Proof.
+  replace (- PI2)%R with (- PI / 2)%R by (unfold PI; field).
+  apply com_iexp_neg_PI2.
+Qed.
+
 Lemma com_iexp_inv_l: forall (x: R), com_iexp (- x) * com_iexp x = 1.
 Proof.
   intros.

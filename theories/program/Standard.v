@@ -57,13 +57,10 @@ Proof.
   unfold den_uop.
   rewrite (mat_single_scale _ _ _ _ H).
   rewrite mat_scale_conjtrans.
-  rewrite <- mat_scale_mul_comm.
-  repeat rewrite mat_scale_mul_assoc.
-  rewrite <- mat_scale_scale_comm.
+  mat_sort.
   rewrite com_iexp_conj_anticomm.
   rewrite com_iexp_inv_l.
-  rewrite mat_scale_1.
-  reflexivity.
+  mat_simpl.
 Qed.
 
 Definition Gate_X_matrix: Matrix 1 :=
@@ -85,16 +82,11 @@ Qed.
 Lemma Gate_X_matrix_gphase:
   mat_rot PI 0 PI = gphase (- PI2) .* Gate_X_matrix.
 Proof.
-  unfold mat_rot. simpl.
-  replace (- 0 / 2)%R with 0%R by field.
-  replace (0 / 2)%R with 0%R by field.
-  rewrite com_iexp_0, cos_PI2, sin_PI2.
-  com_simpl.
-  f_equal; f_equal; try com_simpl.
-  - unfold gphase. replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
-    unfold com_iexp. rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. lca.
-  - unfold gphase. replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
-    f_equal. lra.
+  unfold mat_rot, gphase.
+  rewrite mat_rot_z_0_eye.
+  mat_simpl.
+  rewrite cos_PI2, sin_PI2, com_iexp_neg_PI2, com_iexp_neg_pi2, com_iexp_PI2.
+  f_equal; f_equal; com_simpl.
 Qed.
 
 Definition Gate_Y_matrix: Matrix 1 :=
@@ -116,18 +108,15 @@ Qed.
 Lemma Gate_Y_matrix_gphase:
   mat_rot PI PI2 PI2 = gphase (- PI2) .* Gate_Y_matrix.
 Proof.
-  unfold mat_rot. simpl.
-  rewrite cos_PI2, sin_PI2. com_simpl.
-  f_equal; f_equal.
+  unfold mat_rot, gphase.
+  mat_simpl.
+  rewrite cos_PI2, sin_PI2, com_iexp_neg_pi2.
+  f_equal; f_equal; com_simpl.
   - rewrite com_mul_comm, com_neg_mul_comm.
     replace (- PI2 / 2)%R with (- (PI2 / 2))%R by field.
-    rewrite com_iexp_inv_r. unfold gphase, com_iexp.
-    replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
-    rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. lca.
+    rewrite com_iexp_inv_r. lca.
   - replace (PI2 / 2 + - PI2 / 2)%R with 0%R by field.
-    rewrite com_iexp_0. unfold gphase, com_iexp.
-    replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
-    rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. lca.
+    rewrite com_iexp_0. lca.
 Qed.
 
 Definition Gate_Z_matrix: Matrix 1 :=
@@ -149,18 +138,11 @@ Qed.
 Lemma Gate_Z_matrix_gphase:
   mat_rot 0 0 PI = gphase (- PI2) .* Gate_Z_matrix.
 Proof.
-  unfold mat_rot, Gate_Z_matrix. simpl.
-  replace (- 0 / 2)%R with 0%R by field.
-  replace (0 / 2)%R with 0%R by field.
-  rewrite cos_0, sin_0.
-  com_simpl.
-  f_equal; f_equal; try lca.
-  - replace (- PI / 2)%R with (- (PI / 2))%R by field.
-    replace PI2 with (PI / 2)%R by (unfold PI; field).
-    reflexivity.
-  - replace PI2 with (PI / 2)%R by (unfold PI; field).
-    unfold gphase, com_iexp.
-    rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. lca.
+  unfold mat_rot, Gate_Z_matrix, gphase.
+  rewrite mat_rot_y_0_eye, mat_rot_z_0_eye.
+  mat_simpl.
+  rewrite com_iexp_neg_pi2, com_iexp_neg_PI2, com_iexp_PI2.
+  f_equal; f_equal; lca.
 Qed.
 
 Definition Gate_H_matrix: Matrix 1 :=
@@ -191,18 +173,13 @@ Qed.
 Lemma Gate_H_matrix_gphase:
   mat_rot PI2 0 PI = gphase (- PI2) .* Gate_H_matrix.
 Proof.
-  unfold mat_rot.
-  rewrite mat_rot_z_0_eye, mat_mul_eye_l.
-  simpl. com_simpl.
-  f_equal; f_equal.
-  all: replace (PI2 / 2)%R with (PI / 4)%R by (unfold PI; field).
-  all: try rewrite sin_PI4.
-  all: try rewrite cos_PI4.
-  all: unfold gphase, com_iexp.
-  all: replace (- PI / 2)%R with (- (PI / 2))%R by field.
-  all: replace PI2 with (PI / 2)%R by (unfold PI; field).
-  all: repeat progress (rewrite cos_neg || rewrite sin_neg || rewrite cos_PI2 || rewrite sin_PI2).
-  all: lca.
+  unfold mat_rot, gphase.
+  rewrite mat_rot_z_0_eye.
+  mat_simpl.
+  rewrite com_iexp_neg_pi2, com_iexp_PI2, com_iexp_neg_PI2.
+  replace (PI2 / 2)%R with (PI / 4)%R by (unfold PI; field).
+  rewrite sin_PI4, cos_PI4.
+  f_equal; f_equal; lca.
 Qed.
 
 Lemma Gate_P_matrix_mul:
@@ -212,9 +189,7 @@ Proof.
   intros l1 l2.
   unfold mat_rot.
   rewrite mat_rot_y_0_eye, mat_rot_z_0_eye.
-  repeat rewrite mat_mul_eye_l.
-  unfold mat_rot_z.
-  simpl.
+  mat_simpl.
   f_equal; f_equal; com_simpl; f_equal; lra.
 Qed.
 
@@ -253,11 +228,10 @@ Proof.
   intros l.
   rewrite Gate_P_matrix_periodic with (l := (l - 2 * PI)%R).
   replace (l - 2 * PI + 2 * PI)%R with l by field.
-  rewrite <- mat_scale_scale_comm.
-  unfold gphase, com_iexp.
-  rewrite cos_PI, sin_PI.
-  assert (H: (((-1)%R + RTIm 0)%com * ((-1)%R + RTIm 0)%com)%com = 1%com). lca.
-  rewrite H.
+  mat_sort.
+  unfold gphase.
+  rewrite com_iexp_PI.
+  replace ((-1)%R * (-1)%R)%com with Cone by lca.
   rewrite mat_scale_1.
   reflexivity.
 Qed.
@@ -266,22 +240,16 @@ Lemma Gate_matrix_X_Y__eq__Z:
   Gate_X_matrix * Gate_Y_matrix = gphase PI2 .* Gate_Z_matrix.
 Proof.
   simpl; unfold gphase; com_simpl.
-  f_equal; f_equal.
-  all: unfold com_iexp;
-       replace PI2 with (PI / 2)%R by (unfold PI; field);
-       rewrite cos_PI2, sin_PI2.
-  all: lca.
+  rewrite com_iexp_pi2.
+  f_equal; f_equal; lca.
 Qed.
 
 Lemma Gate_matrix_Y_X__eq__Z:
   Gate_Y_matrix * Gate_X_matrix = gphase (-PI2) .* Gate_Z_matrix.
 Proof.
   simpl; unfold gphase; com_simpl.
-  f_equal; f_equal.
-  all: unfold com_iexp;
-       replace (-PI2)%R with (- (PI / 2))%R by (unfold PI; field);
-       rewrite cos_neg, sin_neg, cos_PI2, sin_PI2.
-  all: lca.
+  rewrite com_iexp_neg_pi2.
+  f_equal; f_equal; lca.
 Qed.
 
 End Gate_properties.

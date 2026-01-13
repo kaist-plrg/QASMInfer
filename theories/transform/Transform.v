@@ -45,8 +45,7 @@ Proof.
     rewrite mat_single_eye.
     unfold den_uop.
     rewrite mat_eye_conjtrans.
-    rewrite mat_mul_eye_l, mat_mul_eye_r.
-    reflexivity.
+    mat_simpl.
   - reflexivity.
 Qed.
 
@@ -60,8 +59,8 @@ Proof.
   rewrite <- HH at 2.
   rewrite (proj2 Hu).
   unfold den_uop.
-  rewrite mat_mul_eye_l, mat_eye_conjtrans, mat_mul_eye_r.
-  reflexivity.
+  rewrite mat_eye_conjtrans.
+  mat_simpl.
 Qed.
 
 Lemma Transform_X_X: forall (qbit: nat),
@@ -179,8 +178,8 @@ Proof.
     simpl; f_equal.
     rewrite den_uop_den_uop. f_equal.
     rewrite mat_single_factorized. f_equal.
-    rewrite (Rplus_comm l1 l2).
-    apply Gate_P_matrix_mul.
+    rewrite Gate_P_matrix_mul.
+    f_equal; lra.
   - reflexivity.
 Qed.
 
@@ -223,24 +222,28 @@ Corollary Transform_S_Sdg: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
   (SeqInstr (Gate_S qbit) (Gate_Sdg qbit))
-  (Gate_I qbit).
+  NopInstr.
 Proof.
   intros qbit H.
-  unfold Gate_S, Gate_Sdg, Gate_I.
-  replace 0%R with (PI2 + (- PI2))%R by field.
-  apply (Transform_P_P qbit _ _ H).
+  apply Instruction_equiv_equivalence with (y:= (Gate_I qbit)).
+  - unfold Gate_S, Gate_Sdg, Gate_I.
+    replace 0%R with (PI2 + (- PI2))%R by field.
+    apply (Transform_P_P qbit _ _ H).
+  - apply Transform_I.
 Qed.
 
 Corollary Transform_Sdg_S: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
   (SeqInstr (Gate_Sdg qbit) (Gate_S qbit))
-  (Gate_I qbit).
+  NopInstr.
 Proof.
   intros qbit H.
-  unfold Gate_S, Gate_Sdg, Gate_I.
-  replace 0%R with ((- PI2) + PI2)%R by field.
-  apply (Transform_P_P qbit _ _ H).
+  apply Instruction_equiv_equivalence with (y:= (Gate_I qbit)).
+  - unfold Gate_S, Gate_Sdg, Gate_I.
+    replace 0%R with ((- PI2) + PI2)%R by field.
+    apply (Transform_P_P qbit _ _ H).
+  - apply Transform_I.
 Qed.
 
 Corollary Transform_Sdg_Sdg: forall (qbit: nat),
