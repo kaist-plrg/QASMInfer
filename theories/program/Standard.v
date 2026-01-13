@@ -196,7 +196,28 @@ Proof.
   unfold mat_rot_z.
   simpl. com_simpl.
   f_equal; f_equal.
-  - 
-Admitted.
+  - f_equal. lra.
+  - replace (PI + (l + 2 * PI) / 2)%R with (l / 2 + 2 * PI)%R by field.
+    unfold com_iexp.
+    replace (l/2 + 2*PI)%R with (l/2 + 2 * INR 1 * PI)%R by (simpl; ring).
+    rewrite cos_period, sin_period.
+    reflexivity.
+Qed.
+
+Lemma Gate_P_matrix_periodic_neg:
+  forall (l: R),
+  mat_rot 0 0 l = gphase PI .* mat_rot 0 0 (l - 2 * PI).
+Proof.
+  intros l.
+  rewrite Gate_P_matrix_periodic with (l := (l - 2 * PI)%R).
+  replace (l - 2 * PI + 2 * PI)%R with l by field.
+  rewrite <- mat_scale_scale_comm.
+  unfold gphase, com_iexp.
+  rewrite cos_PI, sin_PI.
+  assert (H: (((-1)%R + RTIm 0)%com * ((-1)%R + RTIm 0)%com)%com = 1%com). lca.
+  rewrite H.
+  rewrite mat_scale_1.
+  reflexivity.
+Qed.
 
 End Gate_properties.
