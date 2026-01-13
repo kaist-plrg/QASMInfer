@@ -45,11 +45,45 @@ Section Gate_properties.
 
 Variable nq: nat.
 
-Definition Gate_X_matrix (qbit: nat): Matrix nq :=
-  mat_single nq qbit (mat_rot PI 0 PI).
+Definition gphase (theta: R): Complex :=
+  com_iexp theta.
 
-Lemma Gate_X_rot_matrix:
-  mat_rot PI 0 PI = -(RTIm 1) .* rec_mat (bas_mat 0) (bas_mat 1) (bas_mat 1) (bas_mat 0).
+Lemma Gate_matrix_den_uop_gphase:
+  forall (qbit: nat), nq > qbit ->
+  forall (A: Matrix 1) (theta: R) (U: Matrix nq),
+  den_uop (mat_single nq qbit (gphase theta .* A)) U = den_uop (mat_single nq qbit A) U.
+Proof.
+  intros qbit H A theta U.
+  unfold den_uop.
+  rewrite (mat_single_scale _ _ _ _ H).
+  rewrite mat_scale_conjtrans.
+  rewrite <- mat_scale_mul_comm.
+  repeat rewrite mat_scale_mul_assoc.
+  rewrite <- mat_scale_scale_comm.
+  rewrite com_iexp_conj_anticomm.
+  rewrite com_iexp_inv_l.
+  rewrite mat_scale_1.
+  reflexivity.
+Qed.
+
+Definition Gate_X_matrix: Matrix 1 :=
+  rec_mat (bas_mat 0) (bas_mat 1)
+          (bas_mat 1) (bas_mat 0).
+
+Lemma Gate_X_matrix_unitary: mat_unitary Gate_X_matrix.
+Proof.
+  unfold mat_unitary, Gate_X_matrix. simpl.
+  split; f_equal; f_equal; lca.
+Qed.
+
+Lemma Gate_X_matrix_Hermitian: mat_Hermitian Gate_X_matrix.
+Proof.
+  unfold mat_Hermitian, Gate_X_matrix. simpl.
+  f_equal; f_equal; lca.
+Qed.
+
+Lemma Gate_X_matrix_gphase:
+  mat_rot PI 0 PI = gphase (- PI2) .* Gate_X_matrix.
 Proof.
   unfold mat_rot. simpl.
   replace (- 0 / 2)%R with 0%R by field.
@@ -57,108 +91,89 @@ Proof.
   rewrite com_iexp_0, cos_PI2, sin_PI2.
   com_simpl.
   f_equal; f_equal; try com_simpl.
-  - unfold com_iexp. rewrite cos_PI2, sin_PI2. com_simpl.
-  - unfold com_iexp.
-    replace (- PI / 2)%R with (- (PI / 2))%R by field.
-    rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. com_simpl.
+  - unfold gphase. replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
+    unfold com_iexp. rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. lca.
+  - unfold gphase. replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
+    f_equal. lra.
 Qed.
 
-Lemma Gate_X_rot_matrix_square:
-  (mat_rot PI 0 PI) * (mat_rot PI 0 PI) = (-1)%R .* mat_eye.
+Definition Gate_Y_matrix: Matrix 1 :=
+  rec_mat (bas_mat 0) (bas_mat (-Ione))
+          (bas_mat Ione) (bas_mat 0).
+
+Lemma Gate_Y_matrix_unitary: mat_unitary Gate_Y_matrix.
 Proof.
-  rewrite Gate_X_rot_matrix.
-  simpl. com_simpl.
-  f_equal; f_equal; com_simpl.
+  unfold mat_unitary, Gate_Y_matrix. simpl.
+  split; f_equal; f_equal; lca.
 Qed.
 
-Definition Gate_Y_matrix (qbit: nat): Matrix nq :=
-  mat_single nq qbit (mat_rot PI PI2 PI2).
-
-Lemma Gate_Y_rot_matrix:
-  mat_rot PI PI2 PI2 = rec_mat (bas_mat 0) (bas_mat (-1)%R) (bas_mat 1) (bas_mat 0).
+Lemma Gate_Y_matrix_Hermitian: mat_Hermitian Gate_Y_matrix.
 Proof.
-  unfold mat_rot. simpl.
-  rewrite cos_PI2, sin_PI2.
-  com_simpl.
-  f_equal; f_equal; try com_simpl.
-  - replace (- PI2 / 2)%R with (- (PI2 / 2))%R by field.
-    rewrite com_mul_comm, com_neg_mul_comm, com_iexp_inv_r.
-    lca.
-  - replace (- PI2 / 2)%R with (- (PI2 / 2))%R by field.
-    replace (PI2 / 2 + - (PI2 / 2))%R with 0%R by field.
-    apply com_iexp_0.
+  unfold mat_Hermitian, Gate_Y_matrix. simpl.
+  f_equal; f_equal; lca.
 Qed.
 
-Lemma Gate_Y_rot_matrix_square:
-  (mat_rot PI PI2 PI2) * (mat_rot PI PI2 PI2) = (-1)%R .* mat_eye.
-Proof.
-  rewrite Gate_Y_rot_matrix.
-  simpl. com_simpl.
-Qed.
-
-Definition Gate_Z_matrix (qbit: nat): Matrix nq :=
-  mat_single nq qbit (mat_rot 0 0 PI).
-
-Lemma Gate_Z_rot_matrix:
-  mat_rot 0 0 PI = rec_mat (bas_mat (-Ione)) (bas_mat 0) (bas_mat 0) (bas_mat Ione).
+Lemma Gate_Y_matrix_gphase:
+  mat_rot PI PI2 PI2 = gphase (- PI2) .* Gate_Y_matrix.
 Proof.
   unfold mat_rot. simpl.
+  rewrite cos_PI2, sin_PI2. com_simpl.
+  f_equal; f_equal.
+  - rewrite com_mul_comm, com_neg_mul_comm.
+    replace (- PI2 / 2)%R with (- (PI2 / 2))%R by field.
+    rewrite com_iexp_inv_r. unfold gphase, com_iexp.
+    replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
+    rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. lca.
+  - replace (PI2 / 2 + - PI2 / 2)%R with 0%R by field.
+    rewrite com_iexp_0. unfold gphase, com_iexp.
+    replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
+    rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. lca.
+Qed.
+
+Definition Gate_Z_matrix: Matrix 1 :=
+  rec_mat (bas_mat 1) (bas_mat 0)
+          (bas_mat 0) (bas_mat (-1)%R).
+
+Lemma Gate_Z_matrix_unitary: mat_unitary Gate_Z_matrix.
+Proof.
+  unfold mat_unitary, Gate_Z_matrix. simpl.
+  split; f_equal; f_equal; lca.
+Qed.
+
+Lemma Gate_Z_matrix_Hermitian: mat_Hermitian Gate_Z_matrix.
+Proof.
+  unfold mat_Hermitian, Gate_Z_matrix. simpl.
+  f_equal; f_equal; lca.
+Qed.
+
+Lemma Gate_Z_matrix_gphase:
+  mat_rot 0 0 PI = gphase (- PI2) .* Gate_Z_matrix.
+Proof.
+  unfold mat_rot, Gate_Z_matrix. simpl.
   replace (- 0 / 2)%R with 0%R by field.
   replace (0 / 2)%R with 0%R by field.
-  rewrite com_iexp_0, cos_0, sin_0.
+  rewrite cos_0, sin_0.
   com_simpl.
-  f_equal; f_equal; try com_simpl.
+  f_equal; f_equal; try lca.
   - replace (- PI / 2)%R with (- (PI / 2))%R by field.
-    unfold com_iexp.
-    rewrite cos_neg, sin_neg, cos_PI2, sin_PI2.
-    lca.
-  - unfold com_iexp.
-    rewrite cos_PI2, sin_PI2.
-    lca.
+    replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
+    reflexivity.
+  - replace PI2 with (PI / 2)%R by (unfold PI; field; lra).
+    unfold gphase, com_iexp.
+    rewrite cos_neg, sin_neg, cos_PI2, sin_PI2. lca.
 Qed.
 
-Lemma Gate_Z_rot_matrix_square:
-  (mat_rot 0 0 PI) * (mat_rot 0 0 PI) = (-1)%R .* mat_eye.
+Lemma Gate_P_rot_matrix_mul:
+  forall (l1 l2: R),
+  (mat_rot 0 0 l1) * (mat_rot 0 0 l2) = mat_rot 0 0 (l1 + l2)%R.
 Proof.
-  rewrite Gate_Z_rot_matrix.
-  simpl. com_simpl.
-  f_equal; f_equal. lca.
-Qed.
-
-Lemma Pauli_Gate_matrix_neg_eye_extend:
-  forall (qbit: nat), nq > qbit ->
-  forall (A: Matrix 1), A * A = (-1)%R .* mat_eye ->
-  (mat_single nq qbit A) * (mat_single nq qbit A) = (-1)%R .* mat_eye.
-Proof.
-  intros qbit H.
-  intros A HA.
-  rewrite mat_single_factorized.
-  rewrite HA.
-  rewrite (mat_single_scale nq qbit mat_eye _ H).
-  rewrite mat_single_eye.
-  reflexivity.
-Qed.
-
-Lemma Pauli_Gate_matrix_den_uop:
-  forall (qbit: nat), nq > qbit ->
-  forall (A: Matrix 1), A * A = (-1)%R .* mat_eye ->
-  forall (U: Matrix nq),
-  den_uop (mat_single nq qbit A) (den_uop (mat_single nq qbit A) U) = U.
-Proof.
-  intros qbit H A HA U.
-  assert (HS: (mat_single nq qbit A) * (mat_single nq qbit A) = (-1)%R .* mat_eye).
-  apply (Pauli_Gate_matrix_neg_eye_extend qbit H A HA).
-  unfold den_uop.
-  remember (mat_single nq qbit A) as B.
-  rewrite (mat_mul_assoc B _ _), (mat_mul_assoc B _ _), <- (mat_mul_assoc _ (B†) (B†)).
-  rewrite <- mat_mul_conjtrans.
-  rewrite HS.
-  rewrite mat_scale_conjtrans, mat_scale_mul_assoc, mat_mul_eye_l.
-  rewrite mat_scale_mul_comm, <- mat_scale_cmul_assoc, mat_eye_conjtrans.
-  rewrite <- mat_scale_mul_comm, mat_mul_eye_r.
-  com_simpl.
-  assert (Hcom: ((-1)%R * (-1)%R = Cone)%com). lca.
-  rewrite Hcom, mat_scale_1. reflexivity.
-Qed.
+  intros l1 l2.
+  unfold mat_rot.
+  rewrite mat_rot_y_0_eye, mat_rot_z_0_eye.
+  repeat rewrite mat_mul_eye_l.
+  unfold mat_rot_z.
+  simpl.
+  f_equal; f_equal; com_simpl.
+Admitted.
 
 End Gate_properties.

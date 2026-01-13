@@ -28,6 +28,28 @@ End SINGLE.
 
 Section PROPERTIES.
 
+Lemma mat_rot_y_0_eye : mat_rot_y 0 = mat_eye.
+Proof.
+  unfold mat_rot_y.
+  simpl.
+  f_equal; f_equal.
+  all: replace (0 / 2)%R with 0%R by field.
+  all: try rewrite cos_0.
+  all: try rewrite sin_0.
+  all: lca.
+Qed.
+
+Lemma mat_rot_z_0_eye : mat_rot_z 0 = mat_eye.
+Proof.
+  unfold mat_rot_z.
+  simpl.
+  f_equal; f_equal.
+  - replace (- 0 / 2)%R with 0%R by field.
+    apply com_iexp_0.
+  - replace (0 / 2)%R with 0%R by field.
+    apply com_iexp_0.
+Qed.
+
 Lemma mat_rot_y_unitary : forall θ, mat_unitary (mat_rot_y θ).
 Proof.
   intros.

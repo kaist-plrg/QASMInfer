@@ -35,6 +35,13 @@ Definition Instruction_equiv (instr1 instr2: Instruction): Prop :=
   (Execute_suppl nq instr1 ps)
   (Execute_suppl nq instr2 ps).
 
+Definition Instruction_behavioral_equiv (instr1 instr2: Instruction): Prop :=
+  forall (ps: ProgramState nq),
+  ProgramState_invariant nq ps ->
+  ProgramState_behavioral_equiv
+  (Execute_suppl nq instr1 ps)
+  (Execute_suppl nq instr2 ps).
+
 (* Equality of result, weakest equality definition *)
 Definition Instruction_result_equiv (instr1 instr2: Instruction): Prop :=
   Execute_and_calculate_prob nq nc instr1 = Execute_and_calculate_prob nq nc instr2.
@@ -43,19 +50,42 @@ Lemma ProgramState_equiv_implies_behavioral_equiv:
   forall (ps1 ps2: ProgramState nq),
   ProgramState_equiv ps1 ps2 -> ProgramState_behavioral_equiv ps1 ps2.
 Proof.
-    intros ps1 ps2 Heq.
-    unfold ProgramState_behavioral_equiv.
-    intros cstate.
-    unfold ProgramState_equiv, PositiveMap.Equal in Heq.
-    destruct (PositiveMap.find cstate ps1) eqn:H1.
-    - right. exists b. exists b.
-      split; split.
-      { rewrite <- Heq. apply H1. }
-      { reflexivity. }
-    - left.
-      split.
-      { reflexivity. }
-      { rewrite <- Heq. apply H1. }
+  intros ps1 ps2 Heq.
+  unfold ProgramState_behavioral_equiv.
+  intros cstate.
+  unfold ProgramState_equiv, PositiveMap.Equal in Heq.
+  destruct (PositiveMap.find cstate ps1) eqn:H1.
+  - right. exists b. exists b.
+    split; split.
+    { rewrite <- Heq. apply H1. }
+    { reflexivity. }
+  - left.
+    split.
+    { reflexivity. }
+    { rewrite <- Heq. apply H1. }
 Qed.
+
+Corollary Instruction_equiv_implies_behavioral_equiv:
+  forall (instr1 instr2: Instruction),
+  Instruction_equiv instr1 instr2 -> Instruction_behavioral_equiv instr1 instr2.
+Proof.
+  intros instr1 instr2 Hequiv ps Hinv.
+  apply ProgramState_equiv_implies_behavioral_equiv.
+  apply Hequiv.
+  apply Hinv.
+Qed.
+
+Theorem Instruction_equiv_rewrite:
+  forall (pre_instr post_instr instr1 instr2: Instruction),
+  Instruction_equiv instr1 instr2 ->
+  Instruction_equiv
+  (SeqInstr pre_instr (SeqInstr instr1 post_instr))
+  (SeqInstr pre_instr (SeqInstr instr2 post_instr)).
+Proof.
+  intros pre post instr1 instr2 Hequiv ps Hinv.
+  simpl.
+  unfold ProgramState_equiv.
+  remember (Execute_suppl nq pre ps) as ps'.
+Admitted.
 
 End Equivalence.
