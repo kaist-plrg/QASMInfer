@@ -89,12 +89,60 @@ Proof.
   - apply mat_eye_unitary.
 Qed.
 
+Lemma mat_swap2_Hermitian : mat_Hermitian mat_swap2.
+Proof.
+  unfold mat_swap2, mat_Hermitian.
+  f_equal; f_equal; f_equal; com_simpl.
+Qed.
+
+Lemma mat_swap_1n_Hermitian : forall n, mat_Hermitian (mat_swap_1n n).
+Proof.
+  induction n as [|[|[|n']]].
+  1-3: unfold mat_Hermitian; simpl; repeat f_equal; com_simpl.
+  unfold mat_Hermitian in *.
+  unfold mat_swap_1n in *.
+  replace (mat_swap_1n_suppl (S n')) with ((mat_swap2 ⊗ mat_eye) * ((@mat_eye 1) ⊗ mat_swap_1n_suppl n') * (mat_swap2 ⊗ mat_eye)) by reflexivity.
+  replace (mat_swap2 ⊗ (@mat_eye (S n'))) with ((mat_swap2 ⊗ (@mat_eye (S n')))†) at 2 4.
+  - apply mat_mul_conj_Hermitian.
+    apply (tprod_Hermitian (m:=1) (n:=S (S n'))).
+    + apply mat_eye_Hermitian.
+    + apply IHn.
+  - apply tprod_Hermitian.
+    + apply mat_swap2_Hermitian.
+    + apply mat_eye_Hermitian.
+Qed.
+
+Lemma mat_swap_Hermitian : forall n q1 q2, mat_Hermitian (@mat_swap n q1 q2).
+Proof.
+  intros.
+  unfold mat_swap; destruct (lt_dec q1 n) as [H1|H1], (lt_dec q2 n) as [H2|H2].
+  - destruct (lt_eq_lt_dec q1 q2) as [[H|H]|H].
+    all: simpl_eq.
+    2: apply mat_eye_Hermitian.
+    all: apply tprod_Hermitian.
+    1, 3: apply tprod_Hermitian.
+    all: try apply mat_eye_Hermitian.
+    all: apply mat_swap_1n_Hermitian.
+  - apply mat_eye_Hermitian.
+  - apply mat_eye_Hermitian.
+  - apply mat_eye_Hermitian.
+Qed.
+
 Lemma mat_swap_op_unitary : forall n q1 q2 (U: Matrix n), mat_unitary U -> mat_unitary (mat_swap_op q1 q2 U).
 Proof.
   intros.
   unfold mat_swap_op.
   repeat apply mat_mul_unitary.
   all: try apply mat_swap_unitary; auto.
+Qed.
+
+Lemma mat_swap_op_Hermitian : forall n q1 q2 (U: Matrix n), mat_Hermitian U -> mat_Hermitian (mat_swap_op q1 q2 U).
+Proof.
+  intros.
+  unfold mat_swap_op.
+  replace (mat_swap q1 q2) with ((@mat_swap n q1 q2)†) at 2 by apply mat_swap_Hermitian.
+  apply mat_mul_conj_Hermitian.
+  apply H.
 Qed.
 
 End SWAP_PROPERTIES.
