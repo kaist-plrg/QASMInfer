@@ -436,4 +436,50 @@ Proof.
   - reflexivity.
 Qed.
 
+(* TODO : Pauli gate covered by S gate *)
+
+Lemma Transform_swap_swap: forall (qbit1 qbit2: nat),
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+  (SeqInstr (SwapInstr qbit1 qbit2) (SwapInstr qbit1 qbit2))
+  NopInstr.
+Proof.
+  intros qbit1 qbit2 Hq1 Hq2.
+  intros ps Hinv cstate.
+  simpl.
+  unfold Execute_swap_instr.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find cstate ps); simpl.
+  - f_equal.
+    unfold Execute_swap_instr_branch.
+    destruct b; simpl; f_equal.
+    apply den_uop_involutive.
+    + apply mat_swap_unitary.
+    + apply mat_swap_Hermitian.
+  - reflexivity.
+Qed.
+
+Lemma Transform_cnot_cnot: forall (qbit1 qbit2: nat),
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+  (SeqInstr (CnotInstr qbit1 qbit2) (CnotInstr qbit1 qbit2))
+  NopInstr.
+Proof.
+  intros qbit1 qbit2 Hq1 Hq2.
+  intros ps Hinv cstate.
+  simpl.
+  unfold Execute_cnot_instr.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find cstate ps); simpl.
+  - f_equal.
+    unfold Execute_cnot_instr_branch.
+    destruct b; simpl; f_equal.
+    apply den_uop_involutive.
+    + apply mat_cnot_unitary.
+    + apply mat_cnot_Hermitian.
+  - reflexivity.
+Qed.
+
 End TRANSFORM.
