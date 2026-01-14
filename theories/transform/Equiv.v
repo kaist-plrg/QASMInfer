@@ -16,7 +16,7 @@ Bind Scope nat_scope with nat.
 Open Scope Matrix_scope.
 Import List.ListNotations.
 
-Section Equivalence.
+Section EQUIVALENCE.
 
 Variable nq: nat.
 Variable nc: nat.
@@ -337,17 +337,13 @@ Theorem Instruction_equiv_rewrite:
 Proof.
   intros pre post instr1 instr2 Hequiv ps Hinv.
   simpl.
-  unfold ProgramState_equiv.
-  remember (Execute_suppl nq pre ps) as ps'.
-  assert (Hinv': ProgramState_invariant nq ps').
-  {
-    rewrite Heqps'. apply Execute_suppl_valid_invariant. apply Hinv.
-  }
   apply Execute_suppl_Proper.
-  apply (Hequiv ps' Hinv').
+  apply Hequiv.
+  apply Execute_suppl_valid_invariant.
+  apply Hinv.
 Qed.
 
-Theorem Instruction_equiv_nop:
+Lemma Instruction_equiv_nop:
   forall (pre_instr post_instr: Instruction),
   Instruction_equiv
   (SeqInstr pre_instr (SeqInstr NopInstr post_instr))
@@ -359,4 +355,15 @@ Proof.
   apply ProgramState_equiv_equivalence.
 Qed.
 
-End Equivalence.
+Lemma SeqInstr_assoc :
+  forall a b c : Instruction,
+    Instruction_equiv
+      (SeqInstr (SeqInstr a b) c)
+      (SeqInstr a (SeqInstr b c)).
+Proof.
+  intros a b c ps Hinv.
+  simpl.
+  reflexivity.
+Qed.
+
+End EQUIVALENCE.

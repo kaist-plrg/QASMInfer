@@ -555,7 +555,7 @@ Ltac com_simpl := repeat (
   rewrite com_cos_conj ||
   rewrite com_neg_mul_comm ||
   rewrite com_neg_conj_comm ||
-  rewrite com_exp_0 || rewrite com_iexp_0 ||
+  rewrite com_exp_0 || rewrite com_iexp_0 || rewrite com_iexp_PI ||
   rewrite com_iexp_PI2 || rewrite com_iexp_pi2 || rewrite com_iexp_neg_PI2 || rewrite com_iexp_neg_pi2 ||
   rewrite com_iexp_inv_l || rewrite com_iexp_inv_l' || rewrite com_iexp_inv_r || rewrite com_iexp_inv_r' ||
   rewrite com_exp_conj_comm || rewrite com_iexp_conj_anticomm ||

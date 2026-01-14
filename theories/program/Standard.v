@@ -8,7 +8,7 @@ From Stdlib Require Export Program.Equality.
 Bind Scope Complex_scope with Complex.
 Open Scope Matrix_scope.
 
-Section Gates.
+Section GATES.
 (* Defining Standard Gates *)
 (* https://github.com/Qiskit/qiskit/blob/main/qiskit/qasm/libs/qelib1.inc *)
 
@@ -39,9 +39,9 @@ Definition Gate_S (qbit: nat): Instruction :=
 Definition Gate_Sdg (qbit: nat): Instruction :=
   Gate_P (-PI2) qbit.
 
-End Gates.
+End GATES.
 
-Section Gate_properties.
+Section GATE_PROPERTIES.
 
 Variable nq: nat.
 
@@ -60,6 +60,15 @@ Proof.
   mat_sort.
   com_simpl.
   mat_simpl.
+Qed.
+
+Lemma mat_Hermitian_unitary__involutory:
+  forall {n: nat} (A: Matrix n),
+  mat_Hermitian A -> mat_unitary A -> A * A = mat_eye.
+Proof.
+  intros n A HH Hu.
+  rewrite <- HH at 2.
+  apply (proj2 Hu).
 Qed.
 
 Definition Gate_X_matrix: Matrix 1 :=
@@ -140,6 +149,7 @@ Proof.
   unfold mat_rot, Gate_Z_matrix, gphase.
   rewrite mat_rot_y_0_eye, mat_rot_z_0_eye.
   mat_simpl.
+  unfold mat_rot_z.
   f_equal; f_equal; com_simpl.
 Qed.
 
@@ -186,7 +196,7 @@ Proof.
   intros l1 l2.
   unfold mat_rot.
   rewrite mat_rot_y_0_eye, mat_rot_z_0_eye.
-  mat_simpl.
+  mat_simpl. unfold mat_rot_z.
   f_equal; f_equal; com_simpl; f_equal; lra.
 Qed.
 
@@ -275,4 +285,52 @@ Proof.
   f_equal; f_equal; lca.
 Qed.
 
-End Gate_properties.
+Lemma Gate_matrix_H_X__eq__Z_H:
+  Gate_H_matrix * Gate_X_matrix = Gate_Z_matrix * Gate_H_matrix.
+Proof.
+  com_simpl.
+  f_equal; f_equal; lca.
+Qed.
+
+Corollary Gate_matrix_H_X_H__eq__Z:
+  Gate_H_matrix * Gate_X_matrix * Gate_H_matrix = Gate_Z_matrix.
+Proof.
+  rewrite Gate_matrix_H_X__eq__Z_H.
+  rewrite <- mat_mul_assoc.
+  rewrite (mat_Hermitian_unitary__involutory Gate_H_matrix).
+  - mat_simpl.
+  - apply Gate_H_matrix_Hermitian.
+  - apply Gate_H_matrix_unitary.
+Qed.
+
+Corollary Gate_matrix_H_Z_H__eq__X:
+  Gate_H_matrix * Gate_Z_matrix * Gate_H_matrix = Gate_X_matrix.
+Proof.
+  rewrite <- mat_mul_assoc.
+  rewrite <- Gate_matrix_H_X__eq__Z_H.
+  mat_sort.
+  rewrite (mat_Hermitian_unitary__involutory Gate_H_matrix).
+  - mat_simpl.
+  - apply Gate_H_matrix_Hermitian.
+  - apply Gate_H_matrix_unitary.
+Qed.
+
+Lemma Gate_matrix_H_Y__eq__Y_H:
+  Gate_H_matrix * Gate_Y_matrix = gphase PI .* Gate_Y_matrix * Gate_H_matrix.
+Proof.
+  unfold gphase; com_simpl.
+  f_equal; f_equal; com_simpl.
+Qed.
+
+Corollary Gate_matrix_H_Y_H__eq__Y:
+  Gate_H_matrix * Gate_Y_matrix * Gate_H_matrix = gphase PI .* Gate_Y_matrix.
+Proof.
+  rewrite Gate_matrix_H_Y__eq__Y_H.
+  rewrite <- mat_mul_assoc.
+  rewrite (mat_Hermitian_unitary__involutory Gate_H_matrix).
+  - mat_simpl.
+  - apply Gate_H_matrix_Hermitian.
+  - apply Gate_H_matrix_unitary.
+Qed.
+
+End GATE_PROPERTIES.

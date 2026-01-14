@@ -17,7 +17,7 @@ Bind Scope nat_scope with nat.
 Open Scope Matrix_scope.
 Import List.ListNotations.
 
-Section Transform.
+Section TRANSFORM.
 
 Variable nq: nat.
 
@@ -364,4 +364,76 @@ Proof.
   - reflexivity.
 Qed.
 
-End Transform.
+Lemma Transform_H_X_H: forall (qbit: nat),
+  Qbit_index_valid qbit ->
+  Instruction_equiv nq
+  (SeqInstr (Gate_H qbit) (SeqInstr (Gate_X qbit) (Gate_H qbit)))
+  (Gate_Z qbit).
+Proof.
+  intros qbit H ps Hinv cstate.
+  simpl.
+  unfold Execute_rotate_instr.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find cstate ps); simpl.
+  - f_equal.
+    unfold Execute_rotate_instr_branch.
+    destruct b; simpl; f_equal.
+    rewrite den_uop_den_uop, den_uop_den_uop, mat_single_factorized, mat_single_factorized.
+    rewrite Gate_H_matrix_gphase, Gate_X_matrix_gphase, Gate_Z_matrix_gphase.
+    rewrite <- mat_scale_mul_comm, mat_scale_mul_assoc, <- mat_scale_mul_comm.
+    repeat rewrite mat_scale_mul_assoc.
+    rewrite Gate_matrix_H_X_H__eq__Z.
+    repeat rewrite (Gate_matrix_den_uop_gphase _ _ H).
+    reflexivity.
+  - reflexivity.
+Qed.
+
+Lemma Transform_H_Y_H: forall (qbit: nat),
+  Qbit_index_valid qbit ->
+  Instruction_equiv nq
+  (SeqInstr (Gate_H qbit) (SeqInstr (Gate_Y qbit) (Gate_H qbit)))
+  (Gate_Y qbit).
+Proof.
+  intros qbit H ps Hinv cstate.
+  simpl.
+  unfold Execute_rotate_instr.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find cstate ps); simpl.
+  - f_equal.
+    unfold Execute_rotate_instr_branch.
+    destruct b; simpl; f_equal.
+    rewrite den_uop_den_uop, den_uop_den_uop, mat_single_factorized, mat_single_factorized.
+    rewrite Gate_H_matrix_gphase, Gate_Y_matrix_gphase.
+    rewrite <- mat_scale_mul_comm, mat_scale_mul_assoc, <- mat_scale_mul_comm.
+    repeat rewrite mat_scale_mul_assoc.
+    rewrite Gate_matrix_H_Y_H__eq__Y.
+    repeat rewrite (Gate_matrix_den_uop_gphase _ _ H).
+    reflexivity.
+  - reflexivity.
+Qed.
+
+Lemma Transform_H_Z_H: forall (qbit: nat),
+  Qbit_index_valid qbit ->
+  Instruction_equiv nq
+  (SeqInstr (Gate_H qbit) (SeqInstr (Gate_Z qbit) (Gate_H qbit)))
+  (Gate_X qbit).
+Proof.
+  intros qbit H ps Hinv cstate.
+  simpl.
+  unfold Execute_rotate_instr.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find cstate ps); simpl.
+  - f_equal.
+    unfold Execute_rotate_instr_branch.
+    destruct b; simpl; f_equal.
+    rewrite den_uop_den_uop, den_uop_den_uop, mat_single_factorized, mat_single_factorized.
+    rewrite Gate_H_matrix_gphase, Gate_X_matrix_gphase, Gate_Z_matrix_gphase.
+    rewrite <- mat_scale_mul_comm, mat_scale_mul_assoc, <- mat_scale_mul_comm.
+    repeat rewrite mat_scale_mul_assoc.
+    rewrite Gate_matrix_H_Z_H__eq__X.
+    repeat rewrite (Gate_matrix_den_uop_gphase _ _ H).
+    reflexivity.
+  - reflexivity.
+Qed.
+
+End TRANSFORM.
