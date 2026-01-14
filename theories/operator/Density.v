@@ -121,6 +121,20 @@ Proof.
   mat_sort.
 Qed.
 
+Lemma den_uop_involutive:
+  forall {n: nat} (A Q: Matrix n),
+  mat_unitary A -> mat_Hermitian A ->
+  den_uop A (den_uop A Q) = Q.
+Proof.
+  intros n A Q Hu HH.
+  rewrite den_uop_den_uop.
+  rewrite <- HH at 2.
+  rewrite (proj2 Hu).
+  unfold den_uop.
+  rewrite mat_eye_conjtrans.
+  mat_simpl.
+Qed.
+
 End UOP.
 
 Section MEASURE.

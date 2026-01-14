@@ -58,8 +58,7 @@ Proof.
   rewrite (mat_single_scale _ _ _ _ H).
   rewrite mat_scale_conjtrans.
   mat_sort.
-  rewrite com_iexp_conj_anticomm.
-  rewrite com_iexp_inv_l.
+  com_simpl.
   mat_simpl.
 Qed.
 
@@ -85,7 +84,7 @@ Proof.
   unfold mat_rot, gphase.
   rewrite mat_rot_z_0_eye.
   mat_simpl.
-  rewrite cos_PI2, sin_PI2, com_iexp_neg_PI2, com_iexp_neg_pi2, com_iexp_PI2.
+  rewrite cos_PI2, sin_PI2.
   f_equal; f_equal; com_simpl.
 Qed.
 
@@ -110,13 +109,13 @@ Lemma Gate_Y_matrix_gphase:
 Proof.
   unfold mat_rot, gphase.
   mat_simpl.
-  rewrite cos_PI2, sin_PI2, com_iexp_neg_pi2.
+  rewrite cos_PI2, sin_PI2.
   f_equal; f_equal; com_simpl.
   - rewrite com_mul_comm, com_neg_mul_comm.
     replace (- PI2 / 2)%R with (- (PI2 / 2))%R by field.
-    rewrite com_iexp_inv_r. lca.
+    com_simpl.
   - replace (PI2 / 2 + - PI2 / 2)%R with 0%R by field.
-    rewrite com_iexp_0. lca.
+    com_simpl.
 Qed.
 
 Definition Gate_Z_matrix: Matrix 1 :=
@@ -141,8 +140,7 @@ Proof.
   unfold mat_rot, Gate_Z_matrix, gphase.
   rewrite mat_rot_y_0_eye, mat_rot_z_0_eye.
   mat_simpl.
-  rewrite com_iexp_neg_pi2, com_iexp_neg_PI2, com_iexp_PI2.
-  f_equal; f_equal; lca.
+  f_equal; f_equal; com_simpl.
 Qed.
 
 Definition Gate_H_matrix: Matrix 1 :=
@@ -175,8 +173,7 @@ Lemma Gate_H_matrix_gphase:
 Proof.
   unfold mat_rot, gphase.
   rewrite mat_rot_z_0_eye.
-  mat_simpl.
-  rewrite com_iexp_neg_pi2, com_iexp_PI2, com_iexp_neg_PI2.
+  mat_simpl. com_simpl.
   replace (PI2 / 2)%R with (PI / 4)%R by (unfold PI; field).
   rewrite sin_PI4, cos_PI4.
   f_equal; f_equal; lca.
@@ -239,16 +236,42 @@ Qed.
 Lemma Gate_matrix_X_Y__eq__Z:
   Gate_X_matrix * Gate_Y_matrix = gphase PI2 .* Gate_Z_matrix.
 Proof.
-  simpl; unfold gphase; com_simpl.
-  rewrite com_iexp_pi2.
+  unfold gphase; com_simpl.
   f_equal; f_equal; lca.
 Qed.
 
 Lemma Gate_matrix_Y_X__eq__Z:
   Gate_Y_matrix * Gate_X_matrix = gphase (-PI2) .* Gate_Z_matrix.
 Proof.
-  simpl; unfold gphase; com_simpl.
-  rewrite com_iexp_neg_pi2.
+  unfold gphase; com_simpl.
+  f_equal; f_equal; lca.
+Qed.
+
+Lemma Gate_matrix_Y_Z__eq__X:
+  Gate_Y_matrix * Gate_Z_matrix = gphase PI2 .* Gate_X_matrix.
+Proof.
+  unfold gphase; com_simpl.
+  f_equal; f_equal; lca.
+Qed.
+
+Lemma Gate_matrix_Z_Y__eq__X:
+  Gate_Z_matrix * Gate_Y_matrix = gphase (-PI2) .* Gate_X_matrix.
+Proof.
+  unfold gphase; com_simpl.
+  f_equal; f_equal; lca.
+Qed.
+
+Lemma Gate_matrix_Z_X__eq__Y:
+  Gate_Z_matrix * Gate_X_matrix = gphase PI2 .* Gate_Y_matrix.
+Proof.
+  unfold gphase; com_simpl.
+  f_equal; f_equal; lca.
+Qed.
+
+Lemma Gate_matrix_X_Z__eq__Y:
+  Gate_X_matrix * Gate_Z_matrix = gphase (-PI2) .* Gate_Y_matrix.
+Proof.
+  unfold gphase; com_simpl.
   f_equal; f_equal; lca.
 Qed.
 
