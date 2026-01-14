@@ -213,7 +213,6 @@ Proof.
     all: auto.
 Qed.
 
-
 Lemma mat_not2_unitary : mat_unitary mat_not2.
 Proof.
   unfold mat_not2, mat_unitary; simpl; split; repeat f_equal; com_simpl.
@@ -224,6 +223,48 @@ Proof.
   intros.
   apply mat_ctrl_single_unitary.
   apply mat_not2_unitary.
+Qed.
+
+Lemma mat_ctrl_single_Hermitian : forall n c t (U: Matrix 1), mat_Hermitian U -> mat_Hermitian (mat_ctrl_single n c t U).
+Proof.
+  intros n c t U HU.
+  revert c t.
+  induction n.
+  - intros; mat_simpl.
+    unfold mat_Hermitian.
+    simpl; f_equal; lca.
+  - intros; destruct c, t.
+    + unfold mat_ctrl_single.
+      apply mat_eye_Hermitian.
+    + unfold mat_ctrl_single.
+      apply mat_add_Hermitian; apply (tprod_Hermitian (m:=1)).
+      * apply mat_proj0_base_Hermitian.
+      * apply mat_eye_Hermitian.
+      * apply mat_proj1_base_Hermitian.
+      * apply mat_single_Hermitian. apply HU.
+    + unfold mat_ctrl_single.
+      apply mat_add_Hermitian; apply (tprod_Hermitian (m:=1)).
+      * apply mat_eye_Hermitian.
+      * apply mat_proj0_projection.
+      * apply HU.
+      * apply mat_proj1_projection.
+    + replace (mat_ctrl_single (S n) (S c) (S t) U) with ((@mat_eye 1) ⊗ mat_ctrl_single n c t U) by reflexivity.
+      apply (tprod_Hermitian (m:=1)).
+      * apply mat_eye_Hermitian.
+      * apply IHn.
+Qed.
+
+Lemma mat_not2_Hermitian : mat_Hermitian mat_not2.
+Proof.
+  unfold mat_not2, mat_Hermitian.
+  simpl; f_equal; f_equal; lca.
+Qed.
+
+Lemma mat_cnot_Hermitian : forall n qc qt, mat_Hermitian (@mat_cnot n qc qt).
+Proof.
+  intros.
+  apply mat_ctrl_single_Hermitian.
+  apply mat_not2_Hermitian.
 Qed.
 
 End CNOT_PROPERTIES.
