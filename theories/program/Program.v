@@ -28,10 +28,43 @@ Inductive Instruction : Type :=
 | CnotInstr: nat -> nat -> Instruction  (* CnotInstr a b: flip b iff a *)
 | SwapInstr: nat -> nat -> Instruction  (* SwapInstr a b: swap a b *)
 | MeasureInstr: nat -> nat -> Instruction  (* MeasureInstr q c: *)
-| SeqInstr: Instruction -> Instruction -> Instruction
+| SeqInstr: list Instruction -> Instruction
 | IfInstr: nat -> bool -> Instruction -> Instruction  (* if cbit == 0 (false) or cbit == 1 (true) *)
 | ResetInstr: nat -> Instruction.  (* reset qbit to 0 *)
 
+Lemma Instruction_ind' :
+  forall (P : Instruction -> Prop),
+    P NopInstr ->
+    (forall theta phi lambda target, P (RotateInstr theta phi lambda target)) ->
+    (forall control target, P (CnotInstr control target)) ->
+    (forall q1 q2, P (SwapInstr q1 q2)) ->
+    (forall qbit cbit, P (MeasureInstr qbit cbit)) ->
+    (forall is, Forall P is -> P (SeqInstr is)) ->
+    (forall cbit cond subinstr, P subinstr -> P (IfInstr cbit cond subinstr)) ->
+    (forall target, P (ResetInstr target)) ->
+    forall instr, P instr.
+Proof.
+  intros P Hnop Hrot Hcnot Hswap Hmeas Hseq Hif Hreset.
+
+  fix IH 1.
+  intro instr.
+  destruct instr.
+  - exact Hnop.
+  - exact (Hrot r r0 r1 n).
+  - exact (Hcnot n n0).
+  - exact (Hswap n n0).
+  - exact (Hmeas n n0).
+  - (* SeqInstr l *)
+    apply Hseq.
+    induction l as [|x xs IHxs].
+    + constructor.
+    + constructor.
+      * exact (IH x).
+      * exact IHxs.
+  - (* IfInstr *)
+    exact (Hif n b instr (IH instr)).
+  - exact (Hreset n).
+Qed.
 
 (* ============================================================================================== *)
 (* classical state as positive numbers ========================================================= *)
@@ -645,7 +678,7 @@ Fixpoint Execute_suppl (instr: Instruction) (ps: ProgramState): ProgramState :=
     | CnotInstr control target            => Execute_cnot_instr control target ps
     | SwapInstr q1 q2                     => Execute_swap_instr q1 q2 ps
     | MeasureInstr qbit cbit              => Execute_measure_instr qbit cbit ps
-    | SeqInstr i1 i2                      => Execute_suppl i2 (Execute_suppl i1 ps)
+    | SeqInstr il                         => List.fold_left (fun ps' instr => Execute_suppl instr ps') il ps
     | IfInstr cbit cond subinstr          => PositiveMap.fold (fun cstate b acc =>
         let ps_single := PositiveMap.add cstate b (PositiveMap.empty Branch) in
         ProgramState_merge acc (
@@ -1047,20 +1080,24 @@ Lemma Execute_suppl_valid:
   forall (instr: Instruction) (ps: ProgramState),
   ProgramState_valid ps -> ProgramState_valid (Execute_suppl instr ps).
 Proof.
-  induction instr.
+  induction instr using Instruction_ind'.
   all: intros; simpl.
   - exact H.
   - apply Execute_rotate_instr_valid; apply H.
   - apply Execute_cnot_instr_valid; apply H.
   - apply Execute_swap_instr_valid; apply H.
   - apply Execute_measure_instr_valid; apply H.
-  - apply IHinstr2; apply IHinstr1; apply H.
+  - generalize dependent ps. induction is; simpl; intros.
+    + apply H0.
+    + inversion H. apply IHis.
+      * apply H4.
+      * apply H3. apply H0.
   - apply PProperties.fold_rec_nodep.
     + unfold ProgramState_valid; intros.
       apply PFacts.empty_mapsto_iff in H0.
       contradiction.
     + intros cstate_fold branch_fold acc Hmaps_fold Hacc_valid.
-      destruct (eqb (CState_read n cstate_fold) b) eqn:Hcond.
+      destruct (eqb (CState_read cbit cstate_fold) cond) eqn:Hcond.
       all: apply (ProgramState_merge_valid _ _ Hacc_valid).
       1: apply IHinstr.
       all: intros cstate' branch' Hmaps'.
@@ -1078,18 +1115,20 @@ Lemma Execute_suppl_prob_valid:
   ProgramState_valid ps ->
   ProgramState_sum_prob ps = ProgramState_sum_prob (Execute_suppl instr ps).
 Proof.
-  induction instr.
+  induction instr using Instruction_ind'.
   all: intros; simpl;
   try (apply ProgramState_map_prob_preserve; intros b; reflexivity).
   - reflexivity.
   - apply Execute_measure_instr_prob_preserve. apply H.
-  - rewrite IHinstr1, IHinstr2.
+  - generalize dependent ps.
+    induction is; simpl; intros.
     + reflexivity.
-    + apply Execute_suppl_valid. apply H.
-    + apply H.
+    + inversion H. rewrite (H3 _ H0). apply IHis.
+      * apply H4.
+      * apply Execute_suppl_valid. apply H0.
   - apply ProgramState_fold_merge_prob_preserve.
     + intros cstate branch Hbvalid.
-      destruct (eqb (CState_read n cstate) b).
+      destruct (eqb (CState_read cbit cstate) cond).
       * rewrite <- IHinstr.
         unfold ProgramState_sum_prob.
         rewrite PositiveMap_fold_map, PProperties.fold_add.
@@ -1227,3 +1266,63 @@ Proof.
 Qed.
 
 End PROGRAM.
+
+(* ============================================================================================== *)
+(* Notation of OpenQASMCore ===================================================================== *)
+
+Definition qasm_seq (i j : Instruction) : Instruction :=
+  match i, j with
+  | SeqInstr is, SeqInstr js => SeqInstr (is ++ js)
+  | SeqInstr is, _          => SeqInstr (is ++ [j])
+  | _,          SeqInstr js => SeqInstr (i :: js)
+  | _,          _           => SeqInstr [i; j]
+  end.
+
+Declare Custom Entry qasm.
+
+Notation "qasm{ e }" := e (e custom qasm at level 99).
+Notation "( x )" := x (in custom qasm at level 0, x at level 99).
+Notation "$ t" := t (in custom qasm at level 0, t constr at level 0).
+Notation "x" := x (in custom qasm at level 0, x constr at level 0).
+
+Notation "'nop'" := NopInstr (in custom qasm at level 0).
+
+Notation "'U' ( θ , φ , λ ) q" :=
+  (RotateInstr θ φ λ q)
+  (in custom qasm at level 0,
+     θ constr at level 0, φ constr at level 0, λ constr at level 0, q constr at level 0).
+
+Notation "'cx' a b" :=
+  (CnotInstr a b)
+  (in custom qasm at level 0, a constr at level 0, b constr at level 0).
+
+Notation "'swap' a b" :=
+  (SwapInstr a b)
+  (in custom qasm at level 0, a constr at level 0, b constr at level 0).
+
+Notation "'measure' q '->' c" :=
+  (MeasureInstr q c)
+  (in custom qasm at level 0, q constr at level 0, c constr at level 0).
+
+Notation "'reset' q" :=
+  (ResetInstr q)
+  (in custom qasm at level 0, q constr at level 0).
+
+Notation "'if' '(' cb '==' 0 ')' i" :=
+  (IfInstr cb false i)
+  (in custom qasm at level 60, right associativity,
+     cb constr at level 0, i custom qasm at level 99).
+
+Notation "'if' '(' cb '==' 1 ')' i" :=
+  (IfInstr cb true i)
+  (in custom qasm at level 60, right associativity,
+     cb constr at level 0, i custom qasm at level 99).
+
+Notation "i ; j" :=
+  (qasm_seq i j)
+  (in custom qasm at level 70, right associativity,
+     i custom qasm, j custom qasm at level 70).
+
+Notation "'seq[' is ']'" :=
+  (SeqInstr is)
+  (in custom qasm at level 0, is constr at level 0).

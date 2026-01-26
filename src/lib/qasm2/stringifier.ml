@@ -91,8 +91,10 @@ let rec string_of_instruction = function
   | CnotInstr (i, j) -> Printf.sprintf "CnotInstr (%d, %d)" i j
   | SwapInstr (i, j) -> Printf.sprintf "SwapInstr (%d, %d)" i j
   | MeasureInstr (i, j) -> Printf.sprintf "MeasureInstr (%d, %d)" i j
-  | SeqInstr (instr1, instr2) ->
-      string_of_instruction instr1 ^ "\n" ^ string_of_instruction instr2
+  (* JYJ TODO : temp *)
+  | SeqInstr [] -> failwith "Empty SeqInstr"
+  | SeqInstr (h :: t) ->
+      string_of_instruction h ^ "\n" ^ string_of_instruction (SeqInstr t)
   | IfInstr (i, b, instr) ->
       Printf.sprintf "IfInstr (%d, %b, \n%s)" i b (string_of_instruction instr)
   | ResetInstr i -> Printf.sprintf "ResetInstr %d" i

@@ -279,13 +279,18 @@ Qed.
 Lemma Execute_suppl_Proper (instr: Instruction):
   Proper (ProgramState_equiv ==> ProgramState_equiv) (Execute_suppl nq instr).
 Proof.
-  induction instr; intros ps1 ps2 Heq; simpl.
+  induction instr using Instruction_ind'; intros ps1 ps2 Heq; simpl.
   - assumption.
   - apply Execute_rotate_instr_Proper. assumption.
   - apply Execute_cnot_instr_Proper. assumption.
   - apply Execute_swap_instr_Proper. assumption.
   - apply Execute_measure_instr_Proper. assumption.
-  - apply IHinstr2. apply IHinstr1. assumption.
+  - revert ps1 ps2 Heq.
+    induction is; intros ps1 ps2 Heq.
+    + simpl. apply Heq.
+    + simpl. inversion H. apply IHis.
+      * apply H3.
+      * apply H2. apply Heq.
   - apply PositiveMap_fold_Proper_gen.
     + intros k b' ps1' ps2' Heq'.
       apply ProgramState_merge_Proper.
@@ -298,6 +303,18 @@ Qed.
 
 (* ============================================================================================== *)
 (* Proof of equivalence ========================================================================= *)
+
+Lemma ProgramState_equiv_Execute_suppl_seq:
+  forall (instr1 instr2: Instruction) (ps: ProgramState nq),
+  ProgramState_equiv
+  (Execute_suppl nq qasm{ instr1; instr2 } ps)
+  (Execute_suppl nq instr2 (Execute_suppl nq instr1 ps)).
+Proof.
+  intros instr1 instr2 ps.
+  destruct instr1; destruct instr2; simpl.
+  all: try (simpl; reflexivity).
+  all: rewrite fold_left_app; reflexivity.
+Qed.
 
 Lemma ProgramState_equiv_implies_behavioral_equiv:
   forall (ps1 ps2: ProgramState nq),
@@ -329,14 +346,14 @@ Proof.
 Qed.
 
 Theorem Instruction_equiv_rewrite:
-  forall (pre_instr post_instr instr1 instr2: Instruction),
+  forall (pre_instr post_instr: Instruction) (instr1 instr2: Instruction),
   Instruction_equiv instr1 instr2 ->
   Instruction_equiv
-  (SeqInstr pre_instr (SeqInstr instr1 post_instr))
-  (SeqInstr pre_instr (SeqInstr instr2 post_instr)).
+  qasm{ pre_instr; instr1; post_instr }
+  qasm{ pre_instr; instr2; post_instr }.
 Proof.
   intros pre post instr1 instr2 Hequiv ps Hinv.
-  simpl.
+  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
   apply Execute_suppl_Proper.
   apply Hequiv.
   apply Execute_suppl_valid_invariant.
@@ -346,22 +363,11 @@ Qed.
 Lemma Instruction_equiv_nop:
   forall (pre_instr post_instr: Instruction),
   Instruction_equiv
-  (SeqInstr pre_instr (SeqInstr NopInstr post_instr))
-  (SeqInstr pre_instr post_instr).
+  qasm{ pre_instr; nop; post_instr }
+  qasm{ pre_instr; post_instr }.
 Proof.
   intros pre post ps Hinv.
-  simpl.
-  apply Execute_suppl_Proper.
-  apply ProgramState_equiv_equivalence.
-Qed.
-
-Lemma SeqInstr_assoc :
-  forall a b c : Instruction,
-    Instruction_equiv
-      (SeqInstr (SeqInstr a b) c)
-      (SeqInstr a (SeqInstr b c)).
-Proof.
-  intros a b c ps Hinv.
+  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
   simpl.
   reflexivity.
 Qed.

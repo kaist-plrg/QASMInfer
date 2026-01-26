@@ -41,6 +41,19 @@ Definition Gate_Sdg (qbit: nat): Instruction :=
 
 End GATES.
 
+Notation "'I' q" := (Gate_I q) (in custom qasm at level 0, q constr at level 0).
+Notation "'X' q" := (Gate_X q) (in custom qasm at level 0, q constr at level 0).
+Notation "'Y' q" := (Gate_Y q) (in custom qasm at level 0, q constr at level 0).
+Notation "'Z' q" := (Gate_Z q) (in custom qasm at level 0, q constr at level 0).
+
+Notation "'H' q" := (Gate_H q) (in custom qasm at level 0, q constr at level 0).
+Notation "'S' q" := (Gate_S q) (in custom qasm at level 0, q constr at level 0).
+Notation "'Sdg' q" := (Gate_Sdg q) (in custom qasm at level 0, q constr at level 0).
+
+Notation "'P' ( λ ) q" :=
+  (Gate_P λ q)
+  (in custom qasm at level 0, λ constr at level 0, q constr at level 0).
+
 Section GATE_PROPERTIES.
 
 Variable nq: nat.

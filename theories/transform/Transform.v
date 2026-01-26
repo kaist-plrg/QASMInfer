@@ -27,7 +27,7 @@ Definition Qbit_index_valid (qbit: nat): Prop :=
 
 Lemma Transform_I: forall (qbit: nat),
   Instruction_equiv nq
-  (Gate_I qbit)
+  qasm{ I qbit }
   NopInstr.
 Proof.
   intros qbit ps Hinv cstate.
@@ -49,7 +49,7 @@ Qed.
 Lemma Transform_X_X: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_X qbit) (Gate_X qbit))
+  qasm{ X qbit; X qbit }
   NopInstr.
 Proof.
   intros qbit H ps Hinv cstate.
@@ -70,7 +70,7 @@ Qed.
 Lemma Transform_Y_Y: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_Y qbit) (Gate_Y qbit))
+  qasm{ Y qbit; Y qbit }
   NopInstr.
 Proof.
   intros qbit H ps Hinv cstate.
@@ -91,7 +91,7 @@ Qed.
 Lemma Transform_Z_Z: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_Z qbit) (Gate_Z qbit))
+  qasm{ Z qbit; Z qbit }
   NopInstr.
 Proof.
   intros qbit H ps Hinv cstate.
@@ -112,7 +112,7 @@ Qed.
 Lemma Transform_H_H: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_H qbit) (Gate_H qbit))
+  qasm{ H qbit; H qbit }
   NopInstr.
 Proof.
   intros qbit H ps Hinv cstate.
@@ -133,8 +133,8 @@ Qed.
 Lemma Transform_P_P: forall (qbit: nat) (l1 l2: R),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_P l1 qbit) (Gate_P l2 qbit))
-  (Gate_P (l1 + l2)%R qbit).
+  qasm{ P (l1) qbit; P (l2) qbit }
+  qasm{ P ((l1 + l2)%R) qbit }.
 Proof.
   intros qbit l1 l2 H ps Hinv cstate.
   simpl.
@@ -154,8 +154,8 @@ Qed.
 Lemma Transform_P_periodic: forall (qbit: nat) (l: R),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (Gate_P l qbit)
-  (Gate_P (l + 2*PI) qbit).
+  qasm{ P (l) qbit }
+  qasm{ P ((l + 2*PI)%R) qbit }.
 Proof.
   intros qbit l H ps Hinv cstate.
   simpl.
@@ -174,8 +174,8 @@ Qed.
 Corollary Transform_S_S: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_S qbit) (Gate_S qbit))
-  (Gate_Z qbit).
+  qasm{ S qbit; S qbit }
+  qasm{ Z qbit }.
 Proof.
   intros qbit H.
   unfold Gate_S, Gate_Z.
@@ -186,7 +186,7 @@ Qed.
 Corollary Transform_S_Sdg: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_S qbit) (Gate_Sdg qbit))
+  qasm{ S qbit; Sdg qbit }
   NopInstr.
 Proof.
   intros qbit H.
@@ -200,7 +200,7 @@ Qed.
 Corollary Transform_Sdg_S: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_Sdg qbit) (Gate_S qbit))
+  qasm{ Sdg qbit; S qbit }
   NopInstr.
 Proof.
   intros qbit H.
@@ -214,8 +214,8 @@ Qed.
 Corollary Transform_Sdg_Sdg: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_Sdg qbit) (Gate_Sdg qbit))
-  (Gate_Z qbit).
+  qasm{ Sdg qbit; Sdg qbit }
+  qasm{ Z qbit }.
 Proof.
   intros qbit H.
   unfold Gate_S, Gate_Sdg, Gate_Z.
@@ -229,8 +229,8 @@ Qed.
 Lemma Transform_X_Y: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_X qbit) (Gate_Y qbit))
-  (Gate_Z qbit).
+  qasm{ X qbit; Y qbit }
+  qasm{ Z qbit }.
 Proof.
   intros qbit H ps Hinv cstate.
   simpl.
@@ -252,8 +252,8 @@ Qed.
 Lemma Transform_Y_X: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_Y qbit) (Gate_X qbit))
-  (Gate_Z qbit).
+  qasm{ Y qbit; X qbit }
+  qasm{ Z qbit }.
 Proof.
   intros qbit H ps Hinv cstate.
   simpl.
@@ -275,8 +275,8 @@ Qed.
 Lemma Transform_Y_Z: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_Y qbit) (Gate_Z qbit))
-  (Gate_X qbit).
+  qasm{ Y qbit; Z qbit }
+  qasm{ X qbit }.
 Proof.
   intros qbit H ps Hinv cstate.
   simpl.
@@ -298,8 +298,8 @@ Qed.
 Lemma Transform_Z_Y: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_Z qbit) (Gate_Y qbit))
-  (Gate_X qbit).
+  qasm{ Z qbit; Y qbit }
+  qasm{ X qbit }.
 Proof.
   intros qbit H ps Hinv cstate.
   simpl.
@@ -321,8 +321,8 @@ Qed.
 Lemma Transform_Z_X: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_Z qbit) (Gate_X qbit))
-  (Gate_Y qbit).
+  qasm{ Z qbit; X qbit }
+  qasm{ Y qbit }.
 Proof.
   intros qbit H ps Hinv cstate.
   simpl.
@@ -344,8 +344,8 @@ Qed.
 Lemma Transform_X_Z: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_X qbit) (Gate_Z qbit))
-  (Gate_Y qbit).
+  qasm{ X qbit; Z qbit }
+  qasm{ Y qbit }.
 Proof.
   intros qbit H ps Hinv cstate.
   simpl.
@@ -367,8 +367,8 @@ Qed.
 Lemma Transform_H_X_H: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_H qbit) (SeqInstr (Gate_X qbit) (Gate_H qbit)))
-  (Gate_Z qbit).
+  qasm{ H qbit; X qbit; H qbit }
+  qasm{ Z qbit }.
 Proof.
   intros qbit H ps Hinv cstate.
   simpl.
@@ -391,8 +391,8 @@ Qed.
 Lemma Transform_H_Y_H: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_H qbit) (SeqInstr (Gate_Y qbit) (Gate_H qbit)))
-  (Gate_Y qbit).
+  qasm{ H qbit; Y qbit; H qbit }
+  qasm{ Y qbit }.
 Proof.
   intros qbit H ps Hinv cstate.
   simpl.
@@ -415,8 +415,8 @@ Qed.
 Lemma Transform_H_Z_H: forall (qbit: nat),
   Qbit_index_valid qbit ->
   Instruction_equiv nq
-  (SeqInstr (Gate_H qbit) (SeqInstr (Gate_Z qbit) (Gate_H qbit)))
-  (Gate_X qbit).
+  qasm{ H qbit; Z qbit; H qbit }
+  qasm{ X qbit }.
 Proof.
   intros qbit H ps Hinv cstate.
   simpl.
@@ -442,7 +442,7 @@ Lemma Transform_swap_swap: forall (qbit1 qbit2: nat),
   Qbit_index_valid qbit1 ->
   Qbit_index_valid qbit2 ->
   Instruction_equiv nq
-  (SeqInstr (SwapInstr qbit1 qbit2) (SwapInstr qbit1 qbit2))
+  qasm{ swap qbit1 qbit2; swap qbit1 qbit2}
   NopInstr.
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
@@ -464,7 +464,7 @@ Lemma Transform_cnot_cnot: forall (qbit1 qbit2: nat),
   Qbit_index_valid qbit1 ->
   Qbit_index_valid qbit2 ->
   Instruction_equiv nq
-  (SeqInstr (CnotInstr qbit1 qbit2) (CnotInstr qbit1 qbit2))
+  qasm{ cx qbit1 qbit2; cx qbit1 qbit2}
   NopInstr.
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
