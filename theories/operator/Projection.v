@@ -293,5 +293,57 @@ Proof.
       all: auto.
 Qed.
 
+Lemma mat_proj_cast_helper:
+  forall n x,
+  x < n ->
+  ((x + 1 + (n - x - 1)) = n)%nat.
+Proof.
+  intros. lia.
+Qed.
+
+Lemma mat_proj0_id:
+  forall n t (H: t < n),
+    mat_proj0 n t =
+    mat_ccast ((@mat_eye t) ⊗ mat_proj0_base ⊗ (@mat_eye (n - t - 1))) (mat_proj_cast_helper n t H).
+Proof.
+  induction n; intros t H.
+  - lia.
+  - destruct t.
+    + simpl. mat_simpl. f_equal.
+      all: remember (eq_add_S _ _ _) as p.
+      all: rewrite p.
+      all: try apply mat_0_ccast.
+      com_simpl. mat_simpl.
+      apply mat_eye_ccast.
+    + mat_simpl. f_equal.
+      all: try repeat rewrite tprod_0_l.
+      all: try apply mat_0_ccast.
+      all: assert (H': t < n) by lia.
+      all: rewrite (IHn t H').
+      all: apply mat_ccast_refl'.
+Qed.
+
+Lemma mat_proj1_id:
+  forall n t (H: t < n),
+    mat_proj1 n t =
+    mat_ccast ((@mat_eye t) ⊗ mat_proj1_base ⊗ (@mat_eye (n - t - 1))) (mat_proj_cast_helper n t H).
+Proof.
+  induction n; intros t H.
+  - lia.
+  - destruct t.
+    + simpl. mat_simpl. f_equal.
+      all: remember (eq_add_S _ _ _) as p.
+      all: rewrite p.
+      all: try apply mat_0_ccast.
+      com_simpl. mat_simpl.
+      apply mat_eye_ccast.
+    + mat_simpl. f_equal.
+      all: try repeat rewrite tprod_0_l.
+      all: try apply mat_0_ccast.
+      all: assert (H': t < n) by lia.
+      all: rewrite (IHn t H').
+      all: apply mat_ccast_refl'.
+Qed.
+
 End PROPERTIES.
 

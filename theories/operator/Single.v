@@ -163,6 +163,37 @@ Proof.
     + simpl. repeat rewrite mat_scale_0, mat_scale_1. reflexivity.
     + simpl. repeat rewrite mat_scale_0, mat_scale_1.
       f_equal. apply IHn. apply IHn.
-Qed. 
+Qed.
+
+Lemma mat_single_cast_helper:
+  forall n x,
+  x < n ->
+  ((x + 1 + (n - x - 1)) = n)%nat.
+Proof.
+  intros. lia.
+Qed.
+
+Lemma mat_single_id:
+  forall n t U (H: t < n),
+    mat_single n t U =
+    mat_ccast ((@mat_eye t) ⊗ U ⊗ (@mat_eye (n - t - 1))) (mat_single_cast_helper n t H).
+Proof.
+  induction n; intros t U H.
+  - lia.
+  - destruct t.
+    + simpl. rewrite mat_scale_1.
+      dependent destruction U.
+      simpl; f_equal.
+      all: remember (eq_add_S _ _ _) as p.
+      all: rewrite p.
+      all: rewrite mat_ccast_refl; reflexivity.
+    + mat_simpl. f_equal.
+      all: try repeat rewrite tprod_0_l.
+      all: try apply mat_0_ccast.
+      all: assert (H': t < n) by lia.
+      all: rewrite (IHn t U H').
+      all: apply mat_ccast_refl'.
+Qed.
+
 
 End GENERAL.

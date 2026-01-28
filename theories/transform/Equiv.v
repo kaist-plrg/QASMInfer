@@ -360,6 +360,34 @@ Proof.
   apply Hinv.
 Qed.
 
+Corollary Instruction_equiv_rewrite_start:
+  forall (post_instr: Instruction) (instr1 instr2: Instruction),
+  Instruction_equiv instr1 instr2 ->
+  Instruction_equiv
+  qasm{ instr1; post_instr }
+  qasm{ instr2; post_instr }.
+Proof.
+  intros post instr1 instr2 Hequiv ps Hinv.
+  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  apply Execute_suppl_Proper.
+  apply Hequiv.
+  apply Hinv.
+Qed.
+
+Corollary Instruction_equiv_rewrite_end:
+  forall (pre_instr: Instruction) (instr1 instr2: Instruction),
+  Instruction_equiv instr1 instr2 ->
+  Instruction_equiv
+  qasm{ pre_instr; instr1 }
+  qasm{ pre_instr; instr2 }.
+Proof.
+  intros pre instr1 instr2 Hequiv ps Hinv.
+  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  apply Hequiv.
+  apply Execute_suppl_valid_invariant.
+  apply Hinv.
+Qed.
+
 Lemma Instruction_equiv_nop:
   forall (pre_instr post_instr: Instruction),
   Instruction_equiv
@@ -368,7 +396,28 @@ Lemma Instruction_equiv_nop:
 Proof.
   intros pre post ps Hinv.
   repeat rewrite ProgramState_equiv_Execute_suppl_seq.
-  simpl.
+  reflexivity.
+Qed.
+
+Corollary Instruction_equiv_nop_start:
+  forall (post_instr: Instruction),
+  Instruction_equiv
+  qasm{ nop; post_instr }
+  post_instr.
+Proof.
+  intros post ps Hinv.
+  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  reflexivity.
+Qed.
+
+Corollary Instruction_equiv_nop_end:
+  forall (pre_instr: Instruction),
+  Instruction_equiv
+  qasm{ pre_instr; nop }
+  pre_instr.
+Proof.
+  intros pre ps Hinv.
+  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
   reflexivity.
 Qed.
 

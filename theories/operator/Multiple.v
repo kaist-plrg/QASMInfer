@@ -145,6 +145,22 @@ Proof.
   apply H.
 Qed.
 
+Lemma mat_swap_1n_id: forall n a b c d,
+  mat_swap2 = rec_mat a b c d ->
+  mat_swap_1n_suppl n = mat_ccast (rec_mat (mat_eye ⊗ a) (mat_eye ⊗ b) (mat_eye ⊗ c) (mat_eye ⊗ d)) (@add_comm (S n) 1).
+Proof.
+  intros n a b c d H.
+  induction n.
+  - simpl.
+    rewrite H. f_equal; mat_simpl.
+    all: rewrite mat_ccast_refl; reflexivity.
+  - change (mat_swap_1n_suppl (S n)) with
+      ((mat_swap2 ⊗ mat_eye) * ((@mat_eye 1) ⊗ mat_swap_1n_suppl n) * (mat_swap2 ⊗ mat_eye)).
+    rewrite IHn.
+    replace (@mat_eye (S n)) with (@mat_eye 1 ⊗ @mat_eye n) by apply tprod_eye_eye.
+Admitted.
+  
+
 End SWAP_PROPERTIES.
 
 Section CNOT.
@@ -260,11 +276,109 @@ Proof.
   simpl; f_equal; f_equal; lca.
 Qed.
 
-Lemma mat_cnot_Hermitian : forall n qc qt, mat_Hermitian (@mat_cnot n qc qt).
+Lemma mat_cnot_Hermitian : forall n c t, mat_Hermitian (@mat_cnot n c t).
 Proof.
   intros.
   apply mat_ctrl_single_Hermitian.
   apply mat_not2_Hermitian.
 Qed.
+
+Lemma mat_ctrl_single_cast_helper:
+  forall n x,
+  x < n ->
+  ((x + (1 + (n - x - 1))) = n)%nat.
+Proof. intros. lia. Qed.
+
+Lemma mat_ctrl_single_left_form :
+  forall n c t (U : Matrix 1),
+  forall (Hcn: c < n) (Htn: t < n) (Hct: c < t),
+    mat_ctrl_single n c t U
+    =
+    mat_ccast
+    ((@mat_eye c) ⊗
+      (mat_proj0_base ⊗ mat_eye
+       + mat_proj1_base ⊗ mat_single (n - c - 1) (t - c - 1) U))
+    (mat_ctrl_single_cast_helper n c Hcn).
+Proof.
+  intros n c.
+  revert n.
+  induction c as [|c']; intros.
+  - destruct n as [|n']; try lia.
+    destruct t as [|t']; try lia.
+    unfold mat_ctrl_single.
+    replace (S t' - 0 - 1)%nat with t' by lia.
+    mat_simpl; simpl. f_equal.
+    all: try apply mat_0_ccast.
+    all: try apply mat_eye_ccast.
+    remember (eq_add_S (n' - 0) n' (mat_ctrl_single_cast_helper (S n') 0 Hcn)) as p.
+    rewrite p, mat_ccast_refl.
+    reflexivity.
+  - destruct n as [|n']; try lia.
+    destruct t as [|t']; try lia.
+    mat_simpl.
+    assert (Hcn': c' < n'). lia.
+    assert (Htn': t' < n'). lia.
+    assert (Hct': c' < t'). lia.
+    rewrite (IHc' n' t' U Hcn' Htn' Hct').
+    f_equal.
+    + mat_simpl. apply mat_ccast_refl'.
+    + rewrite tprod_0_l. apply mat_0_ccast.
+    + rewrite tprod_0_l. apply mat_0_ccast.
+    + mat_simpl. apply mat_ccast_refl'.
+Qed.
+
+Lemma mat_ctrl_single_right_form :
+  forall n c t (U : Matrix 1),
+  forall (Hcn: c < n) (Htn: t < n) (Hct: t < c),
+    mat_ctrl_single n c t U
+    =
+    mat_ccast
+    ((@mat_eye t) ⊗
+      (mat_eye ⊗ mat_proj0 (n - t - 1) (c - t - 1) + U ⊗ mat_proj1 (n - t - 1) (c - t - 1)))
+    (mat_ctrl_single_cast_helper n t Htn).
+Proof.
+  intros n c t.
+  revert n c.
+  induction t as [|t']; intros.
+  - destruct n as [|n']; try lia.
+    destruct c as [|c']; try lia.
+    unfold mat_ctrl_single.
+    replace (S c' - 0 - 1)%nat with c' by lia.
+    dependent destruction U.
+    mat_simpl. f_equal.
+    all: remember (eq_add_S (n' - 0) n' (mat_ctrl_single_cast_helper (S n') 0 Htn)) as p.
+    all: rewrite p, mat_ccast_refl; reflexivity.
+  - destruct n as [|n']; try lia.
+    destruct c as [|c']; try lia.
+    mat_simpl.
+    assert (Hcn': c' < n'). lia.
+    assert (Htn': t' < n'). lia.
+    assert (Hct': t' < c'). lia.
+    rewrite (IHt' n' c' U Hcn' Htn' Hct').
+    f_equal.
+    + mat_simpl. apply mat_ccast_refl'.
+    + rewrite tprod_0_l. apply mat_0_ccast.
+    + rewrite tprod_0_l. apply mat_0_ccast.
+    + mat_simpl. apply mat_ccast_refl'.
+Qed.
+
+Lemma mat_3cnot_swap_oneside: forall n c t
+    (Hcn: c < n) (Htn: t < n) (Hct: c < t),
+    @mat_cnot n c t * mat_cnot t c * mat_cnot c t = mat_swap c t.
+Proof.
+  intros n c t Hcn Htn Hct.
+  unfold mat_cnot, mat_swap.
+  destruct (lt_dec c n) as [H1|H1], (lt_dec t n) as [H2|H2].
+  all: try lia.
+  destruct (lt_eq_lt_dec c t) as [[Hlt|Heq]|Hgt].
+  all: try lia.
+  rewrite (mat_ctrl_single_left_form n c t _ Hcn Htn Hct).
+  rewrite (mat_ctrl_single_right_form n t c _ Htn Hcn Hct).
+  simpl. mat_simpl.
+  rewrite mat_mul_ccast, mat_mul_ccast.
+  rewrite tprod_mul, tprod_mul.
+  mat_simpl.
+  Set Printing All.
+Admitted.
 
 End CNOT_PROPERTIES.

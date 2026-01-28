@@ -773,6 +773,7 @@ Qed.
 End MatrixRing.
 
 Section MatrixCast.
+Open Scope Matrix_scope.
 
 Lemma add_comm: forall {m n}, (m + n)%nat = (n + m)%nat.
 Proof. lia. Qed.
@@ -945,6 +946,17 @@ Proof. intros. rewrite mat_cast_ccast. apply mat_eye_ccast. Qed.
 Lemma mat_eye_JMeq: forall {n m},
   n = m -> JMeq (@mat_eye n) (@mat_eye m).
 Proof. intros; rewrite H; reflexivity. Qed.
+
+Lemma mat_mul_ccast :
+  forall {n m} (H : n = m) (A B : Matrix n),
+    (mat_ccast A H) * (mat_ccast B H) = mat_ccast (A * B) H.
+Proof.
+  intros n m H A B.
+  destruct H.
+  repeat rewrite mat_ccast_refl.
+  reflexivity.
+Qed.
+
 
 End MatrixCast.
 
