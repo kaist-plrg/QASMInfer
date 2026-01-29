@@ -467,34 +467,22 @@ Proof.
     unfold mat_swap2. simpl.
     f_equal; f_equal; com_simpl.
   }
-  replace (rec_mat
-    ((mat_eye ⊗ mat_proj0_base) ⊗ mat_eye)
-    ((mat_eye ⊗ (mat_proj1_base * mat_not2)) ⊗ mat_eye)
-    ((mat_eye ⊗ (mat_not2 * mat_proj1_base)) ⊗ mat_eye)
-    ((mat_eye ⊗ (mat_not2 * mat_proj0_base * mat_not2)) ⊗ mat_eye))
-    with (rec_mat
-      ((@mat_eye (t - c - 1)) ⊗ mat_proj0_base)
-      (mat_eye ⊗ (mat_proj1_base * mat_not2))
-      (mat_eye ⊗ (mat_not2 * mat_proj1_base))
-      (mat_eye ⊗ (mat_not2 * mat_proj0_base * mat_not2))
-      ⊗ (@mat_eye ((n - c - 1) - (t - c - 1) - 1)))
-    by reflexivity.
-  revert Hcast.
-  replace (n - c - 1 - (t - c - 1) - 1)%nat with (n - t - 1)%nat by lia.
-  intros Hcast.
   rewrite (mat_swap_1n_suppl_id _ _ _ _ _ Hmat); clear Hmat.
   repeat rewrite tprod_ccast_left.
   repeat rewrite tprod_ccast_right.
+  symmetry.
   rewrite <- tprod_assoc.
+  rewrite tprod_one_step.
   repeat rewrite <- mat_ccast_trans.
   match goal with
   | |- mat_ccast ?X ?p0 = mat_ccast ?Y ?p1 =>
       remember p0 as Hcast1; remember p1 as Hcast2
   end.
-  clear HeqHcast2.
-  revert Hcast2.
+  clear HeqHcast1 HeqHcast2.
+  revert Hcast1 Hcast2.
+  replace (n - c - 1 - (t - c - 1) - 1)%nat with (n - t - 1)%nat by lia.
   replace (t - c + 1 - 2)%nat with (t - c - 1)%nat by lia.
-  intros Hcast2.
+  intros Hcast1 Hcast2.
   apply mat_ccast_refl'.
 Qed.
 
