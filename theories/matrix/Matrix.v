@@ -701,6 +701,28 @@ Proof.
   intros. rewrite H. reflexivity.
 Qed.
 
+Lemma mat_add_one_step: forall {n: nat} (A0 A1 A2 A3 B0 B1 B2 B3: Matrix n),
+  (rec_mat A0 A1 A2 A3) + (rec_mat B0 B1 B2 B3) =
+  rec_mat
+    (A0 + B0)
+    (A1 + B1)
+    (A2 + B2)
+    (A3 + B3).
+Proof.
+  intros. simpl. reflexivity.
+Qed.
+
+Lemma mat_mul_one_step: forall {n: nat} (A0 A1 A2 A3 B0 B1 B2 B3: Matrix n),
+  (rec_mat A0 A1 A2 A3) * (rec_mat B0 B1 B2 B3) =
+  rec_mat
+    (A0 * B0 + A1 * B2)
+    (A0 * B1 + A1 * B3)
+    (A2 * B0 + A3 * B2)
+    (A2 * B1 + A3 * B3).
+Proof.
+  intros. simpl. reflexivity.
+Qed.
+
 End PROPERTIES.
 
 Section MatrixRing.
@@ -814,6 +836,13 @@ Proof.
   - simpl.
     rewrite IHA1. rewrite IHA2. rewrite IHA3. rewrite IHA4.
     reflexivity.
+Qed.
+
+Lemma mat_cast_eq_rect :
+  forall n m (A : Matrix n) (H : n = m),
+    mat_cast A H = eq_rect n Matrix A m H.
+Proof.
+  intros n m A H. destruct H. reflexivity.
 Qed.
 
 Lemma mat_cast_ccast: forall {m n} (A: Matrix n) (H: n = m),
@@ -957,6 +986,31 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma rec_mat_ccast :
+  forall {n m} (H : S n = S m) (A1 A2 A3 A4 : Matrix n),
+    mat_ccast (rec_mat A1 A2 A3 A4) H =
+    rec_mat (mat_ccast A1 (Nat.succ_inj n m H))
+            (mat_ccast A2 (Nat.succ_inj n m H))
+            (mat_ccast A3 (Nat.succ_inj n m H))
+            (mat_ccast A4 (Nat.succ_inj n m H)).
+Proof.
+  intros n m H A1 A2 A3 A4.
+  simpl.
+  f_equal; apply mat_ccast_refl'.
+Qed.
+
+Lemma ccast_rec_mat :
+  forall {n m} (H : n = m) (A1 A2 A3 A4 : Matrix n),
+    rec_mat (mat_ccast A1 H)
+            (mat_ccast A2 H)
+            (mat_ccast A3 H)
+            (mat_ccast A4 H) =
+    mat_ccast (rec_mat A1 A2 A3 A4) (f_equal S H).
+Proof.
+  intros n m H A1 A2 A3 A4.
+  simpl.
+  f_equal; apply mat_ccast_refl'.
+Qed.
 
 End MatrixCast.
 

@@ -14,6 +14,18 @@ Notation "A ⊗ B" := (tensor_product A B) (at level 36) : Matrix_scope.
 
 Section PROPERTIES.
 
+Lemma tprod_one_step: forall {m n} (A0 A1 A2 A3: Matrix m) (B: Matrix n),
+  rec_mat A0 A1 A2 A3 ⊗ B = rec_mat (A0 ⊗ B) (A1 ⊗ B) (A2 ⊗ B) (A3 ⊗ B).
+Proof.
+  intros. simpl. reflexivity.
+Qed.
+
+Lemma tprod_base: forall {n} (c: Complex)(B: Matrix n),
+  (bas_mat c) ⊗ B = c .* B.
+Proof.
+  intros. simpl. reflexivity.
+Qed.
+
 Lemma tprod_scale_assoc: forall {m n} (A: Matrix m) (B: Matrix n) (c: Complex),
   c .* (A ⊗ B) = c .* A ⊗ B.
 Proof.
@@ -238,6 +250,26 @@ Proof.
   - simpl.
     rewrite IHA1; rewrite IHA4.
     lca.
+Qed.
+
+Lemma tprod_ccast_left:
+  forall m n k (A: Matrix m) (B: Matrix n) (H: n = k),
+  A ⊗ mat_ccast B H = mat_ccast (A ⊗ B) (f_equal (fun x => m + x)%nat H).
+Proof.
+  intros.
+  destruct H.
+  repeat rewrite mat_ccast_refl.
+  reflexivity.
+Qed.
+
+Lemma tprod_ccast_right:
+  forall m n k (A: Matrix m) (B: Matrix n) (H: m = k),
+  mat_ccast A H ⊗ B = mat_ccast (A ⊗ B) (f_equal (fun x => x + n)%nat H).
+Proof.
+  intros.
+  destruct H.
+  repeat rewrite mat_ccast_refl.
+  reflexivity.
 Qed.
 
 End PROPERTIES.

@@ -165,20 +165,12 @@ Proof.
       f_equal. apply IHn. apply IHn.
 Qed.
 
-Lemma mat_single_cast_helper:
-  forall n x,
-  x < n ->
-  ((x + 1 + (n - x - 1)) = n)%nat.
-Proof.
-  intros. lia.
-Qed.
-
 Lemma mat_single_id:
-  forall n t U (H: t < n),
+  forall n t U (H: t < n) (Hcast: (t + 1 + (n - t - 1))%nat = n),
     mat_single n t U =
-    mat_ccast ((@mat_eye t) ⊗ U ⊗ (@mat_eye (n - t - 1))) (mat_single_cast_helper n t H).
+    mat_ccast ((@mat_eye t) ⊗ U ⊗ (@mat_eye (n - t - 1))) Hcast.
 Proof.
-  induction n; intros t U H.
+  induction n; intros t U H Hcast.
   - lia.
   - destruct t.
     + simpl. rewrite mat_scale_1.
@@ -191,7 +183,8 @@ Proof.
       all: try repeat rewrite tprod_0_l.
       all: try apply mat_0_ccast.
       all: assert (H': t < n) by lia.
-      all: rewrite (IHn t U H').
+      all: assert (Hcast': (t + 1 + (n - t - 1))%nat = n) by lia.
+      all: rewrite (IHn t U H' Hcast').
       all: apply mat_ccast_refl'.
 Qed.
 
