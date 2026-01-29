@@ -482,4 +482,26 @@ Proof.
   - reflexivity.
 Qed.
 
+Lemma Transform_3cnot_swap: forall (qbit1 qbit2: nat),
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+  qasm{ cx qbit1 qbit2; cx qbit2 qbit1; cx qbit1 qbit2 }
+  qasm{ swap qbit1 qbit2 }.
+Proof.
+  intros qbit1 qbit2 Hq1 Hq2.
+  intros ps Hinv cstate.
+  simpl.
+  unfold Execute_cnot_instr, Execute_swap_instr.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find cstate ps); simpl.
+  - f_equal.
+    unfold Execute_cnot_instr_branch, Execute_swap_instr_branch.
+    destruct b; simpl; f_equal.
+    rewrite den_uop_den_uop, den_uop_den_uop.
+    f_equal.
+    apply (mat_3cnot_swap _ _ _ Hq1 Hq2).
+  - reflexivity.
+Qed.
+
 End TRANSFORM.

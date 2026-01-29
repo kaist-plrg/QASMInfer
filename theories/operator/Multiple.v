@@ -436,7 +436,18 @@ Proof.
     all: apply mat_ccast_refl'.
 Qed.
 
-Lemma mat_3cnot_swap_c_le_t: forall n c t
+Lemma mat_ctrl_single_eq_form : 
+  forall n c (U: Matrix 1),
+  mat_ctrl_single n c c U = mat_eye.
+Proof.
+  induction n; intros.
+  - simpl. reflexivity.
+  - simpl. destruct c.
+    + reflexivity.
+    + mat_simpl. f_equal; apply IHn.
+Qed.
+
+Lemma mat_3cnot_swap_c_lt_t: forall n c t
     (Hcn: c < n) (Htn: t < n) (Hct: c < t),
     @mat_cnot n c t * mat_cnot t c * mat_cnot c t = mat_swap c t.
 Proof.
@@ -484,6 +495,77 @@ Proof.
   replace (t - c + 1 - 2)%nat with (t - c - 1)%nat by lia.
   intros Hcast1 Hcast2.
   apply mat_ccast_refl'.
+Qed.
+
+Lemma mat_3cnot_swap_c_gt_t: forall n c t
+    (Hcn: c < n) (Htn: t < n) (Hct: c > t),
+    @mat_cnot n c t * mat_cnot t c * mat_cnot c t = mat_swap c t.
+Proof.
+  intros n c t Hcn Htn Hct.
+  unfold mat_cnot.
+  assert (Hcast_swap: (t + (c - t + 1) + (n - c - 1))%nat = n) by lia.
+  rewrite (mat_swap_valid_right_id _ _ _ Hcn Htn Hct Hcast_swap).
+  assert (Hcast_ctrl_single: (t + (1 + (n - t - 1)))%nat = n) by lia.
+  rewrite (mat_ctrl_single_left_form n t c _ Htn Hcn Hct Hcast_ctrl_single).
+  rewrite (mat_ctrl_single_right_form n c t _ Hcn Htn Hct Hcast_ctrl_single).
+  simpl. mat_simpl.
+  rewrite mat_mul_ccast, mat_mul_ccast.
+  rewrite tprod_mul, tprod_mul.
+  mat_simpl.
+  assert (H: n - t - 1 > c - t - 1) by lia.
+  assert (Hcast: (c - t - 1 + 1 + (n - t - 1 - (c - t - 1) - 1))%nat = (n - t - 1)%nat) by lia.
+  rewrite (mat_proj0_id _ _ H Hcast), (mat_proj1_id _ _ H Hcast), (mat_single_id _ _ _ H Hcast).
+  repeat rewrite mat_mul_ccast.
+  repeat rewrite mat_add_ccast.
+  rewrite ccast_rec_mat.
+  repeat rewrite tprod_mul.
+  repeat rewrite mat_mul_eye_r.
+  repeat rewrite <- tprod_add_dist_r.
+  repeat rewrite <- tprod_add_dist_l.
+  assert (Hswap: c - t + 1 >= 2) by lia.
+  rewrite mat_swap_1n_suppl_ge_2 with (n:= (c - t + 1)%nat) (H:= Hswap).
+  remember (mat_proj0_base * mat_proj0_base + mat_proj1_base * mat_not2 * mat_proj1_base) as P0.
+  remember (mat_proj0_base * mat_proj1_base + mat_proj1_base * mat_not2 * mat_proj0_base) as P1.
+  remember (mat_proj1_base * mat_proj0_base + mat_proj0_base * mat_not2 * mat_proj1_base) as P2.
+  remember (mat_proj1_base * mat_proj1_base + mat_proj0_base * mat_not2 * mat_proj0_base) as P3.
+  assert (Hmat: mat_swap2 = rec_mat P0 P1 P2 P3).
+  {
+    unfold mat_swap2. rewrite HeqP0, HeqP1, HeqP2, HeqP3. mat_simpl.
+    f_equal; f_equal; com_simpl.
+  }
+  rewrite (mat_swap_1n_suppl_id _ _ _ _ _ Hmat); clear Hmat.
+  repeat rewrite tprod_ccast_left.
+  repeat rewrite tprod_ccast_right.
+  symmetry.
+  rewrite <- tprod_assoc.
+  rewrite tprod_one_step.
+  repeat rewrite <- mat_ccast_trans.
+  match goal with
+  | |- mat_ccast ?X ?p0 = mat_ccast ?Y ?p1 =>
+      remember p0 as Hcast1; remember p1 as Hcast2
+  end.
+  clear HeqHcast1 HeqHcast2.
+  revert Hcast1 Hcast2.
+  replace (n - t - 1 - (c - t - 1) - 1)%nat with (n - c - 1)%nat by lia.
+  replace (c - t + 1 - 2)%nat with (c - t - 1)%nat by lia.
+  intros Hcast1 Hcast2.
+  apply mat_ccast_refl'.
+Qed.
+
+Theorem mat_3cnot_swap : forall n c t (Hcn: c < n) (Htn: t < n),
+  @mat_cnot n c t * mat_cnot t c * mat_cnot c t = mat_swap c t.
+Proof.
+  intros.
+  destruct (lt_dec c n) as [H1|H1] eqn:H1';
+  destruct (lt_dec t n) as [H2|H2] eqn:H2'.
+  all: try lia.
+  destruct (lt_eq_lt_dec c t) as [[Hlt|Heq]|Hgt] eqn:H3.
+  - apply (mat_3cnot_swap_c_lt_t _ _ _ H1 H2 Hlt).
+  - unfold mat_cnot, mat_swap.
+    rewrite H1', H2', H3, Heq.
+    rewrite mat_ctrl_single_eq_form.
+    mat_simpl.
+  - apply (mat_3cnot_swap_c_gt_t _ _ _ H1 H2 Hgt).
 Qed.
 
 End CNOT_PROPERTIES.

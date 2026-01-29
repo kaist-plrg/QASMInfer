@@ -976,6 +976,16 @@ Lemma mat_eye_JMeq: forall {n m},
   n = m -> JMeq (@mat_eye n) (@mat_eye m).
 Proof. intros; rewrite H; reflexivity. Qed.
 
+Lemma mat_add_ccast :
+  forall {n m} (H : n = m) (A B : Matrix n),
+    (mat_ccast A H) + (mat_ccast B H) = mat_ccast (A + B) H.
+Proof.
+  intros n m H A B.
+  destruct H.
+  repeat rewrite mat_ccast_refl.
+  reflexivity.
+Qed.
+
 Lemma mat_mul_ccast :
   forall {n m} (H : n = m) (A B : Matrix n),
     (mat_ccast A H) * (mat_ccast B H) = mat_ccast (A * B) H.
