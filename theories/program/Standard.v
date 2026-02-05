@@ -5,6 +5,8 @@ Require Import QASMInfer.property.All.
 Require Import QASMInfer.program.Program.
 From Stdlib Require Export Program.Equality.
 
+From Stdlib.FSets Require Import FMapPositive FMapFacts.
+
 Bind Scope Complex_scope with Complex.
 Open Scope Matrix_scope.
 
@@ -61,14 +63,12 @@ Variable nq: nat.
 Definition gphase (theta: R): Complex :=
   com_iexp theta.
 
-Lemma Gate_matrix_den_uop_gphase:
-  forall (qbit: nat), nq > qbit ->
-  forall (A: Matrix 1) (theta: R) (U: Matrix nq),
-  den_uop (mat_single nq qbit (gphase theta .* A)) U = den_uop (mat_single nq qbit A) U.
+Lemma den_uop_gphase:
+  forall (theta: R) (A U: Matrix nq),
+  den_uop (gphase theta .* A) U = den_uop A U.
 Proof.
-  intros qbit H A theta U.
+  intros theta A U.
   unfold den_uop.
-  rewrite (mat_single_scale _ _ _ _ H).
   rewrite mat_scale_conjtrans.
   mat_sort.
   com_simpl.
@@ -347,3 +347,163 @@ Proof.
 Qed.
 
 End GATE_PROPERTIES.
+
+Section GATE_MATRIX_CORRESPONDENCE.
+
+Variable nq: nat.
+
+Definition Matrix_of (instr: Instruction) (mat: Matrix nq): Prop :=
+  forall (ps: ProgramState nq),
+  PositiveMap.Equal
+  (Execute_suppl nq instr ps)
+  (PositiveMap.map (fun b => {|
+    B_qstate := den_uop mat (B_qstate nq b);
+    B_prob := B_prob nq b
+  |}) ps).
+
+Inductive Matrix_of_list : list Instruction -> list (Matrix nq) -> Prop :=
+| nil_mat :
+    Matrix_of_list nil nil
+| cons_mat :
+  forall (instr : Instruction) (mat : Matrix nq)
+    (ilist : list Instruction) (mlist : list (Matrix nq)),
+  Matrix_of instr mat ->
+  Matrix_of_list ilist mlist ->
+  Matrix_of_list (instr :: ilist) (mat :: mlist).
+
+Lemma Matrix_of_list_id:
+  forall (lst: list Instruction) (mlst: list (Matrix nq)),
+  forall (ps: ProgramState nq),
+  Matrix_of_list lst mlst ->
+  PositiveMap.Equal
+  (Execute_suppl nq qasm{ seq[ lst ] } ps)
+  (PositiveMap.map (fun b => {|
+    B_qstate := den_uop (List.fold_right (fun a b => b * a) mat_eye mlst) (B_qstate nq b);
+    B_prob := B_prob nq b
+  |}) ps).
+Proof.
+  intros lst mlst ps H cstate.
+  revert ps.
+  induction H; intros ps.
+  - simpl. rewrite PFacts.map_o.
+    destruct (PositiveMap.find cstate ps); simpl.
+    + f_equal. destruct b. f_equal. simpl.
+      unfold den_uop.
+      rewrite mat_eye_conjtrans.
+      mat_simpl.
+    + reflexivity.
+  - replace (Execute_suppl nq qasm{ seq[ (instr :: ilist)]} ps) with
+    (Execute_suppl nq qasm{ seq[ ilist ]} (Execute_suppl nq instr ps)) by reflexivity.
+    rewrite IHMatrix_of_list.
+    rewrite PFacts.map_o, PFacts.map_o.
+    rewrite H, PFacts.map_o.
+    destruct (PositiveMap.find cstate ps); simpl.
+    + f_equal. destruct b. f_equal.
+      rewrite den_uop_den_uop. reflexivity.
+    + reflexivity.
+Qed.
+
+Lemma Matrix_of_I (qbit: nat):
+  qbit < nq ->
+  Matrix_of (qasm{ I qbit }) (mat_eye).
+Proof.
+  intros Hvalid ps cstate.
+  simpl.
+  unfold Execute_rotate_instr, Execute_rotate_instr_branch.
+  f_equal; f_equal.
+  apply functional_extensionality.
+  intros branch.
+  f_equal; f_equal; f_equal.
+  rewrite Gate_P_matrix_0_eye.
+  apply mat_single_eye.
+Qed.  
+
+Lemma Matrix_of_X (qbit: nat):
+  qbit < nq ->
+  Matrix_of qasm{ X qbit } (mat_single nq qbit Gate_X_matrix).
+Proof.
+  intros Hvalid ps. simpl.
+  intros cstate.
+  unfold Execute_rotate_instr, Execute_rotate_instr_branch.
+  f_equal; f_equal.
+  apply functional_extensionality.
+  intros branch.
+  f_equal. rewrite Gate_X_matrix_gphase.
+  rewrite (mat_single_scale _ _ _ _ Hvalid).
+  rewrite den_uop_gphase.
+  reflexivity.
+Qed.
+
+Lemma Matrix_of_Y (qbit: nat):
+  qbit < nq ->
+  Matrix_of qasm{ Y qbit } (mat_single nq qbit Gate_Y_matrix).
+Proof.
+  intros Hvalid ps. simpl.
+  intros cstate.
+  unfold Execute_rotate_instr, Execute_rotate_instr_branch.
+  f_equal; f_equal.
+  apply functional_extensionality.
+  intros branch.
+  f_equal. rewrite Gate_Y_matrix_gphase.
+  rewrite (mat_single_scale _ _ _ _ Hvalid).
+  rewrite den_uop_gphase.
+  reflexivity.
+Qed.
+
+Lemma Matrix_of_Z (qbit: nat):
+  qbit < nq ->
+  Matrix_of qasm{ Z qbit } (mat_single nq qbit Gate_Z_matrix).
+Proof.
+  intros Hvalid ps. simpl.
+  intros cstate.
+  unfold Execute_rotate_instr, Execute_rotate_instr_branch.
+  f_equal; f_equal.
+  apply functional_extensionality.
+  intros branch.
+  f_equal. rewrite Gate_Z_matrix_gphase.
+  rewrite (mat_single_scale _ _ _ _ Hvalid).
+  rewrite den_uop_gphase.
+  reflexivity.
+Qed.
+
+Lemma Matrix_of_H (qbit: nat):
+  qbit < nq ->
+  Matrix_of qasm{ H qbit } (mat_single nq qbit Gate_H_matrix).
+Proof.
+  intros Hvalid ps. simpl.
+  intros cstate.
+  unfold Execute_rotate_instr, Execute_rotate_instr_branch.
+  f_equal; f_equal.
+  apply functional_extensionality.
+  intros branch.
+  f_equal. rewrite Gate_H_matrix_gphase.
+  rewrite (mat_single_scale _ _ _ _ Hvalid).
+  rewrite den_uop_gphase.
+  reflexivity.
+Qed.
+
+Lemma Matrix_of_P (qbit: nat) (lambda: R):
+  qbit < nq ->
+  Matrix_of qasm{ P(lambda) qbit } (mat_single nq qbit (mat_rot 0 0 lambda)).
+Proof.
+  intros Hvalid ps. simpl.
+  intros cstate. reflexivity.
+Qed.
+
+Lemma Matrix_of_cnot (qbit1 qbit2: nat):
+  qbit1 < nq -> qbit2 < nq ->
+  Matrix_of qasm{ cx qbit1 qbit2 } (mat_cnot qbit1 qbit2).
+Proof.
+  intros Hvalid1 Hvalid2 ps. simpl.
+  intros cstate. reflexivity.
+Qed.
+
+Lemma Matrix_of_swap (qbit1 qbit2: nat):
+  qbit1 < nq -> qbit2 < nq ->
+  Matrix_of qasm{ swap qbit1 qbit2 } (mat_swap qbit1 qbit2).
+Proof.
+  intros Hvalid1 Hvalid2 ps. simpl.
+  intros cstate. reflexivity.
+Qed.
+
+End GATE_MATRIX_CORRESPONDENCE.
