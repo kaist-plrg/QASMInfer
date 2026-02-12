@@ -188,5 +188,19 @@ Proof.
       all: apply mat_ccast_refl'.
 Qed.
 
+Lemma mat_single_commute:
+  forall n t1 t2 U1 U2 (H1: t1 < n) (H2 : t2 < n) (Hdiff: t1 <> t2),
+    mat_single n t1 U1 * mat_single n t2 U2 = mat_single n t2 U2 * mat_single n t1 U1.
+Proof.
+  induction n; try lia.
+  destruct t1; destruct t2;
+  intros; try lia.
+  all: cbn [mat_single].
+  all: repeat rewrite (tprod_mul 1 n).
+  all: mat_simpl.
+  f_equal.
+  all: apply IHn.
+  all: lia.
+Qed.
 
 End GENERAL.

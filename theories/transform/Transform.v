@@ -5,6 +5,7 @@ Require Import QASMInfer.operator.All.
 Require Import QASMInfer.program.All.
 
 Require Import QASMInfer.transform.Equiv.
+Require Import QASMInfer.transform.Commute.
 
 From Stdlib Require Import List.
 From Stdlib.FSets Require Import FMapPositive FMapFacts.
@@ -20,50 +21,6 @@ Import List.ListNotations.
 Section TRANSFORM.
 
 Variable nq: nat.
-
-Lemma QState_transform_equality:
-  forall (lst1 lst2: list Instruction) (mlst1 mlst2: list (Matrix nq)),
-  Matrix_of_list nq lst1 mlst1 ->
-  Matrix_of_list nq lst2 mlst2 ->
-  (exists lambda: R, List.fold_right (fun a b => b * a) mat_eye mlst1 =
-  gphase lambda .* List.fold_right (fun a b => b * a) mat_eye mlst2) ->
-  Instruction_equiv nq
-  qasm{ seq[ lst1 ] }
-  qasm{ seq[ lst2 ] }.
-Proof.
-  intros lst1 lst2 mlst1 mlst2 H1 H2 [lambda Heq] ps Hinv.
-  rewrite (Matrix_of_list_id _ _ _ _ H1).
-  rewrite (Matrix_of_list_id _ _ _ _ H2).
-  rewrite Heq.
-  intros cstate. f_equal; f_equal.
-  apply functional_extensionality.
-  intros branch.
-  rewrite den_uop_gphase.
-  reflexivity.
-Qed.
-
-Corollary QState_transform_equality':
-  forall (lst: list Instruction) (mlst: list (Matrix nq))
-  (instr: Instruction) (mat: Matrix nq),
-  Matrix_of_list nq lst mlst ->
-  Matrix_of nq instr mat ->
-  (exists lambda: R, List.fold_right (fun a b => b * a) mat_eye mlst =
-  gphase lambda .* mat) ->
-  Instruction_equiv nq
-  qasm{ seq[ lst ] }
-  qasm{ instr }.
-Proof.
-  intros lst mlst instr mat H1 H2 [lambda Heq] ps Hinv.
-  rewrite (Matrix_of_list_id _ _ _ _ H1).
-  rewrite Heq.
-  intros cstate.
-  rewrite H2.
-  f_equal. f_equal.
-  apply functional_extensionality.
-  intros branch.
-  rewrite den_uop_gphase.
-  reflexivity.
-Qed.
 
 (* Qbit index validity : prevents index out of bounds *)
 Definition Qbit_index_valid (qbit: nat): Prop :=
@@ -95,18 +52,14 @@ Lemma Transform_X_X: forall (qbit: nat),
   qasm{ I qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_X _ _ H).
-    apply cons_mat. apply (Matrix_of_X _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_I _ _ H).
-  - cbn [fold_right]. exists 0%R.
-    unfold gphase. com_simpl. mat_simpl.
-    rewrite mat_single_factorized.
-    rewrite mat_Hermitian_unitary__involutory.
-    apply mat_single_eye.
-    apply Gate_X_matrix_Hermitian.
-    apply Gate_X_matrix_unitary.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists 0%R.
+  unfold gphase. com_simpl. mat_simpl.
+  rewrite mat_single_factorized.
+  rewrite mat_Hermitian_unitary__involutory.
+  apply mat_single_eye.
+  apply Gate_X_matrix_Hermitian.
+  apply Gate_X_matrix_unitary.
 Qed.
 
 Lemma Transform_Y_Y: forall (qbit: nat),
@@ -116,18 +69,14 @@ Lemma Transform_Y_Y: forall (qbit: nat),
   qasm{ I qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_Y _ _ H).
-    apply cons_mat. apply (Matrix_of_Y _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_I _ _ H).
-  - cbn [fold_right]. exists 0%R.
-    unfold gphase. com_simpl. mat_simpl.
-    rewrite mat_single_factorized.
-    rewrite mat_Hermitian_unitary__involutory.
-    apply mat_single_eye.
-    apply Gate_Y_matrix_Hermitian.
-    apply Gate_Y_matrix_unitary.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists 0%R.
+  unfold gphase. com_simpl. mat_simpl.
+  rewrite mat_single_factorized.
+  rewrite mat_Hermitian_unitary__involutory.
+  apply mat_single_eye.
+  apply Gate_Y_matrix_Hermitian.
+  apply Gate_Y_matrix_unitary.
 Qed.
 
 Lemma Transform_Z_Z: forall (qbit: nat),
@@ -137,18 +86,14 @@ Lemma Transform_Z_Z: forall (qbit: nat),
   qasm{ I qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_Z _ _ H).
-    apply cons_mat. apply (Matrix_of_Z _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_I _ _ H).
-  - cbn [fold_right]. exists 0%R.
-    unfold gphase. com_simpl. mat_simpl.
-    rewrite mat_single_factorized.
-    rewrite mat_Hermitian_unitary__involutory.
-    apply mat_single_eye.
-    apply Gate_Z_matrix_Hermitian.
-    apply Gate_Z_matrix_unitary.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists 0%R.
+  unfold gphase. com_simpl. mat_simpl.
+  rewrite mat_single_factorized.
+  rewrite mat_Hermitian_unitary__involutory.
+  apply mat_single_eye.
+  apply Gate_Z_matrix_Hermitian.
+  apply Gate_Z_matrix_unitary.
 Qed.
 
 Lemma Transform_H_H: forall (qbit: nat),
@@ -158,18 +103,14 @@ Lemma Transform_H_H: forall (qbit: nat),
   qasm{ I qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_H _ _ H).
-    apply cons_mat. apply (Matrix_of_H _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_I _ _ H).
-  - cbn [fold_right]. exists 0%R.
-    unfold gphase. com_simpl. mat_simpl.
-    rewrite mat_single_factorized.
-    rewrite mat_Hermitian_unitary__involutory.
-    apply mat_single_eye.
-    apply Gate_H_matrix_Hermitian.
-    apply Gate_H_matrix_unitary.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists 0%R.
+  unfold gphase. com_simpl. mat_simpl.
+  rewrite mat_single_factorized.
+  rewrite mat_Hermitian_unitary__involutory.
+  apply mat_single_eye.
+  apply Gate_H_matrix_Hermitian.
+  apply Gate_H_matrix_unitary.
 Qed.
 
 Lemma Transform_P_P: forall (qbit: nat) (l1 l2: R),
@@ -179,17 +120,13 @@ Lemma Transform_P_P: forall (qbit: nat) (l1 l2: R),
   qasm{ P ((l1 + l2)%R) qbit }.
 Proof.
   intros qbit l1 l2 H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_P _ _ _ H).
-    apply cons_mat. apply (Matrix_of_P _ _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_P _ _ _ H).
-  - cbn [fold_right]. exists 0%R.
-    unfold gphase. com_simpl. mat_simpl.
-    rewrite mat_single_factorized.
-    f_equal.
-    rewrite Gate_P_matrix_mul, Rplus_comm.
-    reflexivity.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists 0%R.
+  unfold gphase. com_simpl. mat_simpl.
+  rewrite mat_single_factorized.
+  f_equal.
+  rewrite Gate_P_matrix_mul, Rplus_comm.
+  reflexivity.
 Qed.
 
 Lemma Transform_P_periodic: forall (qbit: nat) (l: R),
@@ -270,17 +207,13 @@ Lemma Transform_X_Y: forall (qbit: nat),
   qasm{ Z qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_X _ _ H).
-    apply cons_mat. apply (Matrix_of_Y _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_Z _ _ H).
-  - cbn [fold_right]. exists (-PI2)%R.
-    mat_simpl.
-    rewrite mat_single_factorized.
-    rewrite <- (mat_single_scale _ _ _ _ H).
-    f_equal.
-    apply Gate_matrix_Y_X__eq__Z.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists (-PI2)%R.
+  mat_simpl.
+  rewrite mat_single_factorized.
+  rewrite <- (mat_single_scale _ _ _ _ H).
+  f_equal.
+  apply Gate_matrix_Y_X__eq__Z.
 Qed.
 
 Lemma Transform_Y_X: forall (qbit: nat),
@@ -290,17 +223,13 @@ Lemma Transform_Y_X: forall (qbit: nat),
   qasm{ Z qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_Y _ _ H).
-    apply cons_mat. apply (Matrix_of_X _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_Z _ _ H).
-  - cbn [fold_right]. exists (PI2)%R.
-    mat_simpl.
-    rewrite mat_single_factorized.
-    rewrite <- (mat_single_scale _ _ _ _ H).
-    f_equal.
-    apply Gate_matrix_X_Y__eq__Z.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists (PI2)%R.
+  mat_simpl.
+  rewrite mat_single_factorized.
+  rewrite <- (mat_single_scale _ _ _ _ H).
+  f_equal.
+  apply Gate_matrix_X_Y__eq__Z.
 Qed.
 
 Lemma Transform_Y_Z: forall (qbit: nat),
@@ -310,17 +239,13 @@ Lemma Transform_Y_Z: forall (qbit: nat),
   qasm{ X qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_Y _ _ H).
-    apply cons_mat. apply (Matrix_of_Z _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_X _ _ H).
-  - cbn [fold_right]. exists (-PI2)%R.
-    mat_simpl.
-    rewrite mat_single_factorized.
-    rewrite <- (mat_single_scale _ _ _ _ H).
-    f_equal.
-    apply Gate_matrix_Z_Y__eq__X.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists (-PI2)%R.
+  mat_simpl.
+  rewrite mat_single_factorized.
+  rewrite <- (mat_single_scale _ _ _ _ H).
+  f_equal.
+  apply Gate_matrix_Z_Y__eq__X.
 Qed.
 
 Lemma Transform_Z_Y: forall (qbit: nat),
@@ -330,17 +255,13 @@ Lemma Transform_Z_Y: forall (qbit: nat),
   qasm{ X qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_Z _ _ H).
-    apply cons_mat. apply (Matrix_of_Y _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_X _ _ H).
-  - cbn [fold_right]. exists (PI2)%R.
-    mat_simpl.
-    rewrite mat_single_factorized.
-    rewrite <- (mat_single_scale _ _ _ _ H).
-    f_equal.
-    apply Gate_matrix_Y_Z__eq__X.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists (PI2)%R.
+  mat_simpl.
+  rewrite mat_single_factorized.
+  rewrite <- (mat_single_scale _ _ _ _ H).
+  f_equal.
+  apply Gate_matrix_Y_Z__eq__X.
 Qed.
 
 Lemma Transform_Z_X: forall (qbit: nat),
@@ -350,17 +271,13 @@ Lemma Transform_Z_X: forall (qbit: nat),
   qasm{ Y qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_Z _ _ H).
-    apply cons_mat. apply (Matrix_of_X _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_Y _ _ H).
-  - cbn [fold_right]. exists (-PI2)%R.
-    mat_simpl.
-    rewrite mat_single_factorized.
-    rewrite <- (mat_single_scale _ _ _ _ H).
-    f_equal.
-    apply Gate_matrix_X_Z__eq__Y.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists (-PI2)%R.
+  mat_simpl.
+  rewrite mat_single_factorized.
+  rewrite <- (mat_single_scale _ _ _ _ H).
+  f_equal.
+  apply Gate_matrix_X_Z__eq__Y.
 Qed.
 
 Lemma Transform_X_Z: forall (qbit: nat),
@@ -370,17 +287,13 @@ Lemma Transform_X_Z: forall (qbit: nat),
   qasm{ Y qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_X _ _ H).
-    apply cons_mat. apply (Matrix_of_Z _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_Y _ _ H).
-  - cbn [fold_right]. exists (PI2)%R.
-    mat_simpl.
-    rewrite mat_single_factorized.
-    rewrite <- (mat_single_scale _ _ _ _ H).
-    f_equal.
-    apply Gate_matrix_Z_X__eq__Y.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists PI2%R.
+  mat_simpl.
+  rewrite mat_single_factorized.
+  rewrite <- (mat_single_scale _ _ _ _ H).
+  f_equal.
+  apply Gate_matrix_Z_X__eq__Y.
 Qed.
 
 Lemma Transform_H_X_H: forall (qbit: nat),
@@ -390,17 +303,12 @@ Lemma Transform_H_X_H: forall (qbit: nat),
   qasm{ Z qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_H _ _ H).
-    apply cons_mat. apply (Matrix_of_X _ _ H).
-    apply cons_mat. apply (Matrix_of_H _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_Z _ _ H).
-  - cbn [fold_right]. exists (0)%R.
-    unfold gphase. com_simpl. mat_simpl.
-    repeat rewrite mat_single_factorized.
-    f_equal.
-    apply Gate_matrix_H_X_H__eq__Z.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists 0%R.
+  unfold gphase. com_simpl. mat_simpl.
+  repeat rewrite mat_single_factorized.
+  f_equal.
+  apply Gate_matrix_H_X_H__eq__Z.
 Qed.
 
 Lemma Transform_H_Y_H: forall (qbit: nat),
@@ -410,18 +318,13 @@ Lemma Transform_H_Y_H: forall (qbit: nat),
   qasm{ Y qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_H _ _ H).
-    apply cons_mat. apply (Matrix_of_Y _ _ H).
-    apply cons_mat. apply (Matrix_of_H _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_Y _ _ H).
-  - cbn [fold_right]. exists (PI)%R.
-    mat_simpl.
-    repeat rewrite mat_single_factorized.
-    rewrite <- (mat_single_scale _ _ _ _ H).
-    f_equal.
-    apply Gate_matrix_H_Y_H__eq__Y.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists (PI)%R.
+  mat_simpl.
+  repeat rewrite mat_single_factorized.
+  rewrite <- (mat_single_scale _ _ _ _ H).
+  f_equal.
+  apply Gate_matrix_H_Y_H__eq__Y.
 Qed.
 
 Lemma Transform_H_Z_H: forall (qbit: nat),
@@ -431,17 +334,12 @@ Lemma Transform_H_Z_H: forall (qbit: nat),
   qasm{ X qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_H _ _ H).
-    apply cons_mat. apply (Matrix_of_Z _ _ H).
-    apply cons_mat. apply (Matrix_of_H _ _ H).
-    apply nil_mat.
-  - apply (Matrix_of_X _ _ H).
-  - cbn [fold_right]. exists (0)%R.
-    unfold gphase. com_simpl. mat_simpl.
-    repeat rewrite mat_single_factorized.
-    f_equal.
-    apply Gate_matrix_H_Z_H__eq__X.
+  eapply QState_transform_equality'; mat_of_single H.
+  cbn [fold_right]. exists 0%R.
+  unfold gphase. com_simpl. mat_simpl.
+  repeat rewrite mat_single_factorized.
+  f_equal.
+  apply Gate_matrix_H_Z_H__eq__X.
 Qed.
 
 (* TODO : Pauli gate covered by S gate *)
@@ -504,5 +402,45 @@ Proof.
     unfold gphase. com_simpl. mat_simpl.
     apply (mat_3cnot_swap _ _ _ Hq1 Hq2).
 Qed.
+
+Lemma Transform_swap_swap_insert:
+  forall (qbit1 qbit2: nat) (instr: Instruction),
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+  qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 instr); swap qbit1 qbit2 }
+  qasm{ instr }.
+Proof.
+  intros qbit1 qbit2 instr Hq1 Hq2.
+  induction instr using Instruction_ind'.
+  - unfold swap_qbit_instr. simpl.
+    apply Instruction_equiv_equivalence with (y:=qasm{ I qbit1 }).
+    apply (Transform_swap_swap _ _ Hq1 Hq2).
+    apply (Transform_I _ Hq1).
+  - shelve.
+  - shelve.
+  - shelve.
+  - shelve.
+  - induction is; simpl.
+    + shelve.
+    + shelve.
+  - unfold swap_qbit_instr in *. simpl. shelve.
+  - 
+Admitted.
+
+Corollary Transform_swap_insert:
+  forall (qbit1 qbit2: nat) (instr: Instruction),
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_behavioral_equiv nq
+  qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 instr) }
+  qasm{ instr }.
+Proof.
+  intros qbit1 qbit2 instr Hq1 Hq2.
+  apply Instruction_behavioral_equiv_equivalence with (y:=qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 instr); swap qbit1 qbit2 }).
+  - shelve.
+  - apply Instruction_equiv_implies_behavioral_equiv.
+    apply (Transform_swap_swap_insert _ _ _ Hq1 Hq2).
+Admitted.
 
 End TRANSFORM.

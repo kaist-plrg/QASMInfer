@@ -305,10 +305,35 @@ Proof.
   f_equal; f_equal; lca.
 Qed.
 
+Lemma Gate_matrix_H_Y__eq__Y_H:
+  Gate_H_matrix * Gate_Y_matrix = gphase PI .* Gate_Y_matrix * Gate_H_matrix.
+Proof.
+  unfold gphase; com_simpl.
+  f_equal; f_equal; com_simpl.
+Qed.
+
+Lemma Gate_matrix_H_Z__eq__X_H:
+  Gate_H_matrix * Gate_Z_matrix = Gate_X_matrix * Gate_H_matrix.
+Proof.
+  com_simpl.
+  f_equal; f_equal; lca.
+Qed.
+
 Corollary Gate_matrix_H_X_H__eq__Z:
   Gate_H_matrix * Gate_X_matrix * Gate_H_matrix = Gate_Z_matrix.
 Proof.
   rewrite Gate_matrix_H_X__eq__Z_H.
+  rewrite <- mat_mul_assoc.
+  rewrite (mat_Hermitian_unitary__involutory Gate_H_matrix).
+  - mat_simpl.
+  - apply Gate_H_matrix_Hermitian.
+  - apply Gate_H_matrix_unitary.
+Qed.
+
+Corollary Gate_matrix_H_Y_H__eq__Y:
+  Gate_H_matrix * Gate_Y_matrix * Gate_H_matrix = gphase PI .* Gate_Y_matrix.
+Proof.
+  rewrite Gate_matrix_H_Y__eq__Y_H.
   rewrite <- mat_mul_assoc.
   rewrite (mat_Hermitian_unitary__involutory Gate_H_matrix).
   - mat_simpl.
@@ -322,24 +347,6 @@ Proof.
   rewrite <- mat_mul_assoc.
   rewrite <- Gate_matrix_H_X__eq__Z_H.
   mat_sort.
-  rewrite (mat_Hermitian_unitary__involutory Gate_H_matrix).
-  - mat_simpl.
-  - apply Gate_H_matrix_Hermitian.
-  - apply Gate_H_matrix_unitary.
-Qed.
-
-Lemma Gate_matrix_H_Y__eq__Y_H:
-  Gate_H_matrix * Gate_Y_matrix = gphase PI .* Gate_Y_matrix * Gate_H_matrix.
-Proof.
-  unfold gphase; com_simpl.
-  f_equal; f_equal; com_simpl.
-Qed.
-
-Corollary Gate_matrix_H_Y_H__eq__Y:
-  Gate_H_matrix * Gate_Y_matrix * Gate_H_matrix = gphase PI .* Gate_Y_matrix.
-Proof.
-  rewrite Gate_matrix_H_Y__eq__Y_H.
-  rewrite <- mat_mul_assoc.
   rewrite (mat_Hermitian_unitary__involutory Gate_H_matrix).
   - mat_simpl.
   - apply Gate_H_matrix_Hermitian.
@@ -507,3 +514,15 @@ Proof.
 Qed.
 
 End GATE_MATRIX_CORRESPONDENCE.
+
+Ltac mat_of_single H :=
+  repeat (
+    apply nil_mat ||
+    apply cons_mat ||
+    apply (Matrix_of_X _ _ H) ||
+    apply (Matrix_of_Y _ _ H) ||
+    apply (Matrix_of_Z _ _ H) ||
+    apply (Matrix_of_I _ _ H) ||
+    apply (Matrix_of_H _ _ H) ||
+    apply (Matrix_of_P _ _ _ H)
+  ).
