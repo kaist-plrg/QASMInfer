@@ -50,7 +50,7 @@ Fixpoint change_qbit_instr (chan_fn: nat -> nat) (instr: Instruction): Instructi
 Definition swap_qbit_instr (qbit1 qbit2: nat) :=
   change_qbit_instr (change_qbit qbit1 qbit2).
 
-(* Sanity check of swap_qbit_instr *)
+(* Property check of swap_qbit_instr *)
 Lemma swap_swap_qbit:
   forall (qbit1 qbit2: nat) (tq: nat),
   change_qbit qbit1 qbit2
@@ -313,5 +313,26 @@ Proof.
   apply (mat_swap_symm Hq1 Hq2).
 Qed.
 
+Lemma Commute_swap_instr:
+  forall (qbit1 qbit2: nat) (instr: Instruction),
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+  qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 instr) }
+  qasm{ instr; swap qbit1 qbit2 }.
+Proof.
+  intros qbit1 qbit2 instr Hq1 Hq2.
+  induction instr using Instruction_ind'; unfold swap_qbit_instr; simpl.
+  - intros ps Hvalid. simpl. reflexivity.
+  - unfold change_qbit.
+    destruct (Nat.eq_dec target qbit1).
+    +  shelve. (* Rotate *)
+  - shelve. (* CNOT *)
+  - shelve. (* SWAP *)
+  - shelve. (* MEASURE *)
+  - shelve. (* SEQ *)
+  - shelve. (* IF *)
+  - shelve. (* RESET *)
+Admitted.
 
 End COMMUTE.
