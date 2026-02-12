@@ -354,7 +354,7 @@ Proof.
   - apply ProgramState_init_prob_valid.
 Qed.
 
-Lemma ProgramState_map_valid: forall (f: Branch -> Branch) (ps: ProgramState),
+Lemma ProgramState_map_valid: forall {f: Branch -> Branch} {ps: ProgramState},
   ProgramState_valid ps -> (forall b, Branch_valid b -> Branch_valid (f b)) ->
   ProgramState_valid (PositiveMap.map f ps).
 Proof.
@@ -718,15 +718,15 @@ Lemma Execute_rotate_instr_valid:
   ProgramState_valid (Execute_rotate_instr theta phi lambda target ps).
 Proof.
   intros.
-  apply (ProgramState_map_valid _ _ H).
-  intros b [Hvalid Hprob].
-  unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
-  split.
-  apply den_valid_uop.
-  apply mat_single_unitary.
-  apply mat_rot_unitary.
-  assumption.
-  assumption.
+  apply ProgramState_map_valid.
+  - apply H.
+  - intros b [Hvalid Hprob].
+    unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
+    split.
+    apply den_valid_uop.
+    apply mat_single_unitary.
+    apply mat_rot_unitary.
+    all: assumption.
 Qed.
 
 Lemma Execute_cnot_instr_valid:
@@ -735,14 +735,14 @@ Lemma Execute_cnot_instr_valid:
   ProgramState_valid (Execute_cnot_instr control target ps).
 Proof.
   intros.
-  apply (ProgramState_map_valid _ _ H).
-  intros b [Hvalid Hprob].
-  unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
-  split.
-  apply den_valid_uop.
-  apply mat_cnot_unitary.
-  assumption.
-  assumption.
+  apply ProgramState_map_valid.
+  - apply H.
+  - intros b [Hvalid Hprob].
+    unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
+    split.
+    apply den_valid_uop.
+    apply mat_cnot_unitary.
+    all: assumption.
 Qed.
 
 Lemma Execute_swap_instr_valid:
@@ -750,14 +750,14 @@ Lemma Execute_swap_instr_valid:
   ProgramState_valid ps -> ProgramState_valid (Execute_swap_instr q1 q2 ps).
 Proof.
   intros.
-  apply (ProgramState_map_valid _ _ H).
-  intros b [Hvalid Hprob].
-  unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
-  split.
-  apply den_valid_uop.
-  apply mat_swap_unitary.
-  assumption.
-  assumption.
+  apply ProgramState_map_valid.
+  - apply H.
+  - intros b [Hvalid Hprob].
+    unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
+    split.
+    apply den_valid_uop.
+    apply mat_swap_unitary.
+    all: assumption.
 Qed.
 
 Lemma Execute_measure_instr_branch_valid:
@@ -1060,13 +1060,14 @@ Lemma Execute_reset_instr_valid:
   ProgramState_valid ps -> ProgramState_valid (Execute_reset_instr target ps).
 Proof.
   intros.
-  apply (ProgramState_map_valid _ _ H).
-  intros b [Hvalid Hprob].
-  unfold Execute_reset_instr_branch, Branch_valid in *; simpl.
-  split.
-  apply den_valid_reset.
-  apply Hvalid.
-  assumption.
+  apply ProgramState_map_valid.
+  - apply H.
+  - intros b [Hvalid Hprob].
+    unfold Execute_reset_instr_branch, Branch_valid in *; simpl.
+    split.
+    apply den_valid_reset.
+    apply Hvalid.
+    assumption.
 Qed.
 
 

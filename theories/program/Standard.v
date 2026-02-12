@@ -379,7 +379,7 @@ Inductive Matrix_of_list : list Instruction -> list (Matrix nq) -> Prop :=
   Matrix_of_list (instr :: ilist) (mat :: mlist).
 
 Lemma Matrix_of_list_id:
-  forall (lst: list Instruction) (mlst: list (Matrix nq)),
+  forall {lst: list Instruction} {mlst: list (Matrix nq)},
   forall (ps: ProgramState nq),
   Matrix_of_list lst mlst ->
   PositiveMap.Equal
@@ -410,7 +410,7 @@ Proof.
     + reflexivity.
 Qed.
 
-Lemma Matrix_of_I (qbit: nat):
+Lemma Matrix_of_I {qbit: nat}:
   qbit < nq ->
   Matrix_of (qasm{ I qbit }) (mat_eye).
 Proof.
@@ -425,7 +425,7 @@ Proof.
   apply mat_single_eye.
 Qed.  
 
-Lemma Matrix_of_X (qbit: nat):
+Lemma Matrix_of_X {qbit: nat}:
   qbit < nq ->
   Matrix_of qasm{ X qbit } (mat_single nq qbit Gate_X_matrix).
 Proof.
@@ -436,12 +436,12 @@ Proof.
   apply functional_extensionality.
   intros branch.
   f_equal. rewrite Gate_X_matrix_gphase.
-  rewrite (mat_single_scale _ _ _ _ Hvalid).
+  rewrite (mat_single_scale _ _ Hvalid).
   rewrite den_uop_gphase.
   reflexivity.
 Qed.
 
-Lemma Matrix_of_Y (qbit: nat):
+Lemma Matrix_of_Y {qbit: nat}:
   qbit < nq ->
   Matrix_of qasm{ Y qbit } (mat_single nq qbit Gate_Y_matrix).
 Proof.
@@ -452,12 +452,12 @@ Proof.
   apply functional_extensionality.
   intros branch.
   f_equal. rewrite Gate_Y_matrix_gphase.
-  rewrite (mat_single_scale _ _ _ _ Hvalid).
+  rewrite (mat_single_scale _ _ Hvalid).
   rewrite den_uop_gphase.
   reflexivity.
 Qed.
 
-Lemma Matrix_of_Z (qbit: nat):
+Lemma Matrix_of_Z {qbit: nat}:
   qbit < nq ->
   Matrix_of qasm{ Z qbit } (mat_single nq qbit Gate_Z_matrix).
 Proof.
@@ -468,12 +468,12 @@ Proof.
   apply functional_extensionality.
   intros branch.
   f_equal. rewrite Gate_Z_matrix_gphase.
-  rewrite (mat_single_scale _ _ _ _ Hvalid).
+  rewrite (mat_single_scale _ _ Hvalid).
   rewrite den_uop_gphase.
   reflexivity.
 Qed.
 
-Lemma Matrix_of_H (qbit: nat):
+Lemma Matrix_of_H {qbit: nat}:
   qbit < nq ->
   Matrix_of qasm{ H qbit } (mat_single nq qbit Gate_H_matrix).
 Proof.
@@ -484,12 +484,12 @@ Proof.
   apply functional_extensionality.
   intros branch.
   f_equal. rewrite Gate_H_matrix_gphase.
-  rewrite (mat_single_scale _ _ _ _ Hvalid).
+  rewrite (mat_single_scale _ _ Hvalid).
   rewrite den_uop_gphase.
   reflexivity.
 Qed.
 
-Lemma Matrix_of_P (qbit: nat) (lambda: R):
+Lemma Matrix_of_P {qbit: nat} (lambda: R):
   qbit < nq ->
   Matrix_of qasm{ P(lambda) qbit } (mat_single nq qbit (mat_rot 0 0 lambda)).
 Proof.
@@ -497,7 +497,7 @@ Proof.
   intros cstate. reflexivity.
 Qed.
 
-Lemma Matrix_of_cnot (qbit1 qbit2: nat):
+Lemma Matrix_of_cnot {qbit1 qbit2: nat}:
   qbit1 < nq -> qbit2 < nq ->
   Matrix_of qasm{ cx qbit1 qbit2 } (mat_cnot qbit1 qbit2).
 Proof.
@@ -505,7 +505,7 @@ Proof.
   intros cstate. reflexivity.
 Qed.
 
-Lemma Matrix_of_swap (qbit1 qbit2: nat):
+Lemma Matrix_of_swap {qbit1 qbit2: nat}:
   qbit1 < nq -> qbit2 < nq ->
   Matrix_of qasm{ swap qbit1 qbit2 } (mat_swap qbit1 qbit2).
 Proof.
@@ -519,10 +519,10 @@ Ltac mat_of_single H :=
   repeat (
     apply nil_mat ||
     apply cons_mat ||
-    apply (Matrix_of_X _ _ H) ||
-    apply (Matrix_of_Y _ _ H) ||
-    apply (Matrix_of_Z _ _ H) ||
-    apply (Matrix_of_I _ _ H) ||
-    apply (Matrix_of_H _ _ H) ||
-    apply (Matrix_of_P _ _ _ H)
+    apply (Matrix_of_X _ H) ||
+    apply (Matrix_of_Y _ H) ||
+    apply (Matrix_of_Z _ H) ||
+    apply (Matrix_of_I _ H) ||
+    apply (Matrix_of_H _ H) ||
+    apply (Matrix_of_P _ _ H)
   ).

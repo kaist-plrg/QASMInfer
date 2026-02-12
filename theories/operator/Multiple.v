@@ -58,7 +58,7 @@ Proof.
   all: repeat f_equal; com_simpl.
 Qed.
 
-Lemma mat_swap_1n_unitary : forall n, mat_unitary (mat_swap_1n n).
+Lemma mat_swap_1n_unitary : forall {n}, mat_unitary (mat_swap_1n n).
 Proof.
   induction n as [|[|[|n']]].
   1-3: unfold mat_unitary; simpl; split; repeat f_equal.
@@ -75,7 +75,7 @@ Proof.
   all: auto.
 Qed.
 
-Lemma mat_swap_unitary : forall n q1 q2, mat_unitary (@mat_swap n q1 q2).
+Lemma mat_swap_unitary : forall {n q1 q2}, mat_unitary (@mat_swap n q1 q2).
 Proof.
   intros.
   unfold mat_swap; destruct (lt_dec q1 n) as [H1|H1], (lt_dec q2 n) as [H2|H2].
@@ -95,7 +95,7 @@ Proof.
   f_equal; f_equal; f_equal; com_simpl.
 Qed.
 
-Lemma mat_swap_1n_Hermitian : forall n, mat_Hermitian (mat_swap_1n n).
+Lemma mat_swap_1n_Hermitian : forall {n}, mat_Hermitian (mat_swap_1n n).
 Proof.
   induction n as [|[|[|n']]].
   1-3: unfold mat_Hermitian; simpl; repeat f_equal; com_simpl.
@@ -112,7 +112,7 @@ Proof.
     + apply mat_eye_Hermitian.
 Qed.
 
-Lemma mat_swap_Hermitian : forall n q1 q2, mat_Hermitian (@mat_swap n q1 q2).
+Lemma mat_swap_Hermitian : forall {n q1 q2}, mat_Hermitian (@mat_swap n q1 q2).
 Proof.
   intros.
   unfold mat_swap; destruct (lt_dec q1 n) as [H1|H1], (lt_dec q2 n) as [H2|H2].
@@ -128,7 +128,7 @@ Proof.
   - apply mat_eye_Hermitian.
 Qed.
 
-Lemma mat_swap_op_unitary : forall n q1 q2 (U: Matrix n), mat_unitary U -> mat_unitary (mat_swap_op q1 q2 U).
+Lemma mat_swap_op_unitary : forall {n q1 q2} (U: Matrix n), mat_unitary U -> mat_unitary (mat_swap_op q1 q2 U).
 Proof.
   intros.
   unfold mat_swap_op.
@@ -136,7 +136,7 @@ Proof.
   all: try apply mat_swap_unitary; auto.
 Qed.
 
-Lemma mat_swap_op_Hermitian : forall n q1 q2 (U: Matrix n), mat_Hermitian U -> mat_Hermitian (mat_swap_op q1 q2 U).
+Lemma mat_swap_op_Hermitian : forall {n q1 q2} (U: Matrix n), mat_Hermitian U -> mat_Hermitian (mat_swap_op q1 q2 U).
 Proof.
   intros.
   unfold mat_swap_op.
@@ -145,7 +145,7 @@ Proof.
   apply H.
 Qed.
 
-Lemma mat_swap_1n_suppl_id: forall n a b c d,
+Lemma mat_swap_1n_suppl_id: forall {n a b c d},
   mat_swap2 = rec_mat a b c d ->
   mat_swap_1n_suppl n = mat_ccast (rec_mat (mat_eye ⊗ a) (mat_eye ⊗ b) (mat_eye ⊗ c) (mat_eye ⊗ d)) (@add_comm (S n) 1).
 Proof.
@@ -181,7 +181,7 @@ Proof.
     all: apply mat_ccast_refl.
 Qed.
 
-Lemma mat_swap_1n_suppl_ge_2: forall n (H: n >= 2),
+Lemma mat_swap_1n_suppl_ge_2: forall {n} (H: n >= 2),
   mat_swap_1n n = mat_ccast (mat_swap_1n_suppl (n - 2))
   (eq_trans (Nat.add_comm 2 (n - 2)) (Nat.sub_add 2 n H)).
 Proof.
@@ -199,7 +199,7 @@ Proof.
 Qed.
 
 Lemma mat_swap_valid_left_id:
-  forall n q1 q2 (Hq1: q1 < n) (Hq2: q2 < n) (H: q1 < q2) (Hcast: (q1 + (q2 - q1 + 1) + (n - q2 - 1))%nat = n),
+  forall {n q1 q2} (Hq1: q1 < n) (Hq2: q2 < n) (H: q1 < q2) (Hcast: (q1 + (q2 - q1 + 1) + (n - q2 - 1))%nat = n),
   @mat_swap n q1 q2 = 
   mat_ccast ((@mat_eye q1) ⊗ mat_swap_1n (q2 - q1 + 1) ⊗ @mat_eye (n - q2 - 1))
   Hcast.
@@ -221,7 +221,7 @@ Proof.
 Qed.
 
 Lemma mat_swap_valid_right_id:
-  forall n q1 q2 (Hq1: q1 < n) (Hq2: q2 < n) (H: q1 > q2) (Hcast: (q2 + (q1 - q2 + 1) + (n - q1 - 1))%nat = n),
+  forall {n q1 q2} (Hq1: q1 < n) (Hq2: q2 < n) (H: q1 > q2) (Hcast: (q2 + (q1 - q2 + 1) + (n - q1 - 1))%nat = n),
   mat_swap q1 q2 = 
   mat_ccast ((@mat_eye q2) ⊗ mat_swap_1n (q1 - q2 + 1) ⊗ @mat_eye (n - q1 - 1)) Hcast.
 Proof.
@@ -239,6 +239,23 @@ Proof.
       remember p0 as p
   end.
   apply mat_ccast_refl'.
+Qed.
+
+Lemma mat_swap_symm:
+  forall {n q1 q2} (Hq1: q1 < n) (Hq2: q2 < n),
+  @mat_swap n q1 q2 = mat_swap q2 q1.
+Proof.
+  intros.
+  destruct (lt_eq_lt_dec q1 q2) as [[H|H]|H].
+  - assert (Hcast: (q1 + (q2 - q1 + 1) + (n - q2 - 1))%nat = n) by lia.
+    rewrite (mat_swap_valid_left_id Hq1 Hq2 H Hcast).
+    rewrite (mat_swap_valid_right_id Hq2 Hq1 H Hcast).
+    reflexivity.
+  - rewrite H. reflexivity.
+  - assert (Hcast: (q2 + (q1 - q2 + 1) + (n - q1 - 1))%nat = n) by lia.
+    rewrite (mat_swap_valid_left_id Hq2 Hq1 H Hcast).
+    rewrite (mat_swap_valid_right_id Hq1 Hq2 H Hcast).
+    reflexivity.
 Qed.
 
 End SWAP_PROPERTIES.
@@ -261,7 +278,7 @@ End CNOT.
 
 Section CNOT_PROPERTIES.
 
-Lemma mat_ctrl_single_unitary : forall n c t (U: Matrix 1), mat_unitary U -> mat_unitary (mat_ctrl_single n c t U).
+Lemma mat_ctrl_single_unitary : forall {n c t} (U: Matrix 1), mat_unitary U -> mat_unitary (mat_ctrl_single n c t U).
 Proof.
   intros n c t U HU.
   revert c t.
@@ -314,14 +331,14 @@ Proof.
   unfold mat_not2, mat_unitary; simpl; split; repeat f_equal; com_simpl.
 Qed.
 
-Lemma mat_cnot_unitary : forall n qc qt, mat_unitary (@mat_cnot n qc qt).
+Lemma mat_cnot_unitary : forall {n qc qt}, mat_unitary (@mat_cnot n qc qt).
 Proof.
   intros.
   apply mat_ctrl_single_unitary.
   apply mat_not2_unitary.
 Qed.
 
-Lemma mat_ctrl_single_Hermitian : forall n c t (U: Matrix 1), mat_Hermitian U -> mat_Hermitian (mat_ctrl_single n c t U).
+Lemma mat_ctrl_single_Hermitian : forall {n c t} (U: Matrix 1), mat_Hermitian U -> mat_Hermitian (mat_ctrl_single n c t U).
 Proof.
   intros n c t U HU.
   revert c t.
@@ -356,7 +373,7 @@ Proof.
   simpl; f_equal; f_equal; lca.
 Qed.
 
-Lemma mat_cnot_Hermitian : forall n c t, mat_Hermitian (@mat_cnot n c t).
+Lemma mat_cnot_Hermitian : forall {n c t}, mat_Hermitian (@mat_cnot n c t).
 Proof.
   intros.
   apply mat_ctrl_single_Hermitian.
@@ -364,7 +381,7 @@ Proof.
 Qed.
 
 Lemma mat_ctrl_single_left_form :
-  forall n c t (U : Matrix 1),
+  forall {n c t} (U : Matrix 1),
   forall (Hcn: c < n) (Htn: t < n) (Hct: c < t) (Hcast: (c + (1 + (n - c - 1)))%nat = n),
     mat_ctrl_single n c t U
     =
@@ -402,7 +419,7 @@ Proof.
 Qed.
 
 Lemma mat_ctrl_single_right_form :
-  forall n c t (U : Matrix 1),
+  forall {n c t} (U : Matrix 1),
   forall (Hcn: c < n) (Htn: t < n) (Hct: t < c) (Hcast: (t + (1 + (n - t - 1)))%nat = n),
     mat_ctrl_single n c t U
     =
@@ -437,7 +454,7 @@ Proof.
 Qed.
 
 Lemma mat_ctrl_single_eq_form : 
-  forall n c (U: Matrix 1),
+  forall {n c} (U: Matrix 1),
   mat_ctrl_single n c c U = mat_eye.
 Proof.
   induction n; intros.
@@ -447,30 +464,30 @@ Proof.
     + mat_simpl. f_equal; apply IHn.
 Qed.
 
-Lemma mat_3cnot_swap_c_lt_t: forall n c t
+Lemma mat_3cnot_swap_c_lt_t: forall {n c t}
     (Hcn: c < n) (Htn: t < n) (Hct: c < t),
     @mat_cnot n c t * mat_cnot t c * mat_cnot c t = mat_swap c t.
 Proof.
   intros n c t Hcn Htn Hct.
   unfold mat_cnot.
   assert (Hcast_swap: (c + (t - c + 1) + (n - t - 1))%nat = n) by lia.
-  rewrite (mat_swap_valid_left_id _ _ _ Hcn Htn Hct Hcast_swap).
+  rewrite (mat_swap_valid_left_id Hcn Htn Hct Hcast_swap).
   assert (Hcast_ctrl_single: (c + (1 + (n - c - 1)))%nat = n) by lia.
-  rewrite (mat_ctrl_single_left_form n c t _ Hcn Htn Hct Hcast_ctrl_single).
-  rewrite (mat_ctrl_single_right_form n t c _ Htn Hcn Hct Hcast_ctrl_single).
+  rewrite (mat_ctrl_single_left_form _ Hcn Htn Hct Hcast_ctrl_single).
+  rewrite (mat_ctrl_single_right_form _ Htn Hcn Hct Hcast_ctrl_single).
   simpl. mat_simpl.
   rewrite mat_mul_ccast, mat_mul_ccast.
   rewrite tprod_mul, tprod_mul.
   mat_simpl.
   assert (H: n - c - 1 > t - c - 1) by lia.
   assert (Hcast: (t - c - 1 + 1 + (n - c - 1 - (t - c - 1) - 1))%nat = (n - c - 1)%nat) by lia.
-  rewrite (mat_proj0_id _ _ H Hcast), (mat_proj1_id _ _ H Hcast), (mat_single_id _ _ _ H Hcast).
+  rewrite (mat_proj0_id H Hcast), (mat_proj1_id H Hcast), (mat_single_id _ H Hcast).
   repeat rewrite mat_mul_ccast.
   rewrite ccast_rec_mat.
   repeat rewrite tprod_mul.
   repeat rewrite mat_mul_eye_r.
   assert (Hswap: t - c + 1 >= 2) by lia.
-  rewrite mat_swap_1n_suppl_ge_2 with (n:= (t - c + 1)%nat) (H:= Hswap).
+  rewrite mat_swap_1n_suppl_ge_2 with (H:= Hswap).
   assert (Hmat: mat_swap2 = rec_mat
     mat_proj0_base (mat_proj1_base * mat_not2)
     (mat_not2 * mat_proj1_base) (mat_not2 * mat_proj0_base * mat_not2)).
@@ -478,7 +495,7 @@ Proof.
     unfold mat_swap2. simpl.
     f_equal; f_equal; com_simpl.
   }
-  rewrite (mat_swap_1n_suppl_id _ _ _ _ _ Hmat); clear Hmat.
+  rewrite (mat_swap_1n_suppl_id Hmat); clear Hmat.
   repeat rewrite tprod_ccast_left.
   repeat rewrite tprod_ccast_right.
   symmetry.
@@ -497,24 +514,24 @@ Proof.
   apply mat_ccast_refl'.
 Qed.
 
-Lemma mat_3cnot_swap_c_gt_t: forall n c t
+Lemma mat_3cnot_swap_c_gt_t: forall {n c t}
     (Hcn: c < n) (Htn: t < n) (Hct: c > t),
     @mat_cnot n c t * mat_cnot t c * mat_cnot c t = mat_swap c t.
 Proof.
   intros n c t Hcn Htn Hct.
   unfold mat_cnot.
   assert (Hcast_swap: (t + (c - t + 1) + (n - c - 1))%nat = n) by lia.
-  rewrite (mat_swap_valid_right_id _ _ _ Hcn Htn Hct Hcast_swap).
+  rewrite (mat_swap_valid_right_id Hcn Htn Hct Hcast_swap).
   assert (Hcast_ctrl_single: (t + (1 + (n - t - 1)))%nat = n) by lia.
-  rewrite (mat_ctrl_single_left_form n t c _ Htn Hcn Hct Hcast_ctrl_single).
-  rewrite (mat_ctrl_single_right_form n c t _ Hcn Htn Hct Hcast_ctrl_single).
+  rewrite (mat_ctrl_single_left_form _ Htn Hcn Hct Hcast_ctrl_single).
+  rewrite (mat_ctrl_single_right_form _ Hcn Htn Hct Hcast_ctrl_single).
   simpl. mat_simpl.
   rewrite mat_mul_ccast, mat_mul_ccast.
   rewrite tprod_mul, tprod_mul.
   mat_simpl.
   assert (H: n - t - 1 > c - t - 1) by lia.
   assert (Hcast: (c - t - 1 + 1 + (n - t - 1 - (c - t - 1) - 1))%nat = (n - t - 1)%nat) by lia.
-  rewrite (mat_proj0_id _ _ H Hcast), (mat_proj1_id _ _ H Hcast), (mat_single_id _ _ _ H Hcast).
+  rewrite (mat_proj0_id H Hcast), (mat_proj1_id H Hcast), (mat_single_id _ H Hcast).
   repeat rewrite mat_mul_ccast.
   repeat rewrite mat_add_ccast.
   rewrite ccast_rec_mat.
@@ -523,7 +540,7 @@ Proof.
   repeat rewrite <- tprod_add_dist_r.
   repeat rewrite <- tprod_add_dist_l.
   assert (Hswap: c - t + 1 >= 2) by lia.
-  rewrite mat_swap_1n_suppl_ge_2 with (n:= (c - t + 1)%nat) (H:= Hswap).
+  rewrite mat_swap_1n_suppl_ge_2 with (H:= Hswap).
   remember (mat_proj0_base * mat_proj0_base + mat_proj1_base * mat_not2 * mat_proj1_base) as P0.
   remember (mat_proj0_base * mat_proj1_base + mat_proj1_base * mat_not2 * mat_proj0_base) as P1.
   remember (mat_proj1_base * mat_proj0_base + mat_proj0_base * mat_not2 * mat_proj1_base) as P2.
@@ -533,7 +550,7 @@ Proof.
     unfold mat_swap2. rewrite HeqP0, HeqP1, HeqP2, HeqP3. mat_simpl.
     f_equal; f_equal; com_simpl.
   }
-  rewrite (mat_swap_1n_suppl_id _ _ _ _ _ Hmat); clear Hmat.
+  rewrite (mat_swap_1n_suppl_id Hmat); clear Hmat.
   repeat rewrite tprod_ccast_left.
   repeat rewrite tprod_ccast_right.
   symmetry.
@@ -552,7 +569,7 @@ Proof.
   apply mat_ccast_refl'.
 Qed.
 
-Theorem mat_3cnot_swap : forall n c t (Hcn: c < n) (Htn: t < n),
+Theorem mat_3cnot_swap : forall {n c t} (Hcn: c < n) (Htn: t < n),
   @mat_cnot n c t * mat_cnot t c * mat_cnot c t = mat_swap c t.
 Proof.
   intros.
@@ -560,12 +577,12 @@ Proof.
   destruct (lt_dec t n) as [H2|H2] eqn:H2'.
   all: try lia.
   destruct (lt_eq_lt_dec c t) as [[Hlt|Heq]|Hgt] eqn:H3.
-  - apply (mat_3cnot_swap_c_lt_t _ _ _ H1 H2 Hlt).
+  - apply (mat_3cnot_swap_c_lt_t H1 H2 Hlt).
   - unfold mat_cnot, mat_swap.
     rewrite H1', H2', H3, Heq.
     rewrite mat_ctrl_single_eq_form.
     mat_simpl.
-  - apply (mat_3cnot_swap_c_gt_t _ _ _ H1 H2 Hgt).
+  - apply (mat_3cnot_swap_c_gt_t H1 H2 Hgt).
 Qed.
 
 End CNOT_PROPERTIES.

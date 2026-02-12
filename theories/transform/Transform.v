@@ -33,7 +33,7 @@ Lemma Transform_I: forall (qbit: nat),
   NopInstr.
 Proof.
   intros qbit H ps Hinv cstate.
-  rewrite (Matrix_of_I _ _ H).
+  rewrite (Matrix_of_I _ H).
   cbn [Execute_suppl].
   rewrite PFacts.map_o.
   destruct (PositiveMap.find cstate ps); cbn [Datatypes.option_map].
@@ -144,7 +144,7 @@ Proof.
     unfold Execute_rotate_instr_branch.
     f_equal.
     rewrite Gate_P_matrix_periodic.
-    rewrite (mat_single_scale _ _ _ _ H).
+    rewrite (mat_single_scale _ _ H).
     apply den_uop_gphase.
   - reflexivity. 
 Qed.
@@ -211,7 +211,7 @@ Proof.
   cbn [fold_right]. exists (-PI2)%R.
   mat_simpl.
   rewrite mat_single_factorized.
-  rewrite <- (mat_single_scale _ _ _ _ H).
+  rewrite <- (mat_single_scale _ _ H).
   f_equal.
   apply Gate_matrix_Y_X__eq__Z.
 Qed.
@@ -227,7 +227,7 @@ Proof.
   cbn [fold_right]. exists (PI2)%R.
   mat_simpl.
   rewrite mat_single_factorized.
-  rewrite <- (mat_single_scale _ _ _ _ H).
+  rewrite <- (mat_single_scale _ _ H).
   f_equal.
   apply Gate_matrix_X_Y__eq__Z.
 Qed.
@@ -243,7 +243,7 @@ Proof.
   cbn [fold_right]. exists (-PI2)%R.
   mat_simpl.
   rewrite mat_single_factorized.
-  rewrite <- (mat_single_scale _ _ _ _ H).
+  rewrite <- (mat_single_scale _ _ H).
   f_equal.
   apply Gate_matrix_Z_Y__eq__X.
 Qed.
@@ -259,7 +259,7 @@ Proof.
   cbn [fold_right]. exists (PI2)%R.
   mat_simpl.
   rewrite mat_single_factorized.
-  rewrite <- (mat_single_scale _ _ _ _ H).
+  rewrite <- (mat_single_scale _ _ H).
   f_equal.
   apply Gate_matrix_Y_Z__eq__X.
 Qed.
@@ -275,7 +275,7 @@ Proof.
   cbn [fold_right]. exists (-PI2)%R.
   mat_simpl.
   rewrite mat_single_factorized.
-  rewrite <- (mat_single_scale _ _ _ _ H).
+  rewrite <- (mat_single_scale _ _ H).
   f_equal.
   apply Gate_matrix_X_Z__eq__Y.
 Qed.
@@ -291,7 +291,7 @@ Proof.
   cbn [fold_right]. exists PI2%R.
   mat_simpl.
   rewrite mat_single_factorized.
-  rewrite <- (mat_single_scale _ _ _ _ H).
+  rewrite <- (mat_single_scale _ _ H).
   f_equal.
   apply Gate_matrix_Z_X__eq__Y.
 Qed.
@@ -322,7 +322,7 @@ Proof.
   cbn [fold_right]. exists (PI)%R.
   mat_simpl.
   repeat rewrite mat_single_factorized.
-  rewrite <- (mat_single_scale _ _ _ _ H).
+  rewrite <- (mat_single_scale _ _ H).
   f_equal.
   apply Gate_matrix_H_Y_H__eq__Y.
 Qed.
@@ -353,10 +353,10 @@ Lemma Transform_swap_swap: forall (qbit1 qbit2: nat),
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
   eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_swap _ _ _ Hq1 Hq2).
-    apply cons_mat. apply (Matrix_of_swap _ _ _ Hq1 Hq2).
+  - apply cons_mat. apply (Matrix_of_swap _ Hq1 Hq2).
+    apply cons_mat. apply (Matrix_of_swap _ Hq1 Hq2).
     apply nil_mat.
-  - apply (Matrix_of_I _ _ Hq1).
+  - apply (Matrix_of_I _ Hq1).
   - cbn [fold_right]. exists 0%R.
     unfold gphase. com_simpl. mat_simpl.
     apply mat_Hermitian_unitary__involutory.
@@ -373,10 +373,10 @@ Lemma Transform_cnot_cnot: forall (qbit1 qbit2: nat),
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
   eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_cnot _ _ _ Hq1 Hq2).
-    apply cons_mat. apply (Matrix_of_cnot _ _ _ Hq1 Hq2).
+  - apply cons_mat. apply (Matrix_of_cnot _ Hq1 Hq2).
+    apply cons_mat. apply (Matrix_of_cnot _ Hq1 Hq2).
     apply nil_mat.
-  - apply (Matrix_of_I _ _ Hq1).
+  - apply (Matrix_of_I _ Hq1).
   - cbn [fold_right]. exists 0%R.
     unfold gphase. com_simpl. mat_simpl.
     apply mat_Hermitian_unitary__involutory.
@@ -393,14 +393,14 @@ Lemma Transform_3cnot_swap: forall (qbit1 qbit2: nat),
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
   eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_cnot _ _ _ Hq1 Hq2).
-    apply cons_mat. apply (Matrix_of_cnot _ _ _ Hq2 Hq1).
-    apply cons_mat. apply (Matrix_of_cnot _ _ _ Hq1 Hq2).
+  - apply cons_mat. apply (Matrix_of_cnot _ Hq1 Hq2).
+    apply cons_mat. apply (Matrix_of_cnot _ Hq2 Hq1).
+    apply cons_mat. apply (Matrix_of_cnot _ Hq1 Hq2).
     apply nil_mat.
-  - apply (Matrix_of_swap _ _ _ Hq1 Hq2).
+  - apply (Matrix_of_swap _ Hq1 Hq2).
   - cbn [fold_right]. exists 0%R.
     unfold gphase. com_simpl. mat_simpl.
-    apply (mat_3cnot_swap _ _ _ Hq1 Hq2).
+    apply (mat_3cnot_swap Hq1 Hq2).
 Qed.
 
 Lemma Transform_swap_swap_insert:

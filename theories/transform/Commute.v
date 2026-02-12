@@ -131,8 +131,8 @@ Lemma QState_transform_equality:
   qasm{ seq[ lst2 ] }.
 Proof.
   intros lst1 lst2 mlst1 mlst2 H1 H2 [lambda Heq] ps Hinv.
-  rewrite (Matrix_of_list_id _ _ _ _ H1).
-  rewrite (Matrix_of_list_id _ _ _ _ H2).
+  rewrite (Matrix_of_list_id _ _ H1).
+  rewrite (Matrix_of_list_id _ _ H2).
   rewrite Heq.
   intros cstate. f_equal; f_equal.
   apply functional_extensionality.
@@ -153,7 +153,7 @@ Corollary QState_transform_equality':
   qasm{ instr }.
 Proof.
   intros lst mlst instr mat H1 H2 [lambda Heq] ps Hinv.
-  rewrite (Matrix_of_list_id _ _ _ _ H1).
+  rewrite (Matrix_of_list_id _ _ H1).
   rewrite Heq.
   intros cstate.
   rewrite H2.
@@ -180,7 +180,7 @@ Proof.
   mat_simpl.
   repeat rewrite mat_single_factorized.
   rewrite Gate_matrix_X_Y__eq__Z, Gate_matrix_Y_X__eq__Z.
-  repeat rewrite (mat_single_scale _ _ _ _ H).
+  repeat rewrite (mat_single_scale _ _ H).
   rewrite <- mat_scale_scale_comm. f_equal.
   unfold gphase. rewrite <- com_iexp_mul. f_equal.
   unfold PI. lra.
@@ -198,7 +198,7 @@ Proof.
   mat_simpl.
   repeat rewrite mat_single_factorized.
   rewrite Gate_matrix_Z_Y__eq__X, Gate_matrix_Y_Z__eq__X.
-  repeat rewrite (mat_single_scale _ _ _ _ H).
+  repeat rewrite (mat_single_scale _ _ H).
   rewrite <- mat_scale_scale_comm. f_equal.
   unfold gphase. rewrite <- com_iexp_mul. f_equal.
   unfold PI. lra.
@@ -216,7 +216,7 @@ Proof.
   mat_simpl.
   repeat rewrite mat_single_factorized.
   rewrite Gate_matrix_Z_X__eq__Y, Gate_matrix_X_Z__eq__Y.
-  repeat rewrite (mat_single_scale _ _ _ _ H).
+  repeat rewrite (mat_single_scale _ _ H).
   rewrite <- mat_scale_scale_comm. f_equal.
   unfold gphase. rewrite <- com_iexp_mul. f_equal.
   unfold PI. lra.
@@ -249,7 +249,7 @@ Proof.
   mat_simpl.
   repeat rewrite mat_single_factorized.
   rewrite Gate_matrix_H_Y__eq__Y_H.
-  rewrite <- (mat_single_scale _ _ _ _ H).
+  rewrite <- (mat_single_scale _ _ H).
   f_equal.
   rewrite mat_scale_mul_assoc.
   rewrite <- mat_scale_scale_comm.
@@ -292,8 +292,26 @@ Proof.
   destruct b; simpl. f_equal.
   repeat rewrite den_uop_den_uop.
   f_equal.
-  rewrite (mat_single_commute _ _ _ _ _ Hq1 Hq2 Hq).
+  rewrite (mat_single_commute _ _ Hq1 Hq2 Hq).
   reflexivity.
 Qed.
+
+Lemma Commute_swap_symm (qbit1 qbit2: nat):
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+  qasm{ swap qbit1 qbit2 }
+  qasm{ swap qbit2 qbit1 }.
+Proof.
+  intros Hq1 Hq2 ps Hvalid cstate.
+  rewrite (Matrix_of_swap _ Hq1 Hq2).
+  rewrite (Matrix_of_swap _ Hq2 Hq1).
+  f_equal; f_equal.
+  apply functional_extensionality.
+  intros b.
+  f_equal; f_equal.
+  apply (mat_swap_symm Hq1 Hq2).
+Qed.
+
 
 End COMMUTE.

@@ -136,7 +136,7 @@ Proof.
       apply IHn. apply IHn.
 Qed.
 
-Lemma mat_single_scale : forall n t (U : Matrix 1) (c : Complex),
+Lemma mat_single_scale : forall {n t} (U : Matrix 1) (c : Complex),
   n > t ->
   mat_single n t (c .* U) = c .* (mat_single n t U).
 Proof.
@@ -166,7 +166,7 @@ Proof.
 Qed.
 
 Lemma mat_single_id:
-  forall n t U (H: t < n) (Hcast: (t + 1 + (n - t - 1))%nat = n),
+  forall {n t} U (H: t < n) (Hcast: (t + 1 + (n - t - 1))%nat = n),
     mat_single n t U =
     mat_ccast ((@mat_eye t) ⊗ U ⊗ (@mat_eye (n - t - 1))) Hcast.
 Proof.
@@ -189,7 +189,7 @@ Proof.
 Qed.
 
 Lemma mat_single_commute:
-  forall n t1 t2 U1 U2 (H1: t1 < n) (H2 : t2 < n) (Hdiff: t1 <> t2),
+  forall {n t1 t2} U1 U2 (H1: t1 < n) (H2 : t2 < n) (Hdiff: t1 <> t2),
     mat_single n t1 U1 * mat_single n t2 U2 = mat_single n t2 U2 * mat_single n t1 U1.
 Proof.
   induction n; try lia.

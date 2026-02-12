@@ -294,7 +294,7 @@ Proof.
 Qed.
 
 Lemma mat_proj0_id:
-  forall n t (H: t < n) (Hcast: (t + 1 + (n - t - 1))%nat = n),
+  forall {n t} (H: t < n) (Hcast: (t + 1 + (n - t - 1))%nat = n),
     mat_proj0 n t =
     mat_ccast ((@mat_eye t) ⊗ mat_proj0_base ⊗ (@mat_eye (n - t - 1))) Hcast.
 Proof.
@@ -315,7 +315,7 @@ Proof.
 Qed.
 
 Lemma mat_proj1_id:
-  forall n t (H: t < n) (Hcast: (t + 1 + (n - t - 1))%nat = n),
+  forall {n t} (H: t < n) (Hcast: (t + 1 + (n - t - 1))%nat = n),
     mat_proj1 n t =
     mat_ccast ((@mat_eye t) ⊗ mat_proj1_base ⊗ (@mat_eye (n - t - 1))) Hcast.
 Proof.
