@@ -513,6 +513,14 @@ Proof.
   intros cstate. reflexivity.
 Qed.
 
+Lemma Matrix_of_U {qbit: nat} (theta phi lambda: R):
+  qbit < nq ->
+  Matrix_of qasm{ U (theta, phi, lambda) qbit } (mat_single nq qbit (mat_rot theta phi lambda)).
+Proof.
+  intros Hvalid ps. simpl.
+  intros cstate. reflexivity.
+Qed.
+
 End GATE_MATRIX_CORRESPONDENCE.
 
 Ltac mat_of_single H :=
@@ -524,5 +532,27 @@ Ltac mat_of_single H :=
     apply (Matrix_of_Z _ H) ||
     apply (Matrix_of_I _ H) ||
     apply (Matrix_of_H _ H) ||
-    apply (Matrix_of_P _ _ H)
+    apply (Matrix_of_U _ _ _ _ H)
+  ).
+
+Ltac mat_of_double H1 H2 :=
+  repeat (
+    apply nil_mat ||
+    apply cons_mat ||
+    apply (Matrix_of_X _ H1) ||
+    apply (Matrix_of_Y _ H1) ||
+    apply (Matrix_of_Z _ H1) ||
+    apply (Matrix_of_I _ H1) ||
+    apply (Matrix_of_H _ H1) ||
+    apply (Matrix_of_U _ _ _ _ H1) ||
+    apply (Matrix_of_X _ H2) ||
+    apply (Matrix_of_Y _ H2) ||
+    apply (Matrix_of_Z _ H2) ||
+    apply (Matrix_of_I _ H2) ||
+    apply (Matrix_of_H _ H2) ||
+    apply (Matrix_of_U _ _ _ _ H2) ||
+    apply (Matrix_of_cnot _ H1 H2) ||
+    apply (Matrix_of_cnot _ H2 H1) ||
+    apply (Matrix_of_swap _ H1 H2) ||
+    apply (Matrix_of_swap _ H2 H1)
   ).

@@ -274,26 +274,20 @@ Proof.
 Qed.
 
 Lemma Commute_single_indep (qbit1 qbit2: nat)
-  (a1 b1 c1 a2 b2 c2: R):
+  (theta1 phi1 lambda1 theta2 phi2 lambda2: R):
   Qbit_index_valid qbit1 ->
   Qbit_index_valid qbit2 ->
   qbit1 <> qbit2 ->
   Instruction_equiv nq
-  qasm{ U (a1, b1, c1) qbit1; U (a2, b2, c2) qbit2 }
-  qasm{ U (a2, b2, c2) qbit2; U (a1, b1, c1) qbit1 }.
+  qasm{ U (theta1, phi1, lambda1) qbit1; U (theta2, phi2, lambda2) qbit2 }
+  qasm{ U (theta2, phi2, lambda2) qbit2; U (theta1, phi1, lambda1) qbit1 }.
 Proof.
-  intros Hq1 Hq2 Hq ps Hvalid cstate.
-  simpl.
-  unfold Execute_rotate_instr.
-  repeat rewrite PFacts.map_o.
-  destruct (PositiveMap.find cstate ps); try reflexivity.
-  simpl. f_equal.
-  unfold Execute_rotate_instr_branch.
-  destruct b; simpl. f_equal.
-  repeat rewrite den_uop_den_uop.
-  f_equal.
-  rewrite (mat_single_commute _ _ Hq1 Hq2 Hq).
-  reflexivity.
+  intros Hq1 Hq2 Hq.
+  eapply QState_transform_equality; mat_of_double Hq1 Hq2.
+  exists 0%R. cbn [fold_right].
+  unfold gphase. com_simpl. mat_simpl.
+  symmetry.
+  apply (mat_single_commute _ _ Hq1 Hq2 Hq).
 Qed.
 
 Lemma Commute_swap_symm (qbit1 qbit2: nat):
@@ -313,6 +307,21 @@ Proof.
   apply (mat_swap_symm Hq1 Hq2).
 Qed.
 
+Lemma Commute_swap_rot (qbit1 qbit2 target: nat) (theta phi lambda: R):
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+  qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 qasm{ U (theta, phi, lambda) target })}
+  qasm{ U (theta, phi, lambda) target; swap qbit1 qbit2 }.
+Proof.
+  intros Hq1 Hq2.
+  unfold swap_qbit_instr. simpl. unfold change_qbit.
+  destruct (Nat.eq_dec target qbit1).
+  - subst.
+    eapply QState_transform_equality; mat_of_double Hq1 Hq2.
+    exists 0%R. unfold gphase. com_simpl. mat_simpl.
+Admitted.
+
 Lemma Commute_swap_instr:
   forall (qbit1 qbit2: nat) (instr: Instruction),
   Qbit_index_valid qbit1 ->
@@ -324,9 +333,7 @@ Proof.
   intros qbit1 qbit2 instr Hq1 Hq2.
   induction instr using Instruction_ind'; unfold swap_qbit_instr; simpl.
   - intros ps Hvalid. simpl. reflexivity.
-  - unfold change_qbit.
-    destruct (Nat.eq_dec target qbit1).
-    +  shelve. (* Rotate *)
+  - unfold change_qbit. shelve.
   - shelve. (* CNOT *)
   - shelve. (* SWAP *)
   - shelve. (* MEASURE *)
@@ -334,5 +341,7 @@ Proof.
   - shelve. (* IF *)
   - shelve. (* RESET *)
 Admitted.
+
+(* (A tprod B) * swap = swap * (B tprod A) *)
 
 End COMMUTE.
