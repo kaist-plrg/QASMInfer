@@ -19,16 +19,6 @@ Import List.ListNotations.
 
 Section SWAP_HELPER.
 
-Definition change_qbit (qbit1 qbit2: nat) (tq: nat): nat :=
-  match Nat.eq_dec tq qbit1 with
-  | left _ => qbit2
-  | right _ =>
-      match Nat.eq_dec tq qbit2 with
-      | left _ => qbit1
-      | right _ => tq
-      end
-  end.
-
 Fixpoint change_qbit_instr (chan_fn: nat -> nat) (instr: Instruction): Instruction :=
   match instr with
   | NopInstr => NopInstr
@@ -48,25 +38,9 @@ Fixpoint change_qbit_instr (chan_fn: nat -> nat) (instr: Instruction): Instructi
   end.
 
 Definition swap_qbit_instr (qbit1 qbit2: nat) :=
-  change_qbit_instr (change_qbit qbit1 qbit2).
+  change_qbit_instr (swap_qbit qbit1 qbit2).
 
 (* Property check of swap_qbit_instr *)
-Lemma swap_swap_qbit:
-  forall (qbit1 qbit2: nat) (tq: nat),
-  change_qbit qbit1 qbit2
-  (change_qbit qbit1 qbit2 tq) = tq.
-Proof.
-  intros q1 q2 tq.
-  unfold change_qbit.
-  destruct (Nat.eq_dec tq q1) as [H1|H1].
-  - destruct (Nat.eq_dec q2 q1) as [H2|H2]; try lia.
-    destruct (Nat.eq_dec q2 q2) as [H3|H3]; try lia.
-  - destruct (Nat.eq_dec tq q2) as [H2|H2].
-    + destruct (Nat.eq_dec q1 q1) as [H3|H3]; try lia.
-    + destruct (Nat.eq_dec tq q1) as [H3|H3]; try lia.
-      destruct (Nat.eq_dec tq q2) as [H4|H4]; try lia.
-Qed.
-
 Lemma swap_swap_instr:
   forall (qbit1 qbit2: nat) (instr: Instruction),
   swap_qbit_instr qbit1 qbit2
@@ -85,20 +59,6 @@ Proof.
       rewrite H2, IHis.
       reflexivity. apply H3.
   - f_equal. apply IHinstr.
-Qed.
-
-Lemma swap_qbit_symm:
-  forall (qbit1 qbit2: nat),
-    change_qbit qbit1 qbit2 =
-    change_qbit qbit2 qbit1.
-Proof.
-  intros qbit1 qbit2.
-  apply functional_extensionality.
-  intros tq.
-  unfold change_qbit.
-  destruct (Nat.eq_dec tq qbit1) as [H1|H1].
-  - destruct (Nat.eq_dec tq qbit2) as [H2|H2]; try lia.
-  - reflexivity.
 Qed.
 
 Lemma swap_instr_symm:
@@ -315,11 +275,9 @@ Lemma Commute_swap_rot (qbit1 qbit2 target: nat) (theta phi lambda: R):
   qasm{ U (theta, phi, lambda) target; swap qbit1 qbit2 }.
 Proof.
   intros Hq1 Hq2.
-  unfold swap_qbit_instr. simpl. unfold change_qbit.
-  destruct (Nat.eq_dec target qbit1).
-  - subst.
-    eapply QState_transform_equality; mat_of_double Hq1 Hq2.
-    exists 0%R. unfold gphase. com_simpl. mat_simpl.
+  unfold swap_qbit_instr. simpl.
+  eapply QState_transform_equality; mat_of_double Hq1 Hq2.
+  exists 0%R. unfold gphase. com_simpl. mat_simpl.
 Admitted.
 
 Lemma Commute_swap_instr:
@@ -333,7 +291,7 @@ Proof.
   intros qbit1 qbit2 instr Hq1 Hq2.
   induction instr using Instruction_ind'; unfold swap_qbit_instr; simpl.
   - intros ps Hvalid. simpl. reflexivity.
-  - unfold change_qbit. shelve.
+  - shelve.
   - shelve. (* CNOT *)
   - shelve. (* SWAP *)
   - shelve. (* MEASURE *)

@@ -63,6 +63,21 @@ Definition mat_caseS_ {n: nat} (A: Matrix (S n))
   | _ => fun devil => False_ind (@IDProp) devil
   end.
 
+(* Destruction of Matrix 1, for convenience *)
+Lemma mat_1_inv :
+  forall (A : Matrix 1),
+  exists a b c d : Complex,
+    A = rec_mat (bas_mat a) (bas_mat b) (bas_mat c) (bas_mat d).
+Proof.
+  intros A.
+  destruct (mat_S_inv A) as [A1 [A2 [A3 [A4 HA]]]]; subst A.
+  destruct (mat_0_inv A1) as [a Ha]; subst A1.
+  destruct (mat_0_inv A2) as [b Hb]; subst A2.
+  destruct (mat_0_inv A3) as [c Hc]; subst A3.
+  destruct (mat_0_inv A4) as [d Hd]; subst A4.
+  eexists a, b, c, d. reflexivity.
+Qed.
+
 (* An induction scheme for 2 matrices of same size *)
 Definition mat_rect2 (P: forall {n}, Matrix n -> Matrix n -> Type)
   (bas: forall a b, P (bas_mat a) (bas_mat b))

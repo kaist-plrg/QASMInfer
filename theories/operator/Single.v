@@ -203,4 +203,41 @@ Proof.
   all: lia.
 Qed.
 
+Lemma mat_single_break_left:
+  forall {n1 n2 t} (U: Matrix 1),
+    t < n1 ->
+    mat_single (n1 + n2) t U = mat_single n1 t U ⊗ mat_eye.
+Proof.
+  intros n1 n2 t U Ht.
+  revert t Ht.
+  induction n1; intros t Ht; try lia.
+  destruct t; mat_simpl.
+  - rewrite <- (tprod_assoc U).
+    rewrite tprod_eye_eye.
+    symmetry.
+    apply mat_ccast_refl.
+  - rewrite tprod_0_l.
+    f_equal; apply IHn1; lia.
+Qed.
+
+Lemma mat_single_break_right_offset:
+  forall {n1 n2 t} (U: Matrix 1),
+    mat_single (n1 + n2) (n1 + t) U = mat_eye ⊗ mat_single n2 t U.
+Proof.
+  intros n1 n2 t U.
+  induction n1; mat_simpl.
+  rewrite IHn1.
+  f_equal; rewrite tprod_0_l; reflexivity.
+Qed.
+
+Lemma mat_single_break_right:
+  forall {n1 n2 t} (U: Matrix 1),
+    n1 <= t ->
+    mat_single (n1 + n2) t U = mat_eye ⊗ mat_single n2 (t - n1)%nat U.
+Proof.
+  intros n1 n2 t U Hle.
+  replace t with (n1 + (t - n1))%nat at 1 by lia.
+  apply mat_single_break_right_offset.
+Qed.
+
 End GENERAL.

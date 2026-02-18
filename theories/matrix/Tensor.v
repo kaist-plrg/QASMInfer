@@ -20,7 +20,7 @@ Proof.
   intros. simpl. reflexivity.
 Qed.
 
-Lemma tprod_base: forall {n} (c: Complex)(B: Matrix n),
+Lemma tprod_base: forall {n} (c: Complex) (B: Matrix n),
   (bas_mat c) ⊗ B = c .* B.
 Proof.
   intros. simpl. reflexivity.

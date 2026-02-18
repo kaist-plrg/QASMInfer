@@ -47,6 +47,17 @@ Defined.
 Definition mat_swap_op {n} (q1 q2: nat) (U: Matrix n) : Matrix n :=
   mat_swap q1 q2 * U * mat_swap q1 q2.
 
+(* Function to describe the action of swap matrix *)
+Definition swap_qbit (qbit1 qbit2: nat) (tq: nat): nat :=
+  match Nat.eq_dec tq qbit1 with
+  | left _ => qbit2
+  | right _ =>
+      match Nat.eq_dec tq qbit2 with
+      | left _ => qbit1
+      | right _ => tq
+      end
+  end.
+
 End SWAP.
 
 
@@ -256,6 +267,198 @@ Proof.
     rewrite (mat_swap_valid_left_id Hq2 Hq1 H Hcast).
     rewrite (mat_swap_valid_right_id Hq1 Hq2 H Hcast).
     reflexivity.
+Qed.
+
+Lemma swap_swap_qbit:
+  forall (qbit1 qbit2: nat) (tq: nat),
+  swap_qbit qbit1 qbit2
+  (swap_qbit qbit1 qbit2 tq) = tq.
+Proof.
+  intros q1 q2 tq.
+  unfold swap_qbit.
+  destruct (Nat.eq_dec tq q1) as [H1|H1].
+  - destruct (Nat.eq_dec q2 q1) as [H2|H2]; try lia.
+    destruct (Nat.eq_dec q2 q2) as [H3|H3]; try lia.
+  - destruct (Nat.eq_dec tq q2) as [H2|H2].
+    + destruct (Nat.eq_dec q1 q1) as [H3|H3]; try lia.
+    + destruct (Nat.eq_dec tq q1) as [H3|H3]; try lia.
+      destruct (Nat.eq_dec tq q2) as [H4|H4]; try lia.
+Qed.
+
+Lemma swap_qbit_symm:
+  forall (qbit1 qbit2: nat),
+    swap_qbit qbit1 qbit2 =
+    swap_qbit qbit2 qbit1.
+Proof.
+  intros qbit1 qbit2.
+  apply functional_extensionality.
+  intros tq.
+  unfold swap_qbit.
+  destruct (Nat.eq_dec tq qbit1) as [H1|H1].
+  - destruct (Nat.eq_dec tq qbit2) as [H2|H2]; try lia.
+  - reflexivity.
+Qed.
+
+Lemma mat_swap2_commute:
+  forall (U1 U2: Matrix 1),
+    (U1 ⊗ U2) * mat_swap2 = mat_swap2 * (U2 ⊗ U1).
+Proof.
+  intros U1 U2.
+  destruct (mat_1_inv U1) as [a1 [b1 [c1 [d1 H1]]]]; subst.
+  destruct (mat_1_inv U2) as [a2 [b2 [c2 [d2 H2]]]]; subst.
+  unfold mat_swap2.
+  mat_simpl.
+  f_equal; f_equal; f_equal; lca.
+Qed.
+
+Lemma mat_swap_1n_single_commute':
+  forall {n} (U: Matrix 1),
+    mat_swap_1n (S n) * mat_single (S n) 0 U =
+    mat_single (S n) n U * mat_swap_1n (S n).
+Proof.
+  intros n U.
+  destruct n.
+  - destruct (mat_1_inv U) as [a [b [c [d H]]]]; subst.
+    mat_simpl.
+    f_equal; f_equal; lca.
+  - unfold mat_swap_1n.
+    induction n.
+    + unfold mat_swap_1n_suppl, mat_single.
+      rewrite mat_swap2_commute.
+      f_equal; f_equal.
+      destruct (mat_1_inv U) as [a [b [c [d H]]]]; subst.
+      simpl.
+      f_equal; f_equal; lca.
+    + cbn [mat_swap_1n_suppl].
+      replace (mat_single (S (S (S n))) 0 U) with
+      (U ⊗ @mat_eye 1 ⊗ @mat_eye (S n)).
+      repeat rewrite <- mat_mul_assoc.
+      rewrite (tprod_mul 2 (S n)), <- mat_swap2_commute, <- tprod_mul.
+      rewrite (mat_mul_assoc (@mat_eye 1 ⊗ mat_swap_1n_suppl n)).
+      rewrite <- tprod_assoc, mat_ccast_refl, tprod_mul.
+      replace (U ⊗ @mat_eye (S n)) with (mat_single (S (S n)) 0 U) by reflexivity.
+      cbn [Init.Nat.add].
+      rewrite IHn, <- tprod_mul.
+      replace (mat_single (S (S (S n))) (S (S n)) U) with (@mat_eye 1 ⊗ (@mat_eye 1 ⊗ mat_single (S n) n U)) by reflexivity.
+      replace (mat_single (S (S n)) (S n) U) with (@mat_eye 1 ⊗ mat_single (S n) n U) by reflexivity.
+      repeat rewrite mat_mul_assoc. f_equal; f_equal.
+      replace (@mat_eye 1 ⊗ (@mat_eye 1 ⊗ mat_single (S n) n U)) with
+      (@mat_eye 1 ⊗ @mat_eye 1 ⊗ mat_single (S n) n U).
+      rewrite (tprod_mul 2 (S n)), mat_swap2_commute.
+      replace (mat_single (S n) n U * @mat_eye (S n)) with
+      (@mat_eye (S n) * mat_single (S n) n U) by mat_simpl.
+      rewrite <- tprod_mul. f_equal.
+      1-2: rewrite <- (tprod_assoc (@mat_eye 1)), mat_ccast_refl.
+      3: cbn [mat_single].
+      3: replace (@mat_eye (S (S n))) with (@mat_eye 1 ⊗ @mat_eye (S n)) by apply tprod_eye_eye.
+      3: rewrite <- (tprod_assoc U), mat_ccast_refl.
+      all: reflexivity.
+Qed.
+
+Lemma mat_swap_single_commute':
+  forall {n q1 q2} (U: Matrix 1),
+    q1 < n -> q2 < n ->
+    mat_single n q2 U * mat_swap q1 q2 =
+    mat_swap q1 q2 * mat_single n q1 U.
+Proof.
+  intros n q1 q2 U Hq1 Hq2.
+  destruct (lt_eq_lt_dec q1 q2) as [[H|H]|H].
+  - assert (Hcast: (q1 + (q2 - q1 + 1) + (n - q2 - 1))%nat = n) by lia.
+    rewrite (mat_swap_valid_left_id Hq1 Hq2 H Hcast).
+    rewrite <- Hcast. mat_cast.
+    rewrite mat_single_break_left; try lia.
+    rewrite mat_single_break_right; try lia.
+    symmetry.
+    rewrite mat_single_break_left; try lia.
+    rewrite mat_single_break_right; try lia.
+    repeat rewrite tprod_mul. mat_simpl.
+    f_equal; f_equal.
+    replace (q2 - q1 + 1)%nat with (S (q2 - q1))%nat by lia.
+    replace (q1 - q1)%nat with 0%nat by lia.
+    apply mat_swap_1n_single_commute'.
+  - rewrite <- H.
+    unfold mat_swap.
+    destruct (lt_dec q1 n); try lia.
+    destruct (lt_eq_lt_dec q1 q1) as [[H'|H']|H']; try lia.
+    mat_simpl.
+  - rewrite mat_swap_symm; try lia.
+    assert (Hcast: (q2 + (q1 - q2 + 1) + (n - q1 - 1))%nat = n) by lia.
+    rewrite (mat_swap_valid_left_id Hq2 Hq1 H Hcast).
+    rewrite <- Hcast. mat_cast.
+    rewrite mat_single_break_left; try lia.
+    rewrite mat_single_break_right; try lia.
+    symmetry.
+    rewrite mat_single_break_left; try lia.
+    rewrite mat_single_break_right; try lia.
+    repeat rewrite tprod_mul. mat_simpl.
+    f_equal; f_equal.
+    replace (q1 - q2 + 1)%nat with (S (q1 - q2))%nat by lia.
+    replace (q2 - q2)%nat with 0%nat by lia.
+    assert (HE: mat_swap_1n (S (q1 - q2)) * mat_swap_1n (S (q1 - q2)) * mat_single (S (q1 - q2)) 0 U * mat_swap_1n (S (q1 - q2)) =
+    mat_swap_1n (S (q1 - q2)) * mat_single (S (q1 - q2)) (q1 - q2) U * mat_swap_1n (S (q1 - q2)) * mat_swap_1n (S (q1 - q2))).
+    {
+      f_equal. repeat rewrite <- mat_mul_assoc.
+      f_equal. rewrite mat_swap_1n_single_commute'.
+      reflexivity.
+    }
+    assert (Hinv: mat_swap_1n (S (q1 - q2)) * mat_swap_1n (S (q1 - q2)) = mat_eye).
+    {
+      rewrite <- mat_swap_1n_Hermitian at 2.
+      apply mat_swap_1n_unitary.
+    }
+    rewrite Hinv, mat_mul_eye_l in HE.
+    rewrite HE, <- mat_mul_assoc, Hinv.
+    mat_simpl.
+Qed.
+
+Lemma mat_swap_single_indep':
+  forall {n q1 q2 target} (U: Matrix 1),
+    q1 < n -> q2 < n -> target <> q1 -> target <> q2 -> q1 < q2 ->
+    mat_single n target U * mat_swap q1 q2 = mat_swap q1 q2 * mat_single n target U.
+Proof.
+  intros n q1 q2 target U Hq1 Hq2 Ht1 Ht2 H.
+  assert (Hcast: (q1 + (q2 - q1 + 1) + (n - q2 - 1))%nat = n) by lia.
+  rewrite (mat_swap_valid_left_id Hq1 Hq2 H Hcast), <- Hcast.
+  mat_cast.
+  
+Admitted.
+
+Lemma mat_swap_single_indep:
+  forall {n q1 q2 target} (U: Matrix 1),
+    q1 < n -> q2 < n -> target <> q1 -> target <> q2 ->
+    mat_single n target U * mat_swap q1 q2 = mat_swap q1 q2 * mat_single n target U.
+Proof.
+  intros n q1 q2 target U Hq1 Hq2 Ht1 Ht2.
+  destruct (lt_eq_lt_dec q1 q2) as [[H|H]|H].
+  - apply mat_swap_single_indep'.
+    all: assumption.
+  - rewrite <- H.
+    unfold mat_swap.
+    destruct (lt_dec q1 n); try lia.
+    destruct (lt_eq_lt_dec q1 q1) as [[H'|H']|H']; try lia.
+    mat_simpl.
+  - rewrite mat_swap_symm.
+    apply mat_swap_single_indep'.
+    all: assumption.
+Qed.
+
+Lemma mat_swap_single_commute:
+  forall {n q1 q2} (target: nat) (U: Matrix 1),
+    q1 < n -> q2 < n ->
+    mat_single n (swap_qbit q1 q2 target) U * mat_swap q1 q2 =
+    mat_swap q1 q2 * mat_single n target U.
+Proof.
+  intros n q1 q2 target U Hq1 Hq2.
+  unfold swap_qbit.
+  destruct (Nat.eq_dec target q1).
+  - subst. apply mat_swap_single_commute'.
+    all: assumption.
+  - destruct (Nat.eq_dec target q2).
+    + subst. rewrite mat_swap_symm.
+      apply mat_swap_single_commute'.
+      all: assumption.
+    + apply mat_swap_single_indep.
+      all: assumption.
 Qed.
 
 End SWAP_PROPERTIES.
