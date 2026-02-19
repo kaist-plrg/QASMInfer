@@ -6,6 +6,7 @@ Require Import QASMInfer.program.All.
 
 From Stdlib Require Import List.
 From Stdlib.FSets Require Import FMapPositive FMapFacts.
+From Stdlib Require Import RelationClasses Morphisms Setoid.
 
 Module PFacts := WFacts_fun PositiveMap.E PositiveMap.
 Module PProperties := WProperties_fun PositiveMap.E PositiveMap.
@@ -421,4 +422,67 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma Instruction_equiv_Seq_list_eq:
+  forall (instr: Instruction) (il: list Instruction),
+  Instruction_equiv
+  qasm{ seq[ instr :: il ] }
+  qasm{ instr; seq[ il ] }.
+Proof.
+  intros instr il ps Hinv.
+  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  reflexivity.
+Qed.
+
+Lemma Instruction_equiv_Seq_list_list_eq:
+  forall (il1 il2: list Instruction),
+  Instruction_equiv
+  qasm{ seq[ il1 ++ il2 ] }
+  qasm{ seq[ il1 ]; seq[ il2 ] }.
+Proof.
+  intros il1 il2 ps Hinv.
+  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  cbn [Execute_suppl].
+  rewrite List.fold_left_app.
+  apply ProgramState_equiv_equivalence.
+Qed.
+
+Lemma Instruction_equiv_Seq_singleton:
+  forall (instr: Instruction),
+  Instruction_equiv
+  qasm{ seq[ [instr] ] }
+  qasm{ instr }.
+Proof.
+  intros instr ps Hinv.
+  cbn [Execute_suppl].
+  reflexivity.
+Qed.
+
+Lemma Instruction_equiv_assoc:
+  forall (instr1 instr2 instr3: Instruction),
+  Instruction_equiv
+  qasm{ instr1; instr2; instr3 }
+  qasm{ (instr1; instr2); instr3 }.
+Proof.
+  intros instr1 instr2 instr3 ps Hinv.
+  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  apply Execute_suppl_Proper.
+  rewrite ProgramState_equiv_Execute_suppl_seq.
+  reflexivity.
+Qed.
+
 End EQUIVALENCE.
+
+Global Instance Instruction_equiv_Equivalence (nq: nat):
+  Equivalence (Instruction_equiv nq).
+Proof.
+  apply Instruction_equiv_equivalence.
+Qed.
+
+Global Instance qasm_seq_Proper (nq : nat) :
+  Proper (Instruction_equiv nq ==> Instruction_equiv nq ==> Instruction_equiv nq) qasm_seq.
+Proof.
+  intros pre1 pre2 Hpre post1 post2 Hpost.
+  apply Instruction_equiv_equivalence with (y:= qasm{ pre2; post1 }).
+  - apply Instruction_equiv_rewrite_start. apply Hpre.
+  - apply Instruction_equiv_rewrite_end. apply Hpost.
+Qed.

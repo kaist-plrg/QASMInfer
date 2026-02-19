@@ -1279,6 +1279,8 @@ Definition qasm_seq (i j : Instruction) : Instruction :=
   | _,          _           => SeqInstr [i; j]
   end.
 
+Arguments qasm_seq _ _ : simpl never.
+
 Declare Custom Entry qasm.
 
 Notation "qasm{ e }" := e (e custom qasm at level 99).

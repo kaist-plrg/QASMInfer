@@ -258,8 +258,7 @@ Lemma Commute_swap_symm (qbit1 qbit2: nat):
   qasm{ swap qbit2 qbit1 }.
 Proof.
   intros Hq1 Hq2 ps Hvalid cstate.
-  rewrite (Matrix_of_swap _ Hq1 Hq2).
-  rewrite (Matrix_of_swap _ Hq2 Hq1).
+  rewrite Matrix_of_swap, Matrix_of_swap.
   f_equal; f_equal.
   apply functional_extensionality.
   intros b.
@@ -281,6 +280,17 @@ Proof.
   apply (mat_swap_single_commute _ _ Hq1 Hq2).
 Qed.
 
+Lemma Commute_swap_cnot (qbit1 qbit2 control target: nat):
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+  qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 qasm{ cx control target})}
+  qasm{ cx control target; swap qbit1 qbit2}.
+Proof.
+  intros Hq1 Hq2.
+  unfold swap_qbit_instr. simpl.
+Admitted.
+
 Lemma Commute_swap_instr:
   forall (qbit1 qbit2: nat) (instr: Instruction),
   Qbit_index_valid qbit1 ->
@@ -290,14 +300,32 @@ Lemma Commute_swap_instr:
   qasm{ instr; swap qbit1 qbit2 }.
 Proof.
   intros qbit1 qbit2 instr Hq1 Hq2.
-  induction instr using Instruction_ind'; unfold swap_qbit_instr; simpl.
+  induction instr using Instruction_ind'.
   - intros ps Hvalid. simpl. reflexivity.
   - apply Commute_swap_rot.
     all: assumption.
-  - shelve. (* CNOT *)
+  - apply Commute_swap_cnot.
+    all: assumption.
   - shelve. (* SWAP *)
   - shelve. (* MEASURE *)
-  - shelve. (* SEQ *)
+  - induction is.
+    + apply Instruction_equiv_equivalence.
+    + inversion H. subst.
+      apply IHis in H3.
+      unfold swap_qbit_instr. simpl.
+      setoid_rewrite Instruction_equiv_Seq_list_eq.
+      change ((fix app (l m : list Instruction) {struct l} : list Instruction :=
+        match l with
+        | [] => m
+        | a0 :: l1 => a0 :: app l1 m
+        end) is [qasm{ swap qbit1 qbit2}])
+      with (is ++ [qasm{ swap qbit1 qbit2}]).
+      setoid_rewrite Instruction_equiv_Seq_list_list_eq.
+      setoid_rewrite Instruction_equiv_Seq_singleton.
+      setoid_rewrite <- H3.
+      setoid_rewrite Instruction_equiv_assoc.
+      setoid_rewrite <- H2.
+      setoid_reflexivity.
   - shelve. (* IF *)
   - shelve. (* RESET *)
 Admitted.

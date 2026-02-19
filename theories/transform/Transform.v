@@ -353,8 +353,8 @@ Lemma Transform_swap_swap: forall (qbit1 qbit2: nat),
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
   eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_swap _ Hq1 Hq2).
-    apply cons_mat. apply (Matrix_of_swap _ Hq1 Hq2).
+  - apply cons_mat. apply Matrix_of_swap.
+    apply cons_mat. apply Matrix_of_swap.
     apply nil_mat.
   - apply (Matrix_of_I _ Hq1).
   - cbn [fold_right]. exists 0%R.
@@ -373,8 +373,8 @@ Lemma Transform_cnot_cnot: forall (qbit1 qbit2: nat),
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
   eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_cnot _ Hq1 Hq2).
-    apply cons_mat. apply (Matrix_of_cnot _ Hq1 Hq2).
+  - apply cons_mat. apply Matrix_of_cnot.
+    apply cons_mat. apply Matrix_of_cnot.
     apply nil_mat.
   - apply (Matrix_of_I _ Hq1).
   - cbn [fold_right]. exists 0%R.
@@ -393,11 +393,11 @@ Lemma Transform_3cnot_swap: forall (qbit1 qbit2: nat),
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
   eapply QState_transform_equality'.
-  - apply cons_mat. apply (Matrix_of_cnot _ Hq1 Hq2).
-    apply cons_mat. apply (Matrix_of_cnot _ Hq2 Hq1).
-    apply cons_mat. apply (Matrix_of_cnot _ Hq1 Hq2).
+  - apply cons_mat. apply Matrix_of_cnot.
+    apply cons_mat. apply Matrix_of_cnot.
+    apply cons_mat. apply Matrix_of_cnot.
     apply nil_mat.
-  - apply (Matrix_of_swap _ Hq1 Hq2).
+  - apply Matrix_of_swap.
   - cbn [fold_right]. exists 0%R.
     unfold gphase. com_simpl. mat_simpl.
     apply (mat_3cnot_swap Hq1 Hq2).
@@ -412,21 +412,15 @@ Lemma Transform_swap_swap_insert:
   qasm{ instr }.
 Proof.
   intros qbit1 qbit2 instr Hq1 Hq2.
-  induction instr using Instruction_ind'.
-  - unfold swap_qbit_instr. simpl.
-    apply Instruction_equiv_equivalence with (y:=qasm{ I qbit1 }).
-    apply (Transform_swap_swap _ _ Hq1 Hq2).
-    apply (Transform_I _ Hq1).
-  - shelve.
-  - shelve.
-  - shelve.
-  - shelve.
-  - induction is; simpl.
-    + shelve.
-    + shelve.
-  - unfold swap_qbit_instr in *. simpl. shelve.
-  - 
-Admitted.
+  setoid_rewrite Instruction_equiv_assoc.
+  setoid_rewrite Commute_swap_instr.
+  setoid_rewrite <- Instruction_equiv_assoc.
+  setoid_rewrite Transform_swap_swap.
+  setoid_rewrite Transform_I.
+  setoid_rewrite Instruction_equiv_nop_end.
+  setoid_reflexivity.
+  all: assumption.
+Qed.
 
 Corollary Transform_swap_insert:
   forall (qbit1 qbit2: nat) (instr: Instruction),
@@ -440,7 +434,8 @@ Proof.
   apply Instruction_behavioral_equiv_equivalence with (y:=qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 instr); swap qbit1 qbit2 }).
   - shelve.
   - apply Instruction_equiv_implies_behavioral_equiv.
-    apply (Transform_swap_swap_insert _ _ _ Hq1 Hq2).
+    apply Transform_swap_swap_insert.
+    all: assumption.
 Admitted.
 
 End TRANSFORM.

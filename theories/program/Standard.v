@@ -498,18 +498,16 @@ Proof.
 Qed.
 
 Lemma Matrix_of_cnot {qbit1 qbit2: nat}:
-  qbit1 < nq -> qbit2 < nq ->
   Matrix_of qasm{ cx qbit1 qbit2 } (mat_cnot qbit1 qbit2).
 Proof.
-  intros Hvalid1 Hvalid2 ps. simpl.
+  intros ps. simpl.
   intros cstate. reflexivity.
 Qed.
 
 Lemma Matrix_of_swap {qbit1 qbit2: nat}:
-  qbit1 < nq -> qbit2 < nq ->
   Matrix_of qasm{ swap qbit1 qbit2 } (mat_swap qbit1 qbit2).
 Proof.
-  intros Hvalid1 Hvalid2 ps. simpl.
+  intros ps. simpl.
   intros cstate. reflexivity.
 Qed.
 
@@ -549,8 +547,6 @@ Ltac mat_of_double H1 H2 :=
     apply (Matrix_of_I _ H2) ||
     apply (Matrix_of_H _ H2) ||
     apply Matrix_of_U ||
-    apply (Matrix_of_cnot _ H1 H2) ||
-    apply (Matrix_of_cnot _ H2 H1) ||
-    apply (Matrix_of_swap _ H1 H2) ||
-    apply (Matrix_of_swap _ H2 H1)
+    apply Matrix_of_cnot ||
+    apply Matrix_of_swap
   ).
