@@ -220,7 +220,7 @@ Proof.
     f_equal; apply IHn1; lia.
 Qed.
 
-Lemma mat_single_break_right_offset:
+Lemma mat_single_break_right':
   forall {n1 n2 t} (U: Matrix 1),
     mat_single (n1 + n2) (n1 + t) U = mat_eye ⊗ mat_single n2 t U.
 Proof.
@@ -237,7 +237,7 @@ Lemma mat_single_break_right:
 Proof.
   intros n1 n2 t U Hle.
   replace t with (n1 + (t - n1))%nat at 1 by lia.
-  apply mat_single_break_right_offset.
+  apply mat_single_break_right'.
 Qed.
 
 End GENERAL.

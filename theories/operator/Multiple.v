@@ -411,6 +411,55 @@ Proof.
     mat_simpl.
 Qed.
 
+Lemma mat_swap_1n_single_indep':
+  forall {n q} (U: Matrix 1),
+    q <> 0 -> q <> n ->
+    mat_single (S n) q U * mat_swap_1n (S n) = mat_swap_1n (S n) * mat_single (S n) q U.
+Proof.
+  intros n q U Hq0 Hqn.
+  destruct n; cbn [mat_swap_1n].
+  1: mat_simpl.
+  generalize dependent q.
+  induction n; intros q Hq0 Hqn.
+  - destruct q as [|[|q]]; try lia.
+    cbn [mat_single].
+    repeat rewrite tprod_eye_eye.
+    mat_simpl.
+  - cbn [mat_swap_1n_suppl].
+    destruct q as [|[|q]]; try lia.
+    + cbn [mat_single].
+      assert (Hmat: @mat_eye 1 ⊗ (U ⊗ @mat_eye (S n)) = (@mat_eye 1 ⊗ U ⊗ @mat_eye (S n))).
+      {
+        rewrite <- tprod_assoc, mat_ccast_refl. reflexivity.
+      }
+      cbn [Init.Nat.add] in Hmat.
+      rewrite Hmat.
+      repeat rewrite mat_mul_assoc.
+      rewrite (tprod_mul 2 (S n)), mat_swap2_commute, <- tprod_mul.
+      repeat rewrite <- mat_mul_assoc.
+      rewrite (tprod_mul 2 (S n)), <- mat_swap2_commute, <- tprod_mul.
+      f_equal. repeat rewrite mat_mul_assoc. f_equal.
+      cbn [Init.Nat.add].
+      rewrite <- (tprod_assoc U), mat_ccast_refl, tprod_eye_eye.
+      repeat rewrite (tprod_mul 1 (S (S n))).
+      mat_simpl.
+    + replace (mat_single (S (S (S n))) (S (S q)) U) with
+      (@mat_eye 1 ⊗ @mat_eye 1 ⊗ mat_single (S n) q U).
+      repeat rewrite mat_mul_assoc.
+      rewrite (tprod_mul 2 (S n)), mat_swap2_commute, mat_eye_commute, <- tprod_mul.
+      repeat rewrite <- mat_mul_assoc.
+      rewrite (tprod_mul 2 (S n)), <- mat_swap2_commute, <- mat_eye_commute, <- tprod_mul.
+      f_equal. repeat rewrite mat_mul_assoc. f_equal.
+      cbn [Init.Nat.add].
+      rewrite <- (tprod_assoc (@mat_eye 1) mat_eye), mat_ccast_refl.
+      repeat rewrite (tprod_mul 1 (S (S n))). f_equal.
+      replace ((@mat_eye 1) ⊗ mat_single (S n) q U) with (mat_single (S (S n)) (S q) U) by reflexivity.
+      apply IHn.
+      all: try lia.
+      rewrite <- tprod_assoc, mat_ccast_refl.
+      reflexivity.
+Qed.
+
 Lemma mat_swap_single_indep':
   forall {n q1 q2 target} (U: Matrix 1),
     q1 < n -> q2 < n -> target <> q1 -> target <> q2 -> q1 < q2 ->
@@ -419,9 +468,23 @@ Proof.
   intros n q1 q2 target U Hq1 Hq2 Ht1 Ht2 H.
   assert (Hcast: (q1 + (q2 - q1 + 1) + (n - q2 - 1))%nat = n) by lia.
   rewrite (mat_swap_valid_left_id Hq1 Hq2 H Hcast), <- Hcast.
-  mat_cast.
-  
-Admitted.
+  mat_cast. clear Hcast.
+  destruct (lt_eq_lt_dec target q2) as [[Ht | Ht] | Ht]; try lia.
+  - rewrite mat_single_break_left; try lia.
+    repeat rewrite tprod_mul. f_equal.
+    destruct (lt_eq_lt_dec target q1) as [[Ht' | Ht'] | Ht']; try lia.
+    + rewrite mat_single_break_left; try lia.
+      repeat rewrite tprod_mul.
+      mat_simpl.
+    + rewrite mat_single_break_right; try lia.
+      repeat rewrite tprod_mul. f_equal.
+      replace (q2 - q1 + 1)%nat with (S (q2 - q1))%nat by lia.
+      apply mat_swap_1n_single_indep'.
+      all: lia.
+  - rewrite mat_single_break_right; try lia.
+    repeat rewrite tprod_mul.
+    mat_simpl.
+Qed.
 
 Lemma mat_swap_single_indep:
   forall {n q1 q2 target} (U: Matrix 1),

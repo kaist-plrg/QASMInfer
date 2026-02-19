@@ -430,6 +430,13 @@ Proof.
     all: reflexivity.
 Qed.
 
+Lemma mat_eye_commute : forall {n} (A : Matrix n), A * mat_eye = mat_eye * A.
+Proof.
+  intros.
+  rewrite mat_mul_eye_l, mat_mul_eye_r.
+  reflexivity.
+Qed.
+
 Lemma mat_scale_1 : forall {n} (A : Matrix n), 1 .* A = A.
 Proof.
   intros.

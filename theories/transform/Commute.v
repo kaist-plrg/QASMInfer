@@ -278,7 +278,8 @@ Proof.
   unfold swap_qbit_instr. simpl.
   eapply QState_transform_equality; mat_of_double Hq1 Hq2.
   exists 0%R. unfold gphase. com_simpl. mat_simpl.
-Admitted.
+  apply (mat_swap_single_commute _ _ Hq1 Hq2).
+Qed.
 
 Lemma Commute_swap_instr:
   forall (qbit1 qbit2: nat) (instr: Instruction),
@@ -291,7 +292,8 @@ Proof.
   intros qbit1 qbit2 instr Hq1 Hq2.
   induction instr using Instruction_ind'; unfold swap_qbit_instr; simpl.
   - intros ps Hvalid. simpl. reflexivity.
-  - shelve.
+  - apply Commute_swap_rot.
+    all: assumption.
   - shelve. (* CNOT *)
   - shelve. (* SWAP *)
   - shelve. (* MEASURE *)
@@ -299,7 +301,5 @@ Proof.
   - shelve. (* IF *)
   - shelve. (* RESET *)
 Admitted.
-
-(* (A tprod B) * swap = swap * (B tprod A) *)
 
 End COMMUTE.
