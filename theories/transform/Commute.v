@@ -135,7 +135,7 @@ Lemma Commute_X_Y (qbit: nat):
   qasm{ Y qbit; X qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of_single H.
+  eapply QState_transform_equality; mat_of.
   exists (-PI)%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -153,7 +153,7 @@ Lemma Commute_Y_Z (qbit: nat):
   qasm{ Z qbit; Y qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of_single H.
+  eapply QState_transform_equality; mat_of.
   exists (-PI)%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -171,7 +171,7 @@ Lemma Commute_Z_X (qbit: nat):
   qasm{ X qbit; Z qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of_single H.
+  eapply QState_transform_equality; mat_of.
   exists (-PI)%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -189,7 +189,7 @@ Lemma Commute_H_X (qbit: nat):
   qasm{ Z qbit; H qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of_single H.
+  eapply QState_transform_equality; mat_of.
   exists 0%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -204,7 +204,7 @@ Lemma Commute_H_Y (qbit: nat):
   qasm{ Y qbit; H qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of_single H.
+  eapply QState_transform_equality; mat_of.
   exists (-PI)%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -225,7 +225,7 @@ Lemma Commute_H_Z (qbit: nat):
   qasm{ X qbit; H qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of_single H.
+  eapply QState_transform_equality; mat_of.
   exists 0%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -243,7 +243,7 @@ Lemma Commute_single_indep (qbit1 qbit2: nat)
   qasm{ U (theta2, phi2, lambda2) qbit2; U (theta1, phi1, lambda1) qbit1 }.
 Proof.
   intros Hq1 Hq2 Hq.
-  eapply QState_transform_equality; mat_of_double Hq1 Hq2.
+  eapply QState_transform_equality; mat_of.
   exists 0%R. cbn [fold_right].
   unfold gphase. com_simpl. mat_simpl.
   symmetry.
@@ -275,7 +275,7 @@ Lemma Commute_swap_rot (qbit1 qbit2 target: nat) (theta phi lambda: R):
 Proof.
   intros Hq1 Hq2.
   unfold swap_qbit_instr. simpl.
-  eapply QState_transform_equality; mat_of_double Hq1 Hq2.
+  eapply QState_transform_equality; mat_of.
   exists 0%R. unfold gphase. com_simpl. mat_simpl.
   apply (mat_swap_single_commute _ _ Hq1 Hq2).
 Qed.

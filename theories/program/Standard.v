@@ -411,10 +411,9 @@ Proof.
 Qed.
 
 Lemma Matrix_of_I {qbit: nat}:
-  qbit < nq ->
-  Matrix_of (qasm{ I qbit }) (mat_eye).
+  Matrix_of qasm{ I qbit } mat_eye.
 Proof.
-  intros Hvalid ps cstate.
+  intros ps cstate.
   simpl.
   unfold Execute_rotate_instr, Execute_rotate_instr_branch.
   f_equal; f_equal.
@@ -423,77 +422,84 @@ Proof.
   f_equal; f_equal; f_equal.
   rewrite Gate_P_matrix_0_eye.
   apply mat_single_eye.
-Qed.  
+Qed.
 
 Lemma Matrix_of_X {qbit: nat}:
-  qbit < nq ->
   Matrix_of qasm{ X qbit } (mat_single nq qbit Gate_X_matrix).
 Proof.
-  intros Hvalid ps. simpl.
+  intros ps. simpl.
   intros cstate.
   unfold Execute_rotate_instr, Execute_rotate_instr_branch.
   f_equal; f_equal.
   apply functional_extensionality.
   intros branch.
   f_equal. rewrite Gate_X_matrix_gphase.
-  rewrite (mat_single_scale _ _ Hvalid).
-  rewrite den_uop_gphase.
-  reflexivity.
+  destruct (le_lt_dec nq qbit) as [H|H].
+  - repeat rewrite (mat_single_out_of_bounds _ H).
+    reflexivity.
+  - rewrite (mat_single_scale _ _ H).
+    rewrite den_uop_gphase.
+    reflexivity.
 Qed.
 
 Lemma Matrix_of_Y {qbit: nat}:
-  qbit < nq ->
   Matrix_of qasm{ Y qbit } (mat_single nq qbit Gate_Y_matrix).
 Proof.
-  intros Hvalid ps. simpl.
+  intros ps. simpl.
   intros cstate.
   unfold Execute_rotate_instr, Execute_rotate_instr_branch.
   f_equal; f_equal.
   apply functional_extensionality.
   intros branch.
   f_equal. rewrite Gate_Y_matrix_gphase.
-  rewrite (mat_single_scale _ _ Hvalid).
-  rewrite den_uop_gphase.
-  reflexivity.
+  destruct (le_lt_dec nq qbit) as [H|H].
+  - repeat rewrite (mat_single_out_of_bounds _ H).
+    reflexivity.
+  - rewrite (mat_single_scale _ _ H).
+    rewrite den_uop_gphase.
+    reflexivity.
 Qed.
 
 Lemma Matrix_of_Z {qbit: nat}:
-  qbit < nq ->
   Matrix_of qasm{ Z qbit } (mat_single nq qbit Gate_Z_matrix).
 Proof.
-  intros Hvalid ps. simpl.
+  intros ps. simpl.
   intros cstate.
   unfold Execute_rotate_instr, Execute_rotate_instr_branch.
   f_equal; f_equal.
   apply functional_extensionality.
   intros branch.
   f_equal. rewrite Gate_Z_matrix_gphase.
-  rewrite (mat_single_scale _ _ Hvalid).
-  rewrite den_uop_gphase.
-  reflexivity.
+  destruct (le_lt_dec nq qbit) as [H|H].
+  - repeat rewrite (mat_single_out_of_bounds _ H).
+    reflexivity.
+  - rewrite (mat_single_scale _ _ H).
+    rewrite den_uop_gphase.
+    reflexivity.
 Qed.
 
 Lemma Matrix_of_H {qbit: nat}:
-  qbit < nq ->
   Matrix_of qasm{ H qbit } (mat_single nq qbit Gate_H_matrix).
 Proof.
-  intros Hvalid ps. simpl.
+  intros ps. simpl.
   intros cstate.
   unfold Execute_rotate_instr, Execute_rotate_instr_branch.
   f_equal; f_equal.
   apply functional_extensionality.
   intros branch.
   f_equal. rewrite Gate_H_matrix_gphase.
-  rewrite (mat_single_scale _ _ Hvalid).
-  rewrite den_uop_gphase.
-  reflexivity.
+  destruct (le_lt_dec nq qbit) as [H|H].
+  - repeat rewrite (mat_single_out_of_bounds _ H).
+    reflexivity.
+  - rewrite (mat_single_scale _ _ H).
+    rewrite den_uop_gphase.
+    reflexivity.
 Qed.
 
 Lemma Matrix_of_P {qbit: nat} (lambda: R):
-  qbit < nq ->
   Matrix_of qasm{ P(lambda) qbit } (mat_single nq qbit (mat_rot 0 0 lambda)).
 Proof.
-  intros Hvalid ps. simpl.
+  intros ps. simpl.
   intros cstate. reflexivity.
 Qed.
 
@@ -520,33 +526,17 @@ Qed.
 
 End GATE_MATRIX_CORRESPONDENCE.
 
-Ltac mat_of_single H :=
-  repeat (
-    apply nil_mat ||
-    apply cons_mat ||
-    apply (Matrix_of_X _ H) ||
-    apply (Matrix_of_Y _ H) ||
-    apply (Matrix_of_Z _ H) ||
-    apply (Matrix_of_I _ H) ||
-    apply (Matrix_of_H _ H) ||
-    apply Matrix_of_U
-  ).
-
-Ltac mat_of_double H1 H2 :=
-  repeat (
-    apply nil_mat ||
-    apply cons_mat ||
-    apply (Matrix_of_X _ H1) ||
-    apply (Matrix_of_Y _ H1) ||
-    apply (Matrix_of_Z _ H1) ||
-    apply (Matrix_of_I _ H1) ||
-    apply (Matrix_of_H _ H1) ||
-    apply (Matrix_of_X _ H2) ||
-    apply (Matrix_of_Y _ H2) ||
-    apply (Matrix_of_Z _ H2) ||
-    apply (Matrix_of_I _ H2) ||
-    apply (Matrix_of_H _ H2) ||
-    apply Matrix_of_U ||
-    apply Matrix_of_cnot ||
-    apply Matrix_of_swap
-  ).
+Ltac mat_of :=
+  repeat lazymatch goal with
+  | |- Matrix_of_list _ nil _ => apply nil_mat
+  | |- Matrix_of_list _ _ _ => apply cons_mat
+  | |- Matrix_of _ qasm{ I _ } _ => apply Matrix_of_I
+  | |- Matrix_of _ qasm{ X _ } _ => apply Matrix_of_X
+  | |- Matrix_of _ qasm{ Y _ } _ => apply Matrix_of_Y
+  | |- Matrix_of _ qasm{ Z _ } _ => apply Matrix_of_Z
+  | |- Matrix_of _ qasm{ H _ } _ => apply Matrix_of_H
+  | |- Matrix_of _ qasm{ P (_) _ } _ => apply Matrix_of_P
+  | |- Matrix_of _ qasm{ U (_,_,_) _ } _ => apply Matrix_of_U
+  | |- Matrix_of _ qasm{ cx _ _ } _ => apply Matrix_of_cnot
+  | |- Matrix_of _ qasm{ swap _ _ } _ => apply Matrix_of_swap
+  end.

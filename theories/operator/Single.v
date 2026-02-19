@@ -240,4 +240,16 @@ Proof.
   apply mat_single_break_right'.
 Qed.
 
+Lemma mat_single_out_of_bounds:
+  forall {n t} (U: Matrix 1),
+  n <= t ->
+  mat_single n t U = mat_eye.
+Proof.
+  induction n; intros.
+  - reflexivity.
+  - destruct t; try lia.
+    mat_simpl.
+    f_equal; apply IHn; lia.
+Qed.
+
 End GENERAL.
