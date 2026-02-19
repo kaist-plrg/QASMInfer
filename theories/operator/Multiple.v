@@ -851,4 +851,14 @@ Proof.
   - apply (mat_3cnot_swap_c_gt_t H1 H2 Hgt).
 Qed.
 
+Lemma mat_swap_ctrl_commute:
+  forall {n q1 q2} (c t: nat) (U: Matrix 1),
+    q1 < n -> q2 < n ->
+    mat_ctrl_single n (swap_qbit q1 q2 c) (swap_qbit q1 q2 t) U * mat_swap q1 q2 =
+    mat_swap q1 q2 * mat_ctrl_single n c t U.
+Proof.
+  intros n q1 q2 c t U Hq1 Hq2.
+Admitted.
+
+
 End CNOT_PROPERTIES.

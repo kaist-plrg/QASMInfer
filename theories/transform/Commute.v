@@ -289,7 +289,10 @@ Lemma Commute_swap_cnot (qbit1 qbit2 control target: nat):
 Proof.
   intros Hq1 Hq2.
   unfold swap_qbit_instr. simpl.
-Admitted.
+  eapply QState_transform_equality; mat_of.
+  exists 0%R. unfold gphase. com_simpl. mat_simpl.
+  apply (mat_swap_ctrl_commute _ _ _ Hq1 Hq2).
+Qed.
 
 Lemma Commute_swap_instr:
   forall (qbit1 qbit2: nat) (instr: Instruction),
