@@ -387,7 +387,7 @@ Proof.
   eapply QState_transform_equality'; mat_of.
   cbn [fold_right]. exists 0%R.
   unfold gphase. com_simpl. mat_simpl.
-  apply (mat_3cnot_swap Hq1 Hq2).
+  apply mat_3cnot_swap.
 Qed.
 
 Lemma Transform_swap_swap_insert:

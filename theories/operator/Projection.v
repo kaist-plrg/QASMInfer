@@ -22,14 +22,14 @@ In the definition of the Qasmcore program, cnot instructions must have proofs of
 
 Fixpoint mat_proj0 (n p: nat): Matrix n :=
   match n, p with
-  | 0, _ => bas_mat 0  (* Actually there is no 1 * 1 projection *)
+  | 0, _ => bas_mat 1  (* Actually there is no 1 * 1 projection *)
   | S _, 0 => mat_proj0_base ⊗ mat_eye
   | S n', S p' => (@mat_eye 1) ⊗ mat_proj0 n' p'
   end.
 
 Fixpoint mat_proj1 (n p: nat): Matrix n :=
   match n, p with
-  | 0, _ => bas_mat 1  (* Actually there is no 1 * 1 projection *)
+  | 0, _ => bas_mat 0  (* Actually there is no 1 * 1 projection *)
   | S _, 0 => mat_proj1_base ⊗ mat_eye
   | S n', S p' => (@mat_eye 1) ⊗ mat_proj1 n' p'
   end.
@@ -335,5 +335,29 @@ Proof.
       all: apply mat_ccast_refl'.
 Qed.
 
+Lemma mat_proj0_out_of_bounds:
+  forall {n t} (H: n <= t),
+  mat_proj0 n t = mat_eye.
+Proof.
+  induction n; intros.
+  - reflexivity.
+  - destruct t; try lia; cbn [mat_proj0].
+    rewrite IHn.
+    apply (tprod_eye_eye 1 n).
+    lia.
+Qed.
+
+Lemma mat_proj1_out_of_bounds:
+  forall {n t} (H: n <= t),
+  mat_proj1 n t = mat_0.
+Proof.
+  induction n; intros.
+  - reflexivity.
+  - destruct t; try lia; cbn [mat_proj1].
+    rewrite IHn.
+    apply (tprod_0_r 1 n).
+    lia.
+Qed.
+    
 End PROPERTIES.
 
