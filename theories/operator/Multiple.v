@@ -6,6 +6,8 @@ Require Import QASMInfer.operator.Projection.
 Bind Scope Complex_scope with Complex.
 Open Scope Matrix_scope.
 
+(** Definition *)
+
 Section SWAP.
 
 Definition mat_swap2: Matrix 2 :=
@@ -60,6 +62,26 @@ Definition swap_qbit (qbit1 qbit2: nat) (tq: nat): nat :=
 
 End SWAP.
 
+Section CNOT.
+
+Fixpoint mat_ctrl_single (n c t: nat) (U: Matrix 1) : Matrix n :=
+  match n, c, t with
+  | 0, _, _ | S _, 0, 0 => mat_eye
+  | S n', 0, S t' => mat_proj0_base ⊗ mat_eye + mat_proj1_base ⊗ mat_single n' t' U
+  | S n', S c', 0 => mat_eye ⊗ mat_proj0 n' c' + U ⊗ mat_proj1 n' c'
+  | S n', S c', S t' => (@mat_eye 1) ⊗ mat_ctrl_single n' c' t' U
+  end.
+
+Definition mat_not2: Matrix 1 := rec_mat (bas_mat 0) (bas_mat 1) (bas_mat 1) (bas_mat 0).
+
+Definition mat_x01 : Matrix 1 := rec_mat (bas_mat 0) (bas_mat 1) (bas_mat 0) (bas_mat 0). (* |0><1| *)
+Definition mat_x10 : Matrix 1 := rec_mat (bas_mat 0) (bas_mat 0) (bas_mat 1) (bas_mat 0). (* |1><0| *)
+
+Definition mat_cnot {n} (qc qt: nat) : Matrix n := mat_ctrl_single n qc qt mat_not2.
+
+End CNOT.
+
+(** Properties *)
 
 Section SWAP_PROPERTIES.
 
@@ -156,15 +178,20 @@ Proof.
   apply H.
 Qed.
 
-Lemma mat_swap_1n_suppl_id: forall {n a b c d},
-  mat_swap2 = rec_mat a b c d ->
-  mat_swap_1n_suppl n = mat_ccast (rec_mat (mat_eye ⊗ a) (mat_eye ⊗ b) (mat_eye ⊗ c) (mat_eye ⊗ d)) (@add_comm (S n) 1).
+Lemma mat_swap2_id:
+  mat_swap2 = rec_mat mat_proj0_base mat_x10 mat_x01 mat_proj1_base.
+Proof. reflexivity. Qed.
+
+Lemma mat_swap_1n_suppl_id: forall {n},
+  mat_swap_1n_suppl n = mat_ccast (
+    rec_mat (mat_eye ⊗ mat_proj0_base) (mat_eye ⊗ mat_x10)
+            (mat_eye ⊗ mat_x01) (mat_eye ⊗ mat_proj1_base)
+  ) (@add_comm (S n) 1).
 Proof.
-  intros n a b c d H.
+  intros n.
   induction n.
-  - simpl.
-    rewrite H. f_equal; mat_simpl.
-    all: rewrite mat_ccast_refl; reflexivity.
+  - simpl. unfold mat_swap2.
+    f_equal; f_equal; f_equal; lca.
   - change (mat_swap_1n_suppl (S n)) with
       ((mat_swap2 ⊗ mat_eye) * ((@mat_eye 1) ⊗ mat_swap_1n_suppl n) * (mat_swap2 ⊗ mat_eye)).
     rewrite IHn.
@@ -252,19 +279,6 @@ Proof.
   apply mat_ccast_refl'.
 Qed.
 
-Lemma mat_swap_out_of_bounds:
-  forall {n q1 q2},
-  (n <= q1 \/ n <= q2) ->
-  @mat_swap n q1 q2 = mat_eye.
-Proof.
-  intros n q1 q2 H.
-  unfold mat_swap.
-  destruct (lt_dec q1 n) as [H1|H1];
-  destruct (lt_dec q2 n) as [H2|H2].
-  all: try lia.
-  all: reflexivity.
-Qed.
-
 Lemma mat_swap_symm:
   forall {n q1 q2} (Hq1: q1 < n) (Hq2: q2 < n),
   @mat_swap n q1 q2 = mat_swap q2 q1.
@@ -280,6 +294,106 @@ Proof.
     rewrite (mat_swap_valid_left_id Hq2 Hq1 H Hcast).
     rewrite (mat_swap_valid_right_id Hq1 Hq2 H Hcast).
     reflexivity.
+Qed.
+
+Lemma mat_swap_id' :
+  forall {n c t},
+    c < n -> t < n -> c <> t -> c < t ->
+    @mat_swap n c t
+    =
+      mat_single n c mat_proj0_base * mat_single n t mat_proj0_base
+    + mat_single n c mat_proj1_base * mat_single n t mat_proj1_base
+    + mat_single n c mat_x01        * mat_single n t mat_x10
+    + mat_single n c mat_x10        * mat_single n t mat_x01.
+Proof.
+  intros n c t Hcn Htn Hct H.
+  assert (Hcast: (c + (t - c + 1) + (n - t - 1))%nat = n) by lia.
+  rewrite (mat_swap_valid_left_id Hcn Htn H Hcast).
+  assert (Hswap: t - c + 1 >= 2) by lia.
+  rewrite (mat_swap_1n_suppl_ge_2 Hswap).
+  rewrite (mat_swap_1n_suppl_id).
+  rewrite <- Hcast.
+  rewrite mat_ccast_refl.
+  repeat rewrite (@mat_single_break_left _ (n - t - 1)%nat); try lia.
+  repeat rewrite (@mat_single_break_right c); try lia.
+  repeat rewrite tprod_mul.
+  repeat rewrite mat_mul_eye_r.
+  repeat rewrite <- tprod_add_dist_r.
+  repeat rewrite <- tprod_add_dist_l.
+  f_equal; f_equal.
+  rewrite <- mat_ccast_trans.
+  replace (c - c)%nat with 0 by lia.
+  match goal with
+  | |- mat_ccast ?X ?p0 = ?Y =>
+      remember p0 as p
+  end.
+  clear Heqp.
+  revert p.
+  replace (t - c + 1 - 2)%nat with (t - c - 1)%nat by lia.
+  replace (t - c + 1)%nat with (S (t - c))%nat by lia.
+  intro p.
+  assert (Hn: 0 <> (t - c)%nat) by lia.
+  assert (Hcast': (1 + ((t - c) - 1) + 1)%nat = S ((t - c))) by lia.
+  repeat rewrite (mat_single_start_end_id _ _ Hn Hcast').
+  repeat rewrite <- tprod_assoc.
+  unfold mat_proj0_base at 2, mat_proj1_base at 2, mat_x01 at 2, mat_x10 at 2.
+  repeat rewrite tprod_one_step.
+  mat_simpl.
+  repeat rewrite <- mat_ccast_trans.
+  repeat rewrite mat_add_ccast.
+  mat_simpl.
+  f_equal.
+  all: unfold mat_x10.
+  all: apply mat_ccast_refl'.
+Qed.
+
+Lemma mat_swap_id :
+  forall {n c t},
+    c < n -> t < n -> c <> t ->
+    @mat_swap n c t
+    =
+      mat_single n c mat_proj0_base * mat_single n t mat_proj0_base
+    + mat_single n c mat_proj1_base * mat_single n t mat_proj1_base
+    + mat_single n c mat_x01        * mat_single n t mat_x10
+    + mat_single n c mat_x10        * mat_single n t mat_x01.
+Proof.
+  intros n c t Hcn Htn Hct.
+  destruct (lt_eq_lt_dec c t) as [[H|H]|H]; try lia.
+  - apply mat_swap_id'.
+    all: assumption.
+  - rewrite mat_swap_symm.
+    repeat rewrite (@mat_single_commute n c t).
+    all: try assumption.
+    rewrite <- mat_add_assoc.
+    rewrite (mat_add_comm (mat_single n t mat_x10 * mat_single n c mat_x01)).
+    rewrite mat_add_assoc.
+    apply mat_swap_id'.
+    all: lia.
+Qed.
+
+Lemma mat_swap_eq :
+  forall {n c},
+    c < n ->
+    mat_swap c c = @mat_eye n.
+Proof.
+  intros n c H.
+  unfold mat_swap.
+  destruct (lt_dec c n); try lia.
+  destruct (lt_eq_lt_dec c c) as [[Hc|Hc]|Hc]; try lia.
+  reflexivity.
+Qed.
+
+Lemma mat_swap_out_of_bounds:
+  forall {n q1 q2},
+  (n <= q1 \/ n <= q2) ->
+  @mat_swap n q1 q2 = mat_eye.
+Proof.
+  intros n q1 q2 H.
+  unfold mat_swap.
+  destruct (lt_dec q1 n) as [H1|H1];
+  destruct (lt_dec q2 n) as [H2|H2].
+  all: try lia.
+  all: reflexivity.
 Qed.
 
 Lemma swap_swap_qbit:
@@ -316,6 +430,18 @@ Lemma swap_qbit_bound:
   forall {qbit1 qbit2 target n: nat},
     qbit1 < n -> qbit2 < n -> target < n ->
     swap_qbit qbit1 qbit2 target < n.
+Proof.
+  intros qbit1 qbit2 target n Hq1 Hq2 Ht.
+  unfold swap_qbit.
+  destruct (Nat.eq_dec target qbit1);
+  destruct (Nat.eq_dec target qbit2);
+  lia.
+Qed.
+
+Lemma swap_qbit_out_of_bounds:
+  forall {qbit1 qbit2 target n: nat},
+    qbit1 < n -> qbit2 < n -> n <= target ->
+    n <= swap_qbit qbit1 qbit2 target.
 Proof.
   intros qbit1 qbit2 target n Hq1 Hq2 Ht.
   unfold swap_qbit.
@@ -551,22 +677,6 @@ Qed.
 
 End SWAP_PROPERTIES.
 
-Section CNOT.
-
-Fixpoint mat_ctrl_single (n c t: nat) (U: Matrix 1) : Matrix n :=
-  match n, c, t with
-  | 0, _, _ | S _, 0, 0 => mat_eye
-  | S n', 0, S t' => mat_proj0_base ⊗ mat_eye + mat_proj1_base ⊗ mat_single n' t' U
-  | S n', S c', 0 => mat_eye ⊗ mat_proj0 n' c' + U ⊗ mat_proj1 n' c'
-  | S n', S c', S t' => (@mat_eye 1) ⊗ mat_ctrl_single n' c' t' U
-  end.
-
-Definition mat_not2: Matrix 1 := rec_mat (bas_mat 0) (bas_mat 1) (bas_mat 1) (bas_mat 0).
-
-Definition mat_cnot {n} (qc qt: nat) : Matrix n := mat_ctrl_single n qc qt mat_not2.
-
-End CNOT.
-
 Section CNOT_PROPERTIES.
 
 Lemma mat_ctrl_single_unitary : forall {n c t} (U: Matrix 1), mat_unitary U -> mat_unitary (mat_ctrl_single n c t U).
@@ -744,7 +854,41 @@ Proof.
     all: apply mat_ccast_refl'.
 Qed.
 
-Lemma mat_ctrl_single_eq_form: 
+Lemma mat_ctrl_single_id:
+  forall {n c t} (U: Matrix 1),
+    c < n -> t < n -> c <> t ->
+    mat_ctrl_single n c t U =
+    mat_single n c mat_proj0_base
+    + mat_single n c mat_proj1_base * mat_single n t U.
+Proof.
+  intros n c t U Hcn Htn Hct.
+  revert c t Hcn Htn Hct.
+  induction n; intros c t Hcn Htn Hct; try lia.
+  destruct c, t; try lia.
+  - cbn [mat_ctrl_single mat_single].
+    rewrite (tprod_mul 1 n).
+    mat_simpl.
+  - cbn [mat_ctrl_single mat_single].
+    rewrite (tprod_mul 1 n).
+    rewrite mat_mul_eye_l, mat_mul_eye_r.
+    assert (Hcn' : c < n) by lia.
+    assert (Hcast : (c + 1 + (n - c - 1))%nat = n) by lia.
+    rewrite (mat_proj0_id Hcn' Hcast).
+    rewrite (mat_proj1_id Hcn' Hcast).
+    rewrite <- (mat_single_id _ Hcn' Hcast).
+    rewrite <- (mat_single_id _ Hcn' Hcast).
+    reflexivity.
+  - cbn [mat_ctrl_single mat_single].
+    assert (Hcn' : c < n) by lia.
+    assert (Htn' : t < n) by lia.
+    assert (Hct' : c <> t) by lia.
+    rewrite (IHn c t Hcn' Htn' Hct').
+    rewrite tprod_add_dist_l.
+    rewrite (tprod_mul 1 n).
+    mat_simpl.
+Qed.
+
+Lemma mat_ctrl_single_eq: 
   forall {n c} (U: Matrix 1),
   mat_ctrl_single n c c U = mat_eye.
 Proof.
@@ -780,134 +924,50 @@ Proof.
       lia.
 Qed.
 
-Lemma mat_3cnot_swap_c_lt_t: forall {n c t}
-    (Hcn: c < n) (Htn: t < n) (Hct: c < t),
-    @mat_cnot n c t * mat_cnot t c * mat_cnot c t = mat_swap c t.
-Proof.
-  intros n c t Hcn Htn Hct.
-  unfold mat_cnot.
-  assert (Hcast_swap: (c + (t - c + 1) + (n - t - 1))%nat = n) by lia.
-  rewrite (mat_swap_valid_left_id Hcn Htn Hct Hcast_swap).
-  assert (Hcast_ctrl_single: (c + (1 + (n - c - 1)))%nat = n) by lia.
-  rewrite (mat_ctrl_single_left_form _ Hcn Htn Hct Hcast_ctrl_single).
-  rewrite (mat_ctrl_single_right_form _ Htn Hcn Hct Hcast_ctrl_single).
-  simpl. mat_simpl.
-  rewrite mat_mul_ccast, mat_mul_ccast.
-  rewrite tprod_mul, tprod_mul.
-  mat_simpl.
-  assert (H: n - c - 1 > t - c - 1) by lia.
-  assert (Hcast: (t - c - 1 + 1 + (n - c - 1 - (t - c - 1) - 1))%nat = (n - c - 1)%nat) by lia.
-  rewrite (mat_proj0_id H Hcast), (mat_proj1_id H Hcast), (mat_single_id _ H Hcast).
-  repeat rewrite mat_mul_ccast.
-  rewrite ccast_rec_mat.
-  repeat rewrite tprod_mul.
-  repeat rewrite mat_mul_eye_r.
-  assert (Hswap: t - c + 1 >= 2) by lia.
-  rewrite mat_swap_1n_suppl_ge_2 with (H:= Hswap).
-  assert (Hmat: mat_swap2 = rec_mat
-    mat_proj0_base (mat_proj1_base * mat_not2)
-    (mat_not2 * mat_proj1_base) (mat_not2 * mat_proj0_base * mat_not2)).
-  {
-    unfold mat_swap2. simpl.
-    f_equal; f_equal; com_simpl.
-  }
-  rewrite (mat_swap_1n_suppl_id Hmat); clear Hmat.
-  repeat rewrite tprod_ccast_left.
-  repeat rewrite tprod_ccast_right.
-  symmetry.
-  rewrite <- tprod_assoc.
-  rewrite tprod_one_step.
-  repeat rewrite <- mat_ccast_trans.
-  match goal with
-  | |- mat_ccast ?X ?p0 = mat_ccast ?Y ?p1 =>
-      remember p0 as Hcast1; remember p1 as Hcast2
-  end.
-  clear HeqHcast1 HeqHcast2.
-  revert Hcast1 Hcast2.
-  replace (n - c - 1 - (t - c - 1) - 1)%nat with (n - t - 1)%nat by lia.
-  replace (t - c + 1 - 2)%nat with (t - c - 1)%nat by lia.
-  intros Hcast1 Hcast2.
-  apply mat_ccast_refl'.
-Qed.
-
-Lemma mat_3cnot_swap_c_gt_t: forall {n c t}
-    (Hcn: c < n) (Htn: t < n) (Hct: c > t),
-    @mat_cnot n c t * mat_cnot t c * mat_cnot c t = mat_swap c t.
-Proof.
-  intros n c t Hcn Htn Hct.
-  unfold mat_cnot.
-  assert (Hcast_swap: (t + (c - t + 1) + (n - c - 1))%nat = n) by lia.
-  rewrite (mat_swap_valid_right_id Hcn Htn Hct Hcast_swap).
-  assert (Hcast_ctrl_single: (t + (1 + (n - t - 1)))%nat = n) by lia.
-  rewrite (mat_ctrl_single_left_form _ Htn Hcn Hct Hcast_ctrl_single).
-  rewrite (mat_ctrl_single_right_form _ Hcn Htn Hct Hcast_ctrl_single).
-  simpl. mat_simpl.
-  rewrite mat_mul_ccast, mat_mul_ccast.
-  rewrite tprod_mul, tprod_mul.
-  mat_simpl.
-  assert (H: n - t - 1 > c - t - 1) by lia.
-  assert (Hcast: (c - t - 1 + 1 + (n - t - 1 - (c - t - 1) - 1))%nat = (n - t - 1)%nat) by lia.
-  rewrite (mat_proj0_id H Hcast), (mat_proj1_id H Hcast), (mat_single_id _ H Hcast).
-  repeat rewrite mat_mul_ccast.
-  repeat rewrite mat_add_ccast.
-  rewrite ccast_rec_mat.
-  repeat rewrite tprod_mul.
-  repeat rewrite mat_mul_eye_r.
-  repeat rewrite <- tprod_add_dist_r.
-  repeat rewrite <- tprod_add_dist_l.
-  assert (Hswap: c - t + 1 >= 2) by lia.
-  rewrite mat_swap_1n_suppl_ge_2 with (H:= Hswap).
-  remember (mat_proj0_base * mat_proj0_base + mat_proj1_base * mat_not2 * mat_proj1_base) as P0.
-  remember (mat_proj0_base * mat_proj1_base + mat_proj1_base * mat_not2 * mat_proj0_base) as P1.
-  remember (mat_proj1_base * mat_proj0_base + mat_proj0_base * mat_not2 * mat_proj1_base) as P2.
-  remember (mat_proj1_base * mat_proj1_base + mat_proj0_base * mat_not2 * mat_proj0_base) as P3.
-  assert (Hmat: mat_swap2 = rec_mat P0 P1 P2 P3).
-  {
-    unfold mat_swap2. rewrite HeqP0, HeqP1, HeqP2, HeqP3. mat_simpl.
-    f_equal; f_equal; com_simpl.
-  }
-  rewrite (mat_swap_1n_suppl_id Hmat); clear Hmat.
-  repeat rewrite tprod_ccast_left.
-  repeat rewrite tprod_ccast_right.
-  symmetry.
-  rewrite <- tprod_assoc.
-  rewrite tprod_one_step.
-  repeat rewrite <- mat_ccast_trans.
-  match goal with
-  | |- mat_ccast ?X ?p0 = mat_ccast ?Y ?p1 =>
-      remember p0 as Hcast1; remember p1 as Hcast2
-  end.
-  clear HeqHcast1 HeqHcast2.
-  revert Hcast1 Hcast2.
-  replace (n - t - 1 - (c - t - 1) - 1)%nat with (n - c - 1)%nat by lia.
-  replace (c - t + 1 - 2)%nat with (c - t - 1)%nat by lia.
-  intros Hcast1 Hcast2.
-  apply mat_ccast_refl'.
-Qed.
-
 Theorem mat_3cnot_swap : forall {n c t},
   @mat_cnot n c t * mat_cnot t c * mat_cnot c t = mat_swap c t.
 Proof.
   intros.
+  unfold mat_cnot.
   destruct (lt_dec c n) as [H1|H1] eqn:H1'.
   - destruct (lt_dec t n) as [H2|H2] eqn:H2'.
-    + destruct (lt_eq_lt_dec c t) as [[Hlt|Heq]|Hgt] eqn:H3.
-      * apply (mat_3cnot_swap_c_lt_t H1 H2 Hlt).
-      * unfold mat_cnot, mat_swap.
-        rewrite H1', H2', H3, Heq.
-        rewrite mat_ctrl_single_eq_form.
+    + destruct (Nat.eq_dec c t) as [Hct|Hct] eqn:H3.
+      * rewrite Hct.
+        rewrite mat_ctrl_single_eq.
+        rewrite (mat_swap_eq H2).
         mat_simpl.
-      * apply (mat_3cnot_swap_c_gt_t H1 H2 Hgt).
-    + unfold mat_cnot.
-      repeat rewrite mat_ctrl_single_out_of_bounds.
-      rewrite mat_swap_out_of_bounds.
+      * repeat rewrite mat_ctrl_single_id; try lia.
+        rewrite mat_swap_id; try lia.
+        rewrite (mat_add_comm (mat_single n t _)).
+        rewrite (@mat_single_commute n t c mat_proj1_base); try lia.
+        repeat rewrite mat_mul_dist_l.
+        repeat rewrite mat_mul_dist_r.
+        repeat rewrite mat_mul_assoc.
+        repeat rewrite mat_add_assoc.
+        repeat (
+          rewrite mat_single_factorized ||
+          rewrite mat_single_ctc_reduce ||
+          rewrite mat_single_ctt_reduce
+        ).
+        all: try lia.
+        unfold mat_proj0_base, mat_proj1_base, mat_not2, mat_x01, mat_x10.
+        mat_simpl. com_simpl.
+        replace (rec_mat (bas_mat 0%R) (bas_mat 0%R) (bas_mat 0%R) (bas_mat 0%R)) with (@mat_0 1) by reflexivity.
+        repeat rewrite mat_single_0; try lia.
+        mat_simpl.
+        replace (RTC 0%R) with (NTC 0) by lca.
+        fold mat_proj0_base mat_proj1_base mat_x01 mat_x10.
+        rewrite (mat_add_comm (mat_single n c mat_x10 * _)).
+        repeat rewrite <- mat_add_assoc. f_equal.
+        rewrite (mat_add_comm (mat_single n c mat_proj1_base * _)).
+        repeat rewrite mat_add_assoc. f_equal.
+        apply mat_add_comm.
+    + repeat rewrite mat_ctrl_single_out_of_bounds; try lia.
+      rewrite mat_swap_out_of_bounds; try lia.
       mat_simpl.
-      all: lia.
-  - unfold mat_cnot.
-    repeat rewrite mat_ctrl_single_out_of_bounds.
-    rewrite mat_swap_out_of_bounds.
+  - repeat rewrite mat_ctrl_single_out_of_bounds; try lia.
+    rewrite mat_swap_out_of_bounds; try lia.
     mat_simpl.
-    all: lia.
 Qed.
 
 Lemma mat_swap_ctrl_commute:
@@ -917,7 +977,44 @@ Lemma mat_swap_ctrl_commute:
     mat_swap q1 q2 * mat_ctrl_single n c t U.
 Proof.
   intros n q1 q2 c t U Hq1 Hq2.
-Admitted.
+  destruct (le_lt_dec n c) as [Hc|Hc].
+  - assert (Hc': n <= swap_qbit q1 q2 c) by
+      apply (swap_qbit_out_of_bounds Hq1 Hq2 Hc).
+    rewrite mat_ctrl_single_out_of_bounds.
+    rewrite mat_ctrl_single_out_of_bounds.
+    mat_simpl.
+    all: lia.
+  - destruct (le_lt_dec n t) as [Ht|Ht].
+    + assert (Ht': n <= swap_qbit q1 q2 t) by
+        apply (swap_qbit_out_of_bounds Hq1 Hq2 Ht).
+      rewrite mat_ctrl_single_out_of_bounds.
+      rewrite mat_ctrl_single_out_of_bounds.
+      mat_simpl.
+      all: lia.
+    + destruct (Nat.eq_dec c t) as [Hct|Hct].
+      * rewrite Hct.
+        rewrite mat_ctrl_single_eq.
+        rewrite mat_ctrl_single_eq.
+        mat_simpl.
+      * rewrite mat_ctrl_single_id.
+        rewrite mat_ctrl_single_id.
+        rewrite mat_mul_dist_l, mat_mul_dist_r.
+        f_equal.
+        apply (mat_swap_single_commute _ _ Hq1 Hq2).
+        rewrite <- mat_mul_assoc.
+        rewrite (mat_swap_single_commute _ _ Hq1 Hq2).
+        repeat rewrite mat_mul_assoc.
+        rewrite (mat_swap_single_commute _ _ Hq1 Hq2).
+        reflexivity.
+        all: try assumption.
+        1-2: apply swap_qbit_bound.
+        all: try assumption.
+        intro Heq.
+        apply Hct.
+        apply (f_equal (swap_qbit q1 q2)) in Heq.
+        do 2 rewrite swap_swap_qbit in Heq.
+        exact Heq.
+Qed.
 
 Lemma mat_swap_swap_commute:
   forall {n q1 q2} (c t: nat),

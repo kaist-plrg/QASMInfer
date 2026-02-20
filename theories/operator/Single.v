@@ -136,6 +136,22 @@ Proof.
       apply IHn. apply IHn.
 Qed.
 
+Lemma mat_single_add :
+  forall {n t} (U1 U2 : Matrix 1),
+    t < n ->
+    mat_single n t U1 + mat_single n t U2 =
+    mat_single n t (U1 + U2).
+Proof.
+  induction n; intros t U1 U2 Ht; try lia.
+  destruct t; cbn [mat_single] in *.
+  - rewrite tprod_add_dist_r.
+    reflexivity.
+  - rewrite <- IHn.
+    rewrite tprod_add_dist_l.
+    reflexivity.
+    lia.
+Qed.
+
 Lemma mat_single_scale : forall {n t} (U : Matrix 1) (c : Complex),
   n > t ->
   mat_single n t (c .* U) = c .* (mat_single n t U).
@@ -163,6 +179,21 @@ Proof.
     + simpl. repeat rewrite mat_scale_0, mat_scale_1. reflexivity.
     + simpl. repeat rewrite mat_scale_0, mat_scale_1.
       f_equal. apply IHn. apply IHn.
+Qed.
+
+Lemma mat_single_0 : forall n t, t < n ->
+  mat_single n t mat_0 = mat_0.
+Proof.
+  intros n.
+  induction n; intros.
+  - lia.
+  - destruct t; cbn [mat_single].
+    + rewrite tprod_0_l.
+      reflexivity.
+    + rewrite IHn.
+      rewrite tprod_0_r.
+      reflexivity.
+      lia.
 Qed.
 
 Lemma mat_single_id:
@@ -238,6 +269,78 @@ Proof.
   intros n1 n2 t U Hle.
   replace t with (n1 + (t - n1))%nat at 1 by lia.
   apply mat_single_break_right'.
+Qed.
+
+Lemma mat_single_start_end_id:
+  forall {n} (U1 U2: Matrix 1) (Hn: 0 <> n) (Hcast: (1 + (n - 1) + 1)%nat = S n),
+  mat_single (S n) 0 U1 * mat_single (S n) n U2 =
+  mat_ccast (U1 ⊗ @mat_eye (n - 1) ⊗ U2) Hcast.
+Proof.
+  intros n U1 U2 Hn Hcast.
+  assert (H: 0 < S n) by lia.
+  assert (Hcast1: (0 + 1 + (S n - 0 - 1))%nat = S n) by lia.
+  rewrite (mat_single_id _ H Hcast1).
+  assert (H': n < S n) by lia.
+  assert (Hcast2: (n + 1 + (S n - n - 1))%nat = S n) by lia.
+  rewrite (mat_single_id _ H' Hcast2).
+  revert Hcast1 Hcast2.
+  replace (S n - 0 - 1)%nat with n by lia.
+  replace (S n - n - 1)%nat with 0 by lia.
+  intros Hcast1 Hcast2.
+  rewrite <- (mat_mul_eye_r U1) at 2.
+  rewrite <- (mat_mul_eye_l U2) at 2.
+  rewrite <- (mat_mul_eye_r (@mat_eye (n - 1))).
+  repeat rewrite <- tprod_mul.
+  rewrite <- (tprod_assoc U1).
+  repeat rewrite tprod_eye_eye.
+  rewrite <- mat_mul_ccast.
+  f_equal.
+  - rewrite <- mat_ccast_trans.
+    mat_simpl.
+    match goal with
+    | |- ?Y = mat_ccast ?X ?p0 =>
+        remember p0 as p
+    end.
+    clear Heqp.
+    revert p.
+    replace (n - 1 + 1)%nat with n by lia.
+    intro p.
+    apply mat_ccast_refl'.
+  - revert Hcast.
+    replace (1 + (n - 1))%nat with n by lia.
+    intro Hcast.
+    rewrite <- tprod_assoc.
+    replace (U2 ⊗ @mat_eye 0) with U2.
+    rewrite <- mat_ccast_trans.
+    apply mat_ccast_refl'.
+    destruct (mat_1_inv U2) as [a [b [c [d HU]]]].
+    rewrite HU.
+    mat_simpl.
+    f_equal; f_equal; lca.
+Qed.
+
+Lemma mat_single_ctc_reduce :
+  forall n c t U1 V U2, c <> t -> c < n -> t < n ->
+  mat_single n c U1 * mat_single n t V * mat_single n c U2
+  = mat_single n c (U1 * U2) * mat_single n t V.
+Proof.
+  intros.
+  rewrite <- mat_single_factorized.
+  repeat rewrite <- mat_mul_assoc.
+  f_equal.
+  apply mat_single_commute.
+  all: lia.
+Qed.
+
+Lemma mat_single_ctt_reduce :
+  forall n c t U V1 V2,
+  mat_single n c U * mat_single n t V1 * mat_single n t V2
+  = mat_single n c U * mat_single n t (V1 * V2).
+Proof.
+  intros.
+  repeat rewrite <- mat_mul_assoc.
+  f_equal.
+  apply mat_single_factorized.
 Qed.
 
 Lemma mat_single_out_of_bounds:
