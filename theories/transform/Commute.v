@@ -294,6 +294,20 @@ Proof.
   apply (mat_swap_ctrl_commute _ _ _ Hq1 Hq2).
 Qed.
 
+Lemma Commute_swap_swap (qbit1 qbit2 control target: nat):
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+  qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 qasm{ swap control target})}
+  qasm{ swap control target; swap qbit1 qbit2}.
+Proof.
+  intros Hq1 Hq2.
+  unfold swap_qbit_instr. simpl.
+  eapply QState_transform_equality; mat_of.
+  exists 0%R. unfold gphase. com_simpl. mat_simpl.
+  apply (mat_swap_swap_commute _ _ Hq1 Hq2).
+Qed.
+
 Lemma Commute_swap_instr:
   forall (qbit1 qbit2: nat) (instr: Instruction),
   Qbit_index_valid qbit1 ->
@@ -309,7 +323,8 @@ Proof.
     all: assumption.
   - apply Commute_swap_cnot.
     all: assumption.
-  - shelve. (* SWAP *)
+  - apply Commute_swap_swap.
+    all: assumption.
   - shelve. (* MEASURE *)
   - induction is.
     + apply Instruction_equiv_equivalence.

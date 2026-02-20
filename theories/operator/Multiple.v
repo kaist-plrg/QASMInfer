@@ -860,5 +860,36 @@ Proof.
   intros n q1 q2 c t U Hq1 Hq2.
 Admitted.
 
+Lemma mat_swap_swap_commute:
+  forall {n q1 q2} (c t: nat),
+    q1 < n -> q2 < n ->
+    mat_swap (swap_qbit q1 q2 c) (swap_qbit q1 q2 t) * @mat_swap n q1 q2 =
+    mat_swap q1 q2 * mat_swap c t.
+Proof.
+  intros n q1 q2 c t Hq1 Hq2.
+  remember (swap_qbit q1 q2 c) as c'.
+  remember (swap_qbit q1 q2 t) as t'.
+  destruct (le_lt_dec n c') as [Hc'|Hc'].
+  - shelve. (* derive n <= c *)
+  - destruct (le_lt_dec n t') as [Ht'|Ht'].
+    + shelve. (* derive n <= t *)
+    + rewrite <- (mat_3cnot_swap Hc' Ht'). (* derive c < n, t < n *)
+      rewrite Heqc', Heqt'.
+      repeat rewrite <- mat_mul_assoc.
+      unfold mat_cnot.
+      rewrite (mat_swap_ctrl_commute c t _ Hq1 Hq2).
+      rewrite (mat_mul_assoc _ (mat_swap q1 q2) _).
+      rewrite (mat_swap_ctrl_commute t c _ Hq1 Hq2).
+      rewrite <- mat_mul_assoc.
+      rewrite (mat_mul_assoc _ (mat_swap q1 q2) _).
+      rewrite (mat_swap_ctrl_commute c t _ Hq1 Hq2).
+      assert (Hc: c < n). shelve.
+      assert (Ht: t < n). shelve.
+      rewrite <- (@mat_3cnot_swap n c t Hc Ht).
+      unfold mat_cnot.
+      repeat rewrite <- mat_mul_assoc.
+      reflexivity.
+Admitted.
+
 
 End CNOT_PROPERTIES.
