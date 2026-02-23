@@ -266,6 +266,14 @@ Proof.
   apply Hmapsto.
 Qed.
 
+Lemma ProgramState_invariant_valid:
+  forall (ps: ProgramState), ProgramState_invariant ps -> ProgramState_valid ps.
+Proof.
+  intros ps [Hbi Hprob_valid].
+  apply ProgramState_branch_invariant_valid.
+  apply Hbi.
+Qed. 
+
 Lemma ProgramState_init_valid: ProgramState_valid ProgramState_init.
 Proof.
   unfold ProgramState_init.

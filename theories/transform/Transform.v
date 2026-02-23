@@ -52,7 +52,7 @@ Lemma Transform_X_X: forall (qbit: nat),
   qasm{ I qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists 0%R.
   unfold gphase. com_simpl. mat_simpl.
   rewrite mat_single_factorized.
@@ -69,7 +69,7 @@ Lemma Transform_Y_Y: forall (qbit: nat),
   qasm{ I qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists 0%R.
   unfold gphase. com_simpl. mat_simpl.
   rewrite mat_single_factorized.
@@ -86,7 +86,7 @@ Lemma Transform_Z_Z: forall (qbit: nat),
   qasm{ I qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists 0%R.
   unfold gphase. com_simpl. mat_simpl.
   rewrite mat_single_factorized.
@@ -103,7 +103,7 @@ Lemma Transform_H_H: forall (qbit: nat),
   qasm{ I qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists 0%R.
   unfold gphase. com_simpl. mat_simpl.
   rewrite mat_single_factorized.
@@ -120,7 +120,7 @@ Lemma Transform_P_P: forall (qbit: nat) (l1 l2: R),
   qasm{ P ((l1 + l2)%R) qbit }.
 Proof.
   intros qbit l1 l2 H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists 0%R.
   unfold gphase. com_simpl. mat_simpl.
   rewrite mat_single_factorized.
@@ -207,7 +207,7 @@ Lemma Transform_X_Y: forall (qbit: nat),
   qasm{ Z qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists (-PI2)%R.
   mat_simpl.
   rewrite mat_single_factorized.
@@ -223,7 +223,7 @@ Lemma Transform_Y_X: forall (qbit: nat),
   qasm{ Z qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists (PI2)%R.
   mat_simpl.
   rewrite mat_single_factorized.
@@ -239,7 +239,7 @@ Lemma Transform_Y_Z: forall (qbit: nat),
   qasm{ X qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists (-PI2)%R.
   mat_simpl.
   rewrite mat_single_factorized.
@@ -255,7 +255,7 @@ Lemma Transform_Z_Y: forall (qbit: nat),
   qasm{ X qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists (PI2)%R.
   mat_simpl.
   rewrite mat_single_factorized.
@@ -271,7 +271,7 @@ Lemma Transform_Z_X: forall (qbit: nat),
   qasm{ Y qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists (-PI2)%R.
   mat_simpl.
   rewrite mat_single_factorized.
@@ -287,7 +287,7 @@ Lemma Transform_X_Z: forall (qbit: nat),
   qasm{ Y qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists PI2%R.
   mat_simpl.
   rewrite mat_single_factorized.
@@ -303,7 +303,7 @@ Lemma Transform_H_X_H: forall (qbit: nat),
   qasm{ Z qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists 0%R.
   unfold gphase. com_simpl. mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -318,7 +318,7 @@ Lemma Transform_H_Y_H: forall (qbit: nat),
   qasm{ Y qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists (PI)%R.
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -334,7 +334,7 @@ Lemma Transform_H_Z_H: forall (qbit: nat),
   qasm{ X qbit }.
 Proof.
   intros qbit H.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists 0%R.
   unfold gphase. com_simpl. mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -352,7 +352,7 @@ Lemma Transform_swap_swap: forall (qbit1 qbit2: nat),
   qasm{ I qbit1 }.
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists 0%R.
   unfold gphase. com_simpl. mat_simpl.
   apply mat_Hermitian_unitary__involutory.
@@ -368,7 +368,7 @@ Lemma Transform_cnot_cnot: forall (qbit1 qbit2: nat),
   qasm{ I qbit1 }.
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists 0%R.
   unfold gphase. com_simpl. mat_simpl.
   apply mat_Hermitian_unitary__involutory.
@@ -384,7 +384,7 @@ Lemma Transform_3cnot_swap: forall (qbit1 qbit2: nat),
   qasm{ swap qbit1 qbit2 }.
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
-  eapply QState_transform_equality'; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix'; mat_of.
   cbn [fold_right]. exists 0%R.
   unfold gphase. com_simpl. mat_simpl.
   apply mat_3cnot_swap.

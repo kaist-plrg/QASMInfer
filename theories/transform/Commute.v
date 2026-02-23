@@ -80,17 +80,17 @@ Section COMMUTE.
 
 Variable nq: nat.
 
-Lemma QState_transform_equality:
+Lemma Instruction_valid_equiv_of_seqs_from_matrix:
   forall (lst1 lst2: list Instruction) (mlst1 mlst2: list (Matrix nq)),
   Matrix_of_list nq lst1 mlst1 ->
   Matrix_of_list nq lst2 mlst2 ->
   (exists lambda: R, List.fold_right (fun a b => b * a) mat_eye mlst1 =
   gphase lambda .* List.fold_right (fun a b => b * a) mat_eye mlst2) ->
-  Instruction_equiv nq
+  Instruction_valid_equiv nq
   qasm{ seq[ lst1 ] }
   qasm{ seq[ lst2 ] }.
 Proof.
-  intros lst1 lst2 mlst1 mlst2 H1 H2 [lambda Heq] ps Hinv.
+  intros lst1 lst2 mlst1 mlst2 H1 H2 [lambda Heq] ps Hvalid.
   rewrite (Matrix_of_list_id _ _ H1).
   rewrite (Matrix_of_list_id _ _ H2).
   rewrite Heq.
@@ -101,7 +101,24 @@ Proof.
   reflexivity.
 Qed.
 
-Corollary QState_transform_equality':
+Lemma Instruction_equiv_of_seqs_from_matrix:
+  forall (lst1 lst2: list Instruction) (mlst1 mlst2: list (Matrix nq)),
+  Matrix_of_list nq lst1 mlst1 ->
+  Matrix_of_list nq lst2 mlst2 ->
+  (exists lambda: R, List.fold_right (fun a b => b * a) mat_eye mlst1 =
+  gphase lambda .* List.fold_right (fun a b => b * a) mat_eye mlst2) ->
+  Instruction_equiv nq
+  qasm{ seq[ lst1 ] }
+  qasm{ seq[ lst2 ] }.
+Proof.
+  intros lst1 lst2 mlst1 mlst2 H1 H2 [lambda Heq].
+  apply Instruction_valid_equiv_implies_equiv.
+  eapply Instruction_valid_equiv_of_seqs_from_matrix.
+  apply H1. apply H2.
+  exists lambda. apply Heq.
+Qed.
+
+Corollary Instruction_equiv_of_seqs_from_matrix':
   forall (lst: list Instruction) (mlst: list (Matrix nq))
   (instr: Instruction) (mat: Matrix nq),
   Matrix_of_list nq lst mlst ->
@@ -135,7 +152,7 @@ Lemma Commute_X_Y (qbit: nat):
   qasm{ Y qbit; X qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix; mat_of.
   exists (-PI)%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -153,7 +170,7 @@ Lemma Commute_Y_Z (qbit: nat):
   qasm{ Z qbit; Y qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix; mat_of.
   exists (-PI)%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -171,7 +188,7 @@ Lemma Commute_Z_X (qbit: nat):
   qasm{ X qbit; Z qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix; mat_of.
   exists (-PI)%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -189,7 +206,7 @@ Lemma Commute_H_X (qbit: nat):
   qasm{ Z qbit; H qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix; mat_of.
   exists 0%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -204,7 +221,7 @@ Lemma Commute_H_Y (qbit: nat):
   qasm{ Y qbit; H qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix; mat_of.
   exists (-PI)%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -225,7 +242,7 @@ Lemma Commute_H_Z (qbit: nat):
   qasm{ X qbit; H qbit }.
 Proof.
   intros H.
-  eapply QState_transform_equality; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix; mat_of.
   exists 0%R. cbn [fold_right].
   mat_simpl.
   repeat rewrite mat_single_factorized.
@@ -243,7 +260,7 @@ Lemma Commute_single_indep (qbit1 qbit2: nat)
   qasm{ U (theta2, phi2, lambda2) qbit2; U (theta1, phi1, lambda1) qbit1 }.
 Proof.
   intros Hq1 Hq2 Hq.
-  eapply QState_transform_equality; mat_of.
+  eapply Instruction_equiv_of_seqs_from_matrix; mat_of.
   exists 0%R. cbn [fold_right].
   unfold gphase. com_simpl. mat_simpl.
   symmetry.
@@ -269,13 +286,13 @@ Qed.
 Lemma Commute_swap_rot (qbit1 qbit2 target: nat) (theta phi lambda: R):
   Qbit_index_valid qbit1 ->
   Qbit_index_valid qbit2 ->
-  Instruction_equiv nq
+  Instruction_valid_equiv nq
   qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 qasm{ U (theta, phi, lambda) target })}
   qasm{ U (theta, phi, lambda) target; swap qbit1 qbit2 }.
 Proof.
   intros Hq1 Hq2.
   unfold swap_qbit_instr. simpl.
-  eapply QState_transform_equality; mat_of.
+  eapply Instruction_valid_equiv_of_seqs_from_matrix; mat_of.
   exists 0%R. unfold gphase. com_simpl. mat_simpl.
   apply (mat_swap_single_commute _ _ Hq1 Hq2).
 Qed.
@@ -283,13 +300,13 @@ Qed.
 Lemma Commute_swap_cnot (qbit1 qbit2 control target: nat):
   Qbit_index_valid qbit1 ->
   Qbit_index_valid qbit2 ->
-  Instruction_equiv nq
+  Instruction_valid_equiv nq
   qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 qasm{ cx control target})}
   qasm{ cx control target; swap qbit1 qbit2}.
 Proof.
   intros Hq1 Hq2.
   unfold swap_qbit_instr. simpl.
-  eapply QState_transform_equality; mat_of.
+  eapply Instruction_valid_equiv_of_seqs_from_matrix; mat_of.
   exists 0%R. unfold gphase. com_simpl. mat_simpl.
   apply (mat_swap_ctrl_commute _ _ _ Hq1 Hq2).
 Qed.
@@ -297,16 +314,74 @@ Qed.
 Lemma Commute_swap_swap (qbit1 qbit2 control target: nat):
   Qbit_index_valid qbit1 ->
   Qbit_index_valid qbit2 ->
-  Instruction_equiv nq
+  Instruction_valid_equiv nq
   qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 qasm{ swap control target})}
   qasm{ swap control target; swap qbit1 qbit2}.
 Proof.
   intros Hq1 Hq2.
   unfold swap_qbit_instr. simpl.
-  eapply QState_transform_equality; mat_of.
+  eapply Instruction_valid_equiv_of_seqs_from_matrix; mat_of.
   exists 0%R. unfold gphase. com_simpl. mat_simpl.
   apply (mat_swap_swap_commute _ _ Hq1 Hq2).
 Qed.
+
+Lemma Execute_measure_branch_swap :
+  forall (qbit1 qbit2 cbit: nat) (cstate: positive) (b: Branch nq),
+  ProgramState_equiv nq
+    (Execute_measure_instr_branch nq qbit2 cbit cstate
+      (Execute_swap_instr_branch nq qbit1 qbit2 b))
+    (Execute_swap_instr nq qbit1 qbit2
+      (Execute_measure_instr_branch nq qbit1 cbit cstate b)).
+Proof.
+  intros qbit1 qbit2 cbit cstate b.
+  unfold Execute_measure_instr_branch, Execute_swap_instr_branch, Execute_swap_instr.
+  remember (CState_branch cbit cstate) as k.
+  destruct k as [cstate0 cstate1].
+  destruct b. simpl.
+Admitted.
+
+Lemma Commute_swap_measure (qbit1 qbit2 qbit: nat) (cbit: nat):
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_valid_equiv nq
+  qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 qasm{ measure qbit -> cbit }) }
+  qasm{ measure qbit -> cbit; swap qbit1 qbit2 }.
+Proof.
+  intros Hq1 Hq2.
+  unfold swap_qbit_instr. simpl.
+  intros ps Hvalid. simpl.
+  unfold Execute_measure_instr, Execute_swap_instr.
+  rewrite PositiveMap_fold_map.
+  apply PProperties.fold_rec_weak.
+  - intros m0 m0' a Heq Ha.
+    rewrite Ha.
+    eapply Execute_swap_instr_Proper.
+    apply PositiveMap_fold_Proper_gen.
+    + intros cstate branch ps1 ps2 Hps.
+      apply ProgramState_merge_Proper.
+      apply Hps. apply ProgramState_equiv_equivalence.
+    + apply Heq.
+    + apply ProgramState_equiv_equivalence.
+  - intros cstate.
+    rewrite PProperties.fold_Empty.
+    rewrite PFacts.empty_o.
+    rewrite PFacts.map_o.
+    rewrite PFacts.empty_o.
+    reflexivity.
+    apply ProgramState_equiv_equivalence.
+    apply PositiveMap.empty_1.
+  - intros cstate' branch' ps' m Hnotin IH.
+    rewrite PProperties.fold_add.
+    + shelve.
+    + apply ProgramState_equiv_equivalence.
+    + intros c1 c2 Hc b1 b2 Hb ps1 ps2 Hps.
+      rewrite Hc, Hb.
+      apply ProgramState_merge_Proper.
+      apply Hps. apply ProgramState_equiv_equivalence.
+    + unfold PProperties.transpose_neqkey.
+      intros k k' e e' a Hne. shelve.
+    + apply Hnotin.
+Admitted.
 
 Lemma Commute_swap_instr:
   forall (qbit1 qbit2: nat) (instr: Instruction),
@@ -317,6 +392,7 @@ Lemma Commute_swap_instr:
   qasm{ instr; swap qbit1 qbit2 }.
 Proof.
   intros qbit1 qbit2 instr Hq1 Hq2.
+  apply Instruction_valid_equiv_implies_equiv.
   induction instr using Instruction_ind'.
   - intros ps Hvalid. simpl. reflexivity.
   - apply Commute_swap_rot.
@@ -325,23 +401,24 @@ Proof.
     all: assumption.
   - apply Commute_swap_swap.
     all: assumption.
-  - shelve. (* MEASURE *)
+  - apply Commute_swap_measure.
+    all: assumption.
   - induction is.
-    + apply Instruction_equiv_equivalence.
+    + apply Instruction_valid_equiv_equivalence.
     + inversion H. subst.
       apply IHis in H3.
       unfold swap_qbit_instr. simpl.
-      setoid_rewrite Instruction_equiv_Seq_list_eq.
+      setoid_rewrite Instruction_valid_equiv_Seq_list_eq.
       change ((fix app (l m : list Instruction) {struct l} : list Instruction :=
         match l with
         | [] => m
         | a0 :: l1 => a0 :: app l1 m
         end) is [qasm{ swap qbit1 qbit2}])
       with (is ++ [qasm{ swap qbit1 qbit2}]).
-      setoid_rewrite Instruction_equiv_Seq_list_list_eq.
-      setoid_rewrite Instruction_equiv_Seq_singleton.
+      setoid_rewrite Instruction_valid_equiv_Seq_list_list_eq.
+      setoid_rewrite Instruction_valid_equiv_Seq_singleton.
       setoid_rewrite <- H3.
-      setoid_rewrite Instruction_equiv_assoc.
+      setoid_rewrite Instruction_valid_equiv_assoc.
       setoid_rewrite <- H2.
       setoid_reflexivity.
   - shelve. (* IF *)
