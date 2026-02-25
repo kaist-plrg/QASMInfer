@@ -326,18 +326,20 @@ Proof.
 Qed.
 
 Lemma Execute_measure_branch_swap :
-  forall (qbit1 qbit2 cbit: nat) (cstate: positive) (b: Branch nq),
+  forall (qbit1 qbit2 qbit cbit: nat) (cstate: positive) (b: Branch nq),
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Branch_valid nq b ->
   ProgramState_equiv nq
-    (Execute_measure_instr_branch nq qbit2 cbit cstate
+    (Execute_measure_instr_branch nq (swap_qbit qbit1 qbit2 qbit) cbit cstate
       (Execute_swap_instr_branch nq qbit1 qbit2 b))
     (Execute_swap_instr nq qbit1 qbit2
-      (Execute_measure_instr_branch nq qbit1 cbit cstate b)).
+      (Execute_measure_instr_branch nq qbit cbit cstate b)).
 Proof.
-  intros qbit1 qbit2 cbit cstate b.
-  unfold Execute_measure_instr_branch, Execute_swap_instr_branch, Execute_swap_instr.
-  remember (CState_branch cbit cstate) as k.
-  destruct k as [cstate0 cstate1].
-  destruct b. simpl.
+  intros qbit1 qbit2 qbit cbit cstate b Hq1 Hq2 Hb.
+  unfold Execute_measure_instr_branch, Execute_swap_instr, Execute_swap_instr_branch.
+  remember (CState_branch cbit cstate) as cstate'.
+  destruct cstate' as [cstate0 cstate1].
 Admitted.
 
 Lemma Commute_swap_measure (qbit1 qbit2 qbit: nat) (cbit: nat):
@@ -352,35 +354,28 @@ Proof.
   intros ps Hvalid. simpl.
   unfold Execute_measure_instr, Execute_swap_instr.
   rewrite PositiveMap_fold_map.
-  apply PProperties.fold_rec_weak.
-  - intros m0 m0' a Heq Ha.
-    rewrite Ha.
-    eapply Execute_swap_instr_Proper.
-    apply PositiveMap_fold_Proper_gen.
-    + intros cstate branch ps1 ps2 Hps.
-      apply ProgramState_merge_Proper.
-      apply Hps. apply ProgramState_equiv_equivalence.
-    + apply Heq.
-    + apply ProgramState_equiv_equivalence.
-  - intros cstate.
-    rewrite PProperties.fold_Empty.
-    rewrite PFacts.empty_o.
-    rewrite PFacts.map_o.
-    rewrite PFacts.empty_o.
-    reflexivity.
+  apply PProperties.fold_rec_bis.
+  - intros m0 m1 a Heq H.
+    rewrite H.
+    apply Execute_swap_instr_Proper.
+    apply Execute_measure_instr_Proper.
+    apply Heq.
+  - rewrite PProperties.fold_Empty.
+    intros cstate. rewrite PFacts.map_o, PFacts.empty_o. reflexivity.
     apply ProgramState_equiv_equivalence.
     apply PositiveMap.empty_1.
-  - intros cstate' branch' ps' m Hnotin IH.
-    rewrite PProperties.fold_add.
+  - intros k b a m Hmapsto Hnotin IH.
+    eapply ProgramState_equiv_equivalence with (y :=
+      ProgramState_merge nq a
+        (Execute_swap_instr nq qbit1 qbit2
+        (Execute_measure_instr_branch nq qbit cbit k b))
+    ).
+    + apply ProgramState_merge_Proper.
+      reflexivity.
+      apply Execute_measure_branch_swap.
+      all: try assumption.
+      apply Hvalid with k. apply Hmapsto.
     + shelve.
-    + apply ProgramState_equiv_equivalence.
-    + intros c1 c2 Hc b1 b2 Hb ps1 ps2 Hps.
-      rewrite Hc, Hb.
-      apply ProgramState_merge_Proper.
-      apply Hps. apply ProgramState_equiv_equivalence.
-    + unfold PProperties.transpose_neqkey.
-      intros k k' e e' a Hne. shelve.
-    + apply Hnotin.
 Admitted.
 
 Lemma Commute_swap_instr:
