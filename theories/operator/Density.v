@@ -121,6 +121,22 @@ Proof.
   mat_sort.
 Qed.
 
+Lemma den_uop_scale : forall {n: nat} (uop den: Matrix n) (c: Complex),
+  den_uop uop (c .* den) = c .* (den_uop uop den).
+Proof.
+  intros. unfold den_uop.
+  mat_sort.
+Qed.
+
+Lemma den_uop_add : forall {n: nat} (uop den1 den2: Matrix n),
+  den_uop uop (den1 + den2) = den_uop uop den1 + den_uop uop den2.
+Proof.
+  intros. unfold den_uop.
+  rewrite mat_mul_dist_l.
+  rewrite mat_mul_dist_r.
+  reflexivity.
+Qed.
+
 Lemma den_uop_involutive:
   forall {n: nat} (A Q: Matrix n),
   mat_unitary A -> mat_Hermitian A ->

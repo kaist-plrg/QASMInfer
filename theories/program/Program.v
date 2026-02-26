@@ -218,6 +218,64 @@ Proof.
   split. apply Hden. apply Hgt0.
 Qed.
 
+Lemma Branch_merge_commute:
+  forall b1 b2,
+  Branch_merge b1 b2 = Branch_merge b2 b1.
+Proof.
+  intros [p1 q1] [p2 q2].
+  unfold Branch_merge. simpl.
+  f_equal.
+  - rewrite mat_add_comm.
+    f_equal; f_equal; f_equal; lca.
+  - lra.
+Qed.
+
+Lemma Branch_merge_perm :
+  forall b b1 b2,
+  Branch_valid b ->
+  Branch_valid b1 ->
+  Branch_valid b2 ->
+  Branch_merge b1 (Branch_merge b2 b) =
+  Branch_merge b2 (Branch_merge b1 b).
+Proof.
+  assert (Hc: forall (c1 c2 c3: Complex),
+  c2 <> 0 ->
+  ((c1 / c2) * (c2 / c3) = c1 / c3)%com).
+  {
+    intros a b c Hb.
+    unfold com_div.
+    rewrite <- com_mul_assoc.
+    rewrite (com_mul_assoc _ b _).
+    rewrite com_inv_mult.
+    rewrite com_mul_1_l.
+    reflexivity.
+    apply Hb.
+  }
+  intros [p1 q1] [p2 q2] [p q] [_ Hb] [_ Hb1] [_ Hb2].
+  unfold Branch_merge, Branch_valid in *. simpl in *.
+  f_equal.
+  - repeat rewrite mat_scale_dist_l.
+    repeat rewrite <- mat_scale_scale_comm.
+    repeat rewrite mat_add_assoc.
+    replace (RTC (q + q1)%R) with (q + q1)%com by lca.
+    replace (RTC (q2 + q1)%R) with (q2 + q1)%com by lca.
+    f_equal.
+    + rewrite mat_add_comm.
+      f_equal; f_equal;
+      rewrite com_mul_comm, Hc.
+      f_equal. lca.
+      apply com_proj_neq_fst. simpl. lra.
+      f_equal. lca.
+      apply com_proj_neq_fst. simpl. lra.
+    + f_equal.
+      rewrite com_mul_comm, Hc.
+      rewrite com_mul_comm, Hc.
+      f_equal. lca.
+      apply com_proj_neq_fst. simpl. lra.
+      apply com_proj_neq_fst. simpl. lra.
+  - lra.
+Qed.
+
 (* ============================================================================================== *)
 (* Program state as pos -> branch, i.e., map from cstate to qstate and probability ============== *)
 (* This is possible thanks to branch unification ================================================ *)
@@ -415,6 +473,36 @@ Proof.
   apply Hf_prob.
 Qed.
 
+Lemma ProgramState_merge_step_valid:
+  forall (cstate: positive) (branch: Branch) (ps: ProgramState),
+  ProgramState_valid ps -> Branch_valid branch ->
+  ProgramState_valid (merge_step cstate branch ps).
+Proof.
+  intros cstate branch ps Hps Hb.
+  unfold merge_step.
+  destruct (PositiveMap.find cstate ps) eqn:Hfind.
+  - apply PFacts.find_mapsto_iff in Hfind.
+    intros cstate' branch' Hmaps'.
+    apply PFacts.add_mapsto_iff in Hmaps'.
+    destruct Hmaps' as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq Hmaps_acc]].
+    + rewrite <- Hbranch_eq.
+      unfold ProgramState_valid in *.
+      apply Branch_merge_valid.
+      * apply Hb.
+      * apply (Hps cstate').
+        rewrite <- Hcstate_eq.
+        assumption.
+    + apply (Hps cstate' branch' Hmaps_acc).
+  - apply PFacts.not_find_in_iff in Hfind.
+    intros cstate' branch' Hmaps'.
+    apply PFacts.add_mapsto_iff in Hmaps'.
+    destruct Hmaps' as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq Hmaps_acc]].
+    + rewrite <- Hbranch_eq.
+      unfold ProgramState_valid in *.
+      apply Hb.
+    + apply (Hps cstate' branch' Hmaps_acc).
+Qed.
+
 Lemma ProgramState_merge_valid: forall (ps0 ps1: ProgramState),
   ProgramState_valid ps0 -> ProgramState_valid ps1 ->
   ProgramState_valid (ProgramState_merge ps0 ps1).
@@ -424,28 +512,10 @@ Proof.
   apply PProperties.fold_rec_nodep.
   assumption.
   intros cstate_fold branch_fold acc Hmaps_fold Hacc_valid.
-  unfold merge_step.
-  destruct (PositiveMap.find cstate_fold acc) eqn:Hfind.
-  - apply PFacts.find_mapsto_iff in Hfind.
-    intros cstate' branch' Hmaps'.
-    apply PFacts.add_mapsto_iff in Hmaps'.
-    destruct Hmaps' as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq Hmaps_acc]].
-    + rewrite <- Hbranch_eq.
-      unfold ProgramState_valid in *.
-      apply Branch_merge_valid.
-      * apply (Hps0 cstate_fold branch_fold Hmaps_fold).
-      * apply (Hacc_valid cstate').
-        rewrite <- Hcstate_eq.
-        assumption.
-    + apply (Hacc_valid cstate' branch' Hmaps_acc).
-  - apply PFacts.not_find_in_iff in Hfind.
-    intros cstate' branch' Hmaps'.
-    apply PFacts.add_mapsto_iff in Hmaps'.
-    destruct Hmaps' as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq Hmaps_acc]].
-    + rewrite <- Hbranch_eq.
-      unfold ProgramState_valid in *.
-      apply (Hps0 cstate_fold branch_fold Hmaps_fold).
-    + apply (Hacc_valid cstate' branch' Hmaps_acc).
+  apply ProgramState_merge_step_valid.
+  - assumption.
+  - apply Hps0 with cstate_fold.
+    apply Hmaps_fold.
 Qed.
 
 Lemma PositiveMap_add_remove (k: positive) (old: Branch) (ps: ProgramState) (acc: R) :

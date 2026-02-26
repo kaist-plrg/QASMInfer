@@ -365,17 +365,29 @@ Proof.
     apply ProgramState_equiv_equivalence.
     apply PositiveMap.empty_1.
   - intros k b a m Hmapsto Hnotin IH.
-    eapply ProgramState_equiv_equivalence with (y :=
-      ProgramState_merge nq a
-        (Execute_swap_instr nq qbit1 qbit2
-        (Execute_measure_instr_branch nq qbit cbit k b))
-    ).
-    + apply ProgramState_merge_Proper.
-      reflexivity.
+    rewrite PProperties.fold_add.
+    + match goal with
+      | |- ProgramState_equiv nq _ (PositiveMap.map (Execute_swap_instr_branch nq qbit1 qbit2) ?ps') =>
+        change (PositiveMap.map (Execute_swap_instr_branch nq qbit1 qbit2) ps') with (Execute_swap_instr nq qbit1 qbit2 ps')
+      end.
+      rewrite <- Execute_swap_instr_merge.
+      apply ProgramState_merge_Proper.
+      apply IH.
       apply Execute_measure_branch_swap.
-      all: try assumption.
+      1-2: assumption.
       apply Hvalid with k. apply Hmapsto.
-    + shelve.
+    + apply ProgramState_equiv_equivalence.
+    + intros k1 k2 Hk b1 b2 Hb.
+      rewrite Hk, Hb.
+      intros ps1 ps2 Hpseq.
+      apply ProgramState_merge_Proper.
+      apply Hpseq.
+      reflexivity.
+    + intros k1 k2 b1 b2 ps0 Hk.
+      remember (Execute_measure_instr_branch nq qbit cbit k1 b1) as Hps1.
+      remember (Execute_measure_instr_branch nq qbit cbit k2 b2) as Hps2.
+      shelve.
+    + apply Hnotin.
 Admitted.
 
 Lemma Commute_swap_instr:

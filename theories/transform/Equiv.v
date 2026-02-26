@@ -359,62 +359,28 @@ Proof.
   try assumption.
 Qed.
 
-Lemma Branch_merge_commute:
-  forall b1 b2,
-  Branch_merge nq b1 b2 = Branch_merge nq b2 b1.
+Lemma ProgramState_merge_step_neq_commute:
+  forall (ps: ProgramState nq) (k1 k2: positive) (b1 b2: Branch nq),
+  k1 <> k2 ->
+  ProgramState_equiv
+  (merge_step nq k1 b1 (merge_step nq k2 b2 ps))
+  (merge_step nq k2 b2 (merge_step nq k1 b1 ps)).
 Proof.
-  intros [p1 q1] [p2 q2].
-  unfold Branch_merge. simpl.
-  f_equal.
-  - rewrite mat_add_comm.
-    f_equal; f_equal; f_equal; lca.
-  - lra.
-Qed.
-
-Lemma Branch_merge_perm :
-  forall b b1 b2,
-  Branch_valid nq b ->
-  Branch_valid nq b1 ->
-  Branch_valid nq b2 ->
-  Branch_merge nq b1 (Branch_merge nq b2 b) =
-  Branch_merge nq b2 (Branch_merge nq b1 b).
-Proof.
-  assert (Hc: forall (c1 c2 c3: Complex),
-  c2 <> 0 ->
-  ((c1 / c2) * (c2 / c3) = c1 / c3)%com).
-  {
-    intros a b c Hb.
-    unfold com_div.
-    rewrite <- com_mul_assoc.
-    rewrite (com_mul_assoc _ b _).
-    rewrite com_inv_mult.
-    rewrite com_mul_1_l.
+  intros ps k1 k2 b1 b2 Hneq cstate.
+  destruct (Pos.eq_dec k1 cstate) as [Hc1|Hc1];
+  destruct (Pos.eq_dec k2 cstate) as [Hc2|Hc2]; subst.
+  + lia.
+  + rewrite find_merge_step_eq, find_merge_step_neq.
+    rewrite find_merge_step_neq, find_merge_step_eq.
+    destruct (PositiveMap.find cstate ps); reflexivity.
+    all: assumption.
+  + rewrite find_merge_step_neq, find_merge_step_eq.
+    rewrite find_merge_step_eq, find_merge_step_neq.
+    destruct (PositiveMap.find cstate ps); reflexivity.
+    all: assumption.
+  + repeat rewrite find_merge_step_neq.
     reflexivity.
-    apply Hb.
-  }
-  intros [p1 q1] [p2 q2] [p q] [_ Hb] [_ Hb1] [_ Hb2].
-  unfold Branch_merge, Branch_valid in *. simpl in *.
-  f_equal.
-  - repeat rewrite mat_scale_dist_l.
-    repeat rewrite <- mat_scale_scale_comm.
-    repeat rewrite mat_add_assoc.
-    replace (RTC (q + q1)%R) with (q + q1)%com by lca.
-    replace (RTC (q2 + q1)%R) with (q2 + q1)%com by lca.
-    f_equal.
-    + rewrite mat_add_comm.
-      f_equal; f_equal;
-      rewrite com_mul_comm, Hc.
-      f_equal. lca.
-      apply com_proj_neq_fst. simpl. lra.
-      f_equal. lca.
-      apply com_proj_neq_fst. simpl. lra.
-    + f_equal.
-      rewrite com_mul_comm, Hc.
-      rewrite com_mul_comm, Hc.
-      f_equal. lca.
-      apply com_proj_neq_fst. simpl. lra.
-      apply com_proj_neq_fst. simpl. lra.
-  - lra.
+    all: assumption.
 Qed.
 
 Lemma ProgramState_merge_step_commute:
@@ -426,33 +392,42 @@ Lemma ProgramState_merge_step_commute:
   (merge_step nq k1 b1 (merge_step nq k2 b2 ps))
   (merge_step nq k2 b2 (merge_step nq k1 b1 ps)).
 Proof.
-  intros ps k1 k2 b1 b2 Hb1 Hb2 Hps cstate.
-  unfold ProgramState_valid in Hps.
+  intros ps k1 k2 b1 b2 Hb1 Hb2 Hvalid cstate.
   destruct (Pos.eq_dec k1 k2) as [Hk|Hk]; subst.
   - destruct (Pos.eq_dec k2 cstate) as [Hc|Hc]; subst.
     + repeat rewrite find_merge_step_eq.
-      destruct (PositiveMap.find cstate ps) eqn:Hfind; f_equal.
-      apply Branch_merge_perm; try assumption.
-      apply Hps with cstate.
-      rewrite PFacts.find_mapsto_iff. apply Hfind.
-      apply Branch_merge_commute.
+      destruct (PositiveMap.find cstate ps) eqn:Hfind.
+      * f_equal. apply Branch_merge_perm.
+        2-3: assumption.
+        apply Hvalid with cstate.
+        rewrite PFacts.find_mapsto_iff.
+        apply Hfind.
+      * f_equal. apply Branch_merge_commute.
     + repeat rewrite find_merge_step_neq.
       reflexivity.
       all: assumption.
-  - destruct (Pos.eq_dec k1 cstate) as [Hc1|Hc1];
-    destruct (Pos.eq_dec k2 cstate) as [Hc2|Hc2]; subst.
-    + lia.
-    + rewrite find_merge_step_eq, find_merge_step_neq.
-      rewrite find_merge_step_neq, find_merge_step_eq.
-      destruct (PositiveMap.find cstate ps); reflexivity.
-      all: assumption.
-    + rewrite find_merge_step_neq, find_merge_step_eq.
-      rewrite find_merge_step_eq, find_merge_step_neq.
-      destruct (PositiveMap.find cstate ps); reflexivity.
-      all: assumption.
-    + repeat rewrite find_merge_step_neq.
-      reflexivity.
-      all: assumption.
+  - apply ProgramState_merge_step_neq_commute.
+    apply Hk.
+Qed.
+
+Corollary ProgramState_merge_step_transpose_neqkey:
+  PProperties.transpose_neqkey ProgramState_equiv (merge_step nq).
+Proof.
+  intros k1 k2 b1 b2 Hneq ps cstate.
+  apply ProgramState_merge_step_neq_commute.
+  apply ps.
+Qed.
+
+Lemma ProgramState_merge_empty_l:
+  forall ps: ProgramState nq,
+  ProgramState_equiv ps (ProgramState_merge nq (PositiveMap.empty (Branch nq)) ps).
+Proof.
+  intros ps.
+  unfold ProgramState_merge.
+  rewrite PProperties.fold_Empty.
+  reflexivity.
+  apply ProgramState_equiv_equivalence.
+  apply PositiveMap.empty_1.
 Qed.
 
 Lemma ProgramState_merge_empty_r:
@@ -489,42 +464,56 @@ Proof.
   apply Hmapsto.
 Qed.
 
-Lemma ProgramState_valid_add:
-  forall (ps: ProgramState nq) (k: positive) (b: Branch nq),
-  (~ PositiveMap.In k ps) ->
-  ProgramState_valid nq (PositiveMap.add k b ps) ->
-  ProgramState_valid nq ps /\ Branch_valid nq b.
+Lemma ProgramState_valid_add_inj:
+  forall k b m,
+  (~ PositiveMap.In k m) ->
+  ProgramState_valid nq (PositiveMap.add k b m) ->
+  ProgramState_valid nq m.
 Proof.
-  intros ps k b Hnotin Hvalid.
-  split.
-  - intros cstate branch Hmapsto.
-    apply Hvalid with cstate.
-    rewrite PFacts.find_mapsto_iff.
-    rewrite PFacts.add_o.
-Admitted.
+  intros k b m Hnotin Hvalid.
+  intros cstate branch Hmapsto.
+  apply Hvalid with cstate.
+  rewrite PFacts.find_mapsto_iff in Hmapsto.
+  rewrite PFacts.not_find_in_iff in Hnotin.
+  rewrite PFacts.find_mapsto_iff.
+  destruct (Pos.eq_dec cstate k) as [Heq|Hneq].
+  - rewrite Heq, Hnotin in Hmapsto.
+    discriminate Hmapsto.
+  - rewrite PFacts.add_neq_o.
+    apply Hmapsto.
+    lia.
+Qed.
 
 Lemma ProgramState_merge_add_r:
   forall (ps m: ProgramState nq) (k: positive) (b: Branch nq),
   Branch_valid nq b ->
   ProgramState_valid nq ps ->
+  ProgramState_valid nq m ->
   ~ PositiveMap.In k m ->
   ProgramState_equiv
     (merge_step nq k b (ProgramState_merge nq ps m))
     (ProgramState_merge nq ps (PositiveMap.add k b m)).
 Proof.
-  intros ps m k b Hbv Hps Hnotin.
+  intros ps m k b Hbv Hps Hm Hnotin.
+  apply proj2 with (A := ProgramState_valid nq (ProgramState_merge nq ps m)).
   revert Hps.
   unfold ProgramState_merge.
   apply PProperties.fold_rec_bis.
   - intros m0 m1 a Heq H Hps.
-    rewrite H.
+    assert (Hm0: ProgramState_valid nq m0). {
+      apply ProgramState_valid_equal with m1.
+      apply Hps. rewrite Heq. reflexivity.
+    }
+    apply H in Hm0.
+    destruct Hm0 as [H1 H2].
+    split.
+    apply H1.
+    rewrite H2.
     apply ProgramState_merge_Proper.
     apply Heq.
     reflexivity.
-    apply ProgramState_valid_equal with (ps1 := m1).
-    apply Hps.
-    rewrite Heq. reflexivity.
-  - rewrite PProperties.fold_Empty.
+  - intros _. split. apply Hm.
+    rewrite PProperties.fold_Empty.
     apply PFacts.not_find_in_iff in Hnotin.
     unfold merge_step.
     rewrite Hnotin.
@@ -532,68 +521,146 @@ Proof.
     apply ProgramState_equiv_equivalence.
     apply PositiveMap.empty_1.
   - intros k' b' a m' Hmapsto Hnotin' IH Hps.
-    assert (ProgramState_valid nq m' /\ Branch_valid nq b').
-    {
-      apply ProgramState_valid_add with k'.
+    assert (Hm': ProgramState_valid nq m'). {
+      apply ProgramState_valid_add_inj with k' b'.
       apply Hnotin'.
       apply Hps.
     }
-    destruct H as [Hm' Hb'].
-    apply ProgramState_equiv_equivalence with (y := merge_step nq k' b' (merge_step nq k b a)).
-    + rewrite ProgramState_merge_step_commute.
-      reflexivity.
-      apply Hbv.
+    assert (Hb': Branch_valid nq b'). {
+      apply Hps with k'.
+      rewrite PFacts.find_mapsto_iff, PFacts.add_eq_o.
+      all: reflexivity.
+    }
+    apply IH in Hm'.
+    destruct Hm' as [Ha Heq].
+    split.
+    + apply ProgramState_merge_step_valid.
+      apply Ha.
       apply Hb'.
-      all: shelve.
     + rewrite PProperties.fold_add.
-      * apply ProgramState_merge_step_Proper.
-        apply IH.
-        apply Hm'.
+      * rewrite ProgramState_merge_step_commute.
+        apply ProgramState_merge_step_Proper.
+        apply Heq.
+        apply Hbv.
+        apply Hb'.
+        apply Ha.
       * apply ProgramState_equiv_equivalence.
       * intros k0 k1 Hk b0 b1 Hb.
-        rewrite Hk, Hb.  
+        rewrite Hk, Hb.
         apply ProgramState_merge_step_Proper.
-      * intros k0 k1 b0 b1 a' Hk.
-        rewrite ProgramState_merge_step_commute.
-        reflexivity.
-        all: shelve.
+      * apply ProgramState_merge_step_transpose_neqkey.
       * apply Hnotin'.
-Admitted.
+Qed.
 
-Lemma ProgramState_merge_symmetry:
+Lemma ProgramState_merge_symm:
   forall ps1 ps2: ProgramState nq,
   ProgramState_valid nq ps1 ->
   ProgramState_valid nq ps2 ->
   ProgramState_equiv (ProgramState_merge nq ps1 ps2) (ProgramState_merge nq ps2 ps1).
 Proof.
-  intros ps1 ps2.
+  intros ps1 ps2 Hps1 Hps2.
+  revert Hps1.
   unfold ProgramState_merge.
-  apply PProperties.fold_rec_weak.
-  - intros m m' a Heq H Hps1 Hps2.
+  apply PProperties.fold_rec_bis.
+  - intros m m' a Heq H Hps1.
     rewrite H.
     apply ProgramState_merge_Proper.
     reflexivity.
     apply Heq.
-    apply ProgramState_valid_equal with (ps1 := m').
+    apply ProgramState_valid_equal with m'.
     apply Hps1.
     rewrite Heq. reflexivity.
-    apply Hps2.
-  - intros _ _. apply ProgramState_merge_empty_r.
-  - intros k b a m Hnotin IH Hps1 Hps2 cstate.
+  - rewrite <- (ProgramState_merge_empty_r ps2).
+    reflexivity.
+  - intros k b a m Hmapsto Hnotin Heq Hps1.
+    assert (Hm: ProgramState_valid nq m). {
+      apply ProgramState_valid_add_inj with k b.
+      apply Hnotin.
+      apply Hps1.
+    }
     rewrite <- (ProgramState_merge_add_r ps2 m k b).
     apply ProgramState_merge_step_Proper.
-    apply IH.
-    intros cstate' branch' Hmapsto.
-    apply Hps1 with cstate'.
-    rewrite PFacts.find_mapsto_iff.
-    shelve.
-    apply Hps2.
+    apply Heq.
+    apply Hm.
     apply Hps1 with k.
-    rewrite PFacts.find_mapsto_iff.
-    rewrite PFacts.add_eq_o; try reflexivity.
+    rewrite PFacts.find_mapsto_iff, PFacts.add_eq_o; reflexivity.
     apply Hps2.
+    apply Hm.
     apply Hnotin.
-Admitted.
+Qed.
+
+Lemma Branch_merge_Execute_swap_instr_branch:
+  forall q1 q2 b1 b2,
+  Branch_merge nq (Execute_swap_instr_branch nq q1 q2 b1)
+                  (Execute_swap_instr_branch nq q1 q2 b2) =
+  Execute_swap_instr_branch nq q1 q2 (Branch_merge nq b1 b2).
+Proof.
+  intros q1 q2 [Q1 p1] [Q2 p2].
+  unfold Execute_swap_instr_branch, Branch_merge.
+  simpl. f_equal.
+  rewrite <- den_uop_scale, <- den_uop_scale.
+  rewrite den_uop_add.
+  reflexivity.
+Qed.
+
+Lemma Execute_swap_instr_merge :
+  forall q1 q2 ps0 ps1,
+  ProgramState_equiv
+    (ProgramState_merge nq (Execute_swap_instr nq q1 q2 ps0)
+                           (Execute_swap_instr nq q1 q2 ps1))
+    (Execute_swap_instr nq q1 q2 (ProgramState_merge nq ps0 ps1)).
+Proof.
+  intros q1 q2 ps0 ps1.
+  unfold ProgramState_merge, Execute_swap_instr.
+  rewrite PositiveMap_fold_map.
+  apply PProperties.fold_rec_bis.
+  - intros m0 m1 a Heq H.
+    rewrite H.
+    apply Execute_swap_instr_Proper.
+    apply ProgramState_merge_Proper.
+    apply Heq. reflexivity.
+  - apply Execute_swap_instr_Proper.
+    rewrite PProperties.fold_Empty.
+    reflexivity.
+    apply ProgramState_equiv_equivalence.
+    apply PositiveMap.empty_1.
+  - intros k b a m Hmapsto Hnotin Heq.
+    apply ProgramState_equiv_equivalence with (y :=
+      merge_step nq k (Execute_swap_instr_branch nq q1 q2 b)
+      (PositiveMap.map (Execute_swap_instr_branch nq q1 q2)
+        (PositiveMap.fold (merge_step nq) m ps1))).
+    + apply ProgramState_merge_step_Proper.
+      apply Heq.
+    + rewrite PProperties.fold_add.
+      * remember (PositiveMap.fold (merge_step nq) m ps1) as ps.
+        intros cstate.
+        unfold merge_step.
+        repeat rewrite PositiveMap_find_map.
+        destruct (PositiveMap.find k ps) eqn:Hfind; simpl.
+        {
+          destruct (Pos.eq_dec k cstate).
+          - rewrite PFacts.add_eq_o, PFacts.add_eq_o; try assumption.
+            simpl. f_equal.
+            apply Branch_merge_Execute_swap_instr_branch.
+          - rewrite PFacts.add_neq_o, PFacts.add_neq_o; try assumption.
+            rewrite PositiveMap_find_map.
+            reflexivity.
+        }
+        {
+          destruct (Pos.eq_dec k cstate).
+          - rewrite PFacts.add_eq_o, PFacts.add_eq_o; try assumption.
+            simpl. reflexivity.
+          - rewrite PFacts.add_neq_o, PFacts.add_neq_o; try assumption.
+            rewrite PositiveMap_find_map.
+            reflexivity.
+        }
+      * apply ProgramState_equiv_equivalence.
+      * intros k1 k2 Hk b1 b2 Hb.
+        rewrite Hk, Hb.
+        apply ProgramState_merge_step_Proper.
+      * apply ProgramState_merge_step_transpose_neqkey.
+      * apply Hnotin.
+Qed.
 
 (* ============================================================================================== *)
 (* Proof of equivalence ========================================================================= *)
