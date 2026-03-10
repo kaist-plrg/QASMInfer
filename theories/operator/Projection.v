@@ -335,6 +335,28 @@ Proof.
       all: apply mat_ccast_refl'.
 Qed.
 
+Lemma mat_proj0_eq_mat_single:
+  forall {n t} (H: t < n),
+    mat_proj0 n t = mat_single n t mat_proj0_base.
+Proof.
+  intros n t H.
+  assert (Hcast: (t + 1 + (n - t - 1))%nat = n) by lia.
+  rewrite (mat_proj0_id H Hcast).
+  rewrite (mat_single_id _ H Hcast).
+  reflexivity.
+Qed.
+
+Lemma mat_proj1_eq_mat_single:
+  forall {n t} (H: t < n),
+    mat_proj1 n t = mat_single n t mat_proj1_base.
+Proof.
+  intros n t H.
+  assert (Hcast: (t + 1 + (n - t - 1))%nat = n) by lia.
+  rewrite (mat_proj1_id H Hcast).
+  rewrite (mat_single_id _ H Hcast).
+  reflexivity.
+Qed.
+
 Lemma mat_proj0_out_of_bounds:
   forall {n t} (H: n <= t),
   mat_proj0 n t = mat_eye.

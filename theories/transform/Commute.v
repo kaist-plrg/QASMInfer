@@ -267,6 +267,9 @@ Proof.
   apply (mat_single_commute _ _ Hq1 Hq2 Hq).
 Qed.
 
+(** ============================================= *)
+(** Proving swap commutes with every instructions *)
+
 Lemma Commute_swap_symm (qbit1 qbit2: nat):
   Qbit_index_valid qbit1 ->
   Qbit_index_valid qbit2 ->
@@ -325,6 +328,156 @@ Proof.
   apply (mat_swap_swap_commute _ _ Hq1 Hq2).
 Qed.
 
+Lemma den_prob_0_swap: 
+  forall {qbit qbit1 qbit2} Q,
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  den_prob_0 (swap_qbit qbit1 qbit2 qbit)
+  (den_uop (mat_swap qbit1 qbit2) Q) =
+  @den_prob_0 nq qbit Q.
+Proof.
+  intros qbit qbit1 qbit2 Q Hq1 Hq2.
+  unfold den_prob_0, den_prob.
+  destruct (le_lt_dec nq qbit).
+  - repeat rewrite mat_proj0_out_of_bounds.
+    unfold den_uop.
+    mat_simpl.
+    rewrite mat_mul_trace_comm.
+    rewrite mat_mul_assoc.
+    rewrite (proj1 mat_swap_unitary).
+    mat_simpl.
+    apply l.
+    apply (swap_qbit_out_of_bounds Hq1 Hq2 l).
+  - repeat rewrite mat_proj0_eq_mat_single.
+    unfold den_uop.
+    rewrite mat_swap_Hermitian.
+    rewrite mat_mul_trace_comm.
+    repeat rewrite mat_mul_assoc.
+    rewrite mat_swap_single_commute.
+    rewrite mat_mul_trace_comm.
+    repeat rewrite mat_mul_assoc.
+    rewrite <- mat_swap_Hermitian at 1.
+    rewrite (proj1 mat_swap_unitary).
+    mat_simpl.
+    rewrite mat_mul_trace_comm.
+    reflexivity.
+    apply Hq1.
+    apply Hq2.
+    apply l.
+    apply (swap_qbit_bound Hq1 Hq2 l).
+Qed. 
+
+Lemma den_prob_1_swap: 
+  forall {qbit qbit1 qbit2} Q,
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  den_prob_1 (swap_qbit qbit1 qbit2 qbit)
+  (den_uop (mat_swap qbit1 qbit2) Q) =
+  @den_prob_1 nq qbit Q.
+Proof.
+  intros qbit qbit1 qbit2 Q Hq1 Hq2.
+  unfold den_prob_1, den_prob.
+  destruct (le_lt_dec nq qbit).
+  - repeat rewrite mat_proj1_out_of_bounds.
+    unfold den_uop.
+    mat_simpl.
+    apply l.
+    apply (swap_qbit_out_of_bounds Hq1 Hq2 l).
+  - repeat rewrite mat_proj1_eq_mat_single.
+    unfold den_uop.
+    rewrite mat_swap_Hermitian.
+    rewrite mat_mul_trace_comm.
+    repeat rewrite mat_mul_assoc.
+    rewrite mat_swap_single_commute.
+    rewrite mat_mul_trace_comm.
+    repeat rewrite mat_mul_assoc.
+    rewrite <- mat_swap_Hermitian at 1.
+    rewrite (proj1 mat_swap_unitary).
+    mat_simpl.
+    rewrite mat_mul_trace_comm.
+    reflexivity.
+    apply Hq1.
+    apply Hq2.
+    apply l.
+    apply (swap_qbit_bound Hq1 Hq2 l).
+Qed. 
+
+Lemma den_measure_0_swap:
+  forall {qbit qbit1 qbit2} Q,
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  den_measure_0 (swap_qbit qbit1 qbit2 qbit)
+  (den_uop (mat_swap qbit1 qbit2) Q) =
+  den_uop (mat_swap qbit1 qbit2)
+  (@den_measure_0 nq qbit Q).
+Proof.
+  intros qbit qbit1 qbit2 Q Hq1 Hq2.
+  unfold den_measure_0, den_measure.
+  rewrite den_uop_scale.
+  f_equal.
+  - f_equal.
+    change (den_prob (mat_proj0 nq qbit) Q) with (den_prob_0 qbit Q).
+    rewrite <- (den_prob_0_swap _ Hq1 Hq2).
+    reflexivity.
+  - destruct (le_lt_dec nq qbit).
+    + repeat rewrite mat_proj0_out_of_bounds.
+      unfold den_uop.
+      mat_simpl.
+      apply l.
+      apply (swap_qbit_out_of_bounds Hq1 Hq2 l).
+    + unfold den_uop.
+      rewrite mat_swap_Hermitian.
+      repeat rewrite mat_proj0_eq_mat_single.
+      repeat rewrite mat_mul_assoc.
+      rewrite mat_swap_single_commute.
+      repeat rewrite <- mat_mul_assoc.
+      f_equal; f_equal; f_equal.
+      rewrite mat_swap_single_commute_right.
+      reflexivity.
+      all: try apply Hq1.
+      all: try apply Hq2.
+      apply l.
+      apply (swap_qbit_bound Hq1 Hq2 l).
+Qed.
+
+Lemma den_measure_1_swap:
+  forall {qbit qbit1 qbit2} Q,
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  den_measure_1 (swap_qbit qbit1 qbit2 qbit)
+  (den_uop (mat_swap qbit1 qbit2) Q) =
+  den_uop (mat_swap qbit1 qbit2)
+  (@den_measure_1 nq qbit Q).
+Proof.
+  intros qbit qbit1 qbit2 Q Hq1 Hq2.
+  unfold den_measure_1, den_measure.
+  rewrite den_uop_scale.
+  f_equal.
+  - f_equal.
+    change (den_prob (mat_proj1 nq qbit) Q) with (den_prob_1 qbit Q).
+    rewrite <- (den_prob_1_swap _ Hq1 Hq2).
+    reflexivity.
+  - destruct (le_lt_dec nq qbit).
+    + repeat rewrite mat_proj1_out_of_bounds.
+      unfold den_uop.
+      mat_simpl.
+      apply l.
+      apply (swap_qbit_out_of_bounds Hq1 Hq2 l).
+    + unfold den_uop.
+      rewrite mat_swap_Hermitian.
+      repeat rewrite mat_proj1_eq_mat_single.
+      repeat rewrite mat_mul_assoc.
+      rewrite mat_swap_single_commute.
+      repeat rewrite <- mat_mul_assoc.
+      f_equal; f_equal; f_equal.
+      rewrite mat_swap_single_commute_right.
+      reflexivity.
+      all: try apply Hq1.
+      all: try apply Hq2.
+      apply l.
+      apply (swap_qbit_bound Hq1 Hq2 l).
+Qed.
+
 Lemma Execute_measure_branch_swap :
   forall (qbit1 qbit2 qbit cbit: nat) (cstate: positive) (b: Branch nq),
   Qbit_index_valid qbit1 ->
@@ -339,8 +492,46 @@ Proof.
   intros qbit1 qbit2 qbit cbit cstate b Hq1 Hq2 Hb.
   unfold Execute_measure_instr_branch, Execute_swap_instr, Execute_swap_instr_branch.
   remember (CState_branch cbit cstate) as cstate'.
-  destruct cstate' as [cstate0 cstate1].
-Admitted.
+  destruct cstate' as [cstate0 cstate1]. simpl.
+  rewrite (den_prob_0_swap _ Hq1 Hq2).
+  rewrite (den_prob_1_swap _ Hq1 Hq2).
+  destruct b; simpl.
+  destruct (Rgt_dec (com_real (den_prob_0 qbit B_qstate)) 0);
+  destruct (Rgt_dec (com_real (den_prob_1 qbit B_qstate)) 0);
+  intros c; rewrite PFacts.map_o.
+  - destruct (Pos.eq_dec cstate0 c) as [He|Hne].
+    + repeat rewrite PFacts.add_eq_o; try apply He.
+      simpl. f_equal; f_equal.
+      rewrite (den_measure_0_swap _ Hq1 Hq2).
+      reflexivity.
+    + repeat rewrite PFacts.add_neq_o with (x := cstate0); try apply Hne.
+      destruct (Pos.eq_dec cstate1 c) as [He'|Hne'].
+      * repeat rewrite PFacts.add_eq_o; try apply He'.
+        simpl. f_equal; f_equal.
+        rewrite (den_measure_1_swap _ Hq1 Hq2).
+        reflexivity.
+      * repeat rewrite PFacts.add_neq_o; try apply Hne'.
+        rewrite PFacts.empty_o.
+        reflexivity.
+  - destruct (Pos.eq_dec cstate0 c) as [He|Hne].
+    + repeat rewrite PFacts.add_eq_o; try apply He.
+      simpl. f_equal; f_equal.
+      rewrite (den_measure_0_swap _ Hq1 Hq2).
+      reflexivity.
+    + repeat rewrite PFacts.add_neq_o; try apply Hne.
+      rewrite PFacts.empty_o.
+      reflexivity.
+  - destruct (Pos.eq_dec cstate1 c) as [He|Hne].
+    + repeat rewrite PFacts.add_eq_o; try apply He.
+      simpl. f_equal; f_equal.
+      rewrite (den_measure_1_swap _ Hq1 Hq2).
+      reflexivity.
+    + repeat rewrite PFacts.add_neq_o; try apply Hne.
+      rewrite PFacts.empty_o.
+      reflexivity.
+  - rewrite PFacts.empty_o.
+    reflexivity.
+Qed.
 
 Lemma Commute_swap_measure (qbit1 qbit2 qbit: nat) (cbit: nat):
   Qbit_index_valid qbit1 ->
@@ -354,40 +545,44 @@ Proof.
   intros ps Hvalid. simpl.
   unfold Execute_measure_instr, Execute_swap_instr.
   rewrite PositiveMap_fold_map.
+  revert Hvalid.
   apply PProperties.fold_rec_bis.
-  - intros m0 m1 a Heq H.
+  - intros m0 m1 a Heq H Hvalid.
     rewrite H.
     apply Execute_swap_instr_Proper.
     apply Execute_measure_instr_Proper.
     apply Heq.
-  - rewrite PProperties.fold_Empty.
+    apply ProgramState_valid_equal with m1.
+    apply Hvalid. rewrite Heq. reflexivity. 
+  - intros _. rewrite PProperties.fold_Empty.
     intros cstate. rewrite PFacts.map_o, PFacts.empty_o. reflexivity.
     apply ProgramState_equiv_equivalence.
     apply PositiveMap.empty_1.
-  - intros k b a m Hmapsto Hnotin IH.
-    rewrite PProperties.fold_add.
+  - intros k b a m Hmapsto Hnotin IH Hvalid.
+    assert (Hm: ProgramState_valid nq m). {
+      apply ProgramState_valid_add_inj with k b.
+      apply Hnotin. apply Hvalid. 
+    }
+    eapply ProgramState_equiv_equivalence with (y :=
+      (PositiveMap.map (Execute_swap_instr_branch nq qbit1 qbit2)
+      (ProgramState_merge nq (PositiveMap.fold
+      (fun (cstate : PositiveMap.key) (branch : Branch nq) (acc : ProgramState nq) =>
+      ProgramState_merge nq acc (Execute_measure_instr_branch nq qbit cbit cstate branch))
+      m (PositiveMap.empty (Branch nq)))
+      (Execute_measure_instr_branch nq qbit cbit k b))
+    )).
     + match goal with
       | |- ProgramState_equiv nq _ (PositiveMap.map (Execute_swap_instr_branch nq qbit1 qbit2) ?ps') =>
         change (PositiveMap.map (Execute_swap_instr_branch nq qbit1 qbit2) ps') with (Execute_swap_instr nq qbit1 qbit2 ps')
       end.
       rewrite <- Execute_swap_instr_merge.
       apply ProgramState_merge_Proper.
-      apply IH.
+      apply IH. apply Hm.
       apply Execute_measure_branch_swap.
       1-2: assumption.
-      apply Hvalid with k. apply Hmapsto.
-    + apply ProgramState_equiv_equivalence.
-    + intros k1 k2 Hk b1 b2 Hb.
-      rewrite Hk, Hb.
-      intros ps1 ps2 Hpseq.
-      apply ProgramState_merge_Proper.
-      apply Hpseq.
-      reflexivity.
-    + intros k1 k2 b1 b2 ps0 Hk.
-      remember (Execute_measure_instr_branch nq qbit cbit k1 b1) as Hps1.
-      remember (Execute_measure_instr_branch nq qbit cbit k2 b2) as Hps2.
-      shelve.
-    + apply Hnotin.
+      apply Hvalid with k.
+      rewrite PFacts.find_mapsto_iff , PFacts.add_eq_o; reflexivity.
+    + apply Execute_swap_instr_Proper.
 Admitted.
 
 Lemma Commute_swap_instr:

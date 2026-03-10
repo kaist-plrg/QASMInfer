@@ -675,6 +675,25 @@ Proof.
       all: assumption.
 Qed.
 
+Lemma mat_swap_single_commute_right:
+  forall {n q1 q2} (target: nat) (U: Matrix 1),
+    q1 < n -> q2 < n ->
+    mat_single n target U * mat_swap q1 q2 =
+    mat_swap q1 q2 * mat_single n (swap_qbit q1 q2 target) U.
+Proof.
+  intros n q1 q2 target U Hq1 Hq2.
+  replace (mat_single n (swap_qbit q1 q2 target) U) with
+  (mat_single n (swap_qbit q1 q2 target) U * mat_eye) by mat_simpl.
+  rewrite <- (proj1 (@mat_swap_unitary n q1 q2)).
+  rewrite mat_swap_Hermitian.
+  rewrite (mat_mul_assoc _ (mat_swap q1 q2) _).
+  rewrite (mat_swap_single_commute _ _ Hq1 Hq2).
+  repeat rewrite mat_mul_assoc.
+  rewrite <- mat_swap_Hermitian at 2.
+  rewrite (proj1 mat_swap_unitary).
+  mat_simpl.
+Qed.
+
 End SWAP_PROPERTIES.
 
 Section CNOT_PROPERTIES.
