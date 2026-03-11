@@ -585,6 +585,32 @@ Proof.
     + apply Execute_swap_instr_Proper.
 Admitted.
 
+Lemma Commute_swap_reset (qbit1 qbit2 qbit: nat):
+  Qbit_index_valid qbit1 ->
+  Qbit_index_valid qbit2 ->
+  Instruction_valid_equiv nq
+  qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 qasm{ reset qbit }) }
+  qasm{ reset qbit; swap qbit1 qbit2 }.
+Proof.
+  intros Hq1 Hq2.
+  unfold swap_qbit_instr. simpl.
+  intros ps Hvalid. simpl.
+  unfold Execute_reset_instr, Execute_swap_instr.
+  intros cstate.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find cstate ps); simpl; try reflexivity.
+  f_equal.
+  unfold Execute_reset_instr_branch, Execute_swap_instr_branch.
+  destruct b; simpl.
+  f_equal.
+  unfold den_reset.
+  rewrite den_uop_add.
+  f_equal.
+  - shelve.
+  - (* den_uop intro will help proving this *)
+    (* for involutive A, A * U * A = den_uop A U *)
+Admitted.
+
 Lemma Commute_swap_instr:
   forall (qbit1 qbit2: nat) (instr: Instruction),
   Qbit_index_valid qbit1 ->
@@ -624,7 +650,8 @@ Proof.
       setoid_rewrite <- H2.
       setoid_reflexivity.
   - shelve. (* IF *)
-  - shelve. (* RESET *)
+  - apply Commute_swap_reset.
+    all: assumption.
 Admitted.
 
 End COMMUTE.
