@@ -694,6 +694,48 @@ Proof.
   mat_simpl.
 Qed.
 
+Lemma mat_swap_proj0_commute:
+  forall {n q1 q2} (target: nat),
+    q1 < n -> q2 < n ->
+    mat_proj0 n (swap_qbit q1 q2 target) * mat_swap q1 q2 =
+    mat_swap q1 q2 * mat_proj0 n target.
+Proof.
+  intros n q1 q2 target Hq1 Hq2.
+  destruct (le_lt_dec n target).
+  - repeat rewrite mat_proj0_out_of_bounds.
+    mat_simpl.
+    apply l.
+    apply (swap_qbit_out_of_bounds Hq1 Hq2 l).
+  - repeat rewrite mat_proj0_eq_mat_single.
+    rewrite mat_swap_single_commute.
+    reflexivity.
+    4: apply swap_qbit_bound.
+    all: try apply Hq1.
+    all: try apply Hq2.
+    all: try apply l.
+Qed.
+
+Lemma mat_swap_proj1_commute:
+  forall {n q1 q2} (target: nat),
+    q1 < n -> q2 < n ->
+    mat_proj1 n (swap_qbit q1 q2 target) * mat_swap q1 q2 =
+    mat_swap q1 q2 * mat_proj1 n target.
+Proof.
+  intros n q1 q2 target Hq1 Hq2.
+  destruct (le_lt_dec n target).
+  - repeat rewrite mat_proj1_out_of_bounds.
+    mat_simpl.
+    apply l.
+    apply (swap_qbit_out_of_bounds Hq1 Hq2 l).
+  - repeat rewrite mat_proj1_eq_mat_single.
+    rewrite mat_swap_single_commute.
+    reflexivity.
+    4: apply swap_qbit_bound.
+    all: try apply Hq1.
+    all: try apply Hq2.
+    all: try apply l.
+Qed.
+
 End SWAP_PROPERTIES.
 
 Section CNOT_PROPERTIES.

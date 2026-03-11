@@ -151,6 +151,17 @@ Proof.
   mat_simpl.
 Qed.
 
+Lemma den_uop_Hermitian_fold:
+  forall {n: nat} (A Q: Matrix n),
+  mat_Hermitian A ->
+  A * Q * A = den_uop A Q.
+Proof.
+  intros n A Q H.
+  unfold den_uop.
+  rewrite H.
+  reflexivity.
+Qed.
+
 End UOP.
 
 Section MEASURE.

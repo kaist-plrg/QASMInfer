@@ -419,25 +419,11 @@ Proof.
     change (den_prob (mat_proj0 nq qbit) Q) with (den_prob_0 qbit Q).
     rewrite <- (den_prob_0_swap _ Hq1 Hq2).
     reflexivity.
-  - destruct (le_lt_dec nq qbit).
-    + repeat rewrite mat_proj0_out_of_bounds.
-      unfold den_uop.
-      mat_simpl.
-      apply l.
-      apply (swap_qbit_out_of_bounds Hq1 Hq2 l).
-    + unfold den_uop.
-      rewrite mat_swap_Hermitian.
-      repeat rewrite mat_proj0_eq_mat_single.
-      repeat rewrite mat_mul_assoc.
-      rewrite mat_swap_single_commute.
-      repeat rewrite <- mat_mul_assoc.
-      f_equal; f_equal; f_equal.
-      rewrite mat_swap_single_commute_right.
-      reflexivity.
-      all: try apply Hq1.
-      all: try apply Hq2.
-      apply l.
-      apply (swap_qbit_bound Hq1 Hq2 l).
+  - repeat rewrite den_uop_Hermitian_fold.
+    repeat rewrite den_uop_den_uop.
+    all: try apply (proj2 (mat_proj0_projection _ _)).
+    rewrite (mat_swap_proj0_commute _ Hq1 Hq2).
+    reflexivity.
 Qed.
 
 Lemma den_measure_1_swap:
@@ -457,25 +443,11 @@ Proof.
     change (den_prob (mat_proj1 nq qbit) Q) with (den_prob_1 qbit Q).
     rewrite <- (den_prob_1_swap _ Hq1 Hq2).
     reflexivity.
-  - destruct (le_lt_dec nq qbit).
-    + repeat rewrite mat_proj1_out_of_bounds.
-      unfold den_uop.
-      mat_simpl.
-      apply l.
-      apply (swap_qbit_out_of_bounds Hq1 Hq2 l).
-    + unfold den_uop.
-      rewrite mat_swap_Hermitian.
-      repeat rewrite mat_proj1_eq_mat_single.
-      repeat rewrite mat_mul_assoc.
-      rewrite mat_swap_single_commute.
-      repeat rewrite <- mat_mul_assoc.
-      f_equal; f_equal; f_equal.
-      rewrite mat_swap_single_commute_right.
-      reflexivity.
-      all: try apply Hq1.
-      all: try apply Hq2.
-      apply l.
-      apply (swap_qbit_bound Hq1 Hq2 l).
+  - repeat rewrite den_uop_Hermitian_fold.
+    repeat rewrite den_uop_den_uop.
+    all: try apply (proj2 (mat_proj1_projection _ _)).
+    rewrite (mat_swap_proj1_commute _ Hq1 Hq2).
+    reflexivity.
 Qed.
 
 Lemma Execute_measure_branch_swap :
@@ -606,10 +578,22 @@ Proof.
   unfold den_reset.
   rewrite den_uop_add.
   f_equal.
-  - shelve.
-  - (* den_uop intro will help proving this *)
-    (* for involutive A, A * U * A = den_uop A U *)
-Admitted.
+  - repeat rewrite den_uop_Hermitian_fold.
+    repeat rewrite den_uop_den_uop.
+    all: try apply (proj2 (mat_proj0_projection _ _)).
+    rewrite (mat_swap_proj0_commute _ Hq1 Hq2).
+    reflexivity.
+  - repeat rewrite den_uop_Hermitian_fold.
+    repeat rewrite den_uop_den_uop.
+    all: try apply (proj2 (mat_proj1_projection _ _)).
+    f_equal.
+    rewrite <- mat_swap_single_commute.
+    repeat rewrite <- mat_mul_assoc. f_equal.
+    + rewrite (mat_swap_proj1_commute _ Hq1 Hq2).
+      reflexivity.
+    + apply Hq1.
+    + apply Hq2.
+Qed.
 
 Lemma Commute_swap_instr:
   forall (qbit1 qbit2: nat) (instr: Instruction),
