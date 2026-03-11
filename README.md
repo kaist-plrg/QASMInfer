@@ -53,10 +53,32 @@ qasminfer test.qasm    # run the installed executable
 Example output:
 
 ```
-00: 0.5                # probability for creg being [00]
-01: 0.0                # probability for creg being [01]
-10: 0.0                # probability for creg being [10]
-11: 0.5                # probability for creg being [11]
+00 : 5.0000000000000011e-01   # probability for creg being [00]
+01 : 4.9999999999999989e-01   # probability for creg being [01]
+10 : 0.0000000000000000e+00   # probability for creg being [10]
+11 : 0.0000000000000000e+00   # probability for creg being [11]
+```
+
+JSON output:
+
+```bash
+dune exec qasminfer -- --json .test.qasm
+dune exec qasminfer -- --json --output result.json .test.qasm
+```
+
+Example JSON:
+
+```json
+{
+  "qubits": 1,
+  "clbits": 2,
+  "probabilities": [
+    {"state": "00", "probability": 5.0000000000000011e-01},
+    {"state": "01", "probability": 4.9999999999999989e-01},
+    {"state": "10", "probability": 0.0000000000000000e+00},
+    {"state": "11", "probability": 0.0000000000000000e+00}
+  ]
+}
 ```
 
 ## Publication

@@ -6,20 +6,31 @@ module IntMap = Map.Make(Int)
 
 type version = V2 | V3
 
-(* 1. Define a reference for the verbose flag *)
 let verbose = ref false
+let emit_json = ref false
 let input_file = ref ""
+let output_file = ref None
 
-(* 2. Define the usage message *)
-let usage_msg = "usage: qasminfer <qasm_file> [--verbose]"
+type result_entry = {
+  state : string;
+  probability : float;
+}
 
-(* 3. Define the list of options *)
+let usage_msg = "usage: qasminfer <qasm_file> [--verbose] [--json] [--output FILE]"
+
+let set_output_file path =
+  match !output_file with
+  | None -> output_file := Some path
+  | Some _ -> raise (Arg.Bad "Multiple output files are not supported")
+
 let speclist = [
   ("--verbose", Arg.Set verbose, "Print intermediate QASMCore representation");
   ("-v", Arg.Set verbose, "Short for --verbose");
+  ("--json", Arg.Set emit_json, "Emit result as JSON");
+  ("--output", Arg.String set_output_file, "Write result to FILE instead of stdout");
+  ("-o", Arg.String set_output_file, "Short for --output");
 ]
 
-(* 4. Define what to do with anonymous arguments (the file path) *)
 let set_input_file s =
   if !input_file = "" then input_file := s
   else raise (Arg.Bad "Multiple input files are not supported")
@@ -50,6 +61,71 @@ let int_to_binary_fixed_width n width =
   else
     let padding = String.make (width - len) '0' in
     padding ^ binary
+
+let result_entries nc probabilities =
+  List.mapi
+    (fun i probability ->
+      { state = int_to_binary_fixed_width i nc; probability })
+    probabilities
+
+let format_probability probability =
+  Printf.sprintf "%.16e" probability
+
+let json_escape s =
+  let buf = Buffer.create (String.length s) in
+  String.iter
+    (function
+      | '"' -> Buffer.add_string buf "\\\""
+      | '\\' -> Buffer.add_string buf "\\\\"
+      | '\b' -> Buffer.add_string buf "\\b"
+      | '\012' -> Buffer.add_string buf "\\f"
+      | '\n' -> Buffer.add_string buf "\\n"
+      | '\r' -> Buffer.add_string buf "\\r"
+      | '\t' -> Buffer.add_string buf "\\t"
+      | c when Char.code c < 0x20 ->
+          Buffer.add_string buf (Printf.sprintf "\\u%04x" (Char.code c))
+      | c -> Buffer.add_char buf c)
+    s;
+  Buffer.contents buf
+
+let text_of_result entries =
+  entries
+  |> List.map (fun { state; probability } ->
+         Printf.sprintf "%s : %s" state (format_probability probability))
+  |> String.concat "\n"
+  |> fun body -> body ^ "\n"
+
+let json_of_result nq nc entries =
+  let probabilities =
+    entries
+    |> List.map (fun { state; probability } ->
+           Printf.sprintf
+             "    {\"state\": \"%s\", \"probability\": %s}"
+             (json_escape state)
+             (format_probability probability))
+    |> String.concat ",\n"
+  in
+  if probabilities = "" then
+    Printf.sprintf
+      "{\n  \"qubits\": %d,\n  \"clbits\": %d,\n  \"probabilities\": []\n}\n"
+      nq nc
+  else
+    Printf.sprintf
+      "{\n  \"qubits\": %d,\n  \"clbits\": %d,\n  \"probabilities\": [\n%s\n  ]\n}\n"
+      nq nc probabilities
+
+let write_result output =
+  match !output_file with
+  | None -> output_string stdout output
+  | Some path ->
+      let channel = open_out path in
+      Fun.protect
+        ~finally:(fun () -> close_out channel)
+        (fun () -> output_string channel output)
+
+let log_line line =
+  output_string stderr line;
+  output_char stderr '\n'
 
 let check_qasm_version file_path =
   let ch = open_in file_path in
@@ -82,10 +158,8 @@ let check_qasm_version file_path =
     failwith ("Invalid QASM file format: " ^ first_meaningful_line)
 
 let main () =
-  (* 5. Parse arguments *)
   Arg.parse speclist set_input_file usage_msg;
 
-  (* Check if a file was actually provided *)
   if !input_file = "" then (
     Arg.usage speclist usage_msg;
     exit 1
@@ -100,20 +174,19 @@ let main () =
   in
   let nq, nc, instr, _, _ = Q2.desugar ast in
 
-  (* 6. Optional Part: Only run if !verbose is true *)
   if !verbose then (
-    print_endline "QASMCore ========================================";
-    print_endline (Q2.string_of_instruction instr)
+    log_line "QASMCore ========================================";
+    log_line (Q2.string_of_instruction instr)
   );
 
-  (* Always run execution part *)
-  if !verbose then print_endline "RESULT ==========================================";
+  if !verbose then log_line "RESULT ==========================================";
 
-  let prob_map = execute_and_calculate_prob nq nc instr in
-  prob_map
-  |> dense_list nc
-  |> List.iteri (
-    fun i prob -> Printf.printf "%s : %.16e\n" (int_to_binary_fixed_width i nc) prob
-    )
+  let result =
+    execute_and_calculate_prob nq nc instr
+    |> dense_list nc
+    |> result_entries nc
+    |> if !emit_json then json_of_result nq nc else text_of_result
+  in
+  write_result result
 
 let _ = main ()
