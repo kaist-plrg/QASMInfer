@@ -739,61 +739,42 @@ Proof.
   destruct (Rgt_dec (com_real (den_prob_0 qbit (B_qstate branch))) 0) eqn:Hdec0,
            (Rgt_dec (com_real (den_prob_1 qbit (B_qstate branch))) 0) eqn:Hdec1;
            unfold den_prob_0, den_prob_1, com_real in *.
-  - intros Hmaps.
-    apply PFacts.add_mapsto_iff in Hmaps.
+  all: intros Hmaps.
+  - apply PFacts.add_mapsto_iff in Hmaps.
     destruct Hmaps as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq Hmaps]].
-    + rewrite <- Hbranch_eq.
-      unfold Branch_valid; simpl.
-      split.
-      * apply den_valid_measure.
-        apply mat_proj0_projection.
-        apply Hvalid.
+    + unfold Branch_valid; subst; simpl; split.
+      * apply (den_valid_measure _ _ (mat_proj0_projection _ _) Hvalid).
         apply com_proj_neq_fst.
         simpl; lra.
       * nra.
     + apply PFacts.add_mapsto_iff in Hmaps.
       destruct Hmaps as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq' Hmaps]].
-      * rewrite <- Hbranch_eq.
-        unfold Branch_valid; simpl.
-        split.
-        -- apply den_valid_measure.
-          apply mat_proj1_projection.
-          apply Hvalid.
+      * unfold Branch_valid; subst; simpl; split.
+        -- apply (den_valid_measure _ _ (mat_proj1_projection _ _) Hvalid).
           apply com_proj_neq_fst.
           simpl; lra.
         -- nra.
       * apply PFacts.empty_mapsto_iff in Hmaps.
         contradiction.
-  - intros Hmaps.
-    apply PFacts.add_mapsto_iff in Hmaps.
+  - apply PFacts.add_mapsto_iff in Hmaps.
     destruct Hmaps as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq Hmaps]].
-    + rewrite <- Hbranch_eq.
-      unfold Branch_valid; simpl.
-      split.
-      * apply den_valid_measure.
-        apply mat_proj0_projection.
-        apply Hvalid.
+    + unfold Branch_valid; subst; simpl; split.
+      * apply (den_valid_measure _ _ (mat_proj0_projection _ _) Hvalid).
         apply com_proj_neq_fst.
         simpl; lra.
       * nra.
     + apply PFacts.empty_mapsto_iff in Hmaps.
       contradiction.
-  - intros Hmaps.
-    apply PFacts.add_mapsto_iff in Hmaps.
+  - apply PFacts.add_mapsto_iff in Hmaps.
     destruct Hmaps as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq Hmaps]].
-    + rewrite <- Hbranch_eq.
-      unfold Branch_valid; simpl.
-      split.
-      * apply den_valid_measure.
-        apply mat_proj1_projection.
-        apply Hvalid.
+    + unfold Branch_valid; subst; simpl; split.
+      * apply (den_valid_measure _ _ (mat_proj1_projection _ _) Hvalid).
         apply com_proj_neq_fst.
         simpl; lra.
       * nra.
     + apply PFacts.empty_mapsto_iff in Hmaps.
       contradiction.
-  - intros Hmaps.
-    apply PFacts.empty_mapsto_iff in Hmaps.
+  - apply PFacts.empty_mapsto_iff in Hmaps.
     contradiction.
 Qed.
 
