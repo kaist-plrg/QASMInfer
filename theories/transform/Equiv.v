@@ -716,6 +716,20 @@ Proof.
   apply Hinv.
 Qed.
 
+Lemma Execute_suppl_seq:
+  forall (ps: ProgramState nq) (instr1 instr2: Instruction),
+  ProgramState_equiv
+  (Execute_suppl nq qasm{ instr1; instr2 } ps)
+  (Execute_suppl nq instr2 (Execute_suppl nq instr1 ps)).
+Proof.
+  intros ps instr1 instr2 cstate.
+  unfold qasm_seq.
+  destruct instr1; destruct instr2; simpl.
+  all: try reflexivity.
+  all: rewrite fold_left_app.
+  all: try reflexivity.
+Qed.
+
 Lemma Instruction_valid_equiv_rewrite:
   forall (pre_instr post_instr: Instruction) (instr1 instr2: Instruction),
   Instruction_valid_equiv instr1 instr2 ->
@@ -800,6 +814,28 @@ Proof.
   apply Hequiv.
   apply Execute_suppl_valid_invariant.
   apply Hinv.
+Qed.
+
+Lemma Instruction_behavioral_equiv_rewrite_end:
+  forall (pre_instr: Instruction) (instr1 instr2: Instruction),
+  Instruction_behavioral_equiv instr1 instr2 ->
+  Instruction_behavioral_equiv
+  qasm{ pre_instr; instr1 }
+  qasm{ pre_instr; instr2 }.
+Proof.
+  intros pre instr1 instr2 Hequiv ps Hinv.
+  apply ProgramState_behavioral_equiv_equivalence
+  with (y := Execute_suppl nq instr1 (Execute_suppl nq pre ps)).
+  - apply ProgramState_equiv_implies_behavioral_equiv.
+    apply Execute_suppl_seq.
+  - apply ProgramState_behavioral_equiv_equivalence
+    with (y := Execute_suppl nq instr2 (Execute_suppl nq pre ps)).
+    + apply Hequiv.
+      apply Execute_suppl_valid_invariant.
+      apply Hinv.
+    + apply ProgramState_behavioral_equiv_equivalence.
+      apply ProgramState_equiv_implies_behavioral_equiv.
+      apply Execute_suppl_seq.
 Qed.
 
 Lemma Instruction_valid_equiv_nop:

@@ -419,10 +419,25 @@ Corollary Transform_swap_insert:
 Proof.
   intros qbit1 qbit2 instr Hq1 Hq2.
   apply Instruction_behavioral_equiv_equivalence with (y:=qasm{ swap qbit1 qbit2; $(swap_qbit_instr qbit1 qbit2 instr); swap qbit1 qbit2 }).
-  - shelve.
+  - apply Instruction_behavioral_equiv_rewrite_end.
+    apply Instruction_behavioral_equiv_equivalence with (y:=qasm{ $(swap_qbit_instr qbit1 qbit2 instr); nop }).
+    + apply Instruction_equiv_implies_behavioral_equiv.
+      rewrite Instruction_equiv_nop_end.
+      reflexivity.
+    + apply Instruction_behavioral_equiv_rewrite_end.
+      intros ps Hinv cstate. simpl.
+      unfold Execute_swap_instr.
+      repeat rewrite PFacts.map_o.
+      destruct (PositiveMap.find cstate ps).
+      * right.
+        exists b.
+        exists (Execute_swap_instr_branch nq qbit1 qbit2 b).
+        split; try split; reflexivity.
+      * left.
+        split; reflexivity.
   - apply Instruction_equiv_implies_behavioral_equiv.
     apply Transform_swap_swap_insert.
     all: assumption.
-Admitted.
+Qed.
 
 End TRANSFORM.
