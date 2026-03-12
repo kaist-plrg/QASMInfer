@@ -10,14 +10,17 @@ OpenQASM 3.
 ## Prereqs
 
 - `dune` (tested with 3.20.x)
-- `rocq`/`coq` (tested with Rocq 9.1.0)
 - `ocaml`
 
 Suggested install via opam:
 
 ```bash
-opam install dune rocq
+opam install dune ocaml
 ```
+
+`rocq`/`coq` is not required for the default build on this branch. The verified
+Rocq development remains in `theories/`, but `dune build` consumes the bundled
+OCaml extraction committed under `src/lib/extracted/extracted.ml`.
 
 ## Layout
 
@@ -25,10 +28,11 @@ opam install dune rocq
 theories/
   extract/Extract.v              # extraction driver
   extract/extraction_header.txt  # header prepended to extracted OCaml
+  dune.disabled                  # archived Rocq-specific dune integration
   ...                            # QASMInfer theories and implementation
 scripts/patch_extraction.sh      # prepends header to generated file
 src/lib/
-  extracted/                     # extracted QASMInfer
+  extracted/extracted.ml         # bundled OCaml extracted from Rocq
   qasm2/                         # OpenQASM 2 parser/desugar/stringifier
   qasm3/                         # OpenQASM 3 parser/desugar (partial)
 src/bin/                         # CLI that parses QASM, runs QASMInfer, prints result
@@ -36,12 +40,17 @@ src/bin/                         # CLI that parses QASM, runs QASMInfer, prints 
 
 ## Build and run
 
-The build pipeline ensures that the executable is always generated from the verified Rocq development.
+This branch intentionally excludes Rocq verification and extraction from the
+default `dune` build graph so users without Rocq installed can still build the
+project. `dune build` uses the committed OCaml extraction directly.
 
 ```bash
-dune build             # builds Rocq theory, extracts to OCaml, builds library + exe
+dune build             # builds the bundled OCaml libraries + executable
 dune exec qasminfer test.qasm
 ```
+
+The `theories/` sources are still shipped for reference, but verification and
+re-extraction are out of band on this branch.
 
 After installing into your opam switch:
 

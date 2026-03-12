@@ -1,6 +1,5 @@
-(rule
- (deps ../../../theories/extracted.ml)
- (targets extracted.ml)
- (mode (promote (until-clean)))
- (action
-  (copy ../../../theories/extracted.ml extracted.ml)))
+(library
+ (name extracted)
+ (public_name qasminfer.extracted)
+ (modules extracted)
+ (wrapped false))

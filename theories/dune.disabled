@@ -1,3 +1,7 @@
+; Rocq-specific dune integration intentionally disabled on this branch.
+; The default workspace builds against the committed src/lib/extracted/extracted.ml
+; so users without Rocq installed can still run `dune build`.
+
 (include_subdirs qualified)
 
 (coq.theory
