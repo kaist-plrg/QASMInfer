@@ -5,6 +5,7 @@ Require Import QASMInfer.operator.All.
 Require Import QASMInfer.program.All.
 
 Require Import QASMInfer.transform.Equiv.
+Require Import QASMInfer.transform.Valid.
 
 From Stdlib Require Import List.
 From Stdlib.FSets Require Import FMapPositive FMapFacts.
@@ -555,6 +556,11 @@ Proof.
       apply Hvalid with k.
       rewrite PFacts.find_mapsto_iff , PFacts.add_eq_o; reflexivity.
     + apply Execute_swap_instr_Proper.
+      clear IH.
+      rewrite ValidProgramState_rewrite.
+      eapply ValidProgramState_equiv_equivalence with (y := ValidProgramState_merge nq _ _).
+      * apply ValidProgramState_merge_rewrite.
+      * 
 Admitted.
 
 Lemma Commute_swap_reset (qbit1 qbit2 qbit: nat):
