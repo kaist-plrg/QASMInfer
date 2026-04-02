@@ -556,7 +556,7 @@ Proof.
       apply Hvalid with k.
       rewrite PFacts.find_mapsto_iff , PFacts.add_eq_o; reflexivity.
     + apply Execute_swap_instr_Proper.
-      clear IH.
+      clear IH. (* to see goal *)
       rewrite ValidProgramState_rewrite.
       eapply ValidProgramState_equiv_equivalence with (y := ValidProgramState_merge nq _ _).
       * apply ValidProgramState_merge_rewrite.
