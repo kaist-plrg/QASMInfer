@@ -106,6 +106,17 @@ Section ValidPS.
       apply H1. apply H2.
   Qed.
 
+  Lemma ValidProgramState_construct_MapsTo_inv :
+  forall k vb m (Hm : ProgramState_valid nq m),
+    PositiveMap.MapsTo k vb (ValidProgramState_construct m Hm) ->
+    PositiveMap.MapsTo k (proj1_sig vb) m.
+  Proof.
+    intros k vb m Hm Hmapsto.
+    destruct vb. simpl.
+    destruct m.
+    - simpl in *.
+  Admitted.
+
   Lemma ValidProgramState_proj_empty :
     ProgramState_equiv nq
       (ValidProgramState_proj (@PositiveMap.empty ValidBranch))
@@ -191,6 +202,29 @@ Section ValidPS.
     reflexivity.
   Qed.
 
+  Corollary ValidProgramState_proof_irrel:
+    forall (ps: ProgramState nq)
+    (Hvalid1 Hvalid2: ProgramState_valid nq ps),
+    ValidProgramState_equiv
+    (ValidProgramState_construct ps Hvalid1)
+    (ValidProgramState_construct ps Hvalid2).
+  Proof.
+    intros.
+    rewrite <- ValidProgramState_rewrite.
+    reflexivity.
+  Qed.
+
+  Lemma ValidProgramState_merge_Proper:
+    Proper (ValidProgramState_equiv ==> ValidProgramState_equiv ==> ValidProgramState_equiv)
+    ValidProgramState_merge.
+  Proof.
+    intros x0 x1 Hx y0 y1 Hy.
+    unfold ValidProgramState_equiv, ValidProgramState_merge.
+    repeat rewrite ValidProgramState_proj_construct.
+    apply ProgramState_merge_Proper.
+    apply Hx. apply Hy.
+  Qed.
+
   Lemma ValidProgramState_merge_rewrite:
     forall (ps1 ps2: ProgramState nq)
     (Hvalid1: ProgramState_valid nq ps1)
@@ -233,12 +267,17 @@ Section ValidPS.
     (vacc : ValidProgramState) : ValidProgramState :=
     ValidProgramState_merge vacc (VF k vb).
   
-  Hypothesis VstepF_Proper :
+  Lemma VstepF_Proper :
     Proper (eq ==> eq ==> ValidProgramState_equiv ==> ValidProgramState_equiv)
       VstepF.
-
-  Hypothesis VstepF_transpose :
-    PProperties.transpose_neqkey ValidProgramState_equiv VstepF.
+  Proof.
+    intros k1 k2 Hk vb1 vb2 Hvb vacc1 vacc2 Hvacc.
+    subst.
+    unfold VstepF.
+    apply ValidProgramState_merge_Proper.
+    - exact Hvacc.
+    - apply ValidProgramState_equiv_equivalence.
+  Qed.
 
   Lemma construct_stepF :
     forall ps (Hps : ProgramState_valid nq ps) k b (Hb : Branch_valid nq b),
@@ -253,6 +292,13 @@ Section ValidPS.
     unfold stepF, VstepF, VF.
     apply ValidProgramState_merge_rewrite.
   Qed.
+
+  Lemma VstepF_transpose :
+    PProperties.transpose_neqkey ValidProgramState_equiv VstepF.
+  Proof.
+    intros k1 k2 e1 e2 a Hk.
+    destruct e1, e2.
+  Admitted.
 
   Lemma fold_stepF_valid :
     forall m i,
@@ -271,6 +317,66 @@ Section ValidPS.
     eapply ProgramState_merge_valid; eauto.
   Qed.
 
+  Lemma construct_foldF' :
+  forall m (Hm : ProgramState_valid nq m)
+         i (Hi : ProgramState_valid nq i),
+    ProgramState_valid nq (PositiveMap.fold stepF m i) /\
+    forall (Hm' : ProgramState_valid nq m)
+           (Hfold : ProgramState_valid nq (PositiveMap.fold stepF m i)),
+      ValidProgramState_equiv
+        (ValidProgramState_construct
+           (PositiveMap.fold stepF m i)
+           Hfold)
+        (PositiveMap.fold VstepF
+           (ValidProgramState_construct m Hm')
+           (ValidProgramState_construct i Hi)).
+  Proof.
+    intros m Hm i Hi.
+    apply PProperties.fold_rec.
+    - intros m0 Hempty.
+      split. apply Hi.
+      intros Hm' Hfold.
+      rewrite PProperties.fold_Empty.
+      + apply ValidProgramState_proof_irrel.
+      + apply eq_equivalence.
+      + intros k vb Hmapsto.
+        apply (Hempty k (proj1_sig vb)).
+        unfold PositiveMap.MapsTo in Hmapsto.
+        shelve.
+    - intros k e a m' m'' Hmapsto Hnotin Hadd [Ha H].
+      split.
+      + unfold stepF.
+        apply ProgramState_merge_valid.
+        apply Ha.
+        apply F_valid.
+        apply (Hm k e Hmapsto).
+      + intros Hm'' Hfold.
+        assert (Hm': ProgramState_valid nq m'). shelve.
+        apply ValidProgramState_equiv_equivalence with (y :=
+          VstepF k (exist _ e (Hm _ _ Hmapsto))
+          (PositiveMap.fold VstepF
+            (ValidProgramState_construct m' Hm')
+            (ValidProgramState_construct i Hi))
+        ).
+        * shelve.
+        * apply ValidProgramState_equiv_equivalence.
+          apply PProperties.fold_Add with (eqA:=ValidProgramState_equiv).
+          -- apply ValidProgramState_equiv_equivalence.
+          -- apply VstepF_Proper.
+          -- apply VstepF_transpose.
+          -- intros Hcontra.
+             apply ValidProgramState_in_iff in Hcontra.
+             apply Hnotin.
+             destruct Hcontra as [b Hb].
+             exists b.
+             rewrite PFacts.find_mapsto_iff.
+             rewrite PFacts.find_mapsto_iff in Hb.
+             rewrite <- Hb.
+             rewrite ValidProgramState_proj_construct.
+             reflexivity.
+          -- shelve.
+  Admitted.
+
   Lemma construct_foldF :
     forall m (Hm : ProgramState_valid nq m)
            i (Hi : ProgramState_valid nq i),
@@ -283,9 +389,8 @@ Section ValidPS.
            (ValidProgramState_construct i Hi)).
   Proof.
     intros m Hm i Hi.
-    set (vi := ValidProgramState_construct i Hi).
-
-  Admitted.
-
+    apply construct_foldF'.
+    apply Hm.
+  Qed.
     
 End ValidPS.
