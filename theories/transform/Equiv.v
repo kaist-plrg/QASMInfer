@@ -329,7 +329,6 @@ Proof.
 Qed.
 
 (* Proving ProgramState_merge is symmetric *)
-(* TODO - Is this really needed? *)
 
 Lemma find_merge_step_eq :
   forall ps k b,
@@ -383,7 +382,7 @@ Proof.
     all: assumption.
 Qed.
 
-Lemma ProgramState_merge_step_commute:
+Lemma ProgramState_merge_step_transpose:
   forall (ps: ProgramState nq) (k1 k2: positive) (b1 b2: Branch nq),
   Branch_valid nq b1 ->
   Branch_valid nq b2 ->
@@ -397,7 +396,7 @@ Proof.
   - destruct (Pos.eq_dec k2 cstate) as [Hc|Hc]; subst.
     + repeat rewrite find_merge_step_eq.
       destruct (PositiveMap.find cstate ps) eqn:Hfind.
-      * f_equal. apply Branch_merge_perm.
+      * f_equal. apply Branch_merge_transpose.
         2-3: assumption.
         apply Hvalid with cstate.
         rewrite PFacts.find_mapsto_iff.
@@ -538,7 +537,7 @@ Proof.
       apply Ha.
       apply Hb'.
     + rewrite PProperties.fold_add.
-      * rewrite ProgramState_merge_step_commute.
+      * rewrite ProgramState_merge_step_transpose.
         apply ProgramState_merge_step_Proper.
         apply Heq.
         apply Hbv.
@@ -552,7 +551,7 @@ Proof.
       * apply Hnotin'.
 Qed.
 
-Lemma ProgramState_merge_symm:
+Lemma ProgramState_merge_commute:
   forall ps1 ps2: ProgramState nq,
   ProgramState_valid nq ps1 ->
   ProgramState_valid nq ps2 ->
@@ -587,6 +586,134 @@ Proof.
     apply Hps2.
     apply Hm.
     apply Hnotin.
+Qed.
+
+Lemma ProgramState_merge_step_fold_transpose :
+  forall ps acc k b,
+    Branch_valid nq b ->
+    ProgramState_valid nq ps ->
+    ProgramState_valid nq acc ->
+    ProgramState_equiv
+      (merge_step nq k b (ProgramState_merge nq ps acc))
+      (ProgramState_merge nq ps (merge_step nq k b acc)).
+Proof.
+  intros ps acc k b Hb Hps Hacc.
+
+  assert
+    (ProgramState_valid nq (ProgramState_merge nq ps acc) /\
+     ProgramState_valid nq (ProgramState_merge nq ps (merge_step nq k b acc)) /\
+     ProgramState_equiv
+       (merge_step nq k b (ProgramState_merge nq ps acc))
+       (ProgramState_merge nq ps (merge_step nq k b acc))) as HR.
+  - unfold ProgramState_merge.
+    apply PProperties.fold_rel with
+      (R := fun a c =>
+        ProgramState_valid nq a /\
+        ProgramState_valid nq c /\
+        ProgramState_equiv (merge_step nq k b a) c).
+    + constructor.
+      * apply Hacc.
+      * constructor.
+        -- apply ProgramState_merge_step_valid.
+           apply Hacc. apply Hb.
+        -- reflexivity.
+    + intros k' b' a c Hmapsto HR'.
+      destruct HR' as [Ha [Hc Heq]].
+
+      assert (Hb' : Branch_valid nq b').
+      * apply Hps with (cstate:=k') (branch:=b').
+        apply Hmapsto.
+      * constructor.
+        -- apply ProgramState_merge_step_valid.
+           apply Ha. apply Hb'.
+        -- constructor.
+           ++ apply ProgramState_merge_step_valid.
+              apply Hc. apply Hb'.
+           ++ apply ProgramState_equiv_equivalence with
+                (y := merge_step nq k' b' (merge_step nq k b a)).
+              ** apply ProgramState_merge_step_transpose.
+                 apply Hb. apply Hb'. apply Ha.
+              ** apply ProgramState_merge_step_Proper.
+                 apply Heq.
+  - destruct HR as [Hvl [Hvr Heq]].
+    apply Heq.
+Qed.
+
+Lemma ProgramState_merge_transpose :
+  forall ps1 ps2 acc,
+    ProgramState_valid nq ps1 ->
+    ProgramState_valid nq ps2 ->
+    ProgramState_valid nq acc ->
+    ProgramState_equiv
+      (ProgramState_merge nq ps1 (ProgramState_merge nq ps2 acc))
+      (ProgramState_merge nq ps2 (ProgramState_merge nq ps1 acc)).
+Proof.
+  intros ps1 ps2 acc Hps1 Hps2 Hacc.
+
+  assert
+    (ProgramState_valid nq
+       (ProgramState_merge nq ps1 (ProgramState_merge nq ps2 acc)) /\
+     ProgramState_valid nq
+       (ProgramState_merge nq ps1 acc) /\
+     ProgramState_equiv
+       (ProgramState_merge nq ps1 (ProgramState_merge nq ps2 acc))
+       (ProgramState_merge nq ps2 (ProgramState_merge nq ps1 acc))) as HR.
+  - unfold ProgramState_merge.
+    apply PProperties.fold_rel with
+      (R := fun a c =>
+        ProgramState_valid nq a /\
+        ProgramState_valid nq c /\
+        ProgramState_equiv a (ProgramState_merge nq ps2 c)).
+
+    + constructor.
+      * apply ProgramState_merge_valid.
+        apply Hps2. apply Hacc.
+      * constructor.
+        apply Hacc. reflexivity.
+
+    + intros k b a c Hmapsto HR'.
+      destruct HR' as [Ha [Hc Heq]].
+
+      assert (Hb : Branch_valid nq b).
+      * apply Hps1 with (cstate:=k) (branch:=b).
+        apply Hmapsto.
+
+      * constructor.
+        -- apply ProgramState_merge_step_valid.
+           apply Ha. apply Hb.
+        -- constructor.
+           ++ apply ProgramState_merge_step_valid.
+              apply Hc. apply Hb.
+           ++ apply ProgramState_equiv_equivalence with
+                (y := merge_step nq k b (ProgramState_merge nq ps2 c)).
+              ** apply ProgramState_merge_step_Proper.
+                 apply Heq.
+              ** apply ProgramState_merge_step_fold_transpose.
+                 apply Hb. apply Hps2. apply Hc.
+
+  - destruct HR as [Hvl [Hvr Heq]].
+    apply Heq.
+Qed.
+
+Corollary ProgramState_merge_transpose_left :
+  forall ps1 ps2 acc,
+    ProgramState_valid nq ps1 ->
+    ProgramState_valid nq ps2 ->
+    ProgramState_valid nq acc ->
+    ProgramState_equiv
+      (ProgramState_merge nq (ProgramState_merge nq acc ps1) ps2)
+      (ProgramState_merge nq (ProgramState_merge nq acc ps2) ps1).
+Proof.
+  intros ps1 ps2 acc Hps1 Hps2 Hacc. intros y.
+  rewrite ProgramState_merge_commute with (ps2:=ps1).
+  rewrite ProgramState_merge_commute with (ps2:=ps2).
+  transitivity (PositiveMap.find y (ProgramState_merge nq ps2 (ProgramState_merge nq ps1 acc))).
+  apply ProgramState_merge_Proper. reflexivity. apply ProgramState_merge_commute.
+  3: rewrite ProgramState_merge_transpose.
+  3: apply ProgramState_merge_Proper; try reflexivity.
+  3: apply ProgramState_merge_commute.
+  all: try apply ProgramState_merge_valid.
+  all: assumption.
 Qed.
 
 Lemma Branch_merge_Execute_swap_instr_branch:

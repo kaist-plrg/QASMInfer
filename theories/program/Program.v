@@ -230,7 +230,7 @@ Proof.
   - lra.
 Qed.
 
-Lemma Branch_merge_perm :
+Lemma Branch_merge_transpose :
   forall b b1 b2,
   Branch_valid b ->
   Branch_valid b1 ->

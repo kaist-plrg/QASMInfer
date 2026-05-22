@@ -506,6 +506,153 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma fold_stepF_add_valid :
+  forall
+    (F : PositiveMap.key -> Branch nq -> ProgramState nq)
+    (F_valid :
+      forall k b,
+        Branch_valid nq b ->
+        ProgramState_valid nq (F k b))
+    (k : PositiveMap.key)
+    (b : Branch nq)
+    (m i : ProgramState nq)
+    (Hm : ProgramState_valid nq m)
+    (Hi : ProgramState_valid nq i)
+    (Hadd_valid : ProgramState_valid nq (PositiveMap.add k b m))
+    (Hb : Branch_valid nq b),
+    ~ PositiveMap.In k m ->
+    ProgramState_equiv nq
+      (ProgramState_merge nq
+        (PositiveMap.fold (stepF nq F) m i)
+        (F k b))
+      (PositiveMap.fold (stepF nq F)
+        (PositiveMap.add k b m)
+        i).
+Proof.
+  intros F F_valid k b m i Hm Hi Hadd_valid Hb Hnotin.
+  
+  assert (Hfb : ProgramState_valid nq (F k b)).
+  {
+    apply F_valid.
+    exact Hb.
+  }
+
+  assert (Hfold_m : ProgramState_valid nq (PositiveMap.fold (stepF nq F) m i)).
+  {
+    apply fold_stepF_valid.
+    * exact F_valid.
+    * exact Hm.
+    * exact Hi.
+  }
+
+  assert (Hmerge :
+    ProgramState_valid nq
+      (ProgramState_merge nq
+        (PositiveMap.fold (stepF nq F) m i)
+        (F k b))).
+  {
+    apply ProgramState_merge_valid.
+    * exact Hfold_m.
+    * exact Hfb.
+  }
+
+  assert (Hfold_add :
+    ProgramState_valid nq
+      (PositiveMap.fold (stepF nq F)
+        (PositiveMap.add k b m)
+        i)).
+  {
+    apply fold_stepF_valid.
+    * exact F_valid.
+    * exact Hadd_valid.
+    * exact Hi.
+  }
+
+  assert (VHnotin :
+    ~ PositiveMap.In k
+        (ValidProgramState_construct nq m Hm)).
+  {
+    intro Hin.
+    apply Hnotin.
+    unfold PositiveMap.In in *.
+    destruct Hin as [vb Hvb].
+    exists (proj1_sig vb).
+    eapply ValidProgramState_construct_MapsTo_inv.
+    exact Hvb.
+  }
+
+  assert (Hadd :
+    PProperties.Add k b m (PositiveMap.add k b m)).
+  {
+    unfold PProperties.Add.
+    intro y.
+    reflexivity.
+  }
+
+  assert (VHadd :
+    PProperties.Add k
+      (@exist (Branch nq)
+        (fun b : Branch nq => Branch_valid nq b)
+        b Hb)
+      (ValidProgramState_construct nq m Hm)
+      (ValidProgramState_construct nq
+        (PositiveMap.add k b m)
+        Hadd_valid)).
+  {
+    eapply ValidProgramState_construct_Add with (Hb := Hb).
+    exact Hadd.
+  }
+
+  rewrite (ValidProgramState_rewrite nq _ _ Hmerge Hfold_add).
+
+  apply ValidProgramState_equiv_equivalence with
+    (y :=
+      ValidProgramState_merge nq
+        (ValidProgramState_construct nq
+          (PositiveMap.fold (stepF nq F) m i)
+          Hfold_m)
+        (ValidProgramState_construct nq
+          (F k b)
+          Hfb)).
+  apply ValidProgramState_merge_rewrite.
+
+  apply ValidProgramState_equiv_equivalence with
+    (y :=
+      VstepF nq F F_valid k
+        (@exist (Branch nq)
+          (fun b : Branch nq => Branch_valid nq b)
+          b Hb)
+        (PositiveMap.fold
+          (VstepF nq F F_valid)
+          (ValidProgramState_construct nq m Hm)
+          (ValidProgramState_construct nq i Hi))).
+  unfold VstepF, VF.
+  simpl.
+  apply ValidProgramState_merge_Proper.
+  apply construct_foldF.
+  apply ValidProgramState_proof_irrel.
+
+  apply ValidProgramState_equiv_equivalence.
+  apply ValidProgramState_equiv_equivalence with
+    (y :=
+      PositiveMap.fold
+        (VstepF nq F F_valid)
+          (ValidProgramState_construct nq
+            (PositiveMap.add k b m)
+            Hadd_valid)
+          (ValidProgramState_construct nq i Hi)).
+  apply construct_foldF.
+  
+  apply ValidProgramState_equiv_equivalence with 
+    (y :=
+      (PositiveMap.fold (VstepF nq F F_valid)
+      (ValidProgramState_construct nq (PositiveMap.add k b m) Hadd_valid)
+      (* PositiveMap.add k (Hadd_valid b) (ValidProgramState_construct nq m Hm) *)
+      (ValidProgramState_construct nq i Hi))
+    ).
+Admitted.
+
+
 Lemma Commute_swap_measure (qbit1 qbit2 qbit: nat) (cbit: nat):
   Qbit_index_valid qbit1 ->
   Qbit_index_valid qbit2 ->
@@ -557,11 +704,23 @@ Proof.
       rewrite PFacts.find_mapsto_iff , PFacts.add_eq_o; reflexivity.
     + apply Execute_swap_instr_Proper.
       clear IH. (* to see goal *)
-      rewrite ValidProgramState_rewrite.
-      eapply ValidProgramState_equiv_equivalence with (y := ValidProgramState_merge nq _ _).
-      * apply ValidProgramState_merge_rewrite.
-      * 
-Admitted.
+      set (F := Execute_measure_instr_branch nq qbit cbit).
+      set (stepF := fun (cstate : PositiveMap.key) (branch : Branch nq) (acc : ProgramState nq) =>
+          ProgramState_merge nq acc (F cstate branch)).
+      apply fold_stepF_add_valid.
+      * intros k' b' Hb'. unfold F.
+        apply Execute_measure_instr_branch_valid.
+        apply Hb'.
+      * apply Hm.
+      * intros cstate branch H.
+        apply PositiveMap.empty_1 in H.
+        contradiction.
+      * apply Hvalid.
+      * apply Hvalid with (cstate := k).
+        rewrite PFacts.find_mapsto_iff.
+        rewrite PFacts.add_eq_o; reflexivity.
+      * apply Hnotin.
+Qed.
 
 Lemma Commute_swap_reset (qbit1 qbit2 qbit: nat):
   Qbit_index_valid qbit1 ->
