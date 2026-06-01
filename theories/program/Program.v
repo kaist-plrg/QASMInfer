@@ -459,6 +459,21 @@ Proof.
   exfalso. apply Hmaps.
 Qed.
 
+Lemma ProgramState_singleton_valid:
+  forall k b,
+  Branch_valid b ->
+  ProgramState_valid (PositiveMap.add k b (PositiveMap.empty Branch)).
+Proof.
+  intros k b Hb k' b' H.
+  rewrite PFacts.find_mapsto_iff in H.
+  destruct (PositiveMap.E.eq_dec k k').
+  - subst. rewrite PFacts.add_eq_o in H; inversion H; subst.
+    apply Hb. reflexivity.
+  - rewrite PFacts.add_neq_o in H.
+    rewrite PFacts.empty_o in H.
+    discriminate H. apply n.
+Qed.
+
 Lemma ProgramState_map_valid: forall {f: Branch -> Branch} {ps: ProgramState},
   ProgramState_valid ps -> (forall b, Branch_valid b -> Branch_valid (f b)) ->
   ProgramState_valid (PositiveMap.map f ps).
