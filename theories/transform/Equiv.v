@@ -199,11 +199,11 @@ Proof.
     apply (Hstep x x' acc1 acc2); assumption.
 Qed.
 
-Lemma PositiveMap_fold_Proper_gen
+Lemma ProgramState_fold_Proper
   (f : positive -> Branch nq -> ProgramState nq -> ProgramState nq):
   (forall k b, Proper (ProgramState_equiv ==> ProgramState_equiv) (f k b)) ->
   Proper (ProgramState_equiv ==> ProgramState_equiv ==> ProgramState_equiv)
-         (fun ps base_ps => PositiveMap.fold f ps base_ps).
+        (PositiveMap.fold f).
 Proof.
   intros Hf ps1 ps2 Heq base1 base2 Heqbase.
   rewrite PositiveMap.fold_1, PositiveMap.fold_1.
@@ -217,7 +217,7 @@ Proof.
   - apply Heqbase.
 Qed.
 
-Lemma PositiveMap_add_Proper (k: positive) (b: Branch nq):
+Lemma ProgramState_add_Proper (k: positive) (b: Branch nq):
   Proper (ProgramState_equiv ==> ProgramState_equiv) (PositiveMap.add k b).
 Proof.
   intros ps1 ps2 Heq.
@@ -266,8 +266,8 @@ Proof.
   unfold merge_step.
   rewrite Heq.
   destruct (PositiveMap.find k ps2).
-  - apply PositiveMap_add_Proper. apply Heq.
-  - apply PositiveMap_add_Proper. apply Heq.
+  - apply ProgramState_add_Proper. apply Heq.
+  - apply ProgramState_add_Proper. apply Heq.
 Qed.
 
 Lemma ProgramState_merge_Proper:
@@ -275,7 +275,7 @@ Lemma ProgramState_merge_Proper:
 Proof.
   intros ps1 ps2 Heq ps1' ps2' Heq'.
   unfold ProgramState_merge.
-  apply PositiveMap_fold_Proper_gen; try assumption.
+  apply ProgramState_fold_Proper; try assumption.
   apply ProgramState_merge_step_Proper.
 Qed.
 
@@ -284,7 +284,7 @@ Lemma Execute_measure_instr_Proper (qbit cbit: nat):
 Proof.
   intros ps1 ps2 Heq cstate.
   unfold Execute_measure_instr.
-  apply PositiveMap_fold_Proper_gen.
+  apply ProgramState_fold_Proper.
   - intros k b ps1' ps2' Heq'.
     apply ProgramState_merge_Proper.
     + apply Heq'.
@@ -318,7 +318,7 @@ Proof.
     + simpl. inversion H. apply IHis.
       * apply H3.
       * apply H2. apply Heq.
-  - apply PositiveMap_fold_Proper_gen.
+  - apply ProgramState_fold_Proper.
     + intros k b' ps1' ps2' Heq'.
       apply ProgramState_merge_Proper.
       * apply Heq'.
@@ -445,7 +445,7 @@ Proof.
     rewrite <- Heq.
     apply PFacts.not_find_in_iff in Hnotin.
     rewrite Hnotin.
-    apply PositiveMap_add_Proper.
+    apply ProgramState_add_Proper.
     apply Heq.
 Qed.
 

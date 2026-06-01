@@ -643,15 +643,42 @@ Proof.
           (ValidProgramState_construct nq i Hi)).
   apply construct_foldF.
   
-  apply ValidProgramState_equiv_equivalence with 
+  eapply ValidProgramState_equiv_equivalence with 
     (y :=
       (PositiveMap.fold (VstepF nq F F_valid)
-      (ValidProgramState_construct nq (PositiveMap.add k b m) Hadd_valid)
-      (* PositiveMap.add k (Hadd_valid b) (ValidProgramState_construct nq m Hm) *)
-      (ValidProgramState_construct nq i Hi))
+      (PositiveMap.add k (exist (Branch_valid nq) b (_)) (ValidProgramState_construct nq m Hm))
+      (ValidProgramState_construct nq i Hi)
+      )
     ).
-Admitted.
+  { apply ValidProgramState_fold_Proper.
+    - intros k' vb'.
+      unfold VstepF, VF; simpl.
+      intros vb1 vb2 Hvb.
+      apply ValidProgramState_merge_Proper.
+      apply Hvb.
+      apply ValidProgramState_equiv_equivalence.
+    - intros y.
+      rewrite ValidProgramState_proj_add, ValidProgramState_proj_construct.
+      simpl.
+      apply ProgramState_add_Proper.
+      rewrite ValidProgramState_proj_construct.
+      apply ProgramState_equiv_equivalence.
+    - apply ValidProgramState_equiv_equivalence.
+  }
 
+  apply PProperties.fold_add.
+  - apply ValidProgramState_equiv_equivalence.
+  - unfold VstepF, VF; simpl.
+    intros k1 k2 Hk vb1 vb2 Hvb; subst.
+    intros vps1 vps2 Hvps.
+    apply ValidProgramState_merge_Proper.
+    apply Hvps.
+    apply ValidProgramState_equiv_equivalence.
+  - unfold VstepF, VF.
+    intros k1 k2 vb1 vb2 vps Hk.
+    apply ValidProgramState_merge_transpose_left.
+  - apply VHnotin.
+Qed.
 
 Lemma Commute_swap_measure (qbit1 qbit2 qbit: nat) (cbit: nat):
   Qbit_index_valid qbit1 ->
@@ -703,7 +730,6 @@ Proof.
       apply Hvalid with k.
       rewrite PFacts.find_mapsto_iff , PFacts.add_eq_o; reflexivity.
     + apply Execute_swap_instr_Proper.
-      clear IH. (* to see goal *)
       set (F := Execute_measure_instr_branch nq qbit cbit).
       set (stepF := fun (cstate : PositiveMap.key) (branch : Branch nq) (acc : ProgramState nq) =>
           ProgramState_merge nq acc (F cstate branch)).

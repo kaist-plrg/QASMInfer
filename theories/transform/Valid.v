@@ -93,6 +93,44 @@ Section ValidPS.
         (ValidProgramState_proj_proof vps1)
         (ValidProgramState_proj_proof vps2)).
 
+  Lemma ValidBranch_eq
+  (vb1 vb2 : ValidBranch)
+  : proj1_sig vb1 = proj1_sig vb2 -> vb1 = vb2.
+  Proof.
+    destruct vb1 as [b1 Hb1].
+    destruct vb2 as [b2 Hb2].
+    simpl.
+    intros H.
+    subst b2.
+    f_equal.
+    apply proof_irrelevance.
+  Qed.
+
+  Lemma ValidProgramState_equiv_iff
+  (vps1 vps2 : ValidProgramState)
+  : ValidProgramState_equiv vps1 vps2 <-> PositiveMap.Equal vps1 vps2.
+  Proof.
+    unfold ValidProgramState_equiv.
+    unfold ProgramState_equiv.
+    unfold PositiveMap.Equal.
+    unfold ValidProgramState_proj.
+    split.
+    - intros H k.
+      specialize (H k).
+      repeat rewrite PFacts.map_o in H.
+      unfold ValidBranch in *.
+      destruct (@PositiveMap.find (@sig (Branch nq) (fun b : Branch nq => Branch_valid nq b)) k vps1) as [[b1 Hb1] |] eqn:E1;
+      destruct (@PositiveMap.find (@sig (Branch nq) (fun b : Branch nq => Branch_valid nq b)) k vps2) as [[b2 Hb2] |] eqn:E2;
+      subst; simpl in H; try discriminate; try reflexivity.
+      inversion H; subst.
+      f_equal; f_equal.
+      apply proof_irrelevance.
+    - intros H k.
+      repeat rewrite PFacts.map_o.
+      rewrite H.
+      reflexivity.
+  Qed.
+
   Lemma ValidProgramState_equiv_equivalence:
     Equivalence ValidProgramState_equiv.
   Proof.
@@ -324,6 +362,25 @@ Section ValidPS.
     reflexivity.
   Qed.
 
+  Lemma ValidProgramState_fold_Proper
+    (f: positive -> ValidBranch -> PositiveMap.t (ValidBranch) -> PositiveMap.t (ValidBranch)):
+    (forall k vb, Proper (ValidProgramState_equiv ==> ValidProgramState_equiv) (f k vb)) ->
+    Proper (ValidProgramState_equiv ==> ValidProgramState_equiv ==> ValidProgramState_equiv)
+    (PositiveMap.fold f).
+  Proof.
+    intros Hf vb1 vb2 Hbv v1 v2 Hv.
+    rewrite PositiveMap.fold_1, PositiveMap.fold_1.
+    apply (fold_left_eqlistA_Proper (POrd.O.eqke (elt:=ValidBranch))).
+    - intros [k1 b1] [k2 b2] acc1 acc2 Hpq Hacc.
+      destruct Hpq as [Hk Hb]. simpl in *.
+      rewrite Hk, Hb.
+      apply Hf. apply Hacc.
+    - apply POrd.elements_Equal_eqlistA.
+      rewrite <- ValidProgramState_equiv_iff.
+      apply Hbv.
+    - apply Hv.
+  Qed.
+
   Lemma ValidProgramState_merge_Proper:
     Proper (ValidProgramState_equiv ==> ValidProgramState_equiv ==> ValidProgramState_equiv)
     ValidProgramState_merge.
@@ -353,25 +410,80 @@ Section ValidPS.
   Qed.
 
   Lemma ValidProgramState_merge_commute:
-    forall (ps1 ps2: ProgramState nq)
-    (Hvalid1: ProgramState_valid nq ps1)
-    (Hvalid2: ProgramState_valid nq ps2),
+    forall (vps1 vps2: ValidProgramState),
     ValidProgramState_equiv
-    (ValidProgramState_merge (ValidProgramState_construct ps1 Hvalid1) (ValidProgramState_construct ps2 Hvalid2))
-    (ValidProgramState_merge (ValidProgramState_construct ps2 Hvalid2) (ValidProgramState_construct ps1 Hvalid1)).
+    (ValidProgramState_merge vps1 vps2)
+    (ValidProgramState_merge vps2 vps1).
   Proof.
-    intros ps1 ps2 Hvalid1 Hvalid2.
+    intros vps1 vps2.
     unfold ValidProgramState_equiv, ValidProgramState_merge.
-    intros y.
     repeat rewrite ValidProgramState_proj_construct.
-    revert y.
     apply ProgramState_merge_commute.
-    - apply ProgramState_valid_equal with (ps1:=ps1).
-      apply Hvalid1.
-      rewrite ValidProgramState_proj_construct. reflexivity.
-    - apply ProgramState_valid_equal with (ps1:=ps2).
-      apply Hvalid2.
-      rewrite ValidProgramState_proj_construct. reflexivity.
+    all: apply ValidProgramState_proj_valid.
+  Qed.
+
+  Lemma ValidProgramState_merge_transpose:
+    forall (vps vps1 vps2: ValidProgramState),
+    ValidProgramState_equiv
+    (ValidProgramState_merge vps1 (ValidProgramState_merge vps2 vps))
+    (ValidProgramState_merge vps2 (ValidProgramState_merge vps1 vps)).
+  Proof.
+    intros vps vps1 vps2.
+    unfold ValidProgramState_equiv, ValidProgramState_merge.
+    rewrite ValidProgramState_proj_construct.
+    apply ProgramState_equiv_equivalence.
+    rewrite ValidProgramState_proj_construct.
+
+    apply ProgramState_equiv_equivalence with (y :=
+      ProgramState_merge nq (ValidProgramState_proj vps2)
+      (ProgramState_merge nq (ValidProgramState_proj vps1) (ValidProgramState_proj vps))
+    ). {
+      apply ProgramState_merge_Proper.
+      apply ProgramState_equiv_equivalence.
+      rewrite ValidProgramState_proj_construct.
+      apply ProgramState_equiv_equivalence.
+    }
+
+    apply ProgramState_equiv_equivalence.
+
+    apply ProgramState_equiv_equivalence with (y :=
+      ProgramState_merge nq (ValidProgramState_proj vps1)
+      (ProgramState_merge nq (ValidProgramState_proj vps2) (ValidProgramState_proj vps))
+    ). {
+      apply ProgramState_merge_Proper.
+      apply ProgramState_equiv_equivalence.
+      rewrite ValidProgramState_proj_construct.
+      apply ProgramState_equiv_equivalence.
+    }
+
+    apply ProgramState_merge_transpose.
+    all: apply ValidProgramState_proj_valid.
+  Qed.
+
+  Lemma ValidProgramState_merge_transpose_left:
+    forall (vps vps1 vps2: ValidProgramState),
+    ValidProgramState_equiv
+    (ValidProgramState_merge (ValidProgramState_merge vps vps2) vps1)
+    (ValidProgramState_merge (ValidProgramState_merge vps vps1) vps2).
+  Proof.
+    intros vps vps1 vps2.
+    unfold ValidProgramState_equiv.
+    intros y.
+    rewrite (ValidProgramState_merge_commute _ vps1).
+    rewrite (ValidProgramState_merge_commute _ vps2).
+
+    transitivity (PositiveMap.find y
+      (ValidProgramState_proj (ValidProgramState_merge vps1 (ValidProgramState_merge vps2 vps)))
+    ). {
+      apply ValidProgramState_merge_Proper.
+      apply ValidProgramState_equiv_equivalence.
+      apply ValidProgramState_merge_commute.
+    }
+
+    rewrite ValidProgramState_merge_transpose.
+    apply ValidProgramState_merge_Proper.
+    apply ValidProgramState_equiv_equivalence.
+    apply ValidProgramState_merge_commute.
   Qed.
   
   Variable F : PositiveMap.key -> Branch nq -> ProgramState nq.
