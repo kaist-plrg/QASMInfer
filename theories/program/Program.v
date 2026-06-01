@@ -369,6 +369,37 @@ Proof.
   apply PositiveMap_xfoldi_xmapi.
 Qed.
 
+Lemma ProgramState_ind
+  (P : ProgramState -> Prop)
+  :
+  (forall m m',
+      PositiveMap.Equal m m' ->
+      P m ->
+      P m') ->
+  P (PositiveMap.empty Branch) ->
+  (forall k b m,
+      ~ PositiveMap.In k m ->
+      P m ->
+      P (PositiveMap.add k b m)) ->
+  forall m, P m.
+Proof.
+  intros P_morph P_empty P_add m.
+
+  eapply PProperties.fold_rec_bis
+    with
+      (P := fun m _ => P m)
+      (f := fun _ _ _ => tt)
+      (i := tt)
+      (m := m).
+  - intros m1 m2 _ Heq HP.
+    eapply P_morph; eauto.
+  - exact P_empty.
+  - intros k x _ m0 Hkx Hnotin IH.
+    apply P_add.
+    apply Hnotin.
+    exact IH.
+Qed.
+
 Lemma ProgramState_sum_prob_empty:
   forall (ps: ProgramState),
   PositiveMap.Empty ps ->
@@ -418,6 +449,14 @@ Proof.
     + apply PFacts.empty_mapsto_iff in Hmaps_empty.
       contradiction.
   - apply ProgramState_init_prob_valid.
+Qed.
+
+Lemma ProgramState_empty_valid:
+  ProgramState_valid (PositiveMap.empty Branch).
+Proof.
+  intros cstate branch Hmaps.
+  apply PositiveMap.empty_1 in Hmaps.
+  exfalso. apply Hmaps.
 Qed.
 
 Lemma ProgramState_map_valid: forall {f: Branch -> Branch} {ps: ProgramState},
@@ -670,6 +709,94 @@ Proof.
     + unfold ProgramState_valid in Hpsvalid.
       apply Hpsvalid with (cstate := k) (branch := e).
       apply H1.
+Qed.
+
+Lemma ProgramState_merge_o :
+  forall ps1 ps2 cstate,
+    PositiveMap.find cstate (ProgramState_merge ps1 ps2)
+    =
+    match PositiveMap.find cstate ps1,
+          PositiveMap.find cstate ps2 with
+    | Some b1, Some b2 =>
+        Some (Branch_merge b1 b2)
+    | Some b1, None =>
+        Some b1
+    | None, Some b2 =>
+        Some b2
+    | None, None =>
+        None
+    end.
+Proof.
+  intros ps1 ps2 cstate.
+  unfold ProgramState_merge.
+  revert cstate.
+
+  pattern ps1, (PositiveMap.fold merge_step ps1 ps2).
+  apply PProperties.fold_rec.
+
+  - (* Empty *)
+    intros m0 Hempty cstate.
+    destruct (PositiveMap.find cstate m0) as [b |] eqn:Hfind.
+    + exfalso.
+      apply (Hempty cstate b).
+      apply PositiveMap.find_2.
+      exact Hfind.
+    + destruct (PositiveMap.find cstate ps2); reflexivity.
+
+  - (* Add *)
+    intros k branch acc m m' Hmapsto Hnotin Hadd IH cstate.
+    unfold merge_step.
+
+    unfold PProperties.Add in Hadd.
+
+    destruct (PositiveMap.E.eq_dec k cstate) as [Heq | Hneq].
+
+    + (* k = cstate *)
+      subst cstate.
+
+      assert (Hfind_m_none : PositiveMap.find k m = None).
+      {
+        destruct (PositiveMap.find k m) as [b0 |] eqn:Hfind.
+        - exfalso.
+          apply Hnotin.
+          exists b0.
+          apply PositiveMap.find_2.
+          exact Hfind.
+        - reflexivity.
+      }
+
+      specialize (IH k).
+      rewrite Hfind_m_none in IH.
+
+      specialize (Hadd k).
+      rewrite PProperties.F.add_o in Hadd.
+      destruct (PositiveMap.E.eq_dec k k) as [_ | Hkk].
+      2: contradiction.
+
+      rewrite Hadd.
+      rewrite IH.
+
+      destruct (PositiveMap.find k ps2) as [b2 |] eqn:Hps2;
+        rewrite PProperties.F.add_o;
+        destruct (PositiveMap.E.eq_dec k k) as [_ | Hkk];
+        try contradiction;
+        reflexivity.
+
+    + (* k <> cstate *)
+      specialize (Hadd cstate).
+      rewrite PProperties.F.add_o in Hadd.
+      destruct (PositiveMap.E.eq_dec k cstate) as [Hkc | _].
+      { contradiction. }
+
+      rewrite Hadd.
+
+      specialize (IH cstate).
+
+      destruct (PositiveMap.find k acc) as [branch' |] eqn:Hacc;
+        rewrite PProperties.F.add_o;
+        destruct (PositiveMap.E.eq_dec k cstate) as [Hkc | _];
+        try contradiction;
+        exact IH.
 Qed.
 
 (* ============================================================================================== *)

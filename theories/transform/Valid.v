@@ -7,6 +7,7 @@ Require Import QASMInfer.program.All.
 Require Import QASMInfer.transform.Equiv.
 
 From Stdlib Require Import List Logic.
+From Stdlib Require Import Classes.RelationClasses Classes.Morphisms.
 From Stdlib.FSets Require Import FMapPositive FMapFacts.
 
 Module PFacts := WFacts_fun PositiveMap.E PositiveMap.
@@ -92,6 +93,29 @@ Section ValidPS.
         (ValidProgramState_proj vps2)
         (ValidProgramState_proj_proof vps1)
         (ValidProgramState_proj_proof vps2)).
+  
+  Definition ValidProgramState_empty : ValidProgramState :=
+    @PositiveMap.empty ValidBranch.
+
+  Definition ValidProgramState_add
+    (k : PositiveMap.key)
+    (b : Branch nq)
+    (Hb : Branch_valid nq b)
+    (vps : ValidProgramState)
+    : ValidProgramState :=
+    PositiveMap.add k (exist _ b Hb) vps.
+
+  Definition ValidProgramState_map
+    (g : Branch nq -> Branch nq)
+    (Hg : forall b, Branch_valid nq b -> Branch_valid nq (g b))
+    (vps : ValidProgramState)
+    : ValidProgramState :=
+    PositiveMap.map
+      (fun vb =>
+        exist _
+          (g (proj1_sig vb))
+          (Hg _ (proj2_sig vb)))
+      vps.
 
   Lemma ValidBranch_eq
   (vb1 vb2 : ValidBranch)
@@ -291,6 +315,22 @@ Section ValidPS.
       reflexivity.
   Qed.
 
+  Lemma ValidProgramState_proj_map :
+    forall
+      (g : Branch nq -> Branch nq)
+      (Hg : forall b, Branch_valid nq b -> Branch_valid nq (g b))
+      (vps : ValidProgramState),
+      ProgramState_equiv nq
+        (ValidProgramState_proj (ValidProgramState_map g Hg vps))
+        (PositiveMap.map g (ValidProgramState_proj vps)).
+  Proof.
+    intros g Hg vps cstate.
+    unfold ValidProgramState_proj, ValidProgramState_map.
+    repeat rewrite PFacts.map_o.
+    Set Printing Implicit.
+    destruct (@PositiveMap.find {b : Branch nq | Branch_valid nq b} cstate vps) as [[b Hb] |]; reflexivity.
+  Qed.
+
   Lemma ValidProgramState_in_iff :
     forall (vps: ValidProgramState) k,
       PositiveMap.In k vps <-> PositiveMap.In k (ValidProgramState_proj vps).
@@ -333,6 +373,101 @@ Section ValidPS.
       + erewrite IHps2. reflexivity.
       + erewrite IHps1. reflexivity.
       + destruct o; simpl; reflexivity.
+  Qed.
+
+  Lemma ValidProgramState_construct_empty_rewrite
+    (Hempty : ProgramState_valid nq (PositiveMap.empty (Branch nq)))
+    :
+    ValidProgramState_equiv
+      (ValidProgramState_construct
+         (PositiveMap.empty (Branch nq))
+         Hempty)
+      (ValidProgramState_empty).
+  Proof.
+    unfold ValidProgramState_equiv, ValidProgramState_empty.
+    intro y.
+    pose proof
+      (ValidProgramState_proj_construct
+         (PositiveMap.empty (Branch nq)) Hempty y) as H.
+    rewrite H.
+    unfold ValidProgramState_proj.
+    rewrite PFacts.map_o.
+    rewrite PFacts.empty_o.
+    rewrite PFacts.empty_o.
+    reflexivity.
+  Qed.
+
+  Lemma ValidProgramState_construct_add_rewrite
+    k b Hb m Hm Hadd
+    :
+    ValidProgramState_equiv
+      (ValidProgramState_construct
+         (PositiveMap.add k b m)
+         Hadd)
+      (ValidProgramState_add k b Hb
+         (ValidProgramState_construct m Hm)).
+  Proof.
+    unfold ValidProgramState_equiv, ValidProgramState_add.
+    intro y.
+
+    pose proof
+      (ValidProgramState_proj_construct
+         (PositiveMap.add k b m) Hadd y) as Hleft.
+    rewrite Hleft.
+
+    unfold ValidProgramState_proj.
+    repeat rewrite PFacts.map_o.
+    repeat rewrite PFacts.add_o.
+
+    destruct (PositiveMap.E.eq_dec k y) as [Heq | Hneq].
+    - reflexivity.
+    - pose proof
+        (ValidProgramState_proj_construct m Hm y) as Hmproj.
+      unfold ValidProgramState_proj in Hmproj.
+      rewrite PFacts.map_o in Hmproj.
+      symmetry.
+      exact Hmproj.
+  Qed.
+
+  Lemma ValidProgramState_construct_map_rewrite
+    (g : Branch nq -> Branch nq)
+    (Hg : forall b, Branch_valid nq b -> Branch_valid nq (g b))
+    ps Hps Hmap
+    :
+    ValidProgramState_equiv
+      (ValidProgramState_construct
+         (PositiveMap.map g ps)
+         Hmap)
+      (ValidProgramState_map g Hg
+         (ValidProgramState_construct ps Hps)).
+  Proof.
+    unfold ValidProgramState_equiv, ValidProgramState_map.
+    intro y.
+
+    pose proof
+      (ValidProgramState_proj_construct
+         (PositiveMap.map g ps) Hmap y) as Hleft.
+    rewrite Hleft.
+    rewrite PFacts.map_o.
+
+    unfold ValidProgramState_proj.
+    repeat rewrite PFacts.map_o.
+
+    pose proof
+      (ValidProgramState_proj_construct ps Hps y) as Hpsproj.
+    unfold ValidProgramState_proj in Hpsproj.
+    rewrite PFacts.map_o in Hpsproj.
+
+    Set Printing Implicit.
+
+    destruct (@PositiveMap.find {x : Branch nq | Branch_valid nq x} y (ValidProgramState_construct ps Hps))
+      as [[br Hbr] |] eqn:E1;
+    destruct (PositiveMap.find y ps)
+      as [br' |] eqn:E2;
+    simpl in *; try discriminate; try reflexivity.
+
+    inversion Hpsproj; subst.
+    reflexivity.
   Qed.
 
   Lemma ValidProgramState_rewrite:
@@ -485,6 +620,108 @@ Section ValidPS.
     apply ValidProgramState_equiv_equivalence.
     apply ValidProgramState_merge_commute.
   Qed.
+
+  Lemma ValidProgramState_map_add :
+    forall
+      (g : Branch nq -> Branch nq)
+      (Hg : forall b, Branch_valid nq b -> Branch_valid nq (g b))
+      k b Hb
+      (vps : ValidProgramState),
+      ValidProgramState_equiv
+        (ValidProgramState_map g Hg
+          (ValidProgramState_add k b Hb vps))
+        (ValidProgramState_add k (g b) (Hg b Hb)
+          (ValidProgramState_map g Hg vps)).
+  Proof.
+    intros g Hg k b Hb vps.
+    apply ValidProgramState_equiv_iff.
+    intro y.
+    unfold ValidProgramState_map, ValidProgramState_add.
+
+    rewrite PFacts.map_o.
+    repeat rewrite PFacts.add_o.
+
+    destruct (PositiveMap.E.eq_dec k y) as [Heq | Hneq].
+    - reflexivity.
+    - rewrite PFacts.map_o.
+      reflexivity.
+  Qed.
+
+  Lemma ValidProgramState_fold_add :
+    forall
+      (f : PositiveMap.key ->
+          ValidBranch ->
+          ValidProgramState ->
+          ValidProgramState),
+      Proper
+        (eq ==> eq ==> ValidProgramState_equiv ==> ValidProgramState_equiv)
+        f ->
+      PProperties.transpose_neqkey ValidProgramState_equiv f ->
+      forall k b Hb
+            (vps init : ValidProgramState),
+        ~ PositiveMap.In k vps ->
+        ValidProgramState_equiv
+          (PositiveMap.fold f
+            (ValidProgramState_add k b Hb vps)
+            init)
+          (f k (exist _ b Hb)
+            (PositiveMap.fold f vps init)).
+  Proof.
+    intros f Hproper Htranspose k b Hb vps init Hnotin.
+    unfold ValidProgramState_add.
+
+    eapply PProperties.fold_Add with (eqA := ValidProgramState_equiv).
+    - apply ValidProgramState_equiv_equivalence.
+    - exact Hproper.
+    - exact Htranspose.
+    - exact Hnotin.
+    - unfold PProperties.Add.
+      intro y.
+      reflexivity.
+  Qed.
+
+  Lemma ValidProgramState_map_swap_merge
+    (g : Branch nq -> Branch nq)
+    (Hg : forall b, Branch_valid nq b -> Branch_valid nq (g b))
+    (H: forall ps1 ps2,
+      ProgramState_valid nq ps1 ->
+      ProgramState_valid nq ps2 ->
+      ProgramState_equiv nq
+        (PositiveMap.map g (ProgramState_merge nq ps1 ps2))
+        (ProgramState_merge nq
+          (PositiveMap.map g ps1)
+          (PositiveMap.map g ps2)))
+    :
+    forall vps1 vps2,
+      ValidProgramState_equiv
+        (ValidProgramState_map g Hg
+          (ValidProgramState_merge vps1 vps2))
+        (ValidProgramState_merge
+          (ValidProgramState_map g Hg vps1)
+          (ValidProgramState_map g Hg vps2)).
+  Proof.
+    intros vps1 vps2.
+    unfold ValidProgramState_equiv.
+
+    rewrite (ValidProgramState_proj_map g Hg
+      (ValidProgramState_merge vps1 vps2)).
+
+    unfold ValidProgramState_merge.
+    repeat rewrite ValidProgramState_proj_construct.
+
+    eapply ProgramState_equiv_equivalence with
+      (y :=
+        ProgramState_merge nq
+          (PositiveMap.map g (ValidProgramState_proj vps1))
+          (PositiveMap.map g (ValidProgramState_proj vps2))).
+    - apply H.
+      all: apply ValidProgramState_proj_valid.
+    - apply ProgramState_merge_Proper.
+      + apply ProgramState_equiv_equivalence.
+        apply ValidProgramState_proj_map.
+      + apply ProgramState_equiv_equivalence.
+        apply ValidProgramState_proj_map.
+  Qed.
   
   Variable F : PositiveMap.key -> Branch nq -> ProgramState nq.
 
@@ -562,6 +799,24 @@ Section ValidPS.
       + apply ProgramState_merge_Proper; try reflexivity.
         apply ProgramState_equiv_equivalence.
         apply ValidProgramState_proj_construct.
+  Qed.
+
+  Lemma ValidProgramState_fold_VstepF_add :
+    forall k b Hb
+          (vps init : ValidProgramState),
+      ~ PositiveMap.In k vps ->
+      ValidProgramState_equiv
+        (PositiveMap.fold VstepF
+          (ValidProgramState_add k b Hb vps)
+          init)
+        (VstepF k (exist _ b Hb)
+          (PositiveMap.fold VstepF vps init)).
+  Proof.
+    intros k b Hb vps init Hnotin.
+    eapply ValidProgramState_fold_add.
+    - apply VstepF_Proper.
+    - apply VstepF_transpose.
+    - exact Hnotin.
   Qed.
 
   Lemma fold_stepF_valid :
@@ -676,3 +931,166 @@ Section ValidPS.
   Qed.
     
 End ValidPS.
+
+Global Instance ValidProgramState_equiv_Equivalence_inst
+  (nq : nat)
+  :
+  Equivalence (ValidProgramState_equiv nq).
+Proof.
+  apply ValidProgramState_equiv_equivalence.
+Qed.
+
+Global Instance ValidProgramState_proj_Proper_inst
+  (nq : nat)
+  :
+  Proper
+    (ValidProgramState_equiv nq ==> ProgramState_equiv nq)
+    (ValidProgramState_proj nq).
+Proof.
+  intros vps1 vps2 H.
+  exact H.
+Qed.
+
+Global Instance ValidProgramState_find_Proper_inst
+  (nq : nat) (k : PositiveMap.key)
+  :
+  Proper
+    (ValidProgramState_equiv nq ==> eq)
+    (@PositiveMap.find (ValidBranch nq) k).
+Proof.
+  intros vps1 vps2 H.
+  apply ValidProgramState_equiv_iff in H.
+  exact (H k).
+Qed.
+
+Global Instance ValidProgramState_add_Proper_inst
+  (nq : nat)
+  :
+  Proper
+    (eq ==> eq ==> ValidProgramState_equiv nq ==> ValidProgramState_equiv nq)
+    (@PositiveMap.add (ValidBranch nq)).
+Proof.
+  intros k1 k2 Hk vb1 vb2 Hvb vps1 vps2 Hvps.
+  subst k2 vb2.
+  apply ValidProgramState_equiv_iff.
+  apply ValidProgramState_equiv_iff in Hvps.
+  intro y.
+  repeat rewrite PFacts.add_o.
+  destruct (PositiveMap.E.eq_dec k1 y).
+  - reflexivity.
+  - apply Hvps.
+Qed.
+
+Global Instance ValidProgramState_lifted_add_Proper_inst
+  (nq : nat)
+  (k : PositiveMap.key)
+  (b : Branch nq)
+  (Hb : Branch_valid nq b)
+  :
+  Proper
+    (ValidProgramState_equiv nq ==> ValidProgramState_equiv nq)
+    (ValidProgramState_add nq k b Hb).
+Proof.
+  intros vps1 vps2 Hvps.
+  unfold ValidProgramState_add.
+  apply ValidProgramState_equiv_iff.
+  apply ValidProgramState_equiv_iff in Hvps.
+  intro y.
+  repeat rewrite PFacts.add_o.
+  destruct (PositiveMap.E.eq_dec k y).
+  - reflexivity.
+  - apply Hvps.
+Qed.
+
+Global Instance ValidProgramState_map_Proper_inst
+  (nq : nat)
+  :
+  Proper
+    ((eq ==> eq) ==> ValidProgramState_equiv nq ==> ValidProgramState_equiv nq)
+    (@PositiveMap.map (ValidBranch nq) (ValidBranch nq)).
+Proof.
+  intros f g Hfg vps1 vps2 Hvps.
+  apply ValidProgramState_equiv_iff.
+  apply ValidProgramState_equiv_iff in Hvps.
+  intro y.
+  repeat rewrite PFacts.map_o.
+  rewrite Hvps.
+  destruct (PositiveMap.find y vps2) as [vb |]; simpl.
+  - f_equal. apply Hfg. reflexivity.
+  - reflexivity.
+Qed.
+
+Global Instance ValidProgramState_lifted_map_Proper_inst
+  (nq : nat)
+  (g : Branch nq -> Branch nq)
+  (Hg : forall b, Branch_valid nq b -> Branch_valid nq (g b))
+  :
+  Proper
+    (ValidProgramState_equiv nq ==> ValidProgramState_equiv nq)
+    (ValidProgramState_map nq g Hg).
+Proof.
+  intros vps1 vps2 Hvps.
+  unfold ValidProgramState_map.
+  apply ValidProgramState_equiv_iff.
+  apply ValidProgramState_equiv_iff in Hvps.
+  intro y.
+  repeat rewrite PFacts.map_o.
+  rewrite Hvps.
+  reflexivity.
+Qed.
+
+Global Instance ValidProgramState_merge_Proper_inst
+  (nq : nat)
+  :
+  Proper
+    (ValidProgramState_equiv nq ==>
+     ValidProgramState_equiv nq ==>
+     ValidProgramState_equiv nq)
+    (ValidProgramState_merge nq).
+Proof.
+  apply ValidProgramState_merge_Proper.
+Qed.
+
+Global Instance ValidProgramState_fold_Proper_inst
+  (nq : nat)
+  (f : positive ->
+       ValidBranch nq ->
+       PositiveMap.t (ValidBranch nq) ->
+       PositiveMap.t (ValidBranch nq))
+  (Hf : forall k vb,
+      Proper
+        (ValidProgramState_equiv nq ==> ValidProgramState_equiv nq)
+        (f k vb))
+  :
+  Proper
+    (ValidProgramState_equiv nq ==>
+     ValidProgramState_equiv nq ==>
+     ValidProgramState_equiv nq)
+    (PositiveMap.fold f).
+Proof.
+  apply ValidProgramState_fold_Proper.
+  exact Hf.
+Qed.
+
+Global Instance VstepF_fold_step_Proper_inst
+  (nq : nat)
+  (F : PositiveMap.key -> Branch nq -> ProgramState nq)
+  (F_valid :
+     forall k b,
+       Branch_valid nq b ->
+       ProgramState_valid nq (F k b))
+  :
+  Proper
+    (ValidProgramState_equiv nq ==>
+     ValidProgramState_equiv nq ==>
+     ValidProgramState_equiv nq)
+    (PositiveMap.fold (VstepF nq F F_valid)).
+Proof.
+  apply ValidProgramState_fold_Proper.
+  intros k vb.
+  unfold VstepF.
+  intros acc1 acc2 Hacc.
+  apply ValidProgramState_merge_Proper.
+  - exact Hacc.
+  - reflexivity.
+Qed.

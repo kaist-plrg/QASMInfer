@@ -789,6 +789,70 @@ Proof.
       * apply Hnotin.
 Qed.
 
+(* swap map - merge equality *)
+Lemma Execute_swap_instr_branch_merge :
+  forall b1 b2 qbit1 qbit2,
+    Branch_valid nq b1 ->
+    Branch_valid nq b2 ->
+    Execute_swap_instr_branch nq qbit1 qbit2
+      (Branch_merge nq b1 b2)
+    =
+    Branch_merge nq
+      (Execute_swap_instr_branch nq qbit1 qbit2 b1)
+      (Execute_swap_instr_branch nq qbit1 qbit2 b2).
+Proof.
+  intros b1 b2 qbit1 qbit2 Hb1 Hb2.
+  destruct b1; destruct b2.
+  unfold Branch_merge, Execute_swap_instr_branch; simpl.
+  f_equal.
+  rewrite <- den_uop_scale, <- den_uop_scale, <- den_uop_add.
+  reflexivity.
+Qed.
+
+Lemma Execute_swap_instr_map_merge :
+  forall ps1 ps2 qbit1 qbit2,
+    ProgramState_valid nq ps1 ->
+    ProgramState_valid nq ps2 ->
+    ProgramState_equiv
+      (PositiveMap.map
+        (Execute_swap_instr_branch nq qbit1 qbit2)
+        (ProgramState_merge nq ps1 ps2))
+      (ProgramState_merge nq
+        (PositiveMap.map
+          (Execute_swap_instr_branch nq qbit1 qbit2)
+          ps1)
+        (PositiveMap.map
+          (Execute_swap_instr_branch nq qbit1 qbit2)
+          ps2)).
+Proof.
+  intros ps1 ps2 qbit1 qbit2 Hps1 Hps2 cstate.
+
+  rewrite PFacts.map_o.
+  repeat rewrite ProgramState_merge_o.
+  repeat rewrite PFacts.map_o.
+
+  destruct (PositiveMap.find cstate ps1) as [b1 |] eqn:E1;
+  destruct (PositiveMap.find cstate ps2) as [b2 |] eqn:E2;
+  simpl; try reflexivity.
+
+  assert (Hb1 : Branch_valid nq b1).
+  {
+    eapply Hps1.
+    apply PositiveMap.find_2.
+    exact E1.
+  }
+
+  assert (Hb2 : Branch_valid nq b2).
+  {
+    eapply Hps2.
+    apply PositiveMap.find_2.
+    exact E2.
+  }
+
+  rewrite Execute_swap_instr_branch_merge by assumption.
+  reflexivity.
+Qed.
+
 (* ============================================================================================== *)
 (* Proof of equivalence ========================================================================= *)
 
