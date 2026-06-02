@@ -427,12 +427,8 @@ Proof.
       unfold Execute_swap_instr.
       repeat rewrite PFacts.map_o.
       destruct (PositiveMap.find cstate ps).
-      * right.
-        exists b.
-        exists (Execute_swap_instr_branch nq qbit1 qbit2 b).
-        split; try split; reflexivity.
-      * left.
-        split; reflexivity.
+      * destruct b. reflexivity.
+      * reflexivity.
   - apply Instruction_equiv_implies_behavioral_equiv.
     apply Transform_swap_swap_insert.
     all: assumption.

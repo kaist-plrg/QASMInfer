@@ -145,15 +145,13 @@ Lemma CState_branch_different:
 Proof.
   intros.
   assert (Hread_value: let (c0, c1) := CState_branch idx cstate in
-    CState_read idx c1 = true /\ CState_read idx c0 = false).
-  {
+    CState_read idx c1 = true /\ CState_read idx c0 = false). {
     apply CState_branch_correct.
   }
   remember (CState_branch idx cstate) as branches eqn:Hbranches.
   destruct branches as [c0 c1].
   intros Heq.
-  assert (Hread: CState_read idx c1 = CState_read idx c0).
-  {
+  assert (Hread: CState_read idx c1 = CState_read idx c0). {
     rewrite Heq.
     reflexivity.
   }
@@ -188,6 +186,16 @@ Definition Branch_merge (b0 b1: Branch): Branch :=
     B_prob := B_prob b0 + B_prob b1;
   |}.
 
+Lemma Branch_invariant_valid:
+  forall (b: Branch), Branch_invariant b -> Branch_valid b.
+Proof.
+  intros b Hbi.
+  unfold Branch_valid.
+  unfold Branch_invariant in Hbi.
+  destruct Hbi as [Hden [Hgt0 Hle1]].
+  split. apply Hden. apply Hgt0.
+Qed.
+
 Lemma Branch_merge_valid: forall (b0 b1: Branch),
   Branch_valid b0 -> Branch_valid b1 -> Branch_valid (Branch_merge b0 b1).
 Proof.
@@ -206,16 +214,6 @@ Proof.
   unfold Branch_merge.
   simpl.
   reflexivity.
-Qed.
-
-Lemma Branch_invariant_valid:
-  forall (b: Branch), Branch_invariant b -> Branch_valid b.
-Proof.
-  intros b Hbi.
-  unfold Branch_valid.
-  unfold Branch_invariant in Hbi.
-  destruct Hbi as [Hden [Hgt0 Hle1]].
-  split. apply Hden. apply Hgt0.
 Qed.
 
 Lemma Branch_merge_commute:
@@ -347,31 +345,7 @@ Proof.
     contradiction.
 Qed.
 
-Lemma PositiveMap_xfoldi_xmapi {A B C} (f: positive -> B -> C -> C) (g: A -> B) :
-  forall (m : PositiveMap.t A) (acc : C) (i : positive),
-    PositiveMap.xfoldi f (PositiveMap.xmapi (fun _ v => g v) m i) acc i =
-    PositiveMap.xfoldi (fun k v acc => f k (g v) acc) m acc i.
-Proof.
-  induction m as [| l IHl o r IHr]; intros acc i; simpl.
-  - reflexivity.
-  - destruct o as [x|]; simpl.
-    + rewrite IHl. rewrite IHr. reflexivity.
-    + rewrite IHl. rewrite IHr. reflexivity.
-Qed.
-
-Corollary PositiveMap_fold_map {A B C} (f: positive -> B -> C -> C) (g: A -> B) :
-  forall (m : PositiveMap.t A) (acc : C),
-    PositiveMap.fold f (PositiveMap.map g m) acc =
-    PositiveMap.fold (fun k v acc => f k (g v) acc) m acc.
-Proof.
-  intros m acc.
-  unfold PositiveMap.fold, PositiveMap.map.
-  apply PositiveMap_xfoldi_xmapi.
-Qed.
-
-Lemma ProgramState_ind
-  (P : ProgramState -> Prop)
-  :
+Lemma ProgramState_ind (P : ProgramState -> Prop):
   (forall m m',
       PositiveMap.Equal m m' ->
       P m ->
@@ -489,14 +463,6 @@ Proof.
   apply Hfind.
 Qed.
 
-Lemma PositiveMap_find_map {A} (f: Branch -> A) (i: positive) (m: ProgramState):
-  PositiveMap.find i (PositiveMap.map f m) = option_map (PositiveMap.find i m) f.
-Proof.
-  unfold PositiveMap.map.
-  rewrite PositiveMap.gmapi.
-  reflexivity.
-Qed.
-
 Lemma ProgramState_map_prob_preserve: forall (f: Branch -> Branch) (ps: ProgramState),
   (forall b, B_prob b = B_prob (f b)) ->
   ProgramState_sum_prob ps = ProgramState_sum_prob (PositiveMap.map f ps).
@@ -572,53 +538,7 @@ Proof.
     apply Hmaps_fold.
 Qed.
 
-Lemma PositiveMap_add_remove (k: positive) (old: Branch) (ps: ProgramState) (acc: R) :
-  PositiveMap.find k ps = Some old ->
-  (PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k old (PositiveMap.remove k ps)) acc
-  = PositiveMap.fold (fun _ b acc => acc + B_prob b) ps acc)%R.
-Proof.
-  intros Hfind.
-  apply PProperties.fold_Equal.
-  - apply eq_equivalence.
-  - unfold Proper. reflexivity.
-  - unfold PProperties.transpose_neqkey.
-    intros. lra.
-  - intros x.
-    destruct (PositiveMap.E.eq_dec x k) as [Hkeq | Hkneq].
-    + rewrite Hkeq.
-      rewrite PProperties.F.add_eq_o.
-      * symmetry. assumption.
-      * reflexivity.
-    + rewrite PProperties.F.add_neq_o.
-      rewrite PProperties.F.remove_neq_o.
-      * reflexivity.
-      * intro H. subst. contradiction.
-      * intro H. subst. contradiction.
-Qed.
-
-Lemma PositiveMap_add_remove_equal (k: positive) (new: Branch) (ps: ProgramState) (acc: R) :
-  (PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k new ps) acc =
-  PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k new (PositiveMap.remove k ps)) acc)%R.
-Proof.
-  apply PProperties.fold_Equal.
-  - apply eq_equivalence.
-  - unfold Proper. reflexivity.
-  - unfold PProperties.transpose_neqkey.
-    intros. lra.
-  - intros x.
-    destruct (PositiveMap.E.eq_dec x k) as [Hkeq | Hkneq].
-    + rewrite Hkeq.
-      rewrite PProperties.F.add_eq_o.
-      rewrite PProperties.F.add_eq_o.
-      all: reflexivity.
-    + rewrite PProperties.F.add_neq_o.
-      rewrite PProperties.F.add_neq_o.
-      rewrite PProperties.F.remove_neq_o.
-      all: try (intro H; subst; contradiction).
-      reflexivity.
-Qed.
-
-Lemma ProgramState_fold_add (k: positive) (b: Branch) (ps: ProgramState) :
+Lemma ProgramState_fold_add_prob (k: positive) (b: Branch) (ps: ProgramState) :
   PositiveMap.find k ps = None ->
   (PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k b ps) 0)%R =
   (PositiveMap.fold (fun _ b acc => acc + B_prob b) ps 0 + B_prob b)%R.
@@ -645,14 +565,14 @@ Proof.
   destruct (PositiveMap.find k ps) eqn:Hfind.
   - rewrite -> PositiveMap_add_remove_equal.
     rewrite <- PositiveMap_add_remove with (k:=k) (old:=b0) (ps:=ps).
-    rewrite ProgramState_fold_add.
-    rewrite ProgramState_fold_add.
+    rewrite ProgramState_fold_add_prob.
+    rewrite ProgramState_fold_add_prob.
     + rewrite Branch_merge_prob_sum.
       lra.
     + rewrite PProperties.F.remove_eq_o; reflexivity.
     + rewrite PProperties.F.remove_eq_o; reflexivity.
     + assumption.
-  - rewrite ProgramState_fold_add.
+  - rewrite ProgramState_fold_add_prob.
     + reflexivity.
     + assumption.
 Qed.
@@ -1477,7 +1397,7 @@ Proof.
   apply ProgramState_init_valid.
 Qed.
 
-Theorem Execute_state_valid: forall (instr: Instruction),
+Theorem Execute_invariant: forall (instr: Instruction),
   ProgramState_invariant (Execute instr).
 Proof.
   intros.
