@@ -342,8 +342,6 @@ Proof.
   apply Gate_matrix_H_Z_H__eq__X.
 Qed.
 
-(* TODO : Pauli gate covered by S gate *)
-
 Lemma Transform_swap_swap: forall (qbit1 qbit2: nat),
   Qbit_index_valid qbit1 ->
   Qbit_index_valid qbit2 ->
@@ -439,5 +437,8 @@ Proof.
     apply Transform_swap_swap_insert.
     all: assumption.
 Qed.
+
+(* Behavioral equivalence - insert quantum operation after all operations *)
+
 
 End TRANSFORM.

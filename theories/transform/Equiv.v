@@ -29,11 +29,9 @@ Definition ProgramState_equiv (ps1 ps2: ProgramState nq): Prop :=
   PositiveMap.Equal ps1 ps2.
 
 Definition ProgramState_behavioral_equiv (ps1 ps2: ProgramState nq): Prop :=
-  forall (cstate: positive),
-  (PositiveMap.find cstate ps1 = None /\ PositiveMap.find cstate ps2 = None) \/
-  (exists branch1 branch2, PositiveMap.find cstate ps1 = Some branch1 /\ PositiveMap.find cstate ps2 = Some branch2 /\ B_prob nq branch1 = B_prob nq branch2).
-
-(* To prove if case *)
+  PositiveMap.Equal (PositiveMap.map (B_prob nq) ps1) (PositiveMap.map (B_prob nq) ps2).
+  
+(* For inductive hypothesis *)
 Definition Instruction_valid_equiv (instr1 instr2: Instruction): Prop :=
   forall (ps: ProgramState nq),
   ProgramState_valid nq ps ->
@@ -56,8 +54,8 @@ Definition Instruction_behavioral_equiv (instr1 instr2: Instruction): Prop :=
   (Execute_suppl nq instr2 ps).
 
 (* Equality of result, weakest equality definition *)
-Definition Instruction_result_equiv (instr1 instr2: Instruction): Prop :=
-  Execute_and_calculate_prob nq nc instr1 = Execute_and_calculate_prob nq nc instr2.
+Definition Instruction_result_equiv (nq1 nq2: nat) (instr1 instr2: Instruction): Prop :=
+  Execute_and_calculate_prob nq1 nc instr1 = Execute_and_calculate_prob nq2 nc instr2.
 
 (* ============================================================================================== *)
 (* Check equivalence ============================================================================ *)
@@ -71,38 +69,13 @@ Lemma ProgramState_behavioral_equiv_equivalence: Equivalence ProgramState_behavi
 Proof.
   split.
   - intros ps.
-    unfold ProgramState_behavioral_equiv.
-    intros cstate.
-    destruct (PositiveMap.find cstate ps).
-    + right. exists b, b.
-      repeat split; reflexivity.
-    + left. split; reflexivity.
+    apply PFacts.Equal_ST.
   - intros ps1 ps2 H.
-    unfold ProgramState_behavioral_equiv in *.
-    intros cstate.
-    specialize (H cstate).
-    destruct H as [[H1 H2] | (branch1 & branch2 & Hf1 & Hf2 & Hb)].
-    + left. split; assumption.
-    + right. exists branch2, branch1.
-      repeat split; try assumption.
-      symmetry; assumption.
+    apply PFacts.Equal_ST.
+    apply H.
   - intros ps1 ps2 ps3 H1 H2.
-    unfold ProgramState_behavioral_equiv in *.
-    intros cstate.
-    specialize (H1 cstate).
-    specialize (H2 cstate).
-    destruct H1 as [[H1none H2none] | (b1 & b2 & H1some & H2some & Hb12)].
-    + destruct H2 as [[_ H3none] | (b2' & b3 & H2some' & _ & _)].
-      * left. split; assumption.
-      * rewrite H2none in H2some'. discriminate.
-    + destruct H2 as [[H2none _] | (b2' & b3 & H2some' & H3some & Hb23)].
-      * rewrite H2some in H2none. discriminate.
-      * rewrite H2some in H2some'. inversion H2some'. subst b2'.
-        right. exists b1, b3.
-        repeat split; try assumption.
-        eapply eq_trans.
-        -- exact Hb12.
-        -- exact Hb23.
+    apply PFacts.Equal_trans with (m' := PositiveMap.map (B_prob nq) ps2).
+    apply H1. apply H2.
 Qed.
 
 Lemma Instruction_valid_equiv_equivalence: Equivalence Instruction_valid_equiv.
@@ -163,20 +136,6 @@ Proof.
     apply ProgramState_behavioral_equiv_equivalence with (y := Execute_suppl nq instr2 ps).
     + apply H1. apply Hinv.
     + apply H2. apply Hinv.
-Qed.
-
-Lemma Instruction_result_equiv_equivalence: Equivalence Instruction_result_equiv.
-Proof.
-  split.
-  - intros instr.
-    unfold Instruction_result_equiv.
-    reflexivity.
-  - intros instr1 instr2 H.
-    unfold Instruction_result_equiv in *.
-    symmetry. apply H.
-  - intros instr1 instr2 instr3 H1 H2.
-    unfold Instruction_result_equiv in *.
-    rewrite H1, H2. reflexivity.
 Qed.
 
 (* ============================================================================================== *)
@@ -875,16 +834,9 @@ Proof.
   intros ps1 ps2 Heq.
   unfold ProgramState_behavioral_equiv.
   intros cstate.
-  unfold ProgramState_equiv, PositiveMap.Equal in Heq.
-  destruct (PositiveMap.find cstate ps1) eqn:H1.
-  - right. exists b. exists b.
-    split; split.
-    { rewrite <- Heq. apply H1. }
-    { reflexivity. }
-  - left.
-    split.
-    { reflexivity. }
-    { rewrite <- Heq. apply H1. }
+  rewrite PFacts.map_o, PFacts.map_o.
+  f_equal.
+  apply Heq.
 Qed.
 
 Lemma Instruction_valid_equiv_implies_equiv:
