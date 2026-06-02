@@ -69,11 +69,9 @@ Definition Instruction_behavioral_equiv (instr1 instr2: Instruction): Prop :=
   (Execute_suppl nq instr2 ps).
 
 (* Equality of result, weakest equality definition *)
-Definition Instruction_result_equiv (instr1 instr2: Instruction): Prop :=
-  forall (nq1 nq2: nat),
-  Instr_bounded nq1 instr1 -> Instr_bounded nq2 instr2 ->  
-  Execute_and_calculate_prob nq1 nc instr1 =
-  Execute_and_calculate_prob nq2 nc instr2.
+Definition Instruction_result_equiv (instr1 instr2: Instruction): Prop :=  
+  Execute_and_calculate_prob (Instr_max_index instr1) nc instr1 =
+  Execute_and_calculate_prob (Instr_max_index instr2) nc instr2.
 
 (* ============================================================================================== *)
 (* Check equivalence ============================================================================ *)
@@ -156,32 +154,18 @@ Proof.
     + apply H2. apply Hinv.
 Qed.
 
-Lemma Execute_and_calculate_prob_nq_irrel :
-  forall instr, Instruction_result_equiv instr instr.
-Proof.
-  intros instr nq1 nq2.
-  unfold Execute_and_calculate_prob.
-Admitted.
-
 Lemma Instruction_result_equiv_equivalence:
   Equivalence Instruction_result_equiv.
 Proof.
   split.
-  - intros instr.
-    apply Execute_and_calculate_prob_nq_irrel.
-  - intros instr1 instr2 H12 nq1 nq2 Hq1 Hq2.
+  - intros instr. reflexivity.
+  - intros instr1 instr2 H.
     symmetry.
-    apply H12; assumption.
-  - intros instr1 instr2 instr3 H12 H23 nq1 nq3 Hvalid1 Hvalid3.
-    set (nq2 := S (Instr_max_index instr2)).
-
-    assert (Hvalid2 : Instr_max_index instr2 < nq2). {
-      unfold nq2. lia.
-    }
-
-    transitivity (Execute_and_calculate_prob nq2 nc instr2).
-    + apply H12; assumption.
-    + apply H23; assumption.
+    apply H.
+  - intros instr1 instr2 instr3 H12 H23.
+    transitivity (Execute_and_calculate_prob (Instr_max_index instr2) nc instr2).
+    + apply H12.
+    + apply H23.
 Qed.
 
 (* ============================================================================================== *)
@@ -907,10 +891,11 @@ Qed.
 
 Lemma Instruction_behavioral_equiv_implies_result_equiv:
   forall (instr1 instr2: Instruction),
+  Instr_bounded nq instr1 -> Instr_bounded nq instr2 ->
   Instruction_behavioral_equiv instr1 instr2 -> Instruction_result_equiv instr1 instr2.
 Proof.
-  intros instr1 instr2 Hequiv.
-  intros nq1 nq2 Hq1 Hq2.
+  intros instr1 instr2 H1 H2 Hequiv.
+  unfold Instruction_result_equiv.
   unfold Instruction_behavioral_equiv, ProgramState_behavioral_equiv in Hequiv.
 
   unfold Execute_and_calculate_prob, Execute.
