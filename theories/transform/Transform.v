@@ -346,7 +346,7 @@ Lemma Transform_swap_swap: forall (qbit1 qbit2: nat),
   Qbit_index_valid qbit1 ->
   Qbit_index_valid qbit2 ->
   Instruction_equiv nq
-  qasm{ swap qbit1 qbit2; swap qbit1 qbit2}
+  qasm{ swap qbit1 qbit2; swap qbit1 qbit2 }
   qasm{ I qbit1 }.
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.
@@ -362,7 +362,7 @@ Lemma Transform_cnot_cnot: forall (qbit1 qbit2: nat),
   Qbit_index_valid qbit1 ->
   Qbit_index_valid qbit2 ->
   Instruction_equiv nq
-  qasm{ cx qbit1 qbit2; cx qbit1 qbit2}
+  qasm{ cx qbit1 qbit2; cx qbit1 qbit2 }
   qasm{ I qbit1 }.
 Proof.
   intros qbit1 qbit2 Hq1 Hq2.

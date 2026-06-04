@@ -874,10 +874,9 @@ Proof.
     f_equal.
     rewrite <- mat_swap_single_commute.
     repeat rewrite <- mat_mul_assoc. f_equal.
-    + rewrite (mat_swap_proj1_commute _ Hq1 Hq2).
-      reflexivity.
-    + apply Hq1.
-    + apply Hq2.
+    all: try assumption.
+    rewrite (mat_swap_proj1_commute _ Hq1 Hq2).
+    reflexivity.
 Qed.
 
 Lemma Commute_swap_instr:
