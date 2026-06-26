@@ -434,7 +434,72 @@ Proof.
     all: assumption.
 Qed.
 
-(* Behavioral equivalence - insert quantum operation after all operations *)
+Lemma Transform_double_if:
+  forall (cbit: nat) (cond: bool) (instr: Instruction),
+  Instruction_equiv nq
+  (IfInstr cbit cond (IfInstr cbit cond instr))
+  (IfInstr cbit cond instr).
+Proof.
+  intros cbit cond instr ps Hinv.
+  assert (Hv: ProgramState_valid nq ps). {
+    apply ProgramState_invariant_valid.
+    apply Hinv.
+  }
+  revert Hv.
+  apply ProgramState_ind with (m:=ps).
+  - intros m m' Hm H Hm'.
+    apply ProgramState_equiv_equivalence with (y:=
+      (Execute_suppl nq (IfInstr cbit cond
+      (IfInstr cbit cond instr)) m)).
+  (* TODO : fold_add *)
+Admitted.
 
+Corollary Transform_double_if_true:
+  forall (cbit: nat) (instr: Instruction),
+  Instruction_equiv nq
+  qasm{ if (cbit == 1) if (cbit == 1) instr }
+  qasm{ if (cbit == 1) instr }.
+Proof.
+  intros; apply Transform_double_if.
+Qed.
+
+Corollary Transform_double_if_false:
+  forall (cbit: nat) (instr: Instruction),
+  Instruction_equiv nq
+  qasm{ if (cbit == 0) if (cbit == 0) instr }
+  qasm{ if (cbit == 0) instr }.
+Proof.
+  intros; apply Transform_double_if.
+Qed.
+
+Lemma Transform_if_nop:
+  forall (cbit: nat) (cond: bool) (instr: Instruction),
+  Instruction_equiv nq
+  (IfInstr cbit cond (IfInstr cbit (negb cond) instr))
+  NopInstr.
+Proof.
+  intros cbit cond instr ps Hinv.
+  simpl.
+Admitted.
+
+Corollary Transform_if_nop_tf:
+  forall (cbit: nat) (instr: Instruction),
+  Instruction_equiv nq
+  qasm{ if (cbit == 1) if (cbit == 0) instr }
+  qasm{ nop }.
+Proof.
+  intros; apply Transform_if_nop.
+Qed.
+
+Corollary Transform_if_nop_ft:
+  forall (cbit: nat) (instr: Instruction),
+  Instruction_equiv nq
+  qasm{ if (cbit == 0) if (cbit == 1) instr }
+  qasm{ nop }.
+Proof.
+  intros; apply Transform_if_nop.
+Qed.
+
+(* Behavioral equivalence - insert quantum operation after all operations *)
 
 End TRANSFORM.
