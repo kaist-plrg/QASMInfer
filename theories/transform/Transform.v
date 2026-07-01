@@ -5,6 +5,7 @@ Require Import QASMInfer.operator.All.
 Require Import QASMInfer.program.All.
 
 Require Import QASMInfer.transform.Equiv.
+Require Import QASMInfer.transform.Valid.
 Require Import QASMInfer.transform.Commute.
 
 From Stdlib Require Import List.
@@ -451,8 +452,151 @@ Proof.
     apply ProgramState_equiv_equivalence with (y:=
       (Execute_suppl nq (IfInstr cbit cond
       (IfInstr cbit cond instr)) m)).
-  (* TODO : fold_add *)
-Admitted.
+    apply Execute_suppl_Proper. symmetry. apply Hm.
+    rewrite H. apply Execute_suppl_Proper. apply Hm.
+    apply ProgramState_valid_equal with m'.
+    apply Hm'. symmetry. apply Hm.
+  - intros H. simpl.
+    rewrite PProperties.fold_Empty.
+    rewrite PProperties.fold_Empty.
+    reflexivity.
+    all: try apply ProgramState_equiv_equivalence.
+    all: apply PositiveMap.empty_1.
+  - intros k b m Hnotin H Hvalid.
+    assert (Hm: ProgramState_valid nq m). {
+      apply ProgramState_valid_add_inj with k b.
+      apply Hnotin. apply Hvalid.
+    }
+
+    assert (Hb: Branch_valid nq b). {
+      apply Hvalid with k.
+      rewrite PFacts.add_mapsto_iff.
+      left. split; reflexivity.
+    }
+
+    setoid_rewrite ValidProgramState_rewrite.
+    setoid_rewrite construct_foldF.
+    setoid_rewrite ValidProgramState_construct_add_rewrite.
+
+    setoid_rewrite ValidProgramState_fold_VstepF_add.
+    apply ValidProgramState_merge_Proper.
+    all: try rewrite ValidProgramState_in_iff.
+    all: try rewrite PFacts.not_find_in_iff.
+    all: try rewrite ValidProgramState_proj_construct.
+    all: try rewrite <- PFacts.not_find_in_iff.
+    all: try apply Hnotin.
+    + setoid_rewrite <- construct_foldF.
+      setoid_rewrite <- ValidProgramState_rewrite.
+      apply H. apply Hm.
+    + cbv [VF proj1_sig].
+      setoid_rewrite <- ValidProgramState_rewrite.
+      destruct (eqb (CState_read cbit k) cond) eqn:E; try reflexivity.
+      setoid_rewrite ValidProgramState_rewrite.
+      setoid_rewrite construct_foldF.
+      setoid_rewrite ValidProgramState_construct_add_rewrite.
+      setoid_rewrite ValidProgramState_fold_VstepF_add.
+      cbv [VstepF VF]. rewrite PProperties.fold_Empty.
+      setoid_rewrite <- ValidProgramState_merge_rewrite.
+      setoid_rewrite <- ValidProgramState_rewrite.
+      rewrite <- ProgramState_merge_empty_l. rewrite E.
+      cbv [proj1_sig]. reflexivity.
+      * apply ValidProgramState_equiv_equivalence.
+      * intros k' b' Hmapsto.
+        rewrite PFacts.find_mapsto_iff in Hmapsto.
+        match type of Hmapsto with
+        | ?e = Some _ =>
+          enough (e = None) by congruence
+        end.
+        apply ValidProgramState_construct_find_none.
+        apply PFacts.empty_o.
+      * rewrite ValidProgramState_in_iff.
+        rewrite PFacts.not_find_in_iff.
+        rewrite ValidProgramState_proj_construct.
+        apply PFacts.empty_o.
+    Unshelve.
+    all: try apply Execute_suppl_valid.
+    all: try apply ProgramState_singleton_valid.
+    all: try apply Hvalid.
+    all: try apply ProgramState_empty_valid.
+    all: try apply Hm.
+    all: try apply Hb.
+    {
+      intros k1 b1 Hb1.
+      destruct (eqb (CState_read cbit k1) cond).
+      - apply ProgramState_fold_valid.
+        apply ProgramState_singleton_valid. apply Hb1.
+        apply ProgramState_empty_valid.
+        intros k2 b2 ps' Hb2 Hps'.
+        apply ProgramState_merge_valid.
+        apply Hps'.
+        destruct (eqb (CState_read cbit k2) cond).
+        + apply Execute_suppl_valid.
+          apply ProgramState_singleton_valid. apply Hb2.
+        + apply ProgramState_singleton_valid. apply Hb2.
+      - apply ProgramState_singleton_valid. apply Hb1.
+    } {
+      intros k1 b1 Hb1.
+      destruct (eqb (CState_read cbit k1) cond).
+      - apply Execute_suppl_valid.
+        apply ProgramState_singleton_valid. apply Hb1.
+      - apply ProgramState_singleton_valid. apply Hb1.
+    } {
+      apply ProgramState_fold_valid.
+      apply Hm.
+      apply ProgramState_empty_valid.
+      intros k1 b1 ps' Hb1 Hps'.
+      apply ProgramState_merge_valid.
+      apply Hps'.
+      destruct (eqb (CState_read cbit k1) cond).
+      - apply ProgramState_fold_valid.
+        apply ProgramState_singleton_valid. apply Hb1.
+        apply ProgramState_empty_valid.
+        intros k2 b2 ps'' Hb2 Hps''.
+        apply ProgramState_merge_valid.
+        apply Hps''.
+        destruct (eqb (CState_read cbit k2) cond).
+        + apply Execute_suppl_valid.
+          apply ProgramState_singleton_valid. apply Hb2.
+        + apply ProgramState_singleton_valid. apply Hb2.
+      - apply ProgramState_singleton_valid. apply Hb1.
+    } {
+      apply ProgramState_fold_valid.
+      apply Hm.
+      apply ProgramState_empty_valid.
+      intros k1 b1 ps' Hb1 Hps'.
+      apply ProgramState_merge_valid.
+      apply Hps'.
+      destruct (eqb (CState_read cbit k1) cond).
+      - apply Execute_suppl_valid.
+        apply ProgramState_singleton_valid. apply Hb1.
+      - apply ProgramState_singleton_valid. apply Hb1.
+    } {
+      apply ProgramState_fold_valid.
+      apply ProgramState_singleton_valid. apply Hb.
+      apply ProgramState_empty_valid.
+      intros k1 b1 ps' Hb1 Hps'.
+      apply ProgramState_merge_valid.
+      apply Hps'.
+      destruct (eqb (CState_read cbit k1) cond).
+      - apply Execute_suppl_valid.
+        apply ProgramState_singleton_valid. apply Hb1.
+      - apply ProgramState_singleton_valid. apply Hb1.
+    } {
+      intros k1 b1 Hb1.
+      destruct (eqb (CState_read cbit k1) cond).
+      - apply Execute_suppl_valid.
+        apply ProgramState_singleton_valid. apply Hb1.
+      - apply ProgramState_singleton_valid. apply Hb1.
+    } {
+      apply ProgramState_merge_valid.
+      apply ProgramState_empty_valid.
+      cbv [proj1_sig].
+      destruct (eqb (CState_read cbit k) cond).
+      - apply Execute_suppl_valid.
+        apply ProgramState_singleton_valid. apply Hb.
+      - apply ProgramState_singleton_valid. apply Hb.
+    }
+Qed.
 
 Corollary Transform_double_if_true:
   forall (cbit: nat) (instr: Instruction),
@@ -479,7 +623,48 @@ Lemma Transform_if_nop:
   NopInstr.
 Proof.
   intros cbit cond instr ps Hinv.
-  simpl.
+  assert (Hv: ProgramState_valid nq ps). {
+    apply ProgramState_invariant_valid.
+    apply Hinv.
+  }
+  revert Hv.
+  apply ProgramState_ind with (m:=ps).
+  - intros m m' Hm H Hm'.
+    apply ProgramState_equiv_equivalence with (y:=
+      (Execute_suppl nq (IfInstr cbit cond
+      (IfInstr cbit (negb cond) instr)) m)).
+    apply Execute_suppl_Proper. symmetry. apply Hm.
+    rewrite H. apply Execute_suppl_Proper. apply Hm.
+    apply ProgramState_valid_equal with m'.
+    apply Hm'. symmetry. apply Hm.
+  - intros H. simpl.
+    rewrite PProperties.fold_Empty.
+    reflexivity.
+    apply ProgramState_equiv_equivalence.
+    apply PositiveMap.empty_1.
+  - intros k b m Hnotin H Hvalid.
+    assert (Hm: ProgramState_valid nq m). {
+      apply ProgramState_valid_add_inj with k b.
+      apply Hnotin. apply Hvalid.
+    }
+
+    assert (Hb: Branch_valid nq b). {
+      apply Hvalid with k.
+      rewrite PFacts.add_mapsto_iff.
+      left. split; reflexivity.
+    }
+
+    setoid_rewrite ValidProgramState_rewrite.
+    setoid_rewrite construct_foldF.
+    setoid_rewrite ValidProgramState_construct_add_rewrite.
+
+    setoid_rewrite ValidProgramState_fold_VstepF_add.
+    all: try rewrite ValidProgramState_in_iff.
+    all: try rewrite PFacts.not_find_in_iff.
+    all: try rewrite ValidProgramState_proj_construct.
+    all: try rewrite <- PFacts.not_find_in_iff.
+    all: try apply Hnotin.
+    cbv [VstepF VF].
 Admitted.
 
 Corollary Transform_if_nop_tf:

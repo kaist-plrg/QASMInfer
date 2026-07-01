@@ -463,6 +463,22 @@ Proof.
   apply Hfind.
 Qed.
 
+Lemma ProgramState_fold_valid: forall {f: positive -> Branch -> ProgramState -> ProgramState}
+  (ps acc: ProgramState),  
+  ProgramState_valid ps -> ProgramState_valid acc ->
+  (forall k b ps', Branch_valid b -> ProgramState_valid ps' -> ProgramState_valid (f k b ps')) ->
+  ProgramState_valid (PositiveMap.fold f ps acc).
+Proof.
+  intros f ps acc Hps Hacc Hf.
+  apply PProperties.fold_rec_bis.
+  - intros m m' a Hm Ha. apply Ha.
+  - apply Hacc.
+  - intros k b a m Hmapsto Hnotin Ha.
+    apply Hf.
+    + apply Hps with k. apply Hmapsto.
+    + apply Ha.
+Qed.
+
 Lemma ProgramState_map_prob_preserve: forall (f: Branch -> Branch) (ps: ProgramState),
   (forall b, B_prob b = B_prob (f b)) ->
   ProgramState_sum_prob ps = ProgramState_sum_prob (PositiveMap.map f ps).
