@@ -842,6 +842,82 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma PositiveMap_find_none_of_not_in :
+  forall {A} k (m : PositiveMap.t A),
+    ~ PositiveMap.In k m ->
+    PositiveMap.find k m = None.
+Proof.
+  intros A k m Hnotin.
+  destruct (PositiveMap.find k m) eqn:Hfind.
+  - exfalso.
+    apply Hnotin.
+    exists a.
+    apply PositiveMap.find_2.
+    exact Hfind.
+  - reflexivity.
+Qed.
+
+Lemma PositiveMap_find_none_of_empty :
+  forall {A} k (m : PositiveMap.t A),
+    PositiveMap.Empty m ->
+    PositiveMap.find k m = None.
+Proof.
+  intros A k m Hempty.
+  destruct (PositiveMap.find k m) eqn:Hfind.
+  - exfalso.
+    eapply Hempty.
+    apply PositiveMap.find_2.
+    exact Hfind.
+  - reflexivity.
+Qed.
+
+Lemma ProgramState_merge_singleton_add:
+  forall k b ps,
+    Branch_valid nq b ->
+    ProgramState_valid nq ps ->
+    ~ PositiveMap.In k ps ->
+    ProgramState_equiv
+      (PositiveMap.add k b ps)
+      (ProgramState_merge nq ps
+        (PositiveMap.add k b (PositiveMap.empty _))).
+Proof.
+  intros k b ps _ _ Hnotin.
+  unfold ProgramState_merge.
+
+  apply PProperties.fold_rec_bis.
+  - intros m m' a Heq Ha.
+    rewrite <- Ha.
+    intros y.
+    repeat rewrite PFacts.add_o.
+    destruct (PFacts.eq_dec k y); try reflexivity.
+    rewrite Heq. reflexivity.
+  - reflexivity.
+  - intros k' b' a m Hmapsto Hnotin' Heq.
+
+    assert (Hk: k <> k'). {
+      intros Hk.
+      rewrite PFacts.not_find_in_iff in Hnotin.
+      rewrite PFacts.find_mapsto_iff in Hmapsto.
+      rewrite <- Hk in Hmapsto.
+      rewrite Hmapsto in Hnotin.
+      discriminate.
+    }
+    assert (Hfind: PositiveMap.find k' a = None). {
+      rewrite <- Heq. rewrite PFacts.add_o.
+      destruct (PFacts.eq_dec k k'); try lia.
+      rewrite PFacts.not_find_in_iff in Hnotin'.
+      apply Hnotin'.
+    }
+
+    unfold merge_step.
+    rewrite Hfind.
+    intros cstate.
+    rewrite PositiveMap_add_comm; try assumption.
+    repeat rewrite PFacts.add_o.
+    destruct (PFacts.eq_dec k' cstate); try reflexivity.
+    rewrite <- PFacts.add_o. apply Heq.
+Qed.
+
 (* ============================================================================================== *)
 (* Proof of equivalence ========================================================================= *)
 

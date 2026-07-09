@@ -90,4 +90,19 @@ Proof.
       reflexivity.
 Qed.
 
+Lemma PositiveMap_add_comm :
+  forall {A} (k1 k2 : PositiveMap.key) (v1 v2 : A)
+         (m : PositiveMap.t A),
+    k1 <> k2 ->
+    PositiveMap.Equal
+      (PositiveMap.add k1 v1 (PositiveMap.add k2 v2 m))
+      (PositiveMap.add k2 v2 (PositiveMap.add k1 v1 m)).
+Proof.
+  intros A k1 k2 v1 v2 m Hneq y.
+  repeat rewrite PFacts.add_o.
+  destruct (PositiveMap.E.eq_dec k1 y);
+  destruct (PositiveMap.E.eq_dec k2 y);
+  subst; try reflexivity; congruence.
+Qed.
+
 End POSITIVEMAP_LEMMAS.
