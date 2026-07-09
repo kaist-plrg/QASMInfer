@@ -616,11 +616,11 @@ Proof.
   intros; apply Transform_double_if.
 Qed.
 
-Lemma Transform_if_nop:
+Lemma Transform_double_if_nop:
   forall (cbit: nat) (cond: bool) (instr: Instruction),
   Instruction_equiv nq
   (IfInstr cbit cond (IfInstr cbit (negb cond) instr))
-  NopInstr.
+  (IfInstr cbit cond (IfInstr cbit (negb cond) NopInstr)).
 Proof.
   intros cbit cond instr ps Hinv.
   assert (Hv: ProgramState_valid nq ps). {
@@ -664,7 +664,151 @@ Proof.
     all: try rewrite ValidProgramState_proj_construct.
     all: try rewrite <- PFacts.not_find_in_iff.
     all: try apply Hnotin.
-    cbv [VstepF VF].
+    apply ValidProgramState_merge_Proper.
+    + setoid_rewrite <- construct_foldF.
+      setoid_rewrite <- ValidProgramState_rewrite.
+      apply H. apply Hm.
+    + setoid_rewrite <- ValidProgramState_rewrite.
+      destruct (eqb (CState_read cbit k) cond) eqn:E; try reflexivity.
+      setoid_rewrite ValidProgramState_rewrite.
+      setoid_rewrite construct_foldF.
+      setoid_rewrite ValidProgramState_construct_add_rewrite.
+
+      setoid_rewrite ValidProgramState_fold_VstepF_add.
+      all: try (rewrite ValidProgramState_in_iff;
+        rewrite PFacts.not_find_in_iff;
+        rewrite ValidProgramState_proj_construct;
+        apply PFacts.empty_o).
+      apply ValidProgramState_merge_Proper.
+      * reflexivity.
+      * setoid_rewrite <- ValidProgramState_rewrite.
+        destruct (eqb (CState_read cbit k) (negb cond)) eqn:E'; try reflexivity.
+        destruct cond, (CState_read cbit k); discriminate.
+  Unshelve.
+  all: try apply Execute_suppl_valid.
+  all: try apply ProgramState_singleton_valid.
+  all: try apply Hvalid.
+  all: try apply ProgramState_empty_valid.
+  all: try apply Hm.
+  all: try apply Hb.
+  {
+    intros k1 b1 Hb1.
+    destruct (eqb (CState_read cbit k1) cond) eqn:E.
+    - apply ProgramState_fold_valid.
+      apply ProgramState_singleton_valid.
+      apply Hb1.
+      apply ProgramState_empty_valid.
+      intros k2 b2 ps' Hb2 Hps'.
+      apply ProgramState_merge_valid.
+      apply Hps'.
+      destruct (eqb (CState_read cbit k2) (negb cond)) eqn:E'.
+      + apply Execute_suppl_valid.
+        apply ProgramState_singleton_valid. apply Hb2.
+      + apply ProgramState_singleton_valid. apply Hb2.
+    - apply ProgramState_singleton_valid.
+      apply Hb1.
+  } {
+    intros k1 b1 Hb1.
+    destruct (eqb (CState_read cbit k1) cond) eqn:E.
+    - apply ProgramState_fold_valid.
+      apply ProgramState_singleton_valid.
+      apply Hb1.
+      apply ProgramState_empty_valid.
+      intros k2 b2 ps' Hb2 Hps'.
+      apply ProgramState_merge_valid.
+      apply Hps'.
+      destruct (eqb (CState_read cbit k2) (negb cond)) eqn:E'.
+      + apply ProgramState_singleton_valid. apply Hb2.
+      + apply ProgramState_singleton_valid. apply Hb2.
+    - apply ProgramState_singleton_valid.
+      apply Hb1.
+  } {
+    apply ProgramState_fold_valid.
+    apply Hm.
+    apply ProgramState_empty_valid.
+    intros k1 b1 ps' Hb1 Hps'.
+    apply ProgramState_merge_valid.
+    apply Hps'.
+    destruct (eqb (CState_read cbit k1) cond) eqn:E.
+    - apply ProgramState_fold_valid.
+      apply ProgramState_singleton_valid.
+      apply Hb1.
+      apply ProgramState_empty_valid.
+      intros k2 b2 ps'' Hb2 Hps''.
+      apply ProgramState_merge_valid.
+      apply Hps''.
+      destruct (eqb (CState_read cbit k2) (negb cond)) eqn:E'.
+      + apply Execute_suppl_valid.
+        apply ProgramState_singleton_valid. apply Hb2.
+      + apply ProgramState_singleton_valid. apply Hb2.
+    - apply ProgramState_singleton_valid.
+      apply Hb1.
+  } {
+    apply ProgramState_fold_valid.
+    apply Hm.
+    apply ProgramState_empty_valid.
+    intros k1 b1 ps' Hb1 Hps'.
+    apply ProgramState_merge_valid.
+    apply Hps'.
+    destruct (eqb (CState_read cbit k1) cond) eqn:E.
+    - apply ProgramState_fold_valid.
+      apply ProgramState_singleton_valid.
+      apply Hb1.
+      apply ProgramState_empty_valid.
+      intros k2 b2 ps'' Hb2 Hps''.
+      apply ProgramState_merge_valid.
+      apply Hps''.
+      destruct (eqb (CState_read cbit k2) (negb cond)) eqn:E'.
+      + apply ProgramState_singleton_valid. apply Hb2.
+      + apply ProgramState_singleton_valid. apply Hb2.
+    - apply ProgramState_singleton_valid.
+      apply Hb1.
+  } {
+    apply ProgramState_fold_valid.
+    apply ProgramState_singleton_valid. apply Hb.
+    apply ProgramState_empty_valid.
+    intros k1 b1 ps' Hb1 Hps'.
+    apply ProgramState_merge_valid.
+    apply Hps'.
+    destruct (eqb (CState_read cbit k1) (negb cond)) eqn:E2.
+    - apply Execute_suppl_valid.
+      apply ProgramState_singleton_valid.
+      apply Hb1.
+    - apply ProgramState_singleton_valid.
+      apply Hb1.
+  } {
+    apply ProgramState_fold_valid.
+    apply ProgramState_singleton_valid. apply Hb.
+    apply ProgramState_empty_valid.
+    intros k1 b1 ps' Hb1 Hps'.
+    apply ProgramState_merge_valid.
+    apply Hps'.
+    destruct (eqb (CState_read cbit k1) (negb cond)) eqn:E2.
+    - apply ProgramState_singleton_valid.
+      apply Hb1.
+    - apply ProgramState_singleton_valid.
+      apply Hb1.
+  } {
+    intros k1 b1 Hb1.
+    destruct (eqb (CState_read cbit k1) (negb cond)) eqn:E2.
+    - apply Execute_suppl_valid.
+      apply ProgramState_singleton_valid. apply Hb1.
+    - apply ProgramState_singleton_valid. apply Hb1.
+  } {
+    intros k1 b1 Hb1.
+    destruct (eqb (CState_read cbit k1) (negb cond)) eqn:E2;
+    apply ProgramState_singleton_valid; apply Hb1.
+  }
+Qed.
+
+Lemma Transform_if_nop:
+  forall (cbit: nat) (cond: bool),
+  Instruction_equiv nq
+  qasm{ $(IfInstr cbit cond NopInstr) }
+  NopInstr.
+Proof.
+  intros cbit cond ps Hinv.
+  simpl.
 Admitted.
 
 Corollary Transform_if_nop_tf:
@@ -673,8 +817,8 @@ Corollary Transform_if_nop_tf:
   qasm{ if (cbit == 1) if (cbit == 0) instr }
   qasm{ nop }.
 Proof.
-  intros; apply Transform_if_nop.
-Qed.
+  intros. rewrite Transform_double_if_nop.
+Admitted.
 
 Corollary Transform_if_nop_ft:
   forall (cbit: nat) (instr: Instruction),
@@ -682,8 +826,8 @@ Corollary Transform_if_nop_ft:
   qasm{ if (cbit == 0) if (cbit == 1) instr }
   qasm{ nop }.
 Proof.
-  intros; apply Transform_if_nop.
-Qed.
+  intros. rewrite Transform_double_if_nop.
+Admitted.
 
 (* Behavioral equivalence - insert quantum operation after all operations *)
 
