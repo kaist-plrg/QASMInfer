@@ -809,6 +809,21 @@ Lemma Transform_if_nop:
 Proof.
   intros cbit cond ps Hinv.
   simpl.
+  replace
+    (fun (cstate : PositiveMap.key) (b : Branch nq) (acc : ProgramState nq) =>
+       ProgramState_merge nq acc
+         (if eqb (CState_read cbit cstate) cond
+          then PositiveMap.add cstate b (PositiveMap.empty (Branch nq))
+          else PositiveMap.add cstate b (PositiveMap.empty (Branch nq))))
+  with
+    (fun (cstate : PositiveMap.key) (b : Branch nq) (acc : ProgramState nq) =>
+       ProgramState_merge nq acc
+         (PositiveMap.add cstate b (PositiveMap.empty (Branch nq)))).
+  - shelve.
+  - extensionality cstate.
+    extensionality b.
+    extensionality acc.
+    destruct (eqb (CState_read cbit cstate) cond); reflexivity.
 Admitted.
 
 Corollary Transform_if_nop_tf:

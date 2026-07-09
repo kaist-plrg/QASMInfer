@@ -929,6 +929,108 @@ Section ValidPS.
     apply construct_foldF'.
     apply Hm.
   Qed.
+
+  Lemma ProgramState_fold_stepF_add :
+    forall k b (Hb : Branch_valid nq b)
+           (m init : ProgramState nq)
+           (Hm : ProgramState_valid nq m)
+           (Hi : ProgramState_valid nq init),
+      ~ PositiveMap.In k m ->
+      ProgramState_equiv nq
+        (PositiveMap.fold stepF
+           (PositiveMap.add k b m)
+           init)
+        (stepF k b
+           (PositiveMap.fold stepF m init)).
+  Proof.
+    intros k b Hb m init Hm Hi Hnotin.
+
+    assert (Hadd : ProgramState_valid nq (PositiveMap.add k b m)).
+    { apply ProgramState_add_valid; assumption. }
+
+    assert (Hfold_m :
+      ProgramState_valid nq (PositiveMap.fold stepF m init)).
+    { apply fold_stepF_valid; assumption. }
+
+    assert (Hfold_add :
+      ProgramState_valid nq
+        (PositiveMap.fold stepF (PositiveMap.add k b m) init)).
+    { apply fold_stepF_valid; assumption. }
+
+    assert (Hright :
+      ProgramState_valid nq
+        (stepF k b (PositiveMap.fold stepF m init))).
+    {
+      unfold stepF.
+      apply ProgramState_merge_valid.
+      - exact Hfold_m.
+      - apply F_valid. exact Hb.
+    }
+
+    rewrite (ValidProgramState_rewrite
+      (PositiveMap.fold stepF (PositiveMap.add k b m) init)
+      (stepF k b (PositiveMap.fold stepF m init))
+      Hfold_add Hright).
+
+    apply ValidProgramState_equiv_equivalence with
+      (y :=
+        PositiveMap.fold VstepF
+          (ValidProgramState_construct
+            (PositiveMap.add k b m) Hadd)
+          (ValidProgramState_construct init Hi)).
+    - apply construct_foldF.
+    - apply ValidProgramState_equiv_equivalence with
+        (y :=
+          PositiveMap.fold VstepF
+            (ValidProgramState_add k b Hb
+              (ValidProgramState_construct m Hm))
+            (ValidProgramState_construct init Hi)).
+      + apply ValidProgramState_fold_Proper.
+        * intros k0 vb.
+          unfold Proper, respectful.
+          intros acc1 acc2 Hacc.
+          apply VstepF_Proper; try reflexivity.
+          exact Hacc.
+        * apply ValidProgramState_construct_add_rewrite.
+        * apply ValidProgramState_equiv_equivalence.
+      + apply ValidProgramState_equiv_equivalence with
+          (y :=
+            VstepF k (exist _ b Hb)
+              (PositiveMap.fold VstepF
+                (ValidProgramState_construct m Hm)
+                (ValidProgramState_construct init Hi))).
+        * apply ValidProgramState_fold_VstepF_add.
+          intros Hcontra.
+          apply ValidProgramState_in_iff in Hcontra.
+          apply Hnotin.
+          destruct Hcontra as [b' Hb'].
+          exists b'.
+          rewrite PFacts.find_mapsto_iff.
+          rewrite PFacts.find_mapsto_iff in Hb'.
+          rewrite <- Hb'.
+          rewrite ValidProgramState_proj_construct.
+          reflexivity.
+        * apply ValidProgramState_equiv_equivalence with
+            (y :=
+              VstepF k (exist _ b Hb)
+                (ValidProgramState_construct
+                  (PositiveMap.fold stepF m init) Hfold_m)).
+          -- apply VstepF_Proper; try reflexivity.
+             apply ValidProgramState_equiv_equivalence.
+             apply construct_foldF.
+          -- apply ValidProgramState_equiv_equivalence with
+               (y :=
+                 ValidProgramState_construct
+                   (stepF k b (PositiveMap.fold stepF m init))
+                   (ProgramState_merge_valid nq
+                     (PositiveMap.fold stepF m init)
+                     (F k b)
+                     Hfold_m
+                     (F_valid k b Hb))).
+             ++ apply ValidProgramState_equiv_equivalence.
+                apply construct_stepF.
+             ++ apply ValidProgramState_proof_irrel.
+  Qed.
     
 End ValidPS.
 

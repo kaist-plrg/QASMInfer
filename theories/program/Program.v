@@ -448,6 +448,17 @@ Proof.
     discriminate H. apply n.
 Qed.
 
+Lemma ProgramState_add_valid: forall k b (m: ProgramState),
+  Branch_valid b -> ProgramState_valid m ->
+  ProgramState_valid (PositiveMap.add k b m).
+Proof.
+  intros k b m Hb Hm k' b' Hmapsto.
+  rewrite PositiveMap.PFacts.add_mapsto_iff in Hmapsto.
+  destruct Hmapsto as [[Hk Heq] | [Hk Heq]].
+  - rewrite <- Heq. apply Hb.
+  - apply Hm with k'. apply Heq.
+Qed.
+
 Lemma ProgramState_map_valid: forall {f: Branch -> Branch} {ps: ProgramState},
   ProgramState_valid ps -> (forall b, Branch_valid b -> Branch_valid (f b)) ->
   ProgramState_valid (PositiveMap.map f ps).
@@ -901,6 +912,18 @@ Proof.
     all: assumption.
 Qed.
 
+Lemma Execute_swap_instr_branch_valid:
+  forall (q1 q2: nat) (b: Branch),
+  Branch_valid b -> Branch_valid (Execute_swap_instr_branch q1 q2 b).
+Proof.
+  intros q1 q2 b [Hvalid Hprob].
+  unfold Branch_valid in *; simpl.
+  split.
+  apply den_valid_uop.
+  apply mat_swap_unitary.
+  all: assumption.
+Qed.
+
 Lemma Execute_swap_instr_valid:
   forall (q1 q2: nat) (ps: ProgramState),
   ProgramState_valid ps -> ProgramState_valid (Execute_swap_instr q1 q2 ps).
@@ -908,12 +931,7 @@ Proof.
   intros.
   apply ProgramState_map_valid.
   - apply H.
-  - intros b [Hvalid Hprob].
-    unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
-    split.
-    apply den_valid_uop.
-    apply mat_swap_unitary.
-    all: assumption.
+  - apply Execute_swap_instr_branch_valid.
 Qed.
 
 Lemma Execute_measure_instr_branch_valid:
