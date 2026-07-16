@@ -764,6 +764,10 @@ Qed.
 (* ============================================================================================== *)
 (* execution ==================================================================================== *)
 
+Definition fold_step (F: PositiveMap.key -> Branch -> ProgramState)
+  (k: PositiveMap.key) (b: Branch) (acc: ProgramState): ProgramState :=
+  ProgramState_merge acc (F k b).
+
 Definition Execute_rotate_instr_branch (theta phi lambda: R) (target: nat) (branch: Branch): Branch :=
   {|
     B_qstate := den_uop (mat_single nq target (mat_rot theta phi lambda)) (B_qstate branch) ;
@@ -823,10 +827,7 @@ Definition Execute_measure_instr_branch (qbit cbit: nat) (cstate: CState) (branc
   end.
 
 Definition Execute_measure_instr (qbit cbit: nat) (ps: ProgramState): ProgramState :=
-  PositiveMap.fold (fun cstate branch acc =>
-    ProgramState_merge acc (Execute_measure_instr_branch qbit cbit cstate branch)
-  ) ps (PositiveMap.empty Branch).
-
+  PositiveMap.fold (fold_step (Execute_measure_instr_branch qbit cbit)) ps (PositiveMap.empty Branch).
 
 Definition Execute_reset_instr_branch (target: nat) (branch: Branch): Branch :=
   {|
@@ -846,16 +847,22 @@ Fixpoint Execute_suppl (instr: Instruction) (ps: ProgramState): ProgramState :=
     | SwapInstr q1 q2                     => Execute_swap_instr q1 q2 ps
     | MeasureInstr qbit cbit              => Execute_measure_instr qbit cbit ps
     | SeqInstr il                         => List.fold_left (fun ps' instr => Execute_suppl instr ps') il ps
-    | IfInstr cbit cond subinstr          => PositiveMap.fold (fun cstate b acc =>
-        let ps_single := PositiveMap.add cstate b (PositiveMap.empty Branch) in
-        ProgramState_merge acc (
-          if (eqb (CState_read cbit cstate) cond)
-          then Execute_suppl subinstr ps_single
-          else ps_single
-        )
-      ) ps (PositiveMap.empty Branch)
+    | IfInstr cbit cond subinstr          => PositiveMap.fold 
+      (fold_step (fun k b =>
+        let ps_single := PositiveMap.add k b (PositiveMap.empty Branch) in
+        if (eqb (CState_read cbit k) cond)
+        then Execute_suppl subinstr ps_single
+        else ps_single)
+      )
+      ps (PositiveMap.empty Branch)
     | ResetInstr target                   => Execute_reset_instr target ps
     end.
+
+Definition Execute_if_instr_branch (cbit: nat) (cond: bool) (subinstr: Instruction) (k: PositiveMap.key) (b: Branch) :=
+  let ps_single := PositiveMap.add k b (PositiveMap.empty Branch) in
+  if (eqb (CState_read cbit k) cond)
+  then Execute_suppl subinstr ps_single
+  else ps_single.
 
 Definition Execute (instr: Instruction): ProgramState :=
   Execute_suppl instr ProgramState_init.
@@ -1272,6 +1279,7 @@ Proof.
       apply PFacts.empty_mapsto_iff in H0.
       contradiction.
     + intros cstate_fold branch_fold acc Hmaps_fold Hacc_valid.
+      cbv [fold_step].
       destruct (eqb (CState_read cbit cstate_fold) cond) eqn:Hcond.
       all: apply (ProgramState_merge_valid _ _ Hacc_valid).
       1: apply IHinstr.
@@ -1283,6 +1291,21 @@ Proof.
       all: apply PFacts.empty_mapsto_iff in Hmaps_acc.
       all: contradiction.
   - apply Execute_reset_instr_valid; apply H.
+Qed.
+
+Corollary Execute_if_instr_branch_valid:
+  forall (cbit: nat) (cond: bool) (instr: Instruction) (cstate: CState) (branch: Branch),
+  Branch_valid branch ->
+  ProgramState_valid (Execute_if_instr_branch cbit cond instr cstate branch).
+Proof.
+  intros.
+  unfold Execute_if_instr_branch.
+  destruct (eqb (CState_read cbit cstate) cond).
+  - apply Execute_suppl_valid.
+    apply ProgramState_singleton_valid.
+    apply H.
+  - apply ProgramState_singleton_valid.
+    apply H.
 Qed.
 
 Lemma Execute_suppl_prob_valid:

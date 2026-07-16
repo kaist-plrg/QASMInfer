@@ -730,12 +730,6 @@ Section ValidPS.
       Branch_valid nq b ->
       ProgramState_valid nq (F k b).
 
-  Definition stepF
-    (k : PositiveMap.key)
-    (b : Branch nq)
-    (acc : ProgramState nq) : ProgramState nq :=
-    ProgramState_merge nq acc (F k b).
-
   Definition VF
     (k : PositiveMap.key)
     (vb : ValidBranch) : ValidProgramState :=
@@ -765,13 +759,13 @@ Section ValidPS.
     forall ps (Hps : ProgramState_valid nq ps) k b (Hb : Branch_valid nq b),
       ValidProgramState_equiv
         (ValidProgramState_construct
-           (stepF k b ps)
+           (fold_step nq F k b ps)
            (ProgramState_merge_valid nq ps (F k b) Hps (F_valid k b Hb)))
         (VstepF k (exist _ b Hb)
            (ValidProgramState_construct ps Hps)).
   Proof.
     intros.
-    unfold stepF, VstepF, VF.
+    unfold VstepF, VF.
     apply ValidProgramState_merge_rewrite.
   Qed.
 
@@ -823,28 +817,27 @@ Section ValidPS.
     forall m i,
       ProgramState_valid nq m ->
       ProgramState_valid nq i ->
-      ProgramState_valid nq (PositiveMap.fold stepF m i).
+      ProgramState_valid nq (PositiveMap.fold (fold_step nq F) m i).
   Proof.
     intros m i Hm Hi.
     eapply (PProperties.fold_rec_nodep
       (P := fun st => ProgramState_valid nq st)
-      (f := stepF)
+      (f := (fold_step nq F))
       (i := i)
       (m := m)); eauto.
     intros k b acc Hmap Hacc.
-    unfold stepF.
     eapply ProgramState_merge_valid; eauto.
   Qed.
 
   Lemma construct_foldF' :
   forall m (Hm : ProgramState_valid nq m)
          i (Hi : ProgramState_valid nq i),
-    ProgramState_valid nq (PositiveMap.fold stepF m i) /\
+    ProgramState_valid nq (PositiveMap.fold (fold_step nq F) m i) /\
     forall (Hm' : ProgramState_valid nq m)
-           (Hfold : ProgramState_valid nq (PositiveMap.fold stepF m i)),
+           (Hfold : ProgramState_valid nq (PositiveMap.fold (fold_step nq F) m i)),
       ValidProgramState_equiv
         (ValidProgramState_construct
-           (PositiveMap.fold stepF m i)
+           (PositiveMap.fold (fold_step nq F) m i)
            Hfold)
         (PositiveMap.fold VstepF
            (ValidProgramState_construct m Hm')
@@ -864,8 +857,7 @@ Section ValidPS.
         apply Hmapsto.
     - intros k e a m' m'' Hmapsto Hnotin Hadd [Ha H].
       split.
-      + unfold stepF.
-        apply ProgramState_merge_valid.
+      + apply ProgramState_merge_valid.
         apply Ha.
         apply F_valid.
         apply (Hm k e Hmapsto).
@@ -916,10 +908,10 @@ Section ValidPS.
   Lemma construct_foldF :
     forall m (Hm : ProgramState_valid nq m)
            i (Hi : ProgramState_valid nq i)
-           (H: ProgramState_valid nq (PositiveMap.fold stepF m i)),
+           (H: ProgramState_valid nq (PositiveMap.fold (fold_step nq F) m i)),
       ValidProgramState_equiv
         (ValidProgramState_construct
-           (PositiveMap.fold stepF m i)
+           (PositiveMap.fold (fold_step nq F) m i)
            H)
         (PositiveMap.fold VstepF
            (ValidProgramState_construct m Hm)
@@ -937,11 +929,11 @@ Section ValidPS.
            (Hi : ProgramState_valid nq init),
       ~ PositiveMap.In k m ->
       ProgramState_equiv nq
-        (PositiveMap.fold stepF
+        (PositiveMap.fold (fold_step nq F)
            (PositiveMap.add k b m)
            init)
-        (stepF k b
-           (PositiveMap.fold stepF m init)).
+        (fold_step nq F k b
+           (PositiveMap.fold (fold_step nq F) m init)).
   Proof.
     intros k b Hb m init Hm Hi Hnotin.
 
@@ -949,27 +941,26 @@ Section ValidPS.
     { apply ProgramState_add_valid; assumption. }
 
     assert (Hfold_m :
-      ProgramState_valid nq (PositiveMap.fold stepF m init)).
+      ProgramState_valid nq (PositiveMap.fold (fold_step nq F) m init)).
     { apply fold_stepF_valid; assumption. }
 
     assert (Hfold_add :
       ProgramState_valid nq
-        (PositiveMap.fold stepF (PositiveMap.add k b m) init)).
+        (PositiveMap.fold (fold_step nq F) (PositiveMap.add k b m) init)).
     { apply fold_stepF_valid; assumption. }
 
     assert (Hright :
       ProgramState_valid nq
-        (stepF k b (PositiveMap.fold stepF m init))).
+        (fold_step nq F k b (PositiveMap.fold (fold_step nq F) m init))).
     {
-      unfold stepF.
       apply ProgramState_merge_valid.
       - exact Hfold_m.
       - apply F_valid. exact Hb.
     }
 
     rewrite (ValidProgramState_rewrite
-      (PositiveMap.fold stepF (PositiveMap.add k b m) init)
-      (stepF k b (PositiveMap.fold stepF m init))
+      (PositiveMap.fold (fold_step nq F) (PositiveMap.add k b m) init)
+      (fold_step nq F k b (PositiveMap.fold (fold_step nq F) m init))
       Hfold_add Hright).
 
     apply ValidProgramState_equiv_equivalence with
@@ -1014,16 +1005,16 @@ Section ValidPS.
             (y :=
               VstepF k (exist _ b Hb)
                 (ValidProgramState_construct
-                  (PositiveMap.fold stepF m init) Hfold_m)).
+                  (PositiveMap.fold (fold_step nq F) m init) Hfold_m)).
           -- apply VstepF_Proper; try reflexivity.
              apply ValidProgramState_equiv_equivalence.
              apply construct_foldF.
           -- apply ValidProgramState_equiv_equivalence with
                (y :=
                  ValidProgramState_construct
-                   (stepF k b (PositiveMap.fold stepF m init))
+                   (fold_step nq F k b (PositiveMap.fold (fold_step nq F) m init))
                    (ProgramState_merge_valid nq
-                     (PositiveMap.fold stepF m init)
+                     (PositiveMap.fold (fold_step nq F) m init)
                      (F k b)
                      Hfold_m
                      (F_valid k b Hb))).

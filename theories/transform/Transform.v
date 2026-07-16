@@ -448,77 +448,58 @@ Proof.
   }
   revert Hv.
   apply ProgramState_ind with (m:=ps).
-  - intros m m' Hm H Hm'.
-    apply ProgramState_equiv_equivalence with (y:=
-      (Execute_suppl nq (IfInstr cbit cond
-      (IfInstr cbit cond instr)) m)).
-    apply Execute_suppl_Proper. symmetry. apply Hm.
-    rewrite H. apply Execute_suppl_Proper. apply Hm.
-    apply ProgramState_valid_equal with m'.
-    apply Hm'. symmetry. apply Hm.
-  - intros H. simpl.
-    rewrite PProperties.fold_Empty.
-    rewrite PProperties.fold_Empty.
-    reflexivity.
-    all: try apply ProgramState_equiv_equivalence.
-    all: apply PositiveMap.empty_1.
-  - intros k b m Hnotin H Hvalid.
-    assert (Hm: ProgramState_valid nq m). {
-      apply ProgramState_valid_add_inj with k b.
-      apply Hnotin. apply Hvalid.
+  - intros m0 m1 Heq H Hm1.
+    etransitivity. {
+      apply Execute_suppl_Proper.
+      symmetry. apply Heq.
     }
-
+    etransitivity. {
+      apply H.
+      apply ProgramState_valid_equal with m1.
+      apply Hm1.
+      symmetry. apply Heq.
+    }
+    apply Execute_suppl_Proper. apply Heq.
+  - reflexivity.
+  - intros k b m Hnotin H Hvalid. simpl.
     assert (Hb: Branch_valid nq b). {
       apply Hvalid with k.
-      rewrite PFacts.add_mapsto_iff.
-      left. split; reflexivity.
+      apply PFacts.find_mapsto_iff.
+      apply PFacts.add_eq_o.
+      reflexivity.
+    }
+    assert (Hm: ProgramState_valid nq m). {
+      apply ProgramState_valid_add_inj with k b.
+      apply Hnotin. apply Hvalid. 
     }
 
-    simpl.
-    rewrite ProgramState_fold_stepF_add with (F := fun k b =>
-      if eqb (CState_read cbit k) cond
-      then Execute_suppl nq (IfInstr cbit cond instr) (PositiveMap.add k b (PositiveMap.empty _))
-      else PositiveMap.add k b (PositiveMap.empty _)
-    ).
-    rewrite ProgramState_fold_stepF_add with (F := fun k b =>
-      if eqb (CState_read cbit k) cond
-      then Execute_suppl nq instr (PositiveMap.add k b (PositiveMap.empty _))
-      else PositiveMap.add k b (PositiveMap.empty _)
-    ).
-    cbv [stepF].
+    rewrite ProgramState_fold_stepF_add.
+    rewrite ProgramState_fold_stepF_add.
+    unfold fold_step at 1 5.
     apply ProgramState_merge_Proper.
+    all: try apply Execute_if_instr_branch_valid.
     all: try assumption.
     all: try apply ProgramState_empty_valid.
     + apply H. apply Hm.
     + destruct (eqb (CState_read cbit k) cond) eqn:E; try reflexivity.
-      simpl.
-      rewrite ProgramState_fold_stepF_add with (F := fun k b =>
-        if eqb (CState_read cbit k) cond
-        then Execute_suppl nq instr (PositiveMap.add k b (PositiveMap.empty _))
-        else PositiveMap.add k b (PositiveMap.empty _)
-      ).
+      rewrite ProgramState_fold_stepF_add.
       all: try assumption.
       all: try apply ProgramState_empty_valid.
-      * cbv [stepF].
+      * cbv [fold_step].
         rewrite <- ProgramState_merge_empty_l.
         rewrite E. reflexivity.
-      * intros k1 b1 Hb1.
-        destruct (eqb (CState_read cbit k1) cond) eqn:E2.
-        apply Execute_suppl_valid.
-        apply ProgramState_singleton_valid. apply Hb1.
-        apply ProgramState_singleton_valid. apply Hb1.
+      * apply Execute_if_instr_branch_valid.
       * rewrite PFacts.not_find_in_iff.
         apply PFacts.empty_o.
-    + intros k1 b1 Hb1.
-      destruct (eqb (CState_read cbit k1) cond) eqn:E2.
-      apply Execute_suppl_valid.
-      apply ProgramState_singleton_valid. apply Hb1.
-      apply ProgramState_singleton_valid. apply Hb1.
-    + intros k1 b1 Hb1.
-      destruct (eqb (CState_read cbit k1) cond) eqn:E2.
-      apply Execute_suppl_valid.
-      apply ProgramState_singleton_valid. apply Hb1.
-      apply ProgramState_singleton_valid. apply Hb1.
+    + intros k0 b0 Hb0.
+      destruct (eqb (CState_read cbit k0) cond).
+      apply ProgramState_fold_valid.
+      apply ProgramState_singleton_valid. apply Hb0.
+      apply ProgramState_empty_valid.
+      intros k1 b1 ps' Hb1 Hps'.
+      apply ProgramState_merge_valid. apply Hps'.
+      apply Execute_if_instr_branch_valid. apply Hb1.
+      apply ProgramState_singleton_valid. apply Hb0.
 Qed.
 
 Corollary Transform_double_if_true:
@@ -552,66 +533,59 @@ Proof.
   }
   revert Hv.
   apply ProgramState_ind with (m:=ps).
-  - intros m m' Hm H Hm'.
-    apply ProgramState_equiv_equivalence with (y:=
-      (Execute_suppl nq (IfInstr cbit cond
-      (IfInstr cbit (negb cond) instr)) m)).
-    apply Execute_suppl_Proper. symmetry. apply Hm.
-    rewrite H. apply Execute_suppl_Proper. apply Hm.
-    apply ProgramState_valid_equal with m'.
-    apply Hm'. symmetry. apply Hm.
-  - intros H. simpl.
-    rewrite PProperties.fold_Empty.
-    reflexivity.
-    apply ProgramState_equiv_equivalence.
-    apply PositiveMap.empty_1.
-  - intros k b m Hnotin H Hvalid.
-    assert (Hm: ProgramState_valid nq m). {
-      apply ProgramState_valid_add_inj with k b.
-      apply Hnotin. apply Hvalid.
+  - intros m0 m1 Heq H Hm1.
+    etransitivity. {
+      apply Execute_suppl_Proper.
+      symmetry. apply Heq.
     }
-
+    etransitivity. {
+      apply H.
+      apply ProgramState_valid_equal with m1.
+      apply Hm1.
+      symmetry. apply Heq.
+    }
+    apply Execute_suppl_Proper. apply Heq.
+  - reflexivity.
+  - intros k b m Hnotin H Hvalid. simpl.
     assert (Hb: Branch_valid nq b). {
       apply Hvalid with k.
-      rewrite PFacts.add_mapsto_iff.
-      left. split; reflexivity.
+      apply PFacts.find_mapsto_iff.
+      apply PFacts.add_eq_o.
+      reflexivity.
+    }
+    assert (Hm: ProgramState_valid nq m). {
+      apply ProgramState_valid_add_inj with k b.
+      apply Hnotin. apply Hvalid. 
     }
 
-    simpl.
-    rewrite ProgramState_fold_stepF_add with (F := fun k b =>
-      if eqb (CState_read cbit k) cond
-      then Execute_suppl nq (IfInstr cbit (negb cond) instr) (PositiveMap.add k b (PositiveMap.empty _))
-      else PositiveMap.add k b (PositiveMap.empty _)
-    ).
-    cbv [stepF].
+    rewrite ProgramState_fold_stepF_add.
+    unfold fold_step at 1.
     rewrite ProgramState_merge_singleton_add with (k:=k) (b:=b) (ps:=m).
     apply ProgramState_merge_Proper.
     all: try assumption.
     all: try apply ProgramState_empty_valid.
     + apply H. apply Hm.
-    + destruct (eqb (CState_read cbit k) cond) eqn:E; try reflexivity.
-      simpl.
-      rewrite ProgramState_fold_stepF_add with (F:= fun k b =>
-        if eqb (CState_read cbit k) (negb cond)
-        then Execute_suppl nq instr (PositiveMap.add k b (PositiveMap.empty _))
-        else PositiveMap.add k b (PositiveMap.empty _)
-      ).
+    + destruct (eqb (CState_read cbit k) cond) eqn:E1; try reflexivity.
+      rewrite ProgramState_fold_stepF_add.
       all: try assumption.
       all: try apply ProgramState_empty_valid.
-      cbv [stepF].
-      rewrite <- ProgramState_merge_empty_l.
-      destruct (eqb (CState_read cbit k) (negb cond)) eqn:E2; try reflexivity.
-      destruct cond, (CState_read cbit k); discriminate.
-      * intros k1 b1 Hb1.
-        destruct (eqb (CState_read cbit k1) (negb cond)).
-        apply Execute_suppl_valid.
-        all: apply ProgramState_singleton_valid; apply Hb1.
+      * cbv [fold_step].
+        rewrite <- ProgramState_merge_empty_l.
+        destruct (eqb (CState_read cbit k) (negb cond)) eqn:E2.
+        -- destruct (CState_read cbit k), cond; discriminate.
+        -- reflexivity.
+      * apply Execute_if_instr_branch_valid.
       * rewrite PFacts.not_find_in_iff.
         apply PFacts.empty_o.
-    + intros k1 b1 Hb1.
-      destruct (eqb (CState_read cbit k1) cond).
-      apply Execute_suppl_valid.
-      all: apply ProgramState_singleton_valid; apply Hb1.
+    + intros k0 b0 Hb0.
+      destruct (eqb (CState_read cbit k0) cond).
+      apply ProgramState_fold_valid.
+      apply ProgramState_singleton_valid. apply Hb0.
+      apply ProgramState_empty_valid.
+      intros k1 b1 ps' Hb1 Hps'.
+      apply ProgramState_merge_valid. apply Hps'.
+      apply Execute_if_instr_branch_valid. apply Hb1.
+      apply ProgramState_singleton_valid. apply Hb0.
 Qed.
 
 Corollary Transform_if_nop_tf:
@@ -631,6 +605,9 @@ Corollary Transform_if_nop_ft:
 Proof.
   intros. apply Transform_double_if_nop.
 Qed.
+
+(* TODO - if commute to other cbit *)
+(* TODO - rewriting is possible inside if (write in Equiv.v) *)
 
 (* Behavioral equivalence - insert quantum operation after all operations *)
 

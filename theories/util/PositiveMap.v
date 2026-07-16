@@ -105,4 +105,23 @@ Proof.
   subst; try reflexivity; congruence.
 Qed.
 
+Lemma PositiveMap_map_add
+  {A B : Type} (f : A -> B) (k : positive) (b : A) (m : PositiveMap.t A):
+  PositiveMap.Equal
+  (PositiveMap.map f (PositiveMap.add k b m))
+  (PositiveMap.add k (f b) (PositiveMap.map f m)).
+Proof.
+  intros y.
+  destruct (Pos.eq_dec y k).
+  - rewrite PFacts.map_o.
+    rewrite PFacts.add_eq_o, PFacts.add_eq_o.
+    reflexivity.
+    all: rewrite e; reflexivity.
+  - rewrite PFacts.map_o.
+    rewrite PFacts.add_neq_o, PFacts.add_neq_o.
+    rewrite PFacts.map_o.
+    reflexivity.
+    all: intros n'; rewrite n' in n; apply n; reflexivity.
+Qed.
+
 End POSITIVEMAP_LEMMAS.

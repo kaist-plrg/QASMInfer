@@ -516,43 +516,21 @@ Proof.
   intros Hq1 Hq2.
   unfold swap_qbit_instr. simpl.
   intros ps.
-  apply ProgramState_ind with (P:= fun ps0 =>
-    ProgramState_valid nq ps0 ->
-    ProgramState_equiv nq
-    (Execute_suppl nq _ ps0) (Execute_suppl nq _ ps0)
-  ).
+  apply ProgramState_ind with (m:=ps).
   - intros m0 m1 Heq H Hm1.
-    assert (Hm0: ProgramState_valid nq m0). {
-      eapply ProgramState_valid_equal.
-      apply Hm1.
-      apply ProgramState_equiv_equivalence.
-      apply Heq.
-    }
-    transitivity (Execute_suppl nq qasm{ swap qbit1 qbit2; measure (swap_qbit qbit1 qbit2 qbit) -> cbit } m0). {
+    etransitivity. {
       apply Execute_suppl_Proper.
-      apply ProgramState_equiv_equivalence. apply Heq.
+      symmetry. apply Heq.
     }
-    transitivity (
-      Execute_suppl nq qasm{ measure qbit -> cbit; swap qbit1 qbit2 } m0
-    ). {
-      apply H. apply Hm0.
+    etransitivity. {
+      apply H.
+      apply ProgramState_valid_equal with m1.
+      apply Hm1.
+      symmetry. apply Heq.
     }
     apply Execute_suppl_Proper. apply Heq.
-  - intros Hempty cstate. simpl.
-    unfold Execute_measure_instr, Execute_swap_instr.
-    rewrite PProperties.fold_Empty.
-    rewrite PFacts.map_o.
-    rewrite PProperties.fold_Empty.
-    rewrite PFacts.empty_o. reflexivity.
-    all: try apply ProgramState_equiv_equivalence.
-    apply PositiveMap.empty_1.
-    unfold PositiveMap.Empty.
-    intros k b.
-    rewrite PFacts.find_mapsto_iff.
-    rewrite PFacts.map_o.
-    rewrite PFacts.empty_o.
-    simpl. intros H. discriminate H.
-  - intros k b m Hnotin IH Hvalid. simpl.
+  - reflexivity.
+  - intros k b m Hnotin H Hvalid. simpl.
     assert (Hb: Branch_valid nq b). {
       apply Hvalid with k.
       apply PFacts.find_mapsto_iff.
@@ -566,42 +544,38 @@ Proof.
 
     cbv [Execute_measure_instr Execute_swap_instr].
 
-    rewrite PositiveMap_fold_map.
-    rewrite ProgramState_fold_stepF_add with (F := 
-      fun k b => Execute_measure_instr_branch nq (swap_qbit qbit1 qbit2 qbit) cbit k
-      (Execute_swap_instr_branch nq qbit1 qbit2 b)
-    ).
-    rewrite ProgramState_fold_stepF_add with (F :=
-      fun k b => Execute_measure_instr_branch nq qbit cbit k b
-    ).
-    cbv [stepF].
+    etransitivity. {
+      apply ProgramState_fold_Proper.
+      - intros k0 b0 ps1 ps2 Heq.
+        apply ProgramState_merge_Proper.
+        apply Heq.
+        reflexivity.
+      - apply PositiveMap_map_add.
+      - reflexivity.
+    }
+    rewrite ProgramState_fold_stepF_add.
+    rewrite ProgramState_fold_stepF_add.
+    
+    unfold fold_step at 3.
     rewrite Execute_swap_instr_map_merge.
     apply ProgramState_merge_Proper.
+    all: try apply Execute_measure_instr_branch_valid.
+    all: try apply ProgramState_map_valid.
+    all: try apply Execute_swap_instr_branch_valid.
+    all: try apply ProgramState_fold_valid.
     all: try assumption.
     all: try apply ProgramState_empty_valid.
-    + rewrite <- PositiveMap_fold_map with
-        (f := fun k b acc => ProgramState_merge nq acc (Execute_measure_instr_branch nq (swap_qbit qbit1 qbit2 qbit) cbit k b))
-        (g := Execute_swap_instr_branch nq qbit1 qbit2).
-      apply IH. apply Hm.
+    + apply H. apply Hm.
     + apply Execute_measure_branch_swap.
       all: assumption.
-    + apply ProgramState_fold_valid.
-      all: try assumption.
-      apply ProgramState_empty_valid.
-      intros k1 b1 ps' Hb1 Hps'.
+    + intros k1 b1 ps' Hb1 Hps'.
       apply ProgramState_merge_valid.
-      apply Hps'.
-      apply Execute_measure_instr_branch_valid.
-      apply Hb1.
-    + apply Execute_measure_instr_branch_valid.
-      apply Hb.
-    + intros k1 b1 Hb1.
-      apply Execute_measure_instr_branch_valid.
-      apply Hb1.
-    + intros k1 b1 Hb1.
-      apply Execute_measure_instr_branch_valid.
-      apply Execute_swap_instr_branch_valid.
-      apply Hb1.
+      2: apply Execute_measure_instr_branch_valid.
+      all: assumption.
+    + rewrite PFacts.not_find_in_iff.
+      rewrite PFacts.not_find_in_iff in Hnotin.
+      rewrite PositiveMap_find_map, Hnotin.
+      reflexivity.
 Qed.
 
 Lemma Commute_swap_if (qbit1 qbit2 cbit: nat) (cond: bool) (instr: Instruction):
@@ -617,45 +591,21 @@ Proof.
   intros Hq1 Hq2 Hinstr.
   unfold swap_qbit_instr, Instruction_valid_equiv in *.
   intros ps.
-  apply ProgramState_ind with (P:= fun ps0 =>
-    ProgramState_valid nq ps0 ->
-    ProgramState_equiv nq
-    (Execute_suppl nq _ ps0) (Execute_suppl nq _ ps0)
-  ).
+  apply ProgramState_ind with (m:=ps).
   - intros m0 m1 Heq H Hm1.
-    assert (Hm0: ProgramState_valid nq m0). {
-      eapply ProgramState_valid_equal.
-      apply Hm1.
-      apply ProgramState_equiv_equivalence.
-      apply Heq.
-    }
-    apply ProgramState_equiv_equivalence with (y :=
-      Execute_suppl nq qasm{ swap qbit1 qbit2; $(change_qbit_instr (swap_qbit qbit1 qbit2) (IfInstr cbit cond instr)) } m0
-    ). {
+    etransitivity. {
       apply Execute_suppl_Proper.
-      apply ProgramState_equiv_equivalence. apply Heq.
+      symmetry. apply Heq.
     }
-    apply ProgramState_equiv_equivalence with (y :=
-      Execute_suppl nq qasm{ $(IfInstr cbit cond instr); swap qbit1 qbit2 } m0
-    ). {
-      apply H. apply Hm0.
+    etransitivity. {
+      apply H.
+      apply ProgramState_valid_equal with m1.
+      apply Hm1.
+      symmetry. apply Heq.
     }
     apply Execute_suppl_Proper. apply Heq.
-  - intros Hempty cstate. simpl.
-    unfold Execute_swap_instr.
-    rewrite PProperties.fold_Empty.
-    rewrite PFacts.map_o.
-    rewrite PProperties.fold_Empty.
-    rewrite PFacts.empty_o. reflexivity.
-    all: try apply ProgramState_equiv_equivalence.
-    apply PositiveMap.empty_1.
-    unfold PositiveMap.Empty.
-    intros k b.
-    rewrite PFacts.find_mapsto_iff.
-    rewrite PFacts.map_o.
-    rewrite PFacts.empty_o.
-    simpl. intros H. discriminate H.
-  - intros k b m Hnotin IH Hvalid.
+  - reflexivity.
+  - intros k b m Hnotin H Hvalid.
     simpl. unfold Execute_swap_instr.
     assert (Hb: Branch_valid nq b). {
       apply Hvalid with k.
@@ -668,32 +618,28 @@ Proof.
       apply Hnotin. apply Hvalid. 
     }
 
-    rewrite PositiveMap_fold_map.
-    rewrite ProgramState_fold_stepF_add with (F := fun k b =>
-      if eqb (CState_read cbit k) cond
-      then Execute_suppl nq (change_qbit_instr (swap_qbit qbit1 qbit2) instr)
-          (PositiveMap.add k (Execute_swap_instr_branch nq qbit1 qbit2 b) (PositiveMap.empty _))
-      else (PositiveMap.add k (Execute_swap_instr_branch nq qbit1 qbit2 b) (PositiveMap.empty _))
-    ).
-    rewrite ProgramState_fold_stepF_add with (F := fun k b =>
-      if eqb (CState_read cbit k) cond
-      then Execute_suppl nq instr
-          (PositiveMap.add k b (PositiveMap.empty _))
-      else (PositiveMap.add k b (PositiveMap.empty _))
-    ).
-    cbv [stepF].
+    etransitivity. {
+      apply ProgramState_fold_Proper.
+      - intros k0 b0 ps1 ps2 Heq.
+        apply ProgramState_merge_Proper.
+        apply Heq.
+        reflexivity.
+      - apply PositiveMap_map_add.
+      - reflexivity.
+    }
+    rewrite ProgramState_fold_stepF_add.
+    rewrite ProgramState_fold_stepF_add.
+    
+    unfold fold_step at 3.
     rewrite Execute_swap_instr_map_merge.
     apply ProgramState_merge_Proper.
+    all: try apply Execute_if_instr_branch_valid.
+    all: try apply ProgramState_map_valid.
+    all: try apply Execute_swap_instr_branch_valid.
+    all: try apply ProgramState_fold_valid.
     all: try assumption.
     all: try apply ProgramState_empty_valid.
-    + rewrite <- PositiveMap_fold_map with
-        (f := fun k b acc => ProgramState_merge nq acc (
-          if eqb (CState_read cbit k) cond
-          then Execute_suppl nq (change_qbit_instr (swap_qbit qbit1 qbit2) instr) (PositiveMap.add k b (PositiveMap.empty _))
-          else PositiveMap.add k b (PositiveMap.empty _)
-        ))
-        (g := Execute_swap_instr_branch nq qbit1 qbit2).
-      apply IH. apply Hm.
+    + apply H. apply Hm.
     + destruct (eqb (CState_read cbit k) cond); simpl.
       * apply ProgramState_equiv_equivalence with (y:=
           Execute_suppl nq (change_qbit_instr (swap_qbit qbit1 qbit2) instr)
@@ -701,62 +647,30 @@ Proof.
           (PositiveMap.add k b (PositiveMap.empty (Branch nq))))
         ). {
           apply Execute_suppl_Proper.
-          intro y.
-          rewrite PFacts.map_o.
-          destruct (PositiveMap.E.eq_dec k y).
-          - subst. repeat rewrite PFacts.add_eq_o.
-            all: reflexivity.
-          - repeat rewrite PFacts.add_neq_o.
-            rewrite PFacts.empty_o. reflexivity.
-            all: assumption.
+          rewrite PositiveMap_map_add.
+          apply ProgramState_add_Proper.
+          reflexivity.
         }
         setoid_rewrite Execute_suppl_seq in Hinstr.
-        simpl in Hinstr.
         apply Hinstr.
         apply ProgramState_singleton_valid.
         apply Hb.
-      * intro y.
-        rewrite PFacts.map_o.
-        destruct (PositiveMap.E.eq_dec k y).
-        subst. repeat rewrite PFacts.add_eq_o.
-        all: try reflexivity.
-        repeat rewrite PFacts.add_neq_o.
-        rewrite PFacts.empty_o. reflexivity.
-        all: assumption.
-    + apply ProgramState_fold_valid.
-      apply Hm.
-      apply ProgramState_empty_valid.
-      intros k1 b1 ps' Hb1 Hps'.
+      * rewrite PositiveMap_map_add.
+        apply ProgramState_add_Proper.
+        reflexivity.
+    + intros k0 b0 ps' Hb0 Hps'.
       apply ProgramState_merge_valid.
-      apply Hps'.
-      destruct (eqb (CState_read cbit k1) cond).
+      assumption.
+      destruct (eqb (CState_read cbit k0) cond).
       * apply Execute_suppl_valid.
         apply ProgramState_singleton_valid.
-        apply Hb1.
+        apply Hb0.
       * apply ProgramState_singleton_valid.
-        apply Hb1.
-    + destruct (eqb (CState_read cbit k) cond).
-      * apply Execute_suppl_valid.
-        apply ProgramState_singleton_valid.
-        apply Hb.
-      * apply ProgramState_singleton_valid.
-        apply Hb.
-    + intros k1 b1 Hb1.
-      destruct (eqb (CState_read cbit k1) cond).
-      * apply Execute_suppl_valid.
-        apply ProgramState_singleton_valid.
-        apply Hb1.
-      * apply ProgramState_singleton_valid.
-        apply Hb1.
-    + intros k1 b1 Hb1.
-      destruct (eqb (CState_read cbit k1) cond).
-      * apply Execute_suppl_valid.
-        apply ProgramState_singleton_valid.
-        apply Execute_swap_instr_branch_valid.
-        apply Hb1.
-      * apply ProgramState_singleton_valid.
-        apply Execute_swap_instr_branch_valid.
-        apply Hb1.
+        apply Hb0.
+    + rewrite PFacts.not_find_in_iff.
+      rewrite PFacts.not_find_in_iff in Hnotin.
+      rewrite PositiveMap_find_map, Hnotin.
+      reflexivity.
 Qed.
 
 Lemma Commute_swap_reset (qbit1 qbit2 qbit: nat):
@@ -838,6 +752,76 @@ Proof.
     all: assumption.
   - apply Commute_swap_reset.
     all: assumption.
+Qed.
+
+Lemma Commute_if_indep:
+  forall (cbit1 cbit2: nat) (cond1 cond2: bool) (instr: Instruction),
+  Instruction_equiv nq
+  (IfInstr cbit1 cond1 (IfInstr cbit2 cond2 instr))
+  (IfInstr cbit2 cond2 (IfInstr cbit1 cond1 instr)).
+Proof.
+  intros.
+  intros ps Hinv.
+  assert (Hps: ProgramState_valid nq ps). {
+    apply ProgramState_invariant_valid.
+    apply Hinv.
+  }
+  revert Hps.
+  apply ProgramState_ind with (m:=ps).
+  - intros m0 m1 Heq H Hm1.
+    etransitivity. {
+      apply Execute_suppl_Proper.
+      symmetry. apply Heq.
+    }
+    etransitivity. {
+      apply H.
+      apply ProgramState_valid_equal with m1.
+      apply Hm1.
+      symmetry. apply Heq.
+    }
+    apply Execute_suppl_Proper. apply Heq.
+  - reflexivity.
+  - intros k b m Hnotin H Hvalid. simpl.
+    assert (Hb: Branch_valid nq b). {
+      apply Hvalid with k.
+      apply PFacts.find_mapsto_iff.
+      apply PFacts.add_eq_o.
+      reflexivity.
+    }
+    assert (Hm: ProgramState_valid nq m). {
+      apply ProgramState_valid_add_inj with k b.
+      apply Hnotin. apply Hvalid. 
+    }
+
+    rewrite ProgramState_fold_stepF_add.
+    rewrite ProgramState_fold_stepF_add.
+
+    unfold fold_step at 1 5.
+    apply ProgramState_merge_Proper.
+    all: try assumption.
+    all: try apply ProgramState_empty_valid.
+    + apply H. apply Hm.
+    + destruct (eqb (CState_read cbit1 k) cond1) eqn:E1;
+      destruct (eqb (CState_read cbit2 k) cond2) eqn:E2;
+      try reflexivity.
+      all: repeat rewrite ProgramState_fold_stepF_add.
+      all: try assumption.
+      all: try apply ProgramState_empty_valid.
+      all: try (rewrite PFacts.not_find_in_iff; apply PFacts.empty_o).
+      all: try apply Execute_if_instr_branch_valid.
+      all: cbv [fold_step].
+      all: repeat rewrite <- ProgramState_merge_empty_l.
+      all: try rewrite E1.
+      all: try rewrite E2.
+      all: reflexivity.
+    + intros k1 b1 Hb1.
+      destruct (eqb (CState_read cbit2 k1) cond2).
+      apply Execute_suppl_valid with (instr := IfInstr cbit1 cond1 instr).
+      all: apply ProgramState_singleton_valid; apply Hb1.
+    + intros k1 b1 Hb1.
+      destruct (eqb (CState_read cbit1 k1) cond1).
+      apply Execute_suppl_valid with (instr := IfInstr cbit2 cond2 instr).
+      all: apply ProgramState_singleton_valid; apply Hb1.
 Qed.
 
 End COMMUTE.
