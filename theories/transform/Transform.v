@@ -441,12 +441,7 @@ Lemma Transform_double_if:
   (IfInstr cbit cond (IfInstr cbit cond instr))
   (IfInstr cbit cond instr).
 Proof.
-  intros cbit cond instr ps Hinv.
-  assert (Hv: ProgramState_valid nq ps). {
-    apply ProgramState_invariant_valid.
-    apply Hinv.
-  }
-  revert Hv.
+  intros cbit cond instr ps.
   apply ProgramState_ind with (m:=ps).
   - intros m0 m1 Heq H Hm1.
     etransitivity. {
@@ -526,12 +521,7 @@ Lemma Transform_double_if_nop:
   (IfInstr cbit cond (IfInstr cbit (negb cond) instr))
   NopInstr.
 Proof.
-  intros cbit cond instr ps Hinv.
-  assert (Hv: ProgramState_valid nq ps). {
-    apply ProgramState_invariant_valid.
-    apply Hinv.
-  }
-  revert Hv.
+  intros cbit cond instr ps.
   apply ProgramState_ind with (m:=ps).
   - intros m0 m1 Heq H Hm1.
     etransitivity. {
@@ -606,9 +596,105 @@ Proof.
   intros. apply Transform_double_if_nop.
 Qed.
 
-(* TODO - if commute to other cbit *)
-(* TODO - rewriting is possible inside if (write in Equiv.v) *)
+(* Instruction_equiv rewrite inside If instruction *)
+(* Written here since Equiv.v do not reference Valid.v; causes cyclic reference *)
+Lemma Instruction_if_Proper:
+  forall (cbit: nat) (cond: bool),
+  Proper (Instruction_equiv nq ==> Instruction_equiv nq)
+  (IfInstr cbit cond).
+Proof.
+  intros cbit cond instr1 instr2 Hinstr ps.
+  apply ProgramState_ind with (m:=ps).
+  - intros m0 m1 Heq H Hm1.
+    etransitivity. {
+      apply Execute_suppl_Proper.
+      symmetry. apply Heq.
+    }
+    etransitivity. {
+      apply H.
+      apply ProgramState_valid_equal with m1.
+      apply Hm1.
+      symmetry. apply Heq.
+    }
+    apply Execute_suppl_Proper. apply Heq.
+  - reflexivity.
+  - intros k b m Hnotin H Hvalid. simpl.
+    assert (Hb: Branch_valid nq b). {
+      apply Hvalid with k.
+      apply PFacts.find_mapsto_iff.
+      apply PFacts.add_eq_o.
+      reflexivity.
+    }
+    assert (Hm: ProgramState_valid nq m). {
+      apply ProgramState_valid_add_inj with k b.
+      apply Hnotin. apply Hvalid. 
+    }
+
+    rewrite ProgramState_fold_stepF_add.
+    rewrite ProgramState_fold_stepF_add.
+    unfold fold_step at 1 3.
+    apply ProgramState_merge_Proper.
+    all: try apply Execute_if_instr_branch_valid.
+    all: try assumption.
+    all: try apply ProgramState_empty_valid.
+    + apply H. apply Hm.
+    + destruct (eqb (CState_read cbit k) cond); try reflexivity.
+      apply Hinstr.
+      apply ProgramState_singleton_valid.
+      apply Hb.
+Qed.
+
+Corollary Instruction_if_instr_rewrite:
+  forall (cbit: nat) (cond: bool) (instr1 instr2: Instruction),
+  Instruction_equiv nq instr1 instr2 ->
+  Instruction_equiv nq
+  (IfInstr cbit cond instr1)
+  (IfInstr cbit cond instr2).
+Proof.
+  apply Instruction_if_Proper.
+Qed.
 
 (* Behavioral equivalence - insert quantum operation after all operations *)
+Lemma Transform_insert_rotate:
+  forall (theta phi lambda: R) (qbit: nat),
+  qbit < nq ->
+  Instruction_behavioral_equiv nq
+  qasm{ U (theta, phi, lambda) qbit }
+  qasm{ nop }.
+Proof.
+  intros.
+  intros ps Hps k.
+  simpl. unfold Execute_rotate_instr.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find k ps); reflexivity.
+Qed.
+
+Lemma Transform_insert_cnot:
+  forall (qbit1 qbit2: nat),
+  qbit1 < nq -> qbit2 < nq ->
+  Instruction_behavioral_equiv nq
+  qasm{ cx qbit1 qbit2 }
+  qasm{ nop }.
+Proof.
+  intros.
+  intros ps Hps k.
+  simpl. unfold Execute_cnot_instr.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find k ps); reflexivity.
+Qed.
+
+Lemma Transform_insert_swap:
+  forall (qbit1 qbit2: nat),
+  qbit1 < nq -> qbit2 < nq ->
+  Instruction_behavioral_equiv nq
+  qasm{ swap qbit1 qbit2 }
+  qasm{ nop }.
+Proof.
+  intros.
+  intros ps Hps k.
+  simpl. unfold Execute_swap_instr.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find k ps); reflexivity.
+Qed.
 
 End TRANSFORM.

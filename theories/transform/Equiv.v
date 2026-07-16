@@ -46,24 +46,16 @@ Fixpoint Instr_max_index (instr: Instruction): nat :=
 Definition Instr_bounded (n_qbit: nat) (instr: Instruction) :=
   Instr_max_index instr < n_qbit.
 
-(* For inductive hypothesis *)
-Definition Instruction_valid_equiv (instr1 instr2: Instruction): Prop :=
+Definition Instruction_equiv (instr1 instr2: Instruction): Prop :=
   forall (ps: ProgramState nq),
   ProgramState_valid nq ps ->
   ProgramState_equiv
   (Execute_suppl nq instr1 ps)
   (Execute_suppl nq instr2 ps).
 
-Definition Instruction_equiv (instr1 instr2: Instruction): Prop :=
-  forall (ps: ProgramState nq),
-  ProgramState_invariant nq ps ->
-  ProgramState_equiv
-  (Execute_suppl nq instr1 ps)
-  (Execute_suppl nq instr2 ps).
-
 Definition Instruction_behavioral_equiv (instr1 instr2: Instruction): Prop :=
   forall (ps: ProgramState nq),
-  ProgramState_invariant nq ps ->
+  ProgramState_valid nq ps ->
   ProgramState_behavioral_equiv
   (Execute_suppl nq instr1 ps)
   (Execute_suppl nq instr2 ps).
@@ -92,25 +84,6 @@ Proof.
   - intros ps1 ps2 ps3 H1 H2.
     apply PFacts.Equal_trans with (m' := PositiveMap.map (B_prob nq) ps2).
     apply H1. apply H2.
-Qed.
-
-Lemma Instruction_valid_equiv_equivalence: Equivalence Instruction_valid_equiv.
-Proof.
-  split.
-  - intros instr.
-    unfold Instruction_valid_equiv.
-    intros ps Hvalid.
-    reflexivity.
-  - intros instr1 instr2 H.
-    unfold Instruction_valid_equiv in *.
-    intros ps Hvalid.
-    symmetry. apply H. apply Hvalid.
-  - intros instr1 instr2 instr3 H1 H2.
-    unfold Instruction_valid_equiv in *.
-    intros ps Hvalid.
-    apply ProgramState_equiv_equivalence with (y := Execute_suppl nq instr2 ps).
-    + apply H1. apply Hvalid.
-    + apply H2. apply Hvalid.
 Qed.
 
 Lemma Instruction_equiv_equivalence: Equivalence Instruction_equiv.
@@ -945,16 +918,6 @@ Proof.
   apply Heq.
 Qed.
 
-Lemma Instruction_valid_equiv_implies_equiv:
-  forall (instr1 instr2: Instruction),
-  Instruction_valid_equiv instr1 instr2 -> Instruction_equiv instr1 instr2.
-Proof.
-  intros instr1 instr2 Hvalid_equiv ps Hinv.
-  apply Hvalid_equiv.
-  apply ProgramState_invariant_valid.
-  apply Hinv.
-Qed.
-
 Lemma Instruction_equiv_implies_behavioral_equiv:
   forall (instr1 instr2: Instruction),
   Instruction_equiv instr1 instr2 -> Instruction_behavioral_equiv instr1 instr2.
@@ -991,49 +954,6 @@ Proof.
   all: try reflexivity.
 Qed.
 
-Lemma Instruction_valid_equiv_rewrite:
-  forall (pre_instr post_instr: Instruction) (instr1 instr2: Instruction),
-  Instruction_valid_equiv instr1 instr2 ->
-  Instruction_valid_equiv
-  qasm{ pre_instr; instr1; post_instr }
-  qasm{ pre_instr; instr2; post_instr }.
-Proof.
-  intros pre post instr1 instr2 Hequiv ps Hvalid.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
-  apply Execute_suppl_Proper.
-  apply Hequiv.
-  apply Execute_suppl_valid.
-  apply Hvalid.
-Qed.
-
-Corollary Instruction_valid_equiv_rewrite_start:
-  forall (post_instr: Instruction) (instr1 instr2: Instruction),
-  Instruction_valid_equiv instr1 instr2 ->
-  Instruction_valid_equiv
-  qasm{ instr1; post_instr }
-  qasm{ instr2; post_instr }.
-Proof.
-  intros post instr1 instr2 Hequiv ps Hvalid.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
-  apply Execute_suppl_Proper.
-  apply Hequiv.
-  apply Hvalid.
-Qed.
-
-Corollary Instruction_valid_equiv_rewrite_end:
-  forall (pre_instr: Instruction) (instr1 instr2: Instruction),
-  Instruction_valid_equiv instr1 instr2 ->
-  Instruction_valid_equiv
-  qasm{ pre_instr; instr1 }
-  qasm{ pre_instr; instr2 }.
-Proof.
-  intros pre instr1 instr2 Hequiv ps Hvalid.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
-  apply Hequiv.
-  apply Execute_suppl_valid.
-  apply Hvalid.
-Qed.
-
 Lemma Instruction_equiv_rewrite:
   forall (pre_instr post_instr: Instruction) (instr1 instr2: Instruction),
   Instruction_equiv instr1 instr2 ->
@@ -1045,7 +965,7 @@ Proof.
   repeat rewrite ProgramState_equiv_Execute_suppl_seq.
   apply Execute_suppl_Proper.
   apply Hequiv.
-  apply Execute_suppl_valid_invariant.
+  apply Execute_suppl_valid.
   apply Hinv.
 Qed.
 
@@ -1073,7 +993,7 @@ Proof.
   intros pre instr1 instr2 Hequiv ps Hinv.
   repeat rewrite ProgramState_equiv_Execute_suppl_seq.
   apply Hequiv.
-  apply Execute_suppl_valid_invariant.
+  apply Execute_suppl_valid.
   apply Hinv.
 Qed.
 
@@ -1092,16 +1012,16 @@ Proof.
   - apply ProgramState_behavioral_equiv_equivalence
     with (y := Execute_suppl nq instr2 (Execute_suppl nq pre ps)).
     + apply Hequiv.
-      apply Execute_suppl_valid_invariant.
+      apply Execute_suppl_valid.
       apply Hinv.
     + apply ProgramState_behavioral_equiv_equivalence.
       apply ProgramState_equiv_implies_behavioral_equiv.
       apply Execute_suppl_seq.
 Qed.
 
-Lemma Instruction_valid_equiv_nop:
+Lemma Instruction_equiv_nop:
   forall (pre_instr post_instr: Instruction),
-  Instruction_valid_equiv
+  Instruction_equiv
   qasm{ pre_instr; nop; post_instr }
   qasm{ pre_instr; post_instr }.
 Proof.
@@ -1111,9 +1031,9 @@ Proof.
   reflexivity.
 Qed.
 
-Corollary Instruction_valid_equiv_nop_start:
+Corollary Instruction_equiv_nop_start:
   forall (post_instr: Instruction),
-  Instruction_valid_equiv
+  Instruction_equiv
   qasm{ nop; post_instr }
   post_instr.
 Proof.
@@ -1122,9 +1042,9 @@ Proof.
   reflexivity.
 Qed.
 
-Corollary Instruction_valid_equiv_nop_end:
+Corollary Instruction_equiv_nop_end:
   forall (pre_instr: Instruction),
-  Instruction_valid_equiv
+  Instruction_equiv
   qasm{ pre_instr; nop }
   pre_instr.
 Proof.
@@ -1133,42 +1053,9 @@ Proof.
   reflexivity.
 Qed.
 
-Corollary Instruction_equiv_nop:
-  forall (pre_instr post_instr: Instruction),
-  Instruction_equiv
-  qasm{ pre_instr; nop; post_instr }
-  qasm{ pre_instr; post_instr }.
-Proof.
-  intros pre post.
-  apply Instruction_valid_equiv_implies_equiv.
-  apply Instruction_valid_equiv_nop.
-Qed.
-
-Corollary Instruction_equiv_nop_start:
-  forall (post_instr: Instruction),
-  Instruction_equiv
-  qasm{ nop; post_instr }
-  post_instr.
-Proof.
-  intros post.
-  apply Instruction_valid_equiv_implies_equiv.
-  apply Instruction_valid_equiv_nop_start.
-Qed.
-
-Corollary Instruction_equiv_nop_end:
-  forall (pre_instr: Instruction),
-  Instruction_equiv
-  qasm{ pre_instr; nop }
-  pre_instr.
-Proof.
-  intros pre.
-  apply Instruction_valid_equiv_implies_equiv.
-  apply Instruction_valid_equiv_nop_end.
-Qed.
-
-Lemma Instruction_valid_equiv_Seq_list_eq:
+Lemma Instruction_equiv_Seq_list_eq:
   forall (instr: Instruction) (il: list Instruction),
-  Instruction_valid_equiv
+  Instruction_equiv
   qasm{ seq[ instr :: il ] }
   qasm{ instr; seq[ il ] }.
 Proof.
@@ -1177,20 +1064,9 @@ Proof.
   reflexivity.
 Qed.
 
-Corollary Instruction_equiv_Seq_list_eq:
-  forall (instr: Instruction) (il: list Instruction),
-  Instruction_equiv
-  qasm{ seq[ instr :: il ] }
-  qasm{ instr; seq[ il ] }.
-Proof.
-  intros instr il.
-  apply Instruction_valid_equiv_implies_equiv.
-  apply Instruction_valid_equiv_Seq_list_eq.
-Qed.
-
-Lemma Instruction_valid_equiv_Seq_list_list_eq:
+Lemma Instruction_equiv_Seq_list_list_eq:
   forall (il1 il2: list Instruction),
-  Instruction_valid_equiv
+  Instruction_equiv
   qasm{ seq[ il1 ++ il2 ] }
   qasm{ seq[ il1 ]; seq[ il2 ] }.
 Proof.
@@ -1201,20 +1077,9 @@ Proof.
   apply ProgramState_equiv_equivalence.
 Qed.
 
-Corollary Instruction_equiv_Seq_list_list_eq:
-  forall (il1 il2: list Instruction),
-  Instruction_equiv
-  qasm{ seq[ il1 ++ il2 ] }
-  qasm{ seq[ il1 ]; seq[ il2 ] }.
-Proof.
-  intros il1 il2.
-  apply Instruction_valid_equiv_implies_equiv.
-  apply Instruction_valid_equiv_Seq_list_list_eq.
-Qed.
-
-Lemma Instruction_valid_equiv_Seq_singleton:
+Lemma Instruction_equiv_Seq_singleton:
   forall (instr: Instruction),
-  Instruction_valid_equiv
+  Instruction_equiv
   qasm{ seq[ [instr] ] }
   qasm{ instr }.
 Proof.
@@ -1223,20 +1088,9 @@ Proof.
   reflexivity.
 Qed.
 
-Corollary Instruction_equiv_Seq_singleton:
-  forall (instr: Instruction),
-  Instruction_equiv
-  qasm{ seq[ [instr] ] }
-  qasm{ instr }.
-Proof.
-  intros instr.
-  apply Instruction_valid_equiv_implies_equiv.
-  apply Instruction_valid_equiv_Seq_singleton.
-Qed.
-
-Lemma Instruction_valid_equiv_assoc:
+Lemma Instruction_equiv_assoc:
   forall (instr1 instr2 instr3: Instruction),
-  Instruction_valid_equiv
+  Instruction_equiv
   qasm{ instr1; instr2; instr3 }
   qasm{ (instr1; instr2); instr3 }.
 Proof.
@@ -1247,33 +1101,7 @@ Proof.
   reflexivity.
 Qed.
 
-Corollary Instruction_equiv_assoc:
-  forall (instr1 instr2 instr3: Instruction),
-  Instruction_equiv
-  qasm{ instr1; instr2; instr3 }
-  qasm{ (instr1; instr2); instr3 }.
-Proof.
-  intros instr1 instr2 instr3.
-  apply Instruction_valid_equiv_implies_equiv.
-  apply Instruction_valid_equiv_assoc.
-Qed.
-
 End EQUIVALENCE.
-
-Global Instance Instruction_valid_equiv_Equivalence (nq: nat):
-  Equivalence (Instruction_valid_equiv nq).
-Proof.
-  apply Instruction_valid_equiv_equivalence.
-Qed.
-
-Global Instance qasm_seq_valid_equiv_Proper (nq : nat) :
-  Proper (Instruction_valid_equiv nq ==> Instruction_valid_equiv nq ==> Instruction_valid_equiv nq) qasm_seq.
-Proof.
-  intros pre1 pre2 Hpre post1 post2 Hpost.
-  apply Instruction_valid_equiv_equivalence with (y:= qasm{ pre2; post1 }).
-  - apply Instruction_valid_equiv_rewrite_start. apply Hpre.
-  - apply Instruction_valid_equiv_rewrite_end. apply Hpost.
-Qed.
 
 Global Instance Instruction_equiv_Equivalence (nq: nat):
   Equivalence (Instruction_equiv nq).
