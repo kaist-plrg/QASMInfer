@@ -380,6 +380,6 @@ Proof.
     apply (tprod_0_r 1 n).
     lia.
 Qed.
-    
+
 End PROPERTIES.
 

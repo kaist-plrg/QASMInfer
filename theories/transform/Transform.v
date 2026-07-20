@@ -596,6 +596,24 @@ Proof.
   intros. apply Transform_double_if_nop.
 Qed.
 
+Lemma Transform_double_reset:
+  forall (qbit: nat),
+  qbit < nq ->
+  Instruction_equiv nq
+  qasm{ reset qbit; reset qbit }
+  qasm{ reset qbit }.
+Proof.
+  intros.
+  intros ps Hps k.
+  simpl. unfold Execute_reset_instr.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find k ps); try reflexivity.
+  simpl. f_equal.
+  unfold Execute_reset_instr_branch.
+  simpl. f_equal.
+  apply den_reset_idempotent.
+Qed.
+
 (* Instruction_equiv rewrite inside If instruction *)
 (* Written here since Equiv.v do not reference Valid.v; causes cyclic reference *)
 Lemma Instruction_if_Proper:
@@ -693,6 +711,20 @@ Proof.
   intros.
   intros ps Hps k.
   simpl. unfold Execute_swap_instr.
+  repeat rewrite PFacts.map_o.
+  destruct (PositiveMap.find k ps); reflexivity.
+Qed.
+
+Lemma Transform_insert_reset:
+  forall (qbit: nat),
+  qbit < nq ->
+  Instruction_behavioral_equiv nq
+  qasm{ reset qbit }
+  qasm{ nop }.
+Proof.
+  intros.
+  intros ps Hps k.
+  simpl. unfold Execute_reset_instr.
   repeat rewrite PFacts.map_o.
   destruct (PositiveMap.find k ps); reflexivity.
 Qed.
