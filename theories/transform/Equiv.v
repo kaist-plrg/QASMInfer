@@ -894,18 +894,6 @@ Qed.
 (* ============================================================================================== *)
 (* Proof of equivalence ========================================================================= *)
 
-Lemma ProgramState_equiv_Execute_suppl_seq:
-  forall (instr1 instr2: Instruction) (ps: ProgramState nq),
-  ProgramState_equiv
-  (Execute_suppl nq qasm{ instr1; instr2 } ps)
-  (Execute_suppl nq instr2 (Execute_suppl nq instr1 ps)).
-Proof.
-  intros instr1 instr2 ps.
-  destruct instr1; destruct instr2; simpl.
-  all: try (simpl; reflexivity).
-  all: rewrite fold_left_app; reflexivity.
-Qed.
-
 Lemma ProgramState_equiv_implies_behavioral_equiv:
   forall (ps1 ps2: ProgramState nq),
   ProgramState_equiv ps1 ps2 -> ProgramState_behavioral_equiv ps1 ps2.
@@ -962,7 +950,7 @@ Lemma Instruction_equiv_rewrite:
   qasm{ pre_instr; instr2; post_instr }.
 Proof.
   intros pre post instr1 instr2 Hequiv ps Hinv.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  repeat rewrite Execute_suppl_seq.
   apply Execute_suppl_Proper.
   apply Hequiv.
   apply Execute_suppl_valid.
@@ -977,7 +965,7 @@ Corollary Instruction_equiv_rewrite_start:
   qasm{ instr2; post_instr }.
 Proof.
   intros post instr1 instr2 Hequiv ps Hinv.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  repeat rewrite Execute_suppl_seq.
   apply Execute_suppl_Proper.
   apply Hequiv.
   apply Hinv.
@@ -991,7 +979,7 @@ Corollary Instruction_equiv_rewrite_end:
   qasm{ pre_instr; instr2 }.
 Proof.
   intros pre instr1 instr2 Hequiv ps Hinv.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  repeat rewrite Execute_suppl_seq.
   apply Hequiv.
   apply Execute_suppl_valid.
   apply Hinv.
@@ -1026,7 +1014,7 @@ Lemma Instruction_equiv_nop:
   qasm{ pre_instr; post_instr }.
 Proof.
   intros pre post ps Hvalid.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  repeat rewrite Execute_suppl_seq.
   apply Execute_suppl_Proper.
   reflexivity.
 Qed.
@@ -1038,7 +1026,7 @@ Corollary Instruction_equiv_nop_start:
   post_instr.
 Proof.
   intros post ps Hvalid.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  repeat rewrite Execute_suppl_seq.
   reflexivity.
 Qed.
 
@@ -1049,7 +1037,7 @@ Corollary Instruction_equiv_nop_end:
   pre_instr.
 Proof.
   intros pre ps Hvalid.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  repeat rewrite Execute_suppl_seq.
   reflexivity.
 Qed.
 
@@ -1060,7 +1048,7 @@ Lemma Instruction_equiv_Seq_list_eq:
   qasm{ instr; seq[ il ] }.
 Proof.
   intros instr il ps Hvalid.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  repeat rewrite Execute_suppl_seq.
   reflexivity.
 Qed.
 
@@ -1071,7 +1059,7 @@ Lemma Instruction_equiv_Seq_list_list_eq:
   qasm{ seq[ il1 ]; seq[ il2 ] }.
 Proof.
   intros il1 il2 ps Hvalid.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  repeat rewrite Execute_suppl_seq.
   cbn [Execute_suppl].
   rewrite List.fold_left_app.
   apply ProgramState_equiv_equivalence.
@@ -1095,9 +1083,9 @@ Lemma Instruction_equiv_assoc:
   qasm{ (instr1; instr2); instr3 }.
 Proof.
   intros instr1 instr2 instr3 ps Hvalid.
-  repeat rewrite ProgramState_equiv_Execute_suppl_seq.
+  repeat rewrite Execute_suppl_seq.
   apply Execute_suppl_Proper.
-  rewrite ProgramState_equiv_Execute_suppl_seq.
+  rewrite Execute_suppl_seq.
   reflexivity.
 Qed.
 
