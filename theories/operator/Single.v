@@ -162,10 +162,10 @@ Proof.
   - intros t H. lia.
   - induction t.
     + simpl. intros H. symmetry. apply (tprod_scale_assoc U mat_eye c).
-    + intros H. simpl. repeat rewrite mat_scale_0, mat_scale_1. repeat rewrite mat_0_scale.
-      assert (H': n > t). lia.
-      f_equal.
-      apply IHn, H'. apply IHn, H'.
+    + intros H. simpl.
+      mat_simpl.
+      repeat rewrite mat_0_scale.
+      f_equal; apply IHn; lia.
 Qed.
 
 Lemma mat_single_eye : forall n t,
@@ -181,18 +181,17 @@ Proof.
       f_equal. apply IHn. apply IHn.
 Qed.
 
-Lemma mat_single_0 : forall n t, t < n ->
+Lemma mat_single_0 : forall n t,
+  t < n ->
   mat_single n t mat_0 = mat_0.
 Proof.
   intros n.
   induction n; intros.
   - lia.
   - destruct t; cbn [mat_single].
-    + rewrite tprod_0_l.
-      reflexivity.
+    + mat_simpl.
     + rewrite IHn.
-      rewrite tprod_0_r.
-      reflexivity.
+      mat_simpl.
       lia.
 Qed.
 
