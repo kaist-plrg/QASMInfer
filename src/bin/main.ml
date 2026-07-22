@@ -45,6 +45,7 @@ let parse_args argv =
     [ ( "--unoptimize",
         Arg.Set unoptimize,
         "Rewrite SOURCE as canonical OpenQASM 2 in DESTINATION" );
+      ("--unopt", Arg.Set unoptimize, "Short for --unoptimize");
       ( "--verbose",
         Arg.Set verbose,
         "Print intermediate QASMCore representation" );

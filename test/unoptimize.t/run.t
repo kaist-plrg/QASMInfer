@@ -7,6 +7,10 @@ option before, between, and after the two positional paths.
   $ test ! -s qasm2.stderr
   $ head -n 1 qasm2.once.qasm
   OPENQASM 2.0;
+  $ qasminfer --unopt qasm2.qasm qasm2.alias.qasm >qasm2-alias.stdout 2>qasm2-alias.stderr
+  $ test ! -s qasm2-alias.stdout
+  $ test ! -s qasm2-alias.stderr
+  $ cmp qasm2.once.qasm qasm2.alias.qasm
   $ qasminfer qasm2.once.qasm --unoptimize qasm2.twice.qasm >qasm2-twice.stdout 2>qasm2-twice.stderr
   $ test ! -s qasm2-twice.stdout
   $ test ! -s qasm2-twice.stderr

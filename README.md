@@ -51,13 +51,15 @@ dune install           # installs library + executable
 qasminfer test.qasm    # run the installed executable
 ```
 
-To rewrite a circuit without executing it, use `--unoptimize` with an input and
-output path:
+To rewrite a circuit without executing it, use `--unoptimize` (or its
+`--unopt` alias) with an input and output path:
 
 ```bash
 dune exec qasminfer -- --unoptimize input.qasm output.qasm
 # or, after installation:
 qasminfer --unoptimize input.qasm output.qasm
+# equivalently:
+qasminfer --unopt input.qasm output.qasm
 ```
 
 The rewrite path parses and inlines the supported input, lowers it to
