@@ -29,7 +29,7 @@ theories/
 scripts/patch_extraction.sh      # prepends header to generated file
 src/lib/
   extracted/                     # extracted QASMInfer
-  unoptimize.ml                  # handwritten OpenQASMCore transformations
+  unoptimize/                    # handwritten OpenQASMCore transformations
   qasm2/                         # OpenQASM 2 parser/desugar/stringifier
   qasm3/                         # OpenQASM 3 parser/desugar (partial)
 src/bin/                         # CLI execution and OpenQASM rewrite modes
