@@ -30,6 +30,7 @@ rule token =
   | ','         { COMMA }
   | "=="        { EQUALS }
   | "->"        { ARROW }
+  | '='         { ASSIGN }
 
   | '{'         { LBRACE }
   | '}'         { RBRACE }
@@ -44,6 +45,9 @@ rule token =
 
   | "qreg"      { QREG }
   | "creg"      { CREG }
+  | "qubit"     { QUBIT }
+  | "bit"       { BIT }
+  | '$'         { PHYSICAL }
 
   | "gate"      { GATE }
 

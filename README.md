@@ -29,9 +29,10 @@ theories/
 scripts/patch_extraction.sh      # prepends header to generated file
 src/lib/
   extracted/                     # extracted QASMInfer
+  unoptimize.ml                  # handwritten OpenQASMCore transformations
   qasm2/                         # OpenQASM 2 parser/desugar/stringifier
   qasm3/                         # OpenQASM 3 parser/desugar (partial)
-src/bin/                         # CLI that parses QASM, runs QASMInfer, prints result
+src/bin/                         # CLI execution and OpenQASM rewrite modes
 ```
 
 ## Build and run
@@ -40,7 +41,7 @@ The build pipeline ensures that the executable is always generated from the veri
 
 ```bash
 dune build             # builds Rocq theory, extracts to OCaml, builds library + exe
-dune exec qasminfer test.qasm
+dune exec qasminfer -- test.qasm
 ```
 
 After installing into your opam switch:
@@ -49,6 +50,26 @@ After installing into your opam switch:
 dune install           # installs library + executable
 qasminfer test.qasm    # run the installed executable
 ```
+
+To rewrite a circuit without executing it, use `--unoptimize` with an input and
+output path:
+
+```bash
+dune exec qasminfer -- --unoptimize input.qasm output.qasm
+# or, after installation:
+qasminfer --unoptimize input.qasm output.qasm
+```
+
+The rewrite path parses and inlines the supported input, lowers it to
+OpenQASMCore, applies the currently identity `unoptimize_nop` transformation,
+and converts the result back to OpenQASM. Both supported OpenQASM 2 and partial
+OpenQASM 3 inputs produce canonical OpenQASM 2 output.
+
+This is a normalized rewrite, not a text-preserving one. Comments, barriers,
+includes, gate declarations and call names, symbolic expression spelling, and
+parallel syntax may be lost or expanded. Use `--verbose` (or `-v`) to print the
+transformed OpenQASMCore program to stderr. Execution-only `--json` and
+`--output`/`-o` options cannot be combined with `--unoptimize`.
 
 Example output:
 

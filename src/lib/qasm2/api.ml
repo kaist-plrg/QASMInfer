@@ -11,19 +11,30 @@ module Desugar = Desugar
 let version = "qasm2"
 let describe () = "OpenQASM 2 parser (stub wiring; fill in semantics as needed)."
 
-(* Error handling adapted from Real World OCaml *)
-let print_position outx lexbuf =
-  let pos = lexbuf.lex_curr_p in
-  fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
+type parse_failure =
+  | Lexical_error of string
+  | Parser_error of string
+
+let diagnostic lexbuf message =
+  let pos = lexbuf.lex_start_p in
+  sprintf "%s:%d:%d: %s" pos.pos_fname pos.pos_lnum
     (pos.pos_cnum - pos.pos_bol + 1)
+    message
+
+let parse_result lexbuf =
+  try Ok (Parser.mainprogram Lexer.token lexbuf) with
+  | Lexer.SyntaxError message ->
+      Error (Lexical_error (diagnostic lexbuf message))
+  | Parser.Error -> Error (Parser_error (diagnostic lexbuf "syntax error"))
 
 let parse_with_error lexbuf =
-  try Parser.mainprogram Lexer.token lexbuf with
-  | Lexer.SyntaxError msg ->
-      fprintf stderr "%a: %s\n" print_position lexbuf msg;
+  match parse_result lexbuf with
+  | Ok program -> program
+  | Error (Lexical_error message) ->
+      eprintf "%s\n" message;
       []
-  | Parser.Error ->
-      fprintf stderr "%a: syntax error\n" print_position lexbuf;
+  | Error (Parser_error message) ->
+      eprintf "%s\n" message;
       exit (-1)
 
 (* core parsing routine *)
@@ -39,7 +50,19 @@ let parse_string s =
   let lexbuf = Lexing.from_string s in
   parse_with_error lexbuf
 
+let parse_string_result ?(filename = "") source =
+  let lexbuf = Lexing.from_string source in
+  let position = lexbuf.lex_curr_p in
+  lexbuf.lex_curr_p <- { position with pos_fname = filename };
+  match parse_result lexbuf with
+  | Ok program -> Ok program
+  | Error (Lexical_error message | Parser_error message) -> Error message
+
 let desugar = Desugar.desugar
+
+let sugar = Sugar.sugar
+
+let string_of_program = Stringifier.string_of_program
 
 let string_of_instruction = Stringifier.string_of_instruction
 

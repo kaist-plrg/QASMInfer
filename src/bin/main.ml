@@ -6,34 +6,85 @@ module IntMap = Map.Make(Int)
 
 type version = V2 | V3
 
-let verbose = ref false
-let emit_json = ref false
-let input_file = ref ""
-let output_file = ref None
+exception Cli_error of string
+
+type command =
+  | Execute of {
+      source : string;
+      verbose : bool;
+      emit_json : bool;
+      output_file : string option;
+    }
+  | Unoptimize of {
+      source : string;
+      destination : string;
+      verbose : bool;
+    }
 
 type result_entry = {
   state : string;
   probability : float;
 }
 
-let usage_msg = "usage: qasminfer <qasm_file> [--verbose] [--json] [--output FILE]"
+let usage_msg =
+  "usage: qasminfer [OPTIONS] SOURCE\n\
+   \       qasminfer --unoptimize [--verbose] SOURCE DESTINATION"
 
-let set_output_file path =
-  match !output_file with
-  | None -> output_file := Some path
-  | Some _ -> raise (Arg.Bad "Multiple output files are not supported")
-
-let speclist = [
-  ("--verbose", Arg.Set verbose, "Print intermediate QASMCore representation");
-  ("-v", Arg.Set verbose, "Short for --verbose");
-  ("--json", Arg.Set emit_json, "Emit result as JSON");
-  ("--output", Arg.String set_output_file, "Write result to FILE instead of stdout");
-  ("-o", Arg.String set_output_file, "Short for --output");
-]
-
-let set_input_file s =
-  if !input_file = "" then input_file := s
-  else raise (Arg.Bad "Multiple input files are not supported")
+let parse_args argv =
+  let verbose = ref false in
+  let emit_json = ref false in
+  let unoptimize = ref false in
+  let output_file = ref None in
+  let positionals = ref [] in
+  let set_output_file path =
+    match !output_file with
+    | None -> output_file := Some path
+    | Some _ -> raise (Arg.Bad "Multiple output files are not supported")
+  in
+  let speclist =
+    [ ( "--unoptimize",
+        Arg.Set unoptimize,
+        "Rewrite SOURCE as canonical OpenQASM 2 in DESTINATION" );
+      ( "--verbose",
+        Arg.Set verbose,
+        "Print intermediate QASMCore representation" );
+      ("-v", Arg.Set verbose, "Short for --verbose");
+      ("--json", Arg.Set emit_json, "Emit result as JSON");
+      ( "--output",
+        Arg.String set_output_file,
+        "Write result to FILE instead of stdout" );
+      ("-o", Arg.String set_output_file, "Short for --output") ]
+  in
+  let argv = Array.copy argv in
+  if Array.length argv > 0 then argv.(0) <- "qasminfer";
+  Arg.parse_argv ~current:(ref 0) argv speclist
+    (fun positional -> positionals := positional :: !positionals)
+    usage_msg;
+  let positionals = List.rev !positionals in
+  let usage_error message =
+    raise (Arg.Bad (message ^ "\n" ^ Arg.usage_string speclist usage_msg))
+  in
+  if Array.length argv <= 1 then
+    raise (Arg.Bad (Arg.usage_string speclist usage_msg));
+  match (!unoptimize, positionals) with
+  | true, _ when !emit_json ->
+      usage_error "--json cannot be used with --unoptimize"
+  | true, _ when Option.is_some !output_file ->
+      usage_error "--output/-o cannot be used with --unoptimize"
+  | true, [ source; destination ] ->
+      Unoptimize { source; destination; verbose = !verbose }
+  | true, _ ->
+      usage_error
+        "--unoptimize expects exactly two positional arguments: SOURCE DESTINATION"
+  | false, [ source ] ->
+      Execute
+        {
+          source;
+          verbose = !verbose;
+          emit_json = !emit_json;
+          output_file = !output_file;
+        }
+  | false, _ -> usage_error "execution expects exactly one positional SOURCE"
 
 let rec to_binary n =
   if n = 0 then "0"
@@ -114,8 +165,8 @@ let json_of_result nq nc entries =
       "{\n  \"qubits\": %d,\n  \"clbits\": %d,\n  \"probabilities\": [\n%s\n  ]\n}\n"
       nq nc probabilities
 
-let write_result output =
-  match !output_file with
+let write_result output_file output =
+  match output_file with
   | None -> output_string stdout output
   | Some path ->
       let channel = open_out path in
@@ -127,27 +178,19 @@ let log_line line =
   output_string stderr line;
   output_char stderr '\n'
 
-let check_qasm_version file_path =
-  let ch = open_in file_path in
-  let rec find_version_line () =
-    try
-      let line = input_line ch in
+let check_qasm_version source =
+  let rec find_version_line = function
+    | [] -> failwith "File is empty or contains only whitespace/comments"
+    | line :: rest ->
       let trimmed = String.trim line in
-      if trimmed = "" then find_version_line ()
+      if trimmed = "" then find_version_line rest
       else if String.length trimmed >= 2 && String.sub trimmed 0 2 = "//" then
-        find_version_line ()
+        find_version_line rest
       else line
-    with End_of_file ->
-      close_in ch;
-      failwith "File is empty or contains only whitespace/comments"
   in
   let first_meaningful_line =
-    try find_version_line ()
-    with e ->
-      close_in ch;
-      raise e
+    source |> String.split_on_char '\n' |> find_version_line
   in
-  close_in ch;
   if String.length first_meaningful_line >= 10 then
     let prefix = String.sub first_meaningful_line 0 10 in
     if prefix = "OPENQASM 2" then V2
@@ -157,36 +200,80 @@ let check_qasm_version file_path =
   else
     failwith ("Invalid QASM file format: " ^ first_meaningful_line)
 
-let main () =
-  Arg.parse speclist set_input_file usage_msg;
-
-  if !input_file = "" then (
-    Arg.usage speclist usage_msg;
-    exit 1
-  );
-
-  let file_path = !input_file in
+let parse_and_desugar file_path =
+  let source = In_channel.with_open_bin file_path In_channel.input_all in
   let ast =
-    (match check_qasm_version file_path with
-    | V2 -> Q2.get_ast file_path
-    | V3 -> Q3.get_ast file_path |> Q3.desugar)
-    |> Q2.inline_qelib
+    match check_qasm_version source with
+    | V2 -> Q2.parse_string_result ~filename:file_path source
+    | V3 ->
+        Q3.parse_string_result ~filename:file_path source |> Result.map Q3.desugar
   in
-  let nq, nc, instr, _, _ = Q2.desugar ast in
+  let ast =
+    match ast with
+    | Ok program -> program
+    | Error message -> raise (Cli_error message)
+  in
+  let ast = Q2.inline_qelib ast in
+  Q2.desugar ast
 
-  if !verbose then (
+let log_instruction verbose instruction =
+  if verbose then (
     log_line "QASMCore ========================================";
-    log_line (Q2.string_of_instruction instr)
-  );
+    log_line (Q2.string_of_instruction instruction)
+  )
 
-  if !verbose then log_line "RESULT ==========================================";
+let execute source verbose emit_json output_file =
+  let nq, nc, instr, _, _ = parse_and_desugar source in
+
+  log_instruction verbose instr;
+
+  if verbose then log_line "RESULT ==========================================";
 
   let result =
     execute_and_calculate_prob nq nc instr
     |> dense_list nc
     |> result_entries nc
-    |> if !emit_json then json_of_result nq nc else text_of_result
+    |> if emit_json then json_of_result nq nc else text_of_result
   in
-  write_result result
+  write_result output_file result
 
-let _ = main ()
+let unoptimize source destination verbose =
+  let nq, nc, instr, q_assignment, c_assignment =
+    parse_and_desugar source
+  in
+  let transformed = Unoptimize.unoptimize_nop instr in
+  log_instruction verbose transformed;
+  let output =
+    match Q2.sugar nq nc q_assignment c_assignment transformed with
+    | Ok program -> Q2.string_of_program program
+    | Error message -> failwith ("cannot sugar OpenQASMCore: " ^ message)
+  in
+  write_result (Some destination) output
+
+let output_message channel message =
+  output_string channel message;
+  if message = "" || message.[String.length message - 1] <> '\n' then
+    output_char channel '\n'
+
+let main argv =
+  let no_arguments = Array.length argv <= 1 in
+  try
+    match parse_args argv with
+    | Execute { source; verbose; emit_json; output_file } ->
+        execute source verbose emit_json output_file;
+        0
+    | Unoptimize { source; destination; verbose } ->
+        unoptimize source destination verbose;
+        0
+  with
+  | Arg.Help message ->
+      output_message stdout message;
+      0
+  | Cli_error message ->
+      output_message stderr ("qasminfer: " ^ message);
+      1
+  | Arg.Bad message ->
+      output_message stderr message;
+      if no_arguments then 1 else 2
+
+let () = exit (main Sys.argv)

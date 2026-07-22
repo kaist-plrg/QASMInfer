@@ -5,34 +5,25 @@ module Ast2 = Qasm2.Ast
 (* 1. Desugar physical qubits *)
 (******************************)
 
-let rec extract_physical_idx prog =
-  match prog with
+let physical_idx_of_arg = function
+  | "$", Some idx -> Some idx
+  | _ -> None
+
+let extract_physical_idx_qop = function
+  | Uop (CX (control, target)) ->
+      List.filter_map physical_idx_of_arg [ control; target ]
+  | Uop (U (_, arg)) -> List.filter_map physical_idx_of_arg [ arg ]
+  | Uop (Gate (_, _, args)) -> List.filter_map physical_idx_of_arg args
+  | Meas (qubit, _) | Reset qubit ->
+      List.filter_map physical_idx_of_arg [ qubit ]
+
+let rec extract_physical_idx = function
   | [] -> []
-  | stmt :: rest -> (
-      match stmt with
-      | Qop (Uop (CX ((name1, Some idx1), (name2, Some idx2)))) ->
-          if name1 = "$" && name2 = "$" then
-            [ idx1; idx2 ] @ extract_physical_idx rest
-          else if name1 = "$" then idx1 :: extract_physical_idx rest
-          else if name2 = "$" then idx2 :: extract_physical_idx rest
-          else extract_physical_idx rest
-      | Qop (Uop (U (_, (name, Some idx)))) ->
-          if name = "$" then idx :: extract_physical_idx rest
-          else extract_physical_idx rest
-      | Qop (Uop (Gate (_, _, args))) ->
-          let physical_indices =
-            List.fold_left
-              (fun acc (arg_name, opt_idx) ->
-                if arg_name = "$" then
-                  match opt_idx with Some idx -> idx :: acc | None -> acc
-                else acc)
-              [] args
-          in
-          physical_indices @ extract_physical_idx rest
-      | Qop (Meas ((name, Some idx), _)) | Qop (Reset (name, Some idx)) ->
-          if name = "$" then idx :: extract_physical_idx rest
-          else extract_physical_idx rest
-      | _ -> extract_physical_idx rest)
+  | Qop qop :: rest ->
+      extract_physical_idx_qop qop @ extract_physical_idx rest
+  | If (_, _, qops) :: rest ->
+      List.concat_map extract_physical_idx_qop qops @ extract_physical_idx rest
+  | _ :: rest -> extract_physical_idx rest
 
 let desugar_physical_qubits prog =
   let physical_indices = extract_physical_idx prog in
