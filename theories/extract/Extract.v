@@ -13,6 +13,7 @@ From Stdlib Require Import ZArith Reals.
 From Stdlib Require ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZInt ExtrOcamlIntConv.
 Require Import QASMInfer.program.Program.
 Require Import QASMInfer.matrix.Complex.
+Require Import QASMInfer.transform.Function.
 
 Set Extraction Output Directory ".".
 Extraction Language OCaml.
@@ -79,7 +80,7 @@ Extract Inlined Constant com_inv => "Complex.inv".
 
 (* Extract Inlined Constant ocaml_max_int => "Int.max_int". *)
 
-Extraction "extracted.ml" Execute_and_calculate_prob.
+Extraction "extracted.ml" Execute_and_calculate_prob Function_I_XX.
 
 (* Extraction "quantum_core.ml" Execute_and_calculate_prob. *)
 (* Extraction "./desugar.ml" desugar. *)

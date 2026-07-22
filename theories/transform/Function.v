@@ -73,10 +73,6 @@ Definition NatPattern_inst
       NatMap.find variable subst
   end.
 
-(* ================================================================ *)
-(* Match one instruction                                            *)
-(* ================================================================ *)
-
 Inductive InstructionPattern: Type :=
   | PNop: InstructionPattern
   | PRotate: R -> R -> R -> NatPattern -> InstructionPattern 
@@ -135,10 +131,6 @@ Definition InstructionPattern_match
       None
   end.
 
-(* ================================================================ *)
-(* Match a pattern list against the prefix of an instruction list    *)
-(* ================================================================ *)
-
 Fixpoint InstructionPattern_match_list
     (patterns : list InstructionPattern)
     (instrs : list Instruction)
@@ -154,10 +146,6 @@ Fixpoint InstructionPattern_match_list
     | None => None
     end
   end.
-
-(* ================================================================ *)
-(* Instantiate one instruction pattern                              *)
-(* ================================================================ *)
 
 Definition InstructionPattern_inst
     (pattern : InstructionPattern)
@@ -202,10 +190,6 @@ Definition InstructionPattern_inst
       end
   end.
 
-(* ================================================================ *)
-(* Instantiate an instruction-pattern list                          *)
-(* ================================================================ *)
-
 Fixpoint InstructionPattern_inst_list
     (patterns : list InstructionPattern)
     (map: PatternMap)
@@ -221,10 +205,6 @@ Fixpoint InstructionPattern_inst_list
       | _, _ => None
       end
   end.
-
-(* ================================================================ *)
-(* Rewrite rule                                                     *)
-(* ================================================================ *)
 
 Record RewriteRule : Type := {
   rule_lhs : list InstructionPattern;
@@ -254,10 +234,6 @@ Definition RewriteRule_apply
   | None => None
   end.
 
-(* ================================================================ *)
-(* Rewrite the nth occurrence in a flat sequence                    *)
-(* ================================================================ *)
-
 Fixpoint RewriteRule_apply_nth_list
     (rule : RewriteRule)
     (instrs : list Instruction)
@@ -284,10 +260,6 @@ Fixpoint RewriteRule_apply_nth_list
     end
   end.
 
-(* ================================================================ *)
-(* Convert a list back to Instruction                               *)
-(* ================================================================ *)
-
 Definition Instruction_list_simp
     (instrs : list Instruction)
     : Instruction :=
@@ -299,10 +271,6 @@ Definition Instruction_list_simp
   | _ =>
       SeqInstr instrs
   end.
-
-(* ================================================================ *)
-(* Public rewriting functions                                       *)
-(* ================================================================ *)
 
 Fixpoint RewriteRule_apply_nth
     (rule : RewriteRule)
@@ -336,7 +304,7 @@ Definition Pat_X
 Definition Pat_Y
     (qbit_pattern : NatPattern)
     : InstructionPattern :=
-  PRotate PI (PI / 2) (PI / 2) qbit_pattern.
+  PRotate PI PI2 PI2 qbit_pattern.
 
 Variable nq: nat.
 
@@ -420,7 +388,10 @@ Definition RewriteRuleValid
       (SeqInstr (RewriteResult_replacement result
        ++ skipn (RewriteResult_consumed result) instrs)).
 
-(* Proof *)
+
+(* ================================================================ *)
+(* Proof                                                            *)
+(* ================================================================ *)
 Lemma R_eqb_eq :
   forall x y,
     R_eqb x y = true ->
@@ -1450,61 +1421,11 @@ Definition Rule_I_to_XX : RewriteRule :=
        Pat_X (NatVar 0)]
   |}.
 
-Definition Function_X_X
+Definition Function_I_XX
     (instr : Instruction)
     (occurrence : nat)
     : Instruction :=
   RewriteRule_apply_nth Rule_I_to_XX instr occurrence.
-
-Lemma Rule_I_to_XX_apply_inv :
-  forall instrs result,
-    RewriteRule_apply Rule_I_to_XX instrs = Some result ->
-    exists qbit rest,
-      instrs = Gate_I qbit :: rest
-      /\
-      RewriteResult_consumed result = 1%nat
-      /\
-      RewriteResult_replacement result =
-        [Gate_X qbit; Gate_X qbit].
-Proof.
-  intros instrs result Happly.
-
-  destruct instrs as [| instr rest].
-  - unfold RewriteRule_apply, Rule_I_to_XX in Happly.
-    simpl in Happly.
-    discriminate.
-  - destruct instr as
-      [ (* Nop *)
-      | theta phi lambda qbit
-      | control target
-      | qbit1 qbit2
-      | qbit cbit
-      | instrs
-      | cbit expected body
-      | qbit ];
-      try (
-        unfold RewriteRule_apply, Rule_I_to_XX,
-               Pat_I, InstructionPattern_match_list,
-               InstructionPattern_match in Happly;
-        simpl in Happly;
-        discriminate
-      ).
-
-    unfold RewriteRule_apply, Rule_I_to_XX,
-           Pat_I, Pat_X in Happly.
-    simpl in Happly.
-    unfold R_eqb in Happly.
-
-    destruct (Req_EM_T theta 0) as [Htheta | Htheta]; try discriminate; subst.
-    destruct (Req_EM_T phi 0) as [Hphi | Hphi]; try discriminate; subst.
-    destruct (Req_EM_T lambda 0) as [Hlambda | Hlambda]; try discriminate; subst.
-
-    simpl in Happly.
-    destruct result; inversion Happly; simpl.
-
-    exists qbit, rest.
-    repeat split; reflexivity.
-Qed.
 
 Lemma Rule_I_to_XX_valid : 
   PatternRuleValid nq Rule_I_to_XX.
@@ -1529,12 +1450,59 @@ Lemma Transform_X_X_valid:
   Instruction_qbits_valid nq instr ->
   Instruction_equiv nq
   instr
-  (Function_X_X instr occurrence).
+  (Function_I_XX instr occurrence).
 Proof.
   intros.
   apply RewriteRule_apply_nth_sound; try assumption.
   apply PatternRuleValid_implies_RewriteRuleValid.
   apply Rule_I_to_XX_valid.
+Qed.
+
+Definition Rule_XY_to_YX : RewriteRule :=
+  {|
+    rule_lhs :=
+      [Pat_X (NatVar 0);
+       Pat_Y (NatVar 0)];
+
+    rule_rhs :=
+      [Pat_Y (NatVar 0);
+       Pat_X (NatVar 0)]
+  |}.
+
+Definition Function_XY_YX
+    (instr : Instruction)
+    (occurrence : nat)
+    : Instruction :=
+  RewriteRule_apply_nth Rule_XY_to_YX instr occurrence.
+
+Lemma Rule_XY_to_YX_valid : 
+  PatternRuleValid nq Rule_XY_to_YX.
+Proof.
+  intros map lhs rhs Hlhs Hrhs Hvalid.
+  simpl in Hlhs, Hrhs.
+
+  destruct (NatMap.find 0%nat map)
+    as [qbit |] eqn:Hqbit;
+    try discriminate.
+  inversion Hlhs; subst lhs.
+  inversion Hrhs; subst rhs.
+  apply Commute_X_Y.
+  inversion Hvalid as [| instr rest Hinstr Hrest]; subst.
+  inversion Hinstr; subst.
+  assumption.
+Qed.
+
+Lemma Transform_XY_YX_valid:
+  forall (instr: Instruction) (occurrence: nat),
+  Instruction_qbits_valid nq instr ->
+  Instruction_equiv nq
+  instr
+  (Function_XY_YX instr occurrence).
+Proof.
+  intros.
+  apply RewriteRule_apply_nth_sound; try assumption.
+  apply PatternRuleValid_implies_RewriteRuleValid.
+  apply Rule_XY_to_YX_valid.
 Qed.
 
 End TRANSFORM_FUNCTIONS.
