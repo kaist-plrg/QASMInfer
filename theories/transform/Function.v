@@ -1458,25 +1458,24 @@ Proof.
   apply Rule_I_to_XX_valid.
 Qed.
 
-Definition Rule_XY_to_YX : RewriteRule :=
+Definition Rule_I_to_YY : RewriteRule :=
   {|
     rule_lhs :=
-      [Pat_X (NatVar 0);
-       Pat_Y (NatVar 0)];
+      [Pat_I (NatVar 0)];
 
     rule_rhs :=
       [Pat_Y (NatVar 0);
-       Pat_X (NatVar 0)]
+       Pat_Y (NatVar 0)]
   |}.
 
-Definition Function_XY_YX
+Definition Function_I_YY
     (instr : Instruction)
     (occurrence : nat)
     : Instruction :=
-  RewriteRule_apply_nth Rule_XY_to_YX instr occurrence.
+  RewriteRule_apply_nth Rule_I_to_YY instr occurrence.
 
-Lemma Rule_XY_to_YX_valid : 
-  PatternRuleValid nq Rule_XY_to_YX.
+Lemma Rule_I_to_YY_valid : 
+  PatternRuleValid nq Rule_I_to_YY.
 Proof.
   intros map lhs rhs Hlhs Hrhs Hvalid.
   simpl in Hlhs, Hrhs.
@@ -1486,23 +1485,30 @@ Proof.
     try discriminate.
   inversion Hlhs; subst lhs.
   inversion Hrhs; subst rhs.
-  apply Commute_X_Y.
+  symmetry.
+  apply Transform_Y_Y.
   inversion Hvalid as [| instr rest Hinstr Hrest]; subst.
   inversion Hinstr; subst.
   assumption.
 Qed.
 
-Lemma Transform_XY_YX_valid:
+Lemma Transform_Y_Y_valid:
   forall (instr: Instruction) (occurrence: nat),
   Instruction_qbits_valid nq instr ->
   Instruction_equiv nq
   instr
-  (Function_XY_YX instr occurrence).
+  (Function_I_YY instr occurrence).
 Proof.
   intros.
   apply RewriteRule_apply_nth_sound; try assumption.
   apply PatternRuleValid_implies_RewriteRuleValid.
-  apply Rule_XY_to_YX_valid.
+  apply Rule_I_to_YY_valid.
 Qed.
+
+Definition Transform_functions : list (Instruction -> nat -> Instruction) :=
+  [
+    Function_I_XX;
+    Function_I_YY
+  ].
 
 End TRANSFORM_FUNCTIONS.
