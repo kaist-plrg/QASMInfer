@@ -158,7 +158,7 @@ let rec string_of_qc_ir = function
   | CnotIr (i, j) -> Printf.sprintf "CnotIr (%d, %d)" i j
   | MeasureIr (i, j) -> Printf.sprintf "MeasureIr (%d, %d)" i j
   | ResetIr i -> Printf.sprintf "ResetIr %d" i
-  | SeqIr (ir1, ir2) -> string_of_qc_ir ir1 ^ "\n" ^ string_of_qc_ir ir2
+  | SeqIr irs -> String.concat "\n" (List.map string_of_qc_ir irs)
   | IfIr (i, b, ir) ->
       Printf.sprintf "IfIr (%d, %b, \n%s)" i b (string_of_qc_ir ir)
 

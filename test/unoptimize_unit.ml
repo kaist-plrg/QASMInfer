@@ -146,7 +146,6 @@ reset right[0];
   require_constructor "ResetInstr" (function E.ResetInstr _ -> true | _ -> false);
   require_constructor "SeqInstr" (function E.SeqInstr _ -> true | _ -> false);
   require_constructor "IfInstr" (function E.IfInstr _ -> true | _ -> false);
-  require_constructor "NopInstr" (function E.NopInstr -> true | _ -> false);
   let _, rendered =
     sugar_and_reparse nq nc instruction q_assignment c_assignment
   in

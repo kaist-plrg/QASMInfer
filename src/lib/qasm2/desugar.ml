@@ -249,7 +249,7 @@ type qc_ir =
   | CnotIr of int * int
   | MeasureIr of int * int
   | ResetIr of int
-  | SeqIr of qc_ir * qc_ir
+  | SeqIr of qc_ir list
   | IfIr of int * bool * qc_ir
 
 module QASMArg = struct
@@ -374,34 +374,26 @@ let rec desugar_qasm_if (cond_list : (int * bool) list) (qop_ir : qc_ir) : qc_ir
   | [] -> qop_ir
   | (c, b) :: t -> IfIr (c, b, desugar_qasm_if t qop_ir)
 
-let rec desugar_qasm_qop_list (assignment_q_rev : int QASMArgMap.t)
+let desugar_qasm_qop_list (assignment_q_rev : int QASMArgMap.t)
     (assignment_c_rev : int QASMArgMap.t) (qop_list : qop_dp list) : qc_ir =
-  match qop_list with
-  | [] -> NopIr
-  | h :: t ->
-      SeqIr
-        ( desugar_qasm_qop assignment_q_rev assignment_c_rev h,
-          desugar_qasm_qop_list assignment_q_rev assignment_c_rev t )
+  SeqIr
+    (List.map
+       (desugar_qasm_qop assignment_q_rev assignment_c_rev)
+       qop_list)
 
-let rec desugar_qasm_program (creg_size_map : int IdMap.t)
+let desugar_qasm_program (creg_size_map : int IdMap.t)
     (assignment_q_rev : int QASMArgMap.t) (assignment_c_rev : int QASMArgMap.t)
     (qasm_dm : program_dp) : qc_ir =
-  match qasm_dm with
-  | [] -> NopIr
-  | Qop_dp op :: tail ->
-      SeqIr
-        ( desugar_qasm_qop assignment_q_rev assignment_c_rev op,
-          desugar_qasm_program creg_size_map assignment_q_rev assignment_c_rev
-            tail )
-  | IfList_dp (cid, comp, qop_list) :: tail ->
-      let cond_list = unfold_if creg_size_map assignment_c_rev cid comp in
-      let qop_ir =
-        desugar_qasm_qop_list assignment_q_rev assignment_c_rev qop_list
-      in
-      SeqIr
-        ( desugar_qasm_if cond_list qop_ir,
-          desugar_qasm_program creg_size_map assignment_q_rev assignment_c_rev
-            tail )
+  let desugar_statement = function
+    | Qop_dp op -> desugar_qasm_qop assignment_q_rev assignment_c_rev op
+    | IfList_dp (cid, comp, qop_list) ->
+        let cond_list = unfold_if creg_size_map assignment_c_rev cid comp in
+        let qop_ir =
+          desugar_qasm_qop_list assignment_q_rev assignment_c_rev qop_list
+        in
+        desugar_qasm_if cond_list qop_ir
+  in
+  SeqIr (List.map desugar_statement qasm_dm)
 
 (********************************************)
 (* 4. DEPRECATED: desugar reset instruction *)
@@ -415,10 +407,15 @@ let rec desugar_qcir_program (qc_ir_program : qc_ir) (acc : int) :
   | CnotIr (a1, a2) -> (CnotInstr (a1, a2), acc)
   | MeasureIr (q, c) -> (MeasureInstr (q, c), acc)
   | ResetIr q -> (ResetInstr q, acc)
-  | SeqIr (ir1, ir2) ->
-      let qc1, acc1 = desugar_qcir_program ir1 acc in
-      let qc2, acc2 = desugar_qcir_program ir2 acc1 in
-      (SeqInstr [qc1; qc2], acc2)
+  | SeqIr irs ->
+      let instructions_rev, acc' =
+        List.fold_left
+          (fun (instructions, acc) ir ->
+            let instruction, acc' = desugar_qcir_program ir acc in
+            (instruction :: instructions, acc'))
+          ([], acc) irs
+      in
+      (SeqInstr (List.rev instructions_rev), acc')
   | IfIr (i, b, ir) ->
       let qc1, acc1 = desugar_qcir_program ir acc in
       (IfInstr (i, b, qc1), acc1)
