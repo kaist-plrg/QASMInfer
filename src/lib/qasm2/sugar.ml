@@ -292,9 +292,13 @@ let rec flatten_condition acc = function
 
 let rec flatten_body_rev acc = function
   | NopInstr -> Ok acc
-  | SeqInstr (left, right) ->
-      let* acc = flatten_body_rev acc left in
-      flatten_body_rev acc right
+  | SeqInstr instructions ->
+      List.fold_left
+        (fun result instruction ->
+          let* acc = result in
+          flatten_body_rev acc instruction)
+        (Ok acc)
+        instructions
   | IfInstr _ ->
       Error "unrepresentable conditional: nested condition in the guarded body"
   | SwapInstr _ -> Error "unsupported SwapInstr in OpenQASM 2 sugar"
@@ -382,9 +386,15 @@ let statements_of_instruction qregs cregs q_assignment c_assignment instruction
     =
   let rec collect acc = function
     | NopInstr -> Ok acc
-    | SeqInstr (left, right) ->
-        let* acc = collect acc left in
-        collect acc right
+    | SeqInstr instructions ->
+        let rec collect_all acc = function
+          | [] ->
+              Ok acc
+          | instruction :: rest ->
+              let* acc = collect acc instruction in
+              collect_all acc rest
+        in
+        collect_all acc instructions
     | IfInstr _ as conditional ->
         let* statements =
           statements_of_condition qregs cregs q_assignment c_assignment

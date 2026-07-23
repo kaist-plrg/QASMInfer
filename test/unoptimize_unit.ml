@@ -33,19 +33,22 @@ let expect_error fragment = function
 let r value = E.RbaseSymbolsImpl.coq_Rabst value
 
 let test_unoptimize_nop_is_exact_identity () =
-  let instruction =
-    E.SeqInstr
-      ( E.RotateInstr (r 0.25, r (-0.5), r 1.75, 2),
-        E.SeqInstr
-          ( E.CnotInstr (2, 0),
-            E.SeqInstr
-              ( E.SwapInstr (0, 2),
-                E.SeqInstr
-                  ( E.MeasureInstr (2, 1),
-                    E.IfInstr
-                      ( 1,
-                        true,
-                        E.SeqInstr (E.ResetInstr 2, E.NopInstr) ) ) ) ) )
+let instruction =
+  E.SeqInstr
+    [
+      E.RotateInstr (r 0.25, r (-0.5), r 1.75, 2);
+      E.CnotInstr (2, 0);
+      E.SwapInstr (0, 2);
+      E.MeasureInstr (2, 1);
+      E.IfInstr
+        ( 1,
+          true,
+          E.SeqInstr
+            [
+              E.ResetInstr 2;
+              E.NopInstr;
+            ] );
+    ]
   in
   let result = Unoptimize.unoptimize_nop instruction in
   require (result = instruction)
@@ -102,10 +105,12 @@ let rec instruction_exists predicate instruction =
   predicate instruction
   ||
   match instruction with
-  | E.SeqInstr (left, right) ->
-      instruction_exists predicate left || instruction_exists predicate right
-  | E.IfInstr (_, _, body) -> instruction_exists predicate body
-  | _ -> false
+  | E.SeqInstr instructions ->
+      List.exists (instruction_exists predicate) instructions
+  | E.IfInstr (_, _, body) ->
+      instruction_exists predicate body
+  | _ ->
+      false
 
 let test_qasm2_sugar_round_trip () =
   let source =
@@ -274,8 +279,8 @@ let test_sugar_splits_safe_conditional_sequence () =
       ( 0,
         false,
         E.SeqInstr
-          ( E.RotateInstr (r (Float.pi /. 2.0), r 0.0, r Float.pi, 0),
-            E.MeasureInstr (0, 1) ) )
+          [ E.RotateInstr (r (Float.pi /. 2.0), r 0.0, r Float.pi, 0);
+            E.MeasureInstr (0, 1) ] )
   in
   let program =
     Q2.sugar 1 2 q_assignment c_assignment instruction |> ok_or_fail
@@ -299,7 +304,7 @@ let test_sugar_rejects_conditional_sequence_that_mutates_guard () =
     E.IfInstr
       ( 0,
         false,
-        E.SeqInstr (E.MeasureInstr (0, 0), E.ResetInstr 0) )
+        E.SeqInstr [E.MeasureInstr (0, 0); E.ResetInstr 0] )
   in
   Q2.sugar 1 1 (singleton_map 0 ("q", 0))
     (singleton_map 0 ("flag", 0)) instruction

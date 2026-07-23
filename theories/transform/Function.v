@@ -27,6 +27,46 @@ Bind Scope nat_scope with nat.
 Open Scope R_scope.
 Import List.ListNotations.
 
+Section FLATTEN_FUNCTION.
+
+Fixpoint flatten_core (instr : Instruction) : Instruction :=
+  match instr with
+  | SeqInstr instrs =>
+      fold_right
+        (fun instr acc =>
+           qasm_seq (flatten_core instr) acc)
+        (SeqInstr [])
+        instrs
+  | IfInstr c b body =>
+      IfInstr c b (flatten_core body)
+  | _ =>
+      instr
+  end.
+
+Lemma Instruction_equiv_flatten:
+  forall (nq: nat) (instr: Instruction),
+  Instruction_equiv nq
+  instr
+  (flatten_core instr).
+Proof.
+  intros nq.
+  apply Instruction_ind'; simpl; intros; try reflexivity.
+  - induction is; try reflexivity; simpl.
+    inversion H; subst.
+    rewrite Instruction_equiv_Seq_list_eq.
+    transitivity (qasm{ ($(flatten_core a)); seq[ is ]}). {
+      apply Instruction_equiv_rewrite_start.
+      apply H2.
+    }
+    apply Instruction_equiv_rewrite_end.
+    apply IHis.
+    apply H3.
+  - apply Instruction_if_Proper.
+    apply H.
+Qed.
+
+End FLATTEN_FUNCTION.
+
 Section PATTERN.
 
 Definition R_eqb (x y: R): bool :=
@@ -1427,37 +1467,6 @@ Definition Function_I_XX
     : Instruction :=
   RewriteRule_apply_nth Rule_I_to_XX instr occurrence.
 
-Lemma Rule_I_to_XX_valid : 
-  PatternRuleValid nq Rule_I_to_XX.
-Proof.
-  intros map lhs rhs Hlhs Hrhs Hvalid.
-  simpl in Hlhs, Hrhs.
-
-  destruct (NatMap.find 0%nat map)
-    as [qbit |] eqn:Hqbit;
-    try discriminate.
-  inversion Hlhs; subst lhs.
-  inversion Hrhs; subst rhs.
-  symmetry.
-  apply Transform_X_X.
-  inversion Hvalid as [| instr rest Hinstr Hrest]; subst.
-  inversion Hinstr; subst.
-  assumption.
-Qed.
-
-Lemma Transform_X_X_valid:
-  forall (instr: Instruction) (occurrence: nat),
-  Instruction_qbits_valid nq instr ->
-  Instruction_equiv nq
-  instr
-  (Function_I_XX instr occurrence).
-Proof.
-  intros.
-  apply RewriteRule_apply_nth_sound; try assumption.
-  apply PatternRuleValid_implies_RewriteRuleValid.
-  apply Rule_I_to_XX_valid.
-Qed.
-
 Definition Rule_I_to_YY : RewriteRule :=
   {|
     rule_lhs :=
@@ -1474,41 +1483,33 @@ Definition Function_I_YY
     : Instruction :=
   RewriteRule_apply_nth Rule_I_to_YY instr occurrence.
 
-Lemma Rule_I_to_YY_valid : 
-  PatternRuleValid nq Rule_I_to_YY.
-Proof.
-  intros map lhs rhs Hlhs Hrhs Hvalid.
-  simpl in Hlhs, Hrhs.
-
-  destruct (NatMap.find 0%nat map)
-    as [qbit |] eqn:Hqbit;
-    try discriminate.
-  inversion Hlhs; subst lhs.
-  inversion Hrhs; subst rhs.
-  symmetry.
-  apply Transform_Y_Y.
-  inversion Hvalid as [| instr rest Hinstr Hrest]; subst.
-  inversion Hinstr; subst.
-  assumption.
-Qed.
-
-Lemma Transform_Y_Y_valid:
-  forall (instr: Instruction) (occurrence: nat),
-  Instruction_qbits_valid nq instr ->
-  Instruction_equiv nq
-  instr
-  (Function_I_YY instr occurrence).
-Proof.
-  intros.
-  apply RewriteRule_apply_nth_sound; try assumption.
-  apply PatternRuleValid_implies_RewriteRuleValid.
-  apply Rule_I_to_YY_valid.
-Qed.
-
 Definition Transform_functions : list (Instruction -> nat -> Instruction) :=
   [
     Function_I_XX;
     Function_I_YY
   ].
+
+Theorem Transform_functions_valid:
+  forall (instr: Instruction) (occurrence: nat),
+  Instruction_qbits_valid nq instr ->
+  Forall (fun f => Instruction_equiv nq instr (f instr occurrence)) Transform_functions.
+Proof.
+  intros.
+  repeat apply Forall_cons; try apply Forall_nil.
+  all: apply RewriteRule_apply_nth_sound; try assumption.
+  all: apply PatternRuleValid_implies_RewriteRuleValid.
+  all: intros map lhs rhs Hlhs Hrhs Hvalid; simpl in Hlhs, Hrhs.
+  all: destruct (NatMap.find 0%nat map)
+    as [qbit |] eqn:Hqbit;
+    try discriminate.
+  all: inversion Hlhs; subst lhs.
+  all: inversion Hrhs; subst rhs.
+  all: symmetry.
+  1: apply Transform_X_X.
+  2: apply Transform_Y_Y.
+  all: inversion Hvalid as [| h rt Hinstr Hrest]; subst.
+  all: inversion Hinstr; subst.
+  all: assumption.
+Qed.
 
 End TRANSFORM_FUNCTIONS.
