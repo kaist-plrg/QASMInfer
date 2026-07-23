@@ -63,6 +63,21 @@ Definition mat_caseS_ {n: nat} (A: Matrix (S n))
   | _ => fun devil => False_ind (@IDProp) devil
   end.
 
+(* Destruction of Matrix 1, for convenience *)
+Lemma mat_1_inv :
+  forall (A : Matrix 1),
+  exists a b c d : Complex,
+    A = rec_mat (bas_mat a) (bas_mat b) (bas_mat c) (bas_mat d).
+Proof.
+  intros A.
+  destruct (mat_S_inv A) as [A1 [A2 [A3 [A4 HA]]]]; subst A.
+  destruct (mat_0_inv A1) as [a Ha]; subst A1.
+  destruct (mat_0_inv A2) as [b Hb]; subst A2.
+  destruct (mat_0_inv A3) as [c Hc]; subst A3.
+  destruct (mat_0_inv A4) as [d Hd]; subst A4.
+  eexists a, b, c, d. reflexivity.
+Qed.
+
 (* An induction scheme for 2 matrices of same size *)
 Definition mat_rect2 (P: forall {n}, Matrix n -> Matrix n -> Type)
   (bas: forall a b, P (bas_mat a) (bas_mat b))
@@ -415,6 +430,13 @@ Proof.
     all: reflexivity.
 Qed.
 
+Lemma mat_eye_commute : forall {n} (A : Matrix n), A * mat_eye = mat_eye * A.
+Proof.
+  intros.
+  rewrite mat_mul_eye_l, mat_mul_eye_r.
+  reflexivity.
+Qed.
+
 Lemma mat_scale_1 : forall {n} (A : Matrix n), 1 .* A = A.
 Proof.
   intros.
@@ -545,6 +567,20 @@ Proof.
     rewrite com_mul_assoc.
     reflexivity.
   - simpl. f_equal; assumption.
+Qed.
+
+Lemma mat_0_conjtrans : forall {n}, (@mat_0 n)† = mat_0.
+Proof.
+  induction n.
+  - simpl. f_equal. com_simpl.
+  - simpl. f_equal; apply IHn.
+Qed.
+
+Lemma mat_eye_conjtrans : forall {n}, (@mat_eye n)† = mat_eye.
+Proof.
+  induction n.
+  - simpl. f_equal. com_simpl.
+  - simpl. f_equal; try apply IHn; try apply mat_0_conjtrans.
 Qed.
 
 Lemma mat_conjtrans_involutive : forall {n} (A : Matrix n), A†† = A.
@@ -687,6 +723,28 @@ Proof.
   intros. rewrite H. reflexivity.
 Qed.
 
+Lemma mat_add_one_step: forall {n: nat} (A0 A1 A2 A3 B0 B1 B2 B3: Matrix n),
+  (rec_mat A0 A1 A2 A3) + (rec_mat B0 B1 B2 B3) =
+  rec_mat
+    (A0 + B0)
+    (A1 + B1)
+    (A2 + B2)
+    (A3 + B3).
+Proof.
+  intros. simpl. reflexivity.
+Qed.
+
+Lemma mat_mul_one_step: forall {n: nat} (A0 A1 A2 A3 B0 B1 B2 B3: Matrix n),
+  (rec_mat A0 A1 A2 A3) * (rec_mat B0 B1 B2 B3) =
+  rec_mat
+    (A0 * B0 + A1 * B2)
+    (A0 * B1 + A1 * B3)
+    (A2 * B0 + A3 * B2)
+    (A2 * B1 + A3 * B3).
+Proof.
+  intros. simpl. reflexivity.
+Qed.
+
 End PROPERTIES.
 
 Section MatrixRing.
@@ -759,6 +817,7 @@ Qed.
 End MatrixRing.
 
 Section MatrixCast.
+Open Scope Matrix_scope.
 
 Lemma add_comm: forall {m n}, (m + n)%nat = (n + m)%nat.
 Proof. lia. Qed.
@@ -799,6 +858,13 @@ Proof.
   - simpl.
     rewrite IHA1. rewrite IHA2. rewrite IHA3. rewrite IHA4.
     reflexivity.
+Qed.
+
+Lemma mat_cast_eq_rect :
+  forall n m (A : Matrix n) (H : n = m),
+    mat_cast A H = eq_rect n Matrix A m H.
+Proof.
+  intros n m A H. destruct H. reflexivity.
 Qed.
 
 Lemma mat_cast_ccast: forall {m n} (A: Matrix n) (H: n = m),
@@ -931,6 +997,52 @@ Proof. intros. rewrite mat_cast_ccast. apply mat_eye_ccast. Qed.
 Lemma mat_eye_JMeq: forall {n m},
   n = m -> JMeq (@mat_eye n) (@mat_eye m).
 Proof. intros; rewrite H; reflexivity. Qed.
+
+Lemma mat_add_ccast :
+  forall {n m} (H : n = m) (A B : Matrix n),
+    (mat_ccast A H) + (mat_ccast B H) = mat_ccast (A + B) H.
+Proof.
+  intros n m H A B.
+  destruct H.
+  repeat rewrite mat_ccast_refl.
+  reflexivity.
+Qed.
+
+Lemma mat_mul_ccast :
+  forall {n m} (H : n = m) (A B : Matrix n),
+    (mat_ccast A H) * (mat_ccast B H) = mat_ccast (A * B) H.
+Proof.
+  intros n m H A B.
+  destruct H.
+  repeat rewrite mat_ccast_refl.
+  reflexivity.
+Qed.
+
+Lemma rec_mat_ccast :
+  forall {n m} (H : S n = S m) (A1 A2 A3 A4 : Matrix n),
+    mat_ccast (rec_mat A1 A2 A3 A4) H =
+    rec_mat (mat_ccast A1 (Nat.succ_inj n m H))
+            (mat_ccast A2 (Nat.succ_inj n m H))
+            (mat_ccast A3 (Nat.succ_inj n m H))
+            (mat_ccast A4 (Nat.succ_inj n m H)).
+Proof.
+  intros n m H A1 A2 A3 A4.
+  simpl.
+  f_equal; apply mat_ccast_refl'.
+Qed.
+
+Lemma ccast_rec_mat :
+  forall {n m} (H : n = m) (A1 A2 A3 A4 : Matrix n),
+    rec_mat (mat_ccast A1 H)
+            (mat_ccast A2 H)
+            (mat_ccast A3 H)
+            (mat_ccast A4 H) =
+    mat_ccast (rec_mat A1 A2 A3 A4) (f_equal S H).
+Proof.
+  intros n m H A1 A2 A3 A4.
+  simpl.
+  f_equal; apply mat_ccast_refl'.
+Qed.
 
 End MatrixCast.
 

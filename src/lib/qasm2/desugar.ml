@@ -418,7 +418,7 @@ let rec desugar_qcir_program (qc_ir_program : qc_ir) (acc : int) :
   | SeqIr (ir1, ir2) ->
       let qc1, acc1 = desugar_qcir_program ir1 acc in
       let qc2, acc2 = desugar_qcir_program ir2 acc1 in
-      (SeqInstr (qc1, qc2), acc2)
+      (SeqInstr [qc1; qc2], acc2) (* JYJ TODO : temp *)
   | IfIr (i, b, ir) ->
       let qc1, acc1 = desugar_qcir_program ir acc in
       (IfInstr (i, b, qc1), acc1)

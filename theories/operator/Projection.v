@@ -22,14 +22,14 @@ In the definition of the Qasmcore program, cnot instructions must have proofs of
 
 Fixpoint mat_proj0 (n p: nat): Matrix n :=
   match n, p with
-  | 0, _ => bas_mat 0  (* Actually there is no 1 * 1 projection *)
+  | 0, _ => bas_mat 1  (* Actually there is no 1 * 1 projection *)
   | S _, 0 => mat_proj0_base ⊗ mat_eye
   | S n', S p' => (@mat_eye 1) ⊗ mat_proj0 n' p'
   end.
 
 Fixpoint mat_proj1 (n p: nat): Matrix n :=
   match n, p with
-  | 0, _ => bas_mat 1  (* Actually there is no 1 * 1 projection *)
+  | 0, _ => bas_mat 0  (* Actually there is no 1 * 1 projection *)
   | S _, 0 => mat_proj1_base ⊗ mat_eye
   | S n', S p' => (@mat_eye 1) ⊗ mat_proj1 n' p'
   end.
@@ -291,6 +291,94 @@ Proof.
     + mat_simpl.
       f_equal.
       all: auto.
+Qed.
+
+Lemma mat_proj0_id:
+  forall {n t} (H: t < n) (Hcast: (t + 1 + (n - t - 1))%nat = n),
+    mat_proj0 n t =
+    mat_ccast ((@mat_eye t) ⊗ mat_proj0_base ⊗ (@mat_eye (n - t - 1))) Hcast.
+Proof.
+  induction n; intros t H Hcast.
+  - lia.
+  - destruct t.
+    + simpl. mat_simpl. f_equal.
+      all: try apply mat_0_ccast.
+      com_simpl. mat_simpl.
+      apply mat_eye_ccast.
+    + mat_simpl. f_equal.
+      all: try repeat rewrite tprod_0_l.
+      all: try apply mat_0_ccast.
+      all: assert (H': t < n) by lia.
+      all: assert (Hcast': (t + 1 + (n - t - 1))%nat = n) by lia.
+      all: rewrite (IHn t H' Hcast').
+      all: apply mat_ccast_refl'.
+Qed.
+
+Lemma mat_proj1_id:
+  forall {n t} (H: t < n) (Hcast: (t + 1 + (n - t - 1))%nat = n),
+    mat_proj1 n t =
+    mat_ccast ((@mat_eye t) ⊗ mat_proj1_base ⊗ (@mat_eye (n - t - 1))) Hcast.
+Proof.
+  induction n; intros t H Hcast.
+  - lia.
+  - destruct t.
+    + simpl. mat_simpl. f_equal.
+      all: try apply mat_0_ccast.
+      com_simpl. mat_simpl.
+      apply mat_eye_ccast.
+    + mat_simpl. f_equal.
+      all: try repeat rewrite tprod_0_l.
+      all: try apply mat_0_ccast.
+      all: assert (H': t < n) by lia.
+      all: assert (Hcast': (t + 1 + (n - t - 1))%nat = n) by lia.
+      all: rewrite (IHn t H' Hcast').
+      all: apply mat_ccast_refl'.
+Qed.
+
+Lemma mat_proj0_eq_mat_single:
+  forall {n t} (H: t < n),
+    mat_proj0 n t = mat_single n t mat_proj0_base.
+Proof.
+  intros n t H.
+  assert (Hcast: (t + 1 + (n - t - 1))%nat = n) by lia.
+  rewrite (mat_proj0_id H Hcast).
+  rewrite (mat_single_id _ H Hcast).
+  reflexivity.
+Qed.
+
+Lemma mat_proj1_eq_mat_single:
+  forall {n t} (H: t < n),
+    mat_proj1 n t = mat_single n t mat_proj1_base.
+Proof.
+  intros n t H.
+  assert (Hcast: (t + 1 + (n - t - 1))%nat = n) by lia.
+  rewrite (mat_proj1_id H Hcast).
+  rewrite (mat_single_id _ H Hcast).
+  reflexivity.
+Qed.
+
+Lemma mat_proj0_out_of_bounds:
+  forall {n t} (H: n <= t),
+  mat_proj0 n t = mat_eye.
+Proof.
+  induction n; intros.
+  - reflexivity.
+  - destruct t; try lia; cbn [mat_proj0].
+    rewrite IHn.
+    apply (tprod_eye_eye 1 n).
+    lia.
+Qed.
+
+Lemma mat_proj1_out_of_bounds:
+  forall {n t} (H: n <= t),
+  mat_proj1 n t = mat_0.
+Proof.
+  induction n; intros.
+  - reflexivity.
+  - destruct t; try lia; cbn [mat_proj1].
+    rewrite IHn.
+    apply (tprod_0_r 1 n).
+    lia.
 Qed.
 
 End PROPERTIES.

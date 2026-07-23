@@ -13,6 +13,7 @@ From Stdlib Require Import ZArith Reals.
 From Stdlib Require ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZInt ExtrOcamlIntConv.
 Require Import QASMInfer.program.Program.
 Require Import QASMInfer.matrix.Complex.
+Require Import QASMInfer.transform.Function.
 
 Set Extraction Output Directory ".".
 Extraction Language OCaml.
@@ -30,8 +31,8 @@ Extract Constant Pos.succ => "Stdlib.succ".
 
 Extract Inlined Constant Reals.ClassicalDedekindReals.DReal => "float".
 Extract Inductive Reals.Cauchy.ConstructiveCauchyReals.CReal => "float"
-  [ "(fun seq scale => seq scale)" ]
-  "(fun f creal -> f (creal.seq) (creal.scale))".
+  [ "(fun (seq, scale) -> seq scale)" ]
+  "(fun f _ -> f (fun _ -> assert false) 0)".
 
 Extract Inlined Constant IZR => "float_of_int".
 
@@ -77,9 +78,11 @@ Extract Inlined Constant com_real => "(fun x -> x.re)".
 Extract Inlined Constant com_exp => "Complex.exp".
 Extract Inlined Constant com_inv => "Complex.inv".
 
+Extract Constant R_eqb => "(fun x y -> Float.equal x y)".
+
 (* Extract Inlined Constant ocaml_max_int => "Int.max_int". *)
 
-Extraction "extracted.ml" Execute_and_calculate_prob.
+Extraction "extracted.ml" Execute_and_calculate_prob Transform_functions.
 
 (* Extraction "quantum_core.ml" Execute_and_calculate_prob. *)
 (* Extraction "./desugar.ml" desugar. *)

@@ -28,10 +28,43 @@ Inductive Instruction : Type :=
 | CnotInstr: nat -> nat -> Instruction  (* CnotInstr a b: flip b iff a *)
 | SwapInstr: nat -> nat -> Instruction  (* SwapInstr a b: swap a b *)
 | MeasureInstr: nat -> nat -> Instruction  (* MeasureInstr q c: *)
-| SeqInstr: Instruction -> Instruction -> Instruction
+| SeqInstr: list Instruction -> Instruction
 | IfInstr: nat -> bool -> Instruction -> Instruction  (* if cbit == 0 (false) or cbit == 1 (true) *)
 | ResetInstr: nat -> Instruction.  (* reset qbit to 0 *)
 
+Lemma Instruction_ind' :
+  forall (P : Instruction -> Prop),
+    P NopInstr ->
+    (forall theta phi lambda target, P (RotateInstr theta phi lambda target)) ->
+    (forall control target, P (CnotInstr control target)) ->
+    (forall q1 q2, P (SwapInstr q1 q2)) ->
+    (forall qbit cbit, P (MeasureInstr qbit cbit)) ->
+    (forall is, Forall P is -> P (SeqInstr is)) ->
+    (forall cbit cond subinstr, P subinstr -> P (IfInstr cbit cond subinstr)) ->
+    (forall target, P (ResetInstr target)) ->
+    forall instr, P instr.
+Proof.
+  intros P Hnop Hrot Hcnot Hswap Hmeas Hseq Hif Hreset.
+
+  fix IH 1.
+  intro instr.
+  destruct instr.
+  - exact Hnop.
+  - exact (Hrot r r0 r1 n).
+  - exact (Hcnot n n0).
+  - exact (Hswap n n0).
+  - exact (Hmeas n n0).
+  - (* SeqInstr l *)
+    apply Hseq.
+    induction l as [|x xs IHxs].
+    + constructor.
+    + constructor.
+      * exact (IH x).
+      * exact IHxs.
+  - (* IfInstr *)
+    exact (Hif n b instr (IH instr)).
+  - exact (Hreset n).
+Qed.
 
 (* ============================================================================================== *)
 (* classical state as positive numbers ========================================================= *)
@@ -112,15 +145,13 @@ Lemma CState_branch_different:
 Proof.
   intros.
   assert (Hread_value: let (c0, c1) := CState_branch idx cstate in
-    CState_read idx c1 = true /\ CState_read idx c0 = false).
-  {
+    CState_read idx c1 = true /\ CState_read idx c0 = false). {
     apply CState_branch_correct.
   }
   remember (CState_branch idx cstate) as branches eqn:Hbranches.
   destruct branches as [c0 c1].
   intros Heq.
-  assert (Hread: CState_read idx c1 = CState_read idx c0).
-  {
+  assert (Hread: CState_read idx c1 = CState_read idx c0). {
     rewrite Heq.
     reflexivity.
   }
@@ -155,6 +186,16 @@ Definition Branch_merge (b0 b1: Branch): Branch :=
     B_prob := B_prob b0 + B_prob b1;
   |}.
 
+Lemma Branch_invariant_valid:
+  forall (b: Branch), Branch_invariant b -> Branch_valid b.
+Proof.
+  intros b Hbi.
+  unfold Branch_valid.
+  unfold Branch_invariant in Hbi.
+  destruct Hbi as [Hden [Hgt0 Hle1]].
+  split. apply Hden. apply Hgt0.
+Qed.
+
 Lemma Branch_merge_valid: forall (b0 b1: Branch),
   Branch_valid b0 -> Branch_valid b1 -> Branch_valid (Branch_merge b0 b1).
 Proof.
@@ -175,14 +216,62 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma Branch_invariant_valid:
-  forall (b: Branch), Branch_invariant b -> Branch_valid b.
+Lemma Branch_merge_commute:
+  forall b1 b2,
+  Branch_merge b1 b2 = Branch_merge b2 b1.
 Proof.
-  intros b Hbi.
-  unfold Branch_valid.
-  unfold Branch_invariant in Hbi.
-  destruct Hbi as [Hden [Hgt0 Hle1]].
-  split. apply Hden. apply Hgt0.
+  intros [p1 q1] [p2 q2].
+  unfold Branch_merge. simpl.
+  f_equal.
+  - rewrite mat_add_comm.
+    f_equal; f_equal; f_equal; lca.
+  - lra.
+Qed.
+
+Lemma Branch_merge_transpose :
+  forall b b1 b2,
+  Branch_valid b ->
+  Branch_valid b1 ->
+  Branch_valid b2 ->
+  Branch_merge b1 (Branch_merge b2 b) =
+  Branch_merge b2 (Branch_merge b1 b).
+Proof.
+  assert (Hc: forall (c1 c2 c3: Complex),
+  c2 <> 0 ->
+  ((c1 / c2) * (c2 / c3) = c1 / c3)%com).
+  {
+    intros a b c Hb.
+    unfold com_div.
+    rewrite <- com_mul_assoc.
+    rewrite (com_mul_assoc _ b _).
+    rewrite com_inv_mult.
+    rewrite com_mul_1_l.
+    reflexivity.
+    apply Hb.
+  }
+  intros [p1 q1] [p2 q2] [p q] [_ Hb] [_ Hb1] [_ Hb2].
+  unfold Branch_merge, Branch_valid in *. simpl in *.
+  f_equal.
+  - repeat rewrite mat_scale_dist_l.
+    repeat rewrite <- mat_scale_scale_comm.
+    repeat rewrite mat_add_assoc.
+    replace (RTC (q + q1)%R) with (q + q1)%com by lca.
+    replace (RTC (q2 + q1)%R) with (q2 + q1)%com by lca.
+    f_equal.
+    + rewrite mat_add_comm.
+      f_equal; f_equal;
+      rewrite com_mul_comm, Hc.
+      f_equal. lca.
+      apply com_proj_neq_fst. simpl. lra.
+      f_equal. lca.
+      apply com_proj_neq_fst. simpl. lra.
+    + f_equal.
+      rewrite com_mul_comm, Hc.
+      rewrite com_mul_comm, Hc.
+      f_equal. lca.
+      apply com_proj_neq_fst. simpl. lra.
+      apply com_proj_neq_fst. simpl. lra.
+  - lra.
 Qed.
 
 (* ============================================================================================== *)
@@ -233,6 +322,14 @@ Proof.
   apply Hmapsto.
 Qed.
 
+Lemma ProgramState_invariant_valid:
+  forall (ps: ProgramState), ProgramState_invariant ps -> ProgramState_valid ps.
+Proof.
+  intros ps [Hbi Hprob_valid].
+  apply ProgramState_branch_invariant_valid.
+  apply Hbi.
+Qed. 
+
 Lemma ProgramState_init_valid: ProgramState_valid ProgramState_init.
 Proof.
   unfold ProgramState_init.
@@ -248,26 +345,33 @@ Proof.
     contradiction.
 Qed.
 
-Lemma PositiveMap_xfoldi_xmapi {A B C} (f: positive -> B -> C -> C) (g: A -> B) :
-  forall (m : PositiveMap.t A) (acc : C) (i : positive),
-    PositiveMap.xfoldi f (PositiveMap.xmapi (fun _ v => g v) m i) acc i =
-    PositiveMap.xfoldi (fun k v acc => f k (g v) acc) m acc i.
+Lemma ProgramState_ind (P : ProgramState -> Prop):
+  (forall m m',
+      PositiveMap.Equal m m' ->
+      P m ->
+      P m') ->
+  P (PositiveMap.empty Branch) ->
+  (forall k b m,
+      ~ PositiveMap.In k m ->
+      P m ->
+      P (PositiveMap.add k b m)) ->
+  forall m, P m.
 Proof.
-  induction m as [| l IHl o r IHr]; intros acc i; simpl.
-  - reflexivity.
-  - destruct o as [x|]; simpl.
-    + rewrite IHl. rewrite IHr. reflexivity.
-    + rewrite IHl. rewrite IHr. reflexivity.
-Qed.
+  intros P_morph P_empty P_add m.
 
-Corollary PositiveMap_fold_map {A B C} (f: positive -> B -> C -> C) (g: A -> B) :
-  forall (m : PositiveMap.t A) (acc : C),
-    PositiveMap.fold f (PositiveMap.map g m) acc =
-    PositiveMap.fold (fun k v acc => f k (g v) acc) m acc.
-Proof.
-  intros m acc.
-  unfold PositiveMap.fold, PositiveMap.map.
-  apply PositiveMap_xfoldi_xmapi.
+  eapply PProperties.fold_rec_bis
+    with
+      (P := fun m _ => P m)
+      (f := fun _ _ _ => tt)
+      (i := tt)
+      (m := m).
+  - intros m1 m2 _ Heq HP.
+    eapply P_morph; eauto.
+  - exact P_empty.
+  - intros k x _ m0 Hkx Hnotin IH.
+    apply P_add.
+    apply Hnotin.
+    exact IH.
 Qed.
 
 Lemma ProgramState_sum_prob_empty:
@@ -321,7 +425,41 @@ Proof.
   - apply ProgramState_init_prob_valid.
 Qed.
 
-Lemma ProgramState_map_valid: forall (f: Branch -> Branch) (ps: ProgramState),
+Lemma ProgramState_empty_valid:
+  ProgramState_valid (PositiveMap.empty Branch).
+Proof.
+  intros cstate branch Hmaps.
+  apply PositiveMap.empty_1 in Hmaps.
+  exfalso. apply Hmaps.
+Qed.
+
+Lemma ProgramState_singleton_valid:
+  forall k b,
+  Branch_valid b ->
+  ProgramState_valid (PositiveMap.add k b (PositiveMap.empty Branch)).
+Proof.
+  intros k b Hb k' b' H.
+  rewrite PFacts.find_mapsto_iff in H.
+  destruct (PositiveMap.E.eq_dec k k').
+  - subst. rewrite PFacts.add_eq_o in H; inversion H; subst.
+    apply Hb. reflexivity.
+  - rewrite PFacts.add_neq_o in H.
+    rewrite PFacts.empty_o in H.
+    discriminate H. apply n.
+Qed.
+
+Lemma ProgramState_add_valid: forall k b (m: ProgramState),
+  Branch_valid b -> ProgramState_valid m ->
+  ProgramState_valid (PositiveMap.add k b m).
+Proof.
+  intros k b m Hb Hm k' b' Hmapsto.
+  rewrite PositiveMap.PFacts.add_mapsto_iff in Hmapsto.
+  destruct Hmapsto as [[Hk Heq] | [Hk Heq]].
+  - rewrite <- Heq. apply Hb.
+  - apply Hm with k'. apply Heq.
+Qed.
+
+Lemma ProgramState_map_valid: forall {f: Branch -> Branch} {ps: ProgramState},
   ProgramState_valid ps -> (forall b, Branch_valid b -> Branch_valid (f b)) ->
   ProgramState_valid (PositiveMap.map f ps).
 Proof.
@@ -336,12 +474,20 @@ Proof.
   apply Hfind.
 Qed.
 
-Lemma PositiveMap_find_map {A} (f: Branch -> A) (i: positive) (m: ProgramState):
-  PositiveMap.find i (PositiveMap.map f m) = option_map (PositiveMap.find i m) f.
+Lemma ProgramState_fold_valid: forall {f: positive -> Branch -> ProgramState -> ProgramState}
+  (ps acc: ProgramState),  
+  ProgramState_valid ps -> ProgramState_valid acc ->
+  (forall k b ps', Branch_valid b -> ProgramState_valid ps' -> ProgramState_valid (f k b ps')) ->
+  ProgramState_valid (PositiveMap.fold f ps acc).
 Proof.
-  unfold PositiveMap.map.
-  rewrite PositiveMap.gmapi.
-  reflexivity.
+  intros f ps acc Hps Hacc Hf.
+  apply PProperties.fold_rec_bis.
+  - intros m m' a Hm Ha. apply Ha.
+  - apply Hacc.
+  - intros k b a m Hmapsto Hnotin Ha.
+    apply Hf.
+    + apply Hps with k. apply Hmapsto.
+    + apply Ha.
 Qed.
 
 Lemma ProgramState_map_prob_preserve: forall (f: Branch -> Branch) (ps: ProgramState),
@@ -374,6 +520,36 @@ Proof.
   apply Hf_prob.
 Qed.
 
+Lemma ProgramState_merge_step_valid:
+  forall (cstate: positive) (branch: Branch) (ps: ProgramState),
+  ProgramState_valid ps -> Branch_valid branch ->
+  ProgramState_valid (merge_step cstate branch ps).
+Proof.
+  intros cstate branch ps Hps Hb.
+  unfold merge_step.
+  destruct (PositiveMap.find cstate ps) eqn:Hfind.
+  - apply PFacts.find_mapsto_iff in Hfind.
+    intros cstate' branch' Hmaps'.
+    apply PFacts.add_mapsto_iff in Hmaps'.
+    destruct Hmaps' as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq Hmaps_acc]].
+    + rewrite <- Hbranch_eq.
+      unfold ProgramState_valid in *.
+      apply Branch_merge_valid.
+      * apply Hb.
+      * apply (Hps cstate').
+        rewrite <- Hcstate_eq.
+        assumption.
+    + apply (Hps cstate' branch' Hmaps_acc).
+  - apply PFacts.not_find_in_iff in Hfind.
+    intros cstate' branch' Hmaps'.
+    apply PFacts.add_mapsto_iff in Hmaps'.
+    destruct Hmaps' as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq Hmaps_acc]].
+    + rewrite <- Hbranch_eq.
+      unfold ProgramState_valid in *.
+      apply Hb.
+    + apply (Hps cstate' branch' Hmaps_acc).
+Qed.
+
 Lemma ProgramState_merge_valid: forall (ps0 ps1: ProgramState),
   ProgramState_valid ps0 -> ProgramState_valid ps1 ->
   ProgramState_valid (ProgramState_merge ps0 ps1).
@@ -383,77 +559,13 @@ Proof.
   apply PProperties.fold_rec_nodep.
   assumption.
   intros cstate_fold branch_fold acc Hmaps_fold Hacc_valid.
-  unfold merge_step.
-  destruct (PositiveMap.find cstate_fold acc) eqn:Hfind.
-  - apply PFacts.find_mapsto_iff in Hfind.
-    intros cstate' branch' Hmaps'.
-    apply PFacts.add_mapsto_iff in Hmaps'.
-    destruct Hmaps' as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq Hmaps_acc]].
-    + rewrite <- Hbranch_eq.
-      unfold ProgramState_valid in *.
-      apply Branch_merge_valid.
-      * apply (Hps0 cstate_fold branch_fold Hmaps_fold).
-      * apply (Hacc_valid cstate').
-        rewrite <- Hcstate_eq.
-        assumption.
-    + apply (Hacc_valid cstate' branch' Hmaps_acc).
-  - apply PFacts.not_find_in_iff in Hfind.
-    intros cstate' branch' Hmaps'.
-    apply PFacts.add_mapsto_iff in Hmaps'.
-    destruct Hmaps' as [[Hcstate_eq Hbranch_eq] | [Hcstate_neq Hmaps_acc]].
-    + rewrite <- Hbranch_eq.
-      unfold ProgramState_valid in *.
-      apply (Hps0 cstate_fold branch_fold Hmaps_fold).
-    + apply (Hacc_valid cstate' branch' Hmaps_acc).
+  apply ProgramState_merge_step_valid.
+  - assumption.
+  - apply Hps0 with cstate_fold.
+    apply Hmaps_fold.
 Qed.
 
-Lemma PositiveMap_add_remove (k: positive) (old: Branch) (ps: ProgramState) (acc: R) :
-  PositiveMap.find k ps = Some old ->
-  (PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k old (PositiveMap.remove k ps)) acc
-  = PositiveMap.fold (fun _ b acc => acc + B_prob b) ps acc)%R.
-Proof.
-  intros Hfind.
-  apply PProperties.fold_Equal.
-  - apply eq_equivalence.
-  - unfold Proper. reflexivity.
-  - unfold PProperties.transpose_neqkey.
-    intros. lra.
-  - intros x.
-    destruct (PositiveMap.E.eq_dec x k) as [Hkeq | Hkneq].
-    + rewrite Hkeq.
-      rewrite PProperties.F.add_eq_o.
-      * symmetry. assumption.
-      * reflexivity.
-    + rewrite PProperties.F.add_neq_o.
-      rewrite PProperties.F.remove_neq_o.
-      * reflexivity.
-      * intro H. subst. contradiction.
-      * intro H. subst. contradiction.
-Qed.
-
-Lemma PositiveMap_add_remove_equal (k: positive) (new: Branch) (ps: ProgramState) (acc: R) :
-  (PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k new ps) acc =
-  PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k new (PositiveMap.remove k ps)) acc)%R.
-Proof.
-  apply PProperties.fold_Equal.
-  - apply eq_equivalence.
-  - unfold Proper. reflexivity.
-  - unfold PProperties.transpose_neqkey.
-    intros. lra.
-  - intros x.
-    destruct (PositiveMap.E.eq_dec x k) as [Hkeq | Hkneq].
-    + rewrite Hkeq.
-      rewrite PProperties.F.add_eq_o.
-      rewrite PProperties.F.add_eq_o.
-      all: reflexivity.
-    + rewrite PProperties.F.add_neq_o.
-      rewrite PProperties.F.add_neq_o.
-      rewrite PProperties.F.remove_neq_o.
-      all: try (intro H; subst; contradiction).
-      reflexivity.
-Qed.
-
-Lemma ProgramState_fold_add (k: positive) (b: Branch) (ps: ProgramState) :
+Lemma ProgramState_fold_add_prob (k: positive) (b: Branch) (ps: ProgramState) :
   PositiveMap.find k ps = None ->
   (PositiveMap.fold (fun _ b acc => acc + B_prob b) (PositiveMap.add k b ps) 0)%R =
   (PositiveMap.fold (fun _ b acc => acc + B_prob b) ps 0 + B_prob b)%R.
@@ -480,14 +592,14 @@ Proof.
   destruct (PositiveMap.find k ps) eqn:Hfind.
   - rewrite -> PositiveMap_add_remove_equal.
     rewrite <- PositiveMap_add_remove with (k:=k) (old:=b0) (ps:=ps).
-    rewrite ProgramState_fold_add.
-    rewrite ProgramState_fold_add.
+    rewrite ProgramState_fold_add_prob.
+    rewrite ProgramState_fold_add_prob.
     + rewrite Branch_merge_prob_sum.
       lra.
     + rewrite PProperties.F.remove_eq_o; reflexivity.
     + rewrite PProperties.F.remove_eq_o; reflexivity.
     + assumption.
-  - rewrite ProgramState_fold_add.
+  - rewrite ProgramState_fold_add_prob.
     + reflexivity.
     + assumption.
 Qed.
@@ -561,8 +673,100 @@ Proof.
       apply H1.
 Qed.
 
+Lemma ProgramState_merge_o :
+  forall ps1 ps2 cstate,
+    PositiveMap.find cstate (ProgramState_merge ps1 ps2)
+    =
+    match PositiveMap.find cstate ps1,
+          PositiveMap.find cstate ps2 with
+    | Some b1, Some b2 =>
+        Some (Branch_merge b1 b2)
+    | Some b1, None =>
+        Some b1
+    | None, Some b2 =>
+        Some b2
+    | None, None =>
+        None
+    end.
+Proof.
+  intros ps1 ps2 cstate.
+  unfold ProgramState_merge.
+  revert cstate.
+
+  pattern ps1, (PositiveMap.fold merge_step ps1 ps2).
+  apply PProperties.fold_rec.
+
+  - (* Empty *)
+    intros m0 Hempty cstate.
+    destruct (PositiveMap.find cstate m0) as [b |] eqn:Hfind.
+    + exfalso.
+      apply (Hempty cstate b).
+      apply PositiveMap.find_2.
+      exact Hfind.
+    + destruct (PositiveMap.find cstate ps2); reflexivity.
+
+  - (* Add *)
+    intros k branch acc m m' Hmapsto Hnotin Hadd IH cstate.
+    unfold merge_step.
+
+    unfold PProperties.Add in Hadd.
+
+    destruct (PositiveMap.E.eq_dec k cstate) as [Heq | Hneq].
+
+    + (* k = cstate *)
+      subst cstate.
+
+      assert (Hfind_m_none : PositiveMap.find k m = None).
+      {
+        destruct (PositiveMap.find k m) as [b0 |] eqn:Hfind.
+        - exfalso.
+          apply Hnotin.
+          exists b0.
+          apply PositiveMap.find_2.
+          exact Hfind.
+        - reflexivity.
+      }
+
+      specialize (IH k).
+      rewrite Hfind_m_none in IH.
+
+      specialize (Hadd k).
+      rewrite PProperties.F.add_o in Hadd.
+      destruct (PositiveMap.E.eq_dec k k) as [_ | Hkk].
+      2: contradiction.
+
+      rewrite Hadd.
+      rewrite IH.
+
+      destruct (PositiveMap.find k ps2) as [b2 |] eqn:Hps2;
+        rewrite PProperties.F.add_o;
+        destruct (PositiveMap.E.eq_dec k k) as [_ | Hkk];
+        try contradiction;
+        reflexivity.
+
+    + (* k <> cstate *)
+      specialize (Hadd cstate).
+      rewrite PProperties.F.add_o in Hadd.
+      destruct (PositiveMap.E.eq_dec k cstate) as [Hkc | _].
+      { contradiction. }
+
+      rewrite Hadd.
+
+      specialize (IH cstate).
+
+      destruct (PositiveMap.find k acc) as [branch' |] eqn:Hacc;
+        rewrite PProperties.F.add_o;
+        destruct (PositiveMap.E.eq_dec k cstate) as [Hkc | _];
+        try contradiction;
+        exact IH.
+Qed.
+
 (* ============================================================================================== *)
 (* execution ==================================================================================== *)
+
+Definition fold_step (F: PositiveMap.key -> Branch -> ProgramState)
+  (k: PositiveMap.key) (b: Branch) (acc: ProgramState): ProgramState :=
+  ProgramState_merge acc (F k b).
 
 Definition Execute_rotate_instr_branch (theta phi lambda: R) (target: nat) (branch: Branch): Branch :=
   {|
@@ -623,10 +827,7 @@ Definition Execute_measure_instr_branch (qbit cbit: nat) (cstate: CState) (branc
   end.
 
 Definition Execute_measure_instr (qbit cbit: nat) (ps: ProgramState): ProgramState :=
-  PositiveMap.fold (fun cstate branch acc =>
-    ProgramState_merge acc (Execute_measure_instr_branch qbit cbit cstate branch)
-  ) ps (PositiveMap.empty Branch).
-
+  PositiveMap.fold (fold_step (Execute_measure_instr_branch qbit cbit)) ps (PositiveMap.empty Branch).
 
 Definition Execute_reset_instr_branch (target: nat) (branch: Branch): Branch :=
   {|
@@ -645,17 +846,23 @@ Fixpoint Execute_suppl (instr: Instruction) (ps: ProgramState): ProgramState :=
     | CnotInstr control target            => Execute_cnot_instr control target ps
     | SwapInstr q1 q2                     => Execute_swap_instr q1 q2 ps
     | MeasureInstr qbit cbit              => Execute_measure_instr qbit cbit ps
-    | SeqInstr i1 i2                      => Execute_suppl i2 (Execute_suppl i1 ps)
-    | IfInstr cbit cond subinstr          => PositiveMap.fold (fun cstate b acc =>
-        let ps_single := PositiveMap.add cstate b (PositiveMap.empty Branch) in
-        ProgramState_merge acc (
-          if (eqb (CState_read cbit cstate) cond)
-          then Execute_suppl subinstr ps_single
-          else ps_single
-        )
-      ) ps (PositiveMap.empty Branch)
+    | SeqInstr il                         => List.fold_left (fun ps' instr => Execute_suppl instr ps') il ps
+    | IfInstr cbit cond subinstr          => PositiveMap.fold 
+      (fold_step (fun k b =>
+        let ps_single := PositiveMap.add k b (PositiveMap.empty Branch) in
+        if (eqb (CState_read cbit k) cond)
+        then Execute_suppl subinstr ps_single
+        else ps_single)
+      )
+      ps (PositiveMap.empty Branch)
     | ResetInstr target                   => Execute_reset_instr target ps
     end.
+
+Definition Execute_if_instr_branch (cbit: nat) (cond: bool) (subinstr: Instruction) (k: PositiveMap.key) (b: Branch) :=
+  let ps_single := PositiveMap.add k b (PositiveMap.empty Branch) in
+  if (eqb (CState_read cbit k) cond)
+  then Execute_suppl subinstr ps_single
+  else ps_single.
 
 Definition Execute (instr: Instruction): ProgramState :=
   Execute_suppl instr ProgramState_init.
@@ -685,15 +892,15 @@ Lemma Execute_rotate_instr_valid:
   ProgramState_valid (Execute_rotate_instr theta phi lambda target ps).
 Proof.
   intros.
-  apply (ProgramState_map_valid _ _ H).
-  intros b [Hvalid Hprob].
-  unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
-  split.
-  apply den_valid_uop.
-  apply mat_single_unitary.
-  apply mat_rot_unitary.
-  assumption.
-  assumption.
+  apply ProgramState_map_valid.
+  - apply H.
+  - intros b [Hvalid Hprob].
+    unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
+    split.
+    apply den_valid_uop.
+    apply mat_single_unitary.
+    apply mat_rot_unitary.
+    all: assumption.
 Qed.
 
 Lemma Execute_cnot_instr_valid:
@@ -702,14 +909,26 @@ Lemma Execute_cnot_instr_valid:
   ProgramState_valid (Execute_cnot_instr control target ps).
 Proof.
   intros.
-  apply (ProgramState_map_valid _ _ H).
-  intros b [Hvalid Hprob].
-  unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
+  apply ProgramState_map_valid.
+  - apply H.
+  - intros b [Hvalid Hprob].
+    unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
+    split.
+    apply den_valid_uop.
+    apply mat_cnot_unitary.
+    all: assumption.
+Qed.
+
+Lemma Execute_swap_instr_branch_valid:
+  forall (q1 q2: nat) (b: Branch),
+  Branch_valid b -> Branch_valid (Execute_swap_instr_branch q1 q2 b).
+Proof.
+  intros q1 q2 b [Hvalid Hprob].
+  unfold Branch_valid in *; simpl.
   split.
   apply den_valid_uop.
-  apply mat_cnot_unitary.
-  assumption.
-  assumption.
+  apply mat_swap_unitary.
+  all: assumption.
 Qed.
 
 Lemma Execute_swap_instr_valid:
@@ -717,14 +936,9 @@ Lemma Execute_swap_instr_valid:
   ProgramState_valid ps -> ProgramState_valid (Execute_swap_instr q1 q2 ps).
 Proof.
   intros.
-  apply (ProgramState_map_valid _ _ H).
-  intros b [Hvalid Hprob].
-  unfold Execute_rotate_instr_branch, Branch_valid in *; simpl.
-  split.
-  apply den_valid_uop.
-  apply mat_swap_unitary.
-  assumption.
-  assumption.
+  apply ProgramState_map_valid.
+  - apply H.
+  - apply Execute_swap_instr_branch_valid.
 Qed.
 
 Lemma Execute_measure_instr_branch_valid:
@@ -1008,13 +1222,14 @@ Lemma Execute_reset_instr_valid:
   ProgramState_valid ps -> ProgramState_valid (Execute_reset_instr target ps).
 Proof.
   intros.
-  apply (ProgramState_map_valid _ _ H).
-  intros b [Hvalid Hprob].
-  unfold Execute_reset_instr_branch, Branch_valid in *; simpl.
-  split.
-  apply den_valid_reset.
-  apply Hvalid.
-  assumption.
+  apply ProgramState_map_valid.
+  - apply H.
+  - intros b [Hvalid Hprob].
+    unfold Execute_reset_instr_branch, Branch_valid in *; simpl.
+    split.
+    apply den_valid_reset.
+    apply Hvalid.
+    assumption.
 Qed.
 
 
@@ -1028,20 +1243,25 @@ Lemma Execute_suppl_valid:
   forall (instr: Instruction) (ps: ProgramState),
   ProgramState_valid ps -> ProgramState_valid (Execute_suppl instr ps).
 Proof.
-  induction instr.
+  induction instr using Instruction_ind'.
   all: intros; simpl.
   - exact H.
   - apply Execute_rotate_instr_valid; apply H.
   - apply Execute_cnot_instr_valid; apply H.
   - apply Execute_swap_instr_valid; apply H.
   - apply Execute_measure_instr_valid; apply H.
-  - apply IHinstr2; apply IHinstr1; apply H.
+  - generalize dependent ps. induction is; simpl; intros.
+    + apply H0.
+    + inversion H. apply IHis.
+      * apply H4.
+      * apply H3. apply H0.
   - apply PProperties.fold_rec_nodep.
     + unfold ProgramState_valid; intros.
       apply PFacts.empty_mapsto_iff in H0.
       contradiction.
     + intros cstate_fold branch_fold acc Hmaps_fold Hacc_valid.
-      destruct (eqb (CState_read n cstate_fold) b) eqn:Hcond.
+      cbv [fold_step].
+      destruct (eqb (CState_read cbit cstate_fold) cond) eqn:Hcond.
       all: apply (ProgramState_merge_valid _ _ Hacc_valid).
       1: apply IHinstr.
       all: intros cstate' branch' Hmaps'.
@@ -1054,23 +1274,40 @@ Proof.
   - apply Execute_reset_instr_valid; apply H.
 Qed.
 
+Corollary Execute_if_instr_branch_valid:
+  forall (cbit: nat) (cond: bool) (instr: Instruction) (cstate: CState) (branch: Branch),
+  Branch_valid branch ->
+  ProgramState_valid (Execute_if_instr_branch cbit cond instr cstate branch).
+Proof.
+  intros.
+  unfold Execute_if_instr_branch.
+  destruct (eqb (CState_read cbit cstate) cond).
+  - apply Execute_suppl_valid.
+    apply ProgramState_singleton_valid.
+    apply H.
+  - apply ProgramState_singleton_valid.
+    apply H.
+Qed.
+
 Lemma Execute_suppl_prob_valid:
   forall (instr: Instruction) (ps: ProgramState),
   ProgramState_valid ps ->
   ProgramState_sum_prob ps = ProgramState_sum_prob (Execute_suppl instr ps).
 Proof.
-  induction instr.
+  induction instr using Instruction_ind'.
   all: intros; simpl;
   try (apply ProgramState_map_prob_preserve; intros b; reflexivity).
   - reflexivity.
   - apply Execute_measure_instr_prob_preserve. apply H.
-  - rewrite IHinstr1, IHinstr2.
+  - generalize dependent ps.
+    induction is; simpl; intros.
     + reflexivity.
-    + apply Execute_suppl_valid. apply H.
-    + apply H.
+    + inversion H. rewrite (H3 _ H0). apply IHis.
+      * apply H4.
+      * apply Execute_suppl_valid. apply H0.
   - apply ProgramState_fold_merge_prob_preserve.
     + intros cstate branch Hbvalid.
-      destruct (eqb (CState_read n cstate) b).
+      destruct (eqb (CState_read cbit cstate) cond).
       * rewrite <- IHinstr.
         unfold ProgramState_sum_prob.
         rewrite PositiveMap_fold_map, PProperties.fold_add.
@@ -1198,7 +1435,7 @@ Proof.
   apply ProgramState_init_valid.
 Qed.
 
-Theorem Execute_state_valid: forall (instr: Instruction),
+Theorem Execute_invariant: forall (instr: Instruction),
   ProgramState_invariant (Execute instr).
 Proof.
   intros.
@@ -1208,3 +1445,65 @@ Proof.
 Qed.
 
 End PROGRAM.
+
+(* ============================================================================================== *)
+(* Notation of OpenQASMCore ===================================================================== *)
+
+Definition qasm_seq (i j : Instruction) : Instruction :=
+  match i, j with
+  | SeqInstr is, SeqInstr js => SeqInstr (is ++ js)
+  | SeqInstr is, _          => SeqInstr (is ++ [j])
+  | _,          SeqInstr js => SeqInstr (i :: js)
+  | _,          _           => SeqInstr [i; j]
+  end.
+
+Arguments qasm_seq _ _ : simpl never.
+
+Declare Custom Entry qasm.
+
+Notation "qasm{ e }" := e (e custom qasm at level 99).
+Notation "( x )" := x (in custom qasm at level 0, x at level 99).
+Notation "$ t" := t (in custom qasm at level 0, t constr at level 0).
+Notation "x" := x (in custom qasm at level 0, x constr at level 0).
+
+Notation "'nop'" := NopInstr (in custom qasm at level 0).
+
+Notation "'U' ( θ , φ , λ ) q" :=
+  (RotateInstr θ φ λ q)
+  (in custom qasm at level 0,
+     θ constr at level 0, φ constr at level 0, λ constr at level 0, q constr at level 0).
+
+Notation "'cx' a b" :=
+  (CnotInstr a b)
+  (in custom qasm at level 0, a constr at level 0, b constr at level 0).
+
+Notation "'swap' a b" :=
+  (SwapInstr a b)
+  (in custom qasm at level 0, a constr at level 0, b constr at level 0).
+
+Notation "'measure' q '->' c" :=
+  (MeasureInstr q c)
+  (in custom qasm at level 0, q constr at level 0, c constr at level 0).
+
+Notation "'reset' q" :=
+  (ResetInstr q)
+  (in custom qasm at level 0, q constr at level 0).
+
+Notation "'if' '(' cb '==' 0 ')' i" :=
+  (IfInstr cb false i)
+  (in custom qasm at level 60, right associativity,
+     cb constr at level 0, i custom qasm at level 99).
+
+Notation "'if' '(' cb '==' 1 ')' i" :=
+  (IfInstr cb true i)
+  (in custom qasm at level 60, right associativity,
+     cb constr at level 0, i custom qasm at level 99).
+
+Notation "i ; j" :=
+  (qasm_seq i j)
+  (in custom qasm at level 70, right associativity,
+     i custom qasm, j custom qasm at level 70).
+
+Notation "'seq[' is ']'" :=
+  (SeqInstr is)
+  (in custom qasm at level 0, is constr at level 0).

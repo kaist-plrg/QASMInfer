@@ -113,6 +113,55 @@ Proof.
   all: assumption.
 Qed.
 
+Lemma den_uop_den_uop : forall {n: nat} (uop1 uop2 den: Matrix n),
+  den_uop uop1 (den_uop uop2 den) = den_uop (uop1 * uop2) den.
+Proof.
+  intros. unfold den_uop.
+  rewrite mat_mul_conjtrans.
+  mat_sort.
+Qed.
+
+Lemma den_uop_scale : forall {n: nat} (uop den: Matrix n) (c: Complex),
+  den_uop uop (c .* den) = c .* (den_uop uop den).
+Proof.
+  intros. unfold den_uop.
+  mat_sort.
+Qed.
+
+Lemma den_uop_add : forall {n: nat} (uop den1 den2: Matrix n),
+  den_uop uop (den1 + den2) = den_uop uop den1 + den_uop uop den2.
+Proof.
+  intros. unfold den_uop.
+  rewrite mat_mul_dist_l.
+  rewrite mat_mul_dist_r.
+  reflexivity.
+Qed.
+
+Lemma den_uop_involutive:
+  forall {n: nat} (A Q: Matrix n),
+  mat_unitary A -> mat_Hermitian A ->
+  den_uop A (den_uop A Q) = Q.
+Proof.
+  intros n A Q Hu HH.
+  rewrite den_uop_den_uop.
+  rewrite <- HH at 2.
+  rewrite (proj2 Hu).
+  unfold den_uop.
+  rewrite mat_eye_conjtrans.
+  mat_simpl.
+Qed.
+
+Lemma den_uop_Hermitian_fold:
+  forall {n: nat} (A Q: Matrix n),
+  mat_Hermitian A ->
+  A * Q * A = den_uop A Q.
+Proof.
+  intros n A Q H.
+  unfold den_uop.
+  rewrite H.
+  reflexivity.
+Qed.
+
 End UOP.
 
 Section MEASURE.
@@ -209,6 +258,18 @@ Definition den_reset {n: nat} (t: nat) (den: Matrix n) : Matrix n :=
     den_uop (mat_single n t (mat_rot PI 0 PI)) (mat_proj1 n t * den * mat_proj1 n t)
   ).
 
+Lemma den_reset_id :
+  forall {n: nat} (t: nat) (den: Matrix n),
+  den_reset t den = den_uop (mat_proj0 n t) den + den_uop ((mat_single n t (mat_rot PI 0 PI)) * mat_proj1 n t) den.
+Proof.
+  intros; unfold den_reset; f_equal.
+  - apply den_uop_Hermitian_fold.
+    apply mat_proj0_projection.
+  - rewrite den_uop_Hermitian_fold.
+    apply den_uop_den_uop.
+    apply mat_proj1_projection.
+Qed.
+
 Lemma den_reset_conj : forall {n: nat} (t: nat) (den: Matrix n), (den_reset t den)† = den_reset t (den†).
 Proof.
   intros; unfold den_reset.
@@ -276,6 +337,59 @@ Proof.
   intros; unfold den_normlized in *.
   rewrite den_reset_trace.
   assumption.
+Qed.
+
+Lemma den_reset_proj0 : forall {n: nat} (t: nat) (den: Matrix n),
+  mat_proj0 n t * den_reset t den * mat_proj0 n t = den_reset t den.
+Proof.
+  intros.
+  rewrite den_uop_Hermitian_fold; try apply mat_proj0_projection.
+  rewrite den_reset_id.
+  rewrite den_uop_add.
+  repeat rewrite den_uop_den_uop.
+  f_equal; f_equal.
+  - apply mat_proj0_projection.
+  - destruct (le_lt_dec n t).
+    + rewrite mat_proj1_out_of_bounds; try assumption.
+      mat_simpl.
+    + rewrite mat_proj0_eq_mat_single; try assumption.
+      rewrite mat_proj1_eq_mat_single; try assumption.
+      repeat rewrite mat_single_factorized; f_equal.
+      mat_simpl; f_equal; f_equal.
+      * lca.
+      * rewrite cos_PI2. lca.
+Qed.
+
+Lemma den_reset_proj1 : forall {n: nat} (t: nat) (den: Matrix n),
+  mat_proj1 n t * den_reset t den * mat_proj1 n t = mat_0.
+Proof.
+  intros.
+  rewrite den_uop_Hermitian_fold; try apply mat_proj1_projection.
+  rewrite den_reset_id.
+  destruct (le_lt_dec n t).
+  - rewrite mat_proj1_out_of_bounds; try assumption.
+    unfold den_uop.
+    mat_simpl.
+  - rewrite den_uop_add.
+    repeat rewrite den_uop_den_uop.
+    rewrite mat_proj_10_perp.
+    rewrite mat_proj1_eq_mat_single; try assumption.
+    repeat rewrite mat_single_factorized.
+    replace (mat_proj1_base * ((mat_rot PI 0 PI) * mat_proj1_base)) with (@mat_0 1).
+    rewrite mat_single_0; try assumption.
+    unfold den_uop; mat_simpl.
+    simpl. rewrite cos_PI2. com_simpl.
+Qed.
+
+Lemma den_reset_idempotent : forall {n: nat} (t: nat) (den: Matrix n),
+  den_reset t (den_reset t den) = den_reset t den.
+Proof.
+  intros.
+  unfold den_reset at 1.
+  rewrite den_reset_proj0.
+  rewrite den_reset_proj1.
+  unfold den_uop.
+  mat_simpl.
 Qed.
 
 End RESET.

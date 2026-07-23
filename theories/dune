@@ -13,6 +13,7 @@
   extract/Extract.v
   program/Program.vo
   matrix/Complex.vo
+  transform/Function.vo
   (source_tree .)
   (:patcher ../scripts/patch_extraction.sh)
   (:header_txt extract/extraction_header.txt))
