@@ -242,7 +242,7 @@ let unoptimize source destination verbose =
   let nq, nc, instr, q_assignment, c_assignment =
     parse_and_desugar source
   in
-  let transformed = Unoptimize.unoptimize_I_XX instr in
+  let transformed = Unoptimize.unoptimize instr in
   log_instruction verbose transformed;
   let output =
     match Q2.sugar nq nc q_assignment c_assignment transformed with

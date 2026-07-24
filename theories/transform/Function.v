@@ -9,6 +9,7 @@ Require Import QASMInfer.transform.Valid.
 Require Import QASMInfer.transform.Commute.
 Require Import QASMInfer.transform.Transform.
 
+From Stdlib Require Import String.
 From Stdlib Require Import List.
 From Stdlib.FSets Require Import FMapPositive FMapFacts.
 
@@ -518,6 +519,14 @@ Definition RewriteRuleValid
       (SeqInstr (RewriteResult_replacement result
        ++ skipn (RewriteResult_consumed result) instrs)).
 
+Record TransformSpec : Type := {
+  transform_name : string;
+  transform_rule : RewriteRule
+}.
+
+Definition TransformSpec_apply
+  (tf: TransformSpec) (instr: Instruction) (occurrence: nat) : Instruction :=
+  RewriteRule_apply_nth (transform_rule tf) instr occurrence.
 
 (* ================================================================ *)
 (* Proof                                                            *)
@@ -1104,12 +1113,6 @@ Definition Rule_I_to_XX : RewriteRule :=
        Pat_X (NatVar 0)]
   |}.
 
-Definition Function_I_XX
-    (instr : Instruction)
-    (occurrence : nat)
-    : Instruction :=
-  RewriteRule_apply_nth Rule_I_to_XX instr occurrence.
-
 Definition Rule_I_to_YY : RewriteRule :=
   {|
     rule_lhs :=
@@ -1120,25 +1123,26 @@ Definition Rule_I_to_YY : RewriteRule :=
        Pat_Y (NatVar 0)]
   |}.
 
-Definition Function_I_YY
-    (instr : Instruction)
-    (occurrence : nat)
-    : Instruction :=
-  RewriteRule_apply_nth Rule_I_to_YY instr occurrence.
-
-Definition Transform_functions : list (Instruction -> nat -> Instruction) :=
+Definition Transform_spec_list : list TransformSpec :=
   [
-    Function_I_XX;
-    Function_I_YY
+    {|
+      transform_name := "I_to_XX";
+      transform_rule := Rule_I_to_XX;
+    |};
+    {|
+      transform_name := "I_to_YY";
+      transform_rule := Rule_I_to_YY;
+    |}
   ].
 
 Theorem Transform_functions_valid:
   forall (instr: Instruction) (occurrence: nat),
   Instruction_qbits_valid nq instr ->
-  Forall (fun f => Instruction_equiv nq instr (f instr occurrence)) Transform_functions.
+  Forall (fun tf => Instruction_equiv nq instr (TransformSpec_apply tf instr occurrence)) Transform_spec_list.
 Proof.
   intros.
   repeat apply Forall_cons; try apply Forall_nil.
+  all: unfold TransformSpec_apply; simpl.
   all: apply RewriteRule_apply_nth_sound; try assumption.
   all: apply PatternRuleValid_implies_RewriteRuleValid.
   all: intros map lhs rhs Hlhs Hrhs Hvalid; simpl in Hlhs, Hrhs.
