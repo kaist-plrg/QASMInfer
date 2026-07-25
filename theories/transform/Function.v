@@ -96,11 +96,16 @@ Definition PatternMap_extends
     NatMap.find variable map2 = Some value.
 
 Inductive NatPattern: Type :=
+  | NatExact: nat -> NatPattern
   | NatVar: nat -> NatPattern.
 
 Definition NatPattern_match (pattern : NatPattern) (value : nat) (map : PatternMap)
     : option PatternMap :=
   match pattern with
+  | NatExact expected =>
+      if Nat.eqb expected value
+      then Some map
+      else None
   | NatVar variable =>
       PatternMap_bind variable value map
   end.
@@ -110,6 +115,7 @@ Definition NatPattern_inst
     (subst : PatternMap)
     : option nat :=
   match pattern with
+  | NatExact value => Some value
   | NatVar variable =>
       NatMap.find variable subst
   end.
@@ -313,6 +319,35 @@ Definition Instruction_list_simp
   command or generated termination proof is used.
 *)
 
+Fixpoint RewriteRule_match_count_list
+    (rule : RewriteRule) (instrs : list Instruction) : nat :=
+  match instrs with
+  | [] =>
+      match RewriteRule_apply rule [] with
+      | Some _ => 1
+      | None => 0
+      end
+  | _ :: rest =>
+      match RewriteRule_apply rule instrs with
+      | Some _ =>
+          S (RewriteRule_match_count_list rule rest)
+
+      | None =>
+          RewriteRule_match_count_list rule rest
+      end
+  end.
+
+Fixpoint RewriteRule_match_count
+    (rule : RewriteRule) (instr : Instruction) : nat :=
+  match instr with
+  | SeqInstr instrs =>
+      RewriteRule_match_count_list rule instrs
+  | IfInstr _ _ body =>
+      RewriteRule_match_count rule body
+  | _ =>
+      RewriteRule_match_count_list rule [instr]
+  end.
+
 Inductive RewriteStatus : Type :=
   | RewriteDone
   | RewriteContinue : nat -> RewriteStatus.
@@ -327,7 +362,6 @@ Fixpoint RewriteRule_apply_nth_list_result
   match remaining with
   | [] =>
       ([], RewriteContinue remaining_occurrence)
-
   | current :: rest =>
       (* First try a rule whose lhs starts at this list position. *)
       match RewriteRule_apply rule remaining with
@@ -340,7 +374,6 @@ Fixpoint RewriteRule_apply_nth_list_result
                      remaining,
                 RewriteDone
               )
-
           | S occurrence' =>
               (*
                 Preserve the original overlapping-match behavior:
@@ -352,7 +385,6 @@ Fixpoint RewriteRule_apply_nth_list_result
               in
               (current :: rest', status)
           end
-
       | None =>
           (*
             No match starts here. Search current's subtree first;
@@ -519,14 +551,41 @@ Definition RewriteRuleValid
       (SeqInstr (RewriteResult_replacement result
        ++ skipn (RewriteResult_consumed result) instrs)).
 
+Inductive TransformParameter : Type :=
+  | Param_None : TransformParameter
+  | Param_qbit1 : nat -> TransformParameter
+  | Param_qbit2 : nat -> nat -> TransformParameter.
+
 Record TransformSpec : Type := {
   transform_name : string;
-  transform_rule : RewriteRule
+  transform_rule : TransformParameter -> option RewriteRule;
+  param_count : nat; (* Parameter count of TransformParameter; to inform OCaml implementation *)
 }.
 
+Definition TransformSpec_count
+    (spec : TransformSpec)
+    (param : TransformParameter)
+    (instr : Instruction)
+    : nat :=
+  match transform_rule spec param with
+  | Some rule =>
+      RewriteRule_match_count rule instr
+  | None =>
+      0
+  end.
+
 Definition TransformSpec_apply
-  (tf: TransformSpec) (instr: Instruction) (occurrence: nat) : Instruction :=
-  RewriteRule_apply_nth (transform_rule tf) instr occurrence.
+    (spec : TransformSpec)
+    (param : TransformParameter)
+    (instr : Instruction)
+    (occurrence : nat)
+    : option Instruction :=
+  match transform_rule spec param with
+  | Some rule =>
+      Some (RewriteRule_apply_nth rule instr occurrence)
+  | None =>
+      None
+  end.
 
 (* ================================================================ *)
 (* Proof                                                            *)
@@ -611,8 +670,11 @@ Lemma NatPattern_match_extends :
 Proof.
   intros pattern value map map' Hmatch.
   destruct pattern; simpl in *.
-  eapply PatternMap_bind_extends.
-  apply Hmatch.
+  - destruct (Nat.eqb n value); try discriminate.
+    inversion Hmatch; subst.
+    apply PatternMap_extends_refl.
+  - eapply PatternMap_bind_extends.
+    apply Hmatch.
 Qed.
 
 Lemma NatPattern_match_sound :
@@ -622,8 +684,12 @@ Lemma NatPattern_match_sound :
 Proof.
   intros pattern value map map' Hmatch.
   destruct pattern; simpl in *.
-  apply PatternMap_bind_find in Hmatch.
-  exact Hmatch.
+  - destruct (Nat.eqb n value) eqn:E; try discriminate.
+    f_equal.
+    apply Nat.eqb_eq.
+    apply E.
+  - apply PatternMap_bind_find in Hmatch.
+    exact Hmatch.
 Qed.
 
 Lemma NatPattern_inst_extends :
@@ -634,8 +700,9 @@ Lemma NatPattern_inst_extends :
 Proof.
   intros pattern map1 map2 value Hextends Hinst.
   destruct pattern; simpl in *.
-  apply Hextends.
-  apply Hinst.
+  - apply Hinst.
+  - apply Hextends.
+    apply Hinst.
 Qed.
 
 Lemma InstructionPattern_inst_extends :
@@ -1103,6 +1170,12 @@ Section TRANSFORM_FUNCTIONS.
 
 Variable nq: nat.
 
+Definition Rule_Insert_I (qbit: nat) : RewriteRule :=
+  {|
+    rule_lhs := [];
+    rule_rhs := [Pat_I (NatExact qbit)]
+  |}.
+
 Definition Rule_I_to_XX : RewriteRule :=
   {|
     rule_lhs :=
@@ -1123,35 +1196,75 @@ Definition Rule_I_to_YY : RewriteRule :=
        Pat_Y (NatVar 0)]
   |}.
 
+Definition Transform_simple_rule (rule: RewriteRule) : TransformParameter -> option RewriteRule :=
+  fun param =>
+    match param with
+    | Param_None => Some rule
+    | _ => None
+    end.
+
 Definition Transform_spec_list : list TransformSpec :=
   [
     {|
+      transform_name := "Insert_I";
+      transform_rule := fun param =>
+        match param with
+        | Param_qbit1 qbit =>
+          if (qbit <? nq)
+          then Some (Rule_Insert_I qbit)
+          else None
+        | _ => None
+        end;
+      param_count := 1;
+    |};
+    {|
       transform_name := "I_to_XX";
-      transform_rule := Rule_I_to_XX;
+      transform_rule := Transform_simple_rule Rule_I_to_XX;
+      param_count := 0;
     |};
     {|
       transform_name := "I_to_YY";
-      transform_rule := Rule_I_to_YY;
+      transform_rule := Transform_simple_rule Rule_I_to_YY;
+      param_count := 0;
     |}
   ].
+
+(* If occurrence is smaller than match count, applying really changes the instruction. *)
+Lemma RewriteRule_apply_nth_list_neq:
+  forall rule instrs occurrence,
+  RewriteRuleValid nq rule ->
+  (occurrence < RewriteRule_match_count_list rule instrs)%nat ->
+  RewriteRule_apply_nth rule (SeqInstr instrs) occurrence <> SeqInstr instrs.
+Proof.
+  intros.
+Admitted.
 
 Theorem Transform_functions_valid:
   forall (instr: Instruction) (occurrence: nat),
   Instruction_qbits_valid nq instr ->
-  Forall (fun tf => Instruction_equiv nq instr (TransformSpec_apply tf instr occurrence)) Transform_spec_list.
+  Forall (fun spec =>
+    forall param instr',
+    (TransformSpec_apply spec param instr occurrence = Some instr') ->
+    Instruction_equiv nq instr instr'
+  )
+  Transform_spec_list.
 Proof.
   intros.
   repeat apply Forall_cons; try apply Forall_nil.
   all: unfold TransformSpec_apply; simpl.
+  all: intros param instr'; destruct param; intros H'; try discriminate.
+  1: destruct (n <? nq)%nat eqn:Hn; try discriminate; rewrite Nat.ltb_lt in Hn. 
+  all: inversion H'; subst.
   all: apply RewriteRule_apply_nth_sound; try assumption.
   all: apply PatternRuleValid_implies_RewriteRuleValid.
   all: intros map lhs rhs Hlhs Hrhs Hvalid; simpl in Hlhs, Hrhs.
-  all: destruct (NatMap.find 0%nat map)
+  2-3: destruct (NatMap.find 0%nat map)
     as [qbit |] eqn:Hqbit;
     try discriminate.
   all: inversion Hlhs; subst lhs.
   all: inversion Hrhs; subst rhs.
   all: symmetry.
+  1: apply Transform_I; assumption.
   1: apply Transform_X_X.
   2: apply Transform_Y_Y.
   all: inversion Hvalid as [| h rt Hinstr Hrest]; subst.
