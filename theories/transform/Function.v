@@ -454,20 +454,23 @@ Definition RewriteRule_apply_nth
     : Instruction :=
   fst (RewriteRule_apply_nth_result rule instr occurrence).
 
-Definition Pat_I
-    (qbit_pattern : NatPattern)
-    : InstructionPattern :=
+Definition Pat_I (qbit_pattern : NatPattern) : InstructionPattern :=
   PRotate 0 0 0 qbit_pattern.
 
-Definition Pat_X
-    (qbit_pattern : NatPattern)
-    : InstructionPattern :=
+Definition Pat_X (qbit_pattern : NatPattern) : InstructionPattern :=
   PRotate PI 0 PI qbit_pattern.
 
-Definition Pat_Y
-    (qbit_pattern : NatPattern)
-    : InstructionPattern :=
+Definition Pat_Y (qbit_pattern : NatPattern) : InstructionPattern :=
   PRotate PI PI2 PI2 qbit_pattern.
+
+Definition Pat_Z (qbit_pattern : NatPattern) : InstructionPattern :=
+  PRotate 0 0 PI qbit_pattern.
+
+Definition Pat_H (qbit_pattern : NatPattern) : InstructionPattern :=
+  PRotate PI2 0 PI qbit_pattern.
+
+Definition Pat_S (qbit_pattern : NatPattern) : InstructionPattern :=
+  PRotate 0 0 PI2 qbit_pattern.
 
 Variable nq: nat.
 
@@ -1245,22 +1248,26 @@ Definition Rule_Insert_I (qbit: nat) : RewriteRule :=
 
 Definition Rule_I_to_XX : RewriteRule :=
   {|
-    rule_lhs :=
-      [Pat_I (NatVar 0)];
-
-    rule_rhs :=
-      [Pat_X (NatVar 0);
-       Pat_X (NatVar 0)]
+    rule_lhs := [Pat_I (NatVar 0)];
+    rule_rhs := [Pat_X (NatVar 0); Pat_X (NatVar 0)]
   |}.
 
 Definition Rule_I_to_YY : RewriteRule :=
   {|
-    rule_lhs :=
-      [Pat_I (NatVar 0)];
+    rule_lhs := [Pat_I (NatVar 0)];
+    rule_rhs := [Pat_Y (NatVar 0); Pat_Y (NatVar 0)]
+  |}.
 
-    rule_rhs :=
-      [Pat_Y (NatVar 0);
-       Pat_Y (NatVar 0)]
+Definition Rule_I_to_ZZ : RewriteRule :=
+  {|
+    rule_lhs := [Pat_I (NatVar 0)];
+    rule_rhs := [Pat_Z (NatVar 0); Pat_Z (NatVar 0)]
+  |}.
+
+Definition Rule_I_to_HH : RewriteRule :=
+  {|
+    rule_lhs := [Pat_I (NatVar 0)];
+    rule_rhs := [Pat_H (NatVar 0); Pat_H (NatVar 0)]
   |}.
 
 Definition Transform_simple_rule (rule: RewriteRule) : TransformParameter -> option RewriteRule :=
@@ -1269,6 +1276,13 @@ Definition Transform_simple_rule (rule: RewriteRule) : TransformParameter -> opt
     | Param_None => Some rule
     | _ => None
     end.
+
+Definition TransformSpec_simple_rule (name: string) (rule: RewriteRule) : TransformSpec :=
+  {|
+    transform_name := name;
+    transform_rule := Transform_simple_rule rule;
+    param_count := 0;
+  |}.
 
 Definition Transform_spec_list : list TransformSpec :=
   [
@@ -1284,16 +1298,10 @@ Definition Transform_spec_list : list TransformSpec :=
         end;
       param_count := 1;
     |};
-    {|
-      transform_name := "I_to_XX";
-      transform_rule := Transform_simple_rule Rule_I_to_XX;
-      param_count := 0;
-    |};
-    {|
-      transform_name := "I_to_YY";
-      transform_rule := Transform_simple_rule Rule_I_to_YY;
-      param_count := 0;
-    |}
+    TransformSpec_simple_rule "I_to_XX" Rule_I_to_XX;
+    TransformSpec_simple_rule "I_to_YY" Rule_I_to_YY;
+    TransformSpec_simple_rule "I_to_ZZ" Rule_I_to_ZZ;
+    TransformSpec_simple_rule "I_to_HH" Rule_I_to_HH
   ].
 
 (* If occurrence is smaller than match count, applying really changes the instruction. *)
@@ -1308,7 +1316,7 @@ Admitted.
 
 Theorem Transform_functions_valid:
   forall (instr: Instruction) (occurrence: nat),
-  Instruction_qbits_valid nq instr ->
+  Instruction_qbits_validb nq instr = true ->
   Forall (fun spec =>
     forall param instr',
     (TransformSpec_apply spec param instr occurrence = Some instr') ->
@@ -1317,6 +1325,7 @@ Theorem Transform_functions_valid:
   Transform_spec_list.
 Proof.
   intros.
+  rewrite Instruction_qbits_validb_spec in H.
   repeat apply Forall_cons; try apply Forall_nil.
   all: unfold TransformSpec_apply; simpl.
   all: intros param instr'; destruct param; intros H'; try discriminate.
@@ -1325,7 +1334,7 @@ Proof.
   all: apply RewriteRule_apply_nth_sound; try assumption.
   all: apply PatternRuleValid_implies_RewriteRuleValid.
   all: intros map lhs rhs Hlhs Hrhs Hvalid; simpl in Hlhs, Hrhs.
-  2-3: destruct (NatMap.find 0%nat map)
+  2-5: destruct (NatMap.find 0%nat map)
     as [qbit |] eqn:Hqbit;
     try discriminate.
   all: inversion Hlhs; subst lhs.
@@ -1334,6 +1343,8 @@ Proof.
   1: apply Transform_I; assumption.
   1: apply Transform_X_X.
   2: apply Transform_Y_Y.
+  3: apply Transform_Z_Z.
+  4: apply Transform_H_H.
   all: inversion Hvalid as [| h rt Hinstr Hrest]; subst.
   all: inversion Hinstr; subst.
   all: assumption.
