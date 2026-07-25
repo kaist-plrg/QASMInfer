@@ -87,6 +87,7 @@ Extract Inlined Constant com_inv => "Complex.inv".
 Extraction "extracted.ml"
   Execute_and_calculate_prob
   flatten_core
+  Instruction_qbits_validb
   TransformSpec_count
   TransformSpec_apply
   Transform_spec_list.

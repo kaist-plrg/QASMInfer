@@ -523,6 +523,45 @@ with Instruction_list_qbits_valid
       Instruction_list_qbits_valid
         (instr :: instrs).
 
+Fixpoint Instruction_qbits_validb (instr : Instruction) : bool :=
+  match instr with
+  | NopInstr =>
+      true
+  | RotateInstr _ _ _ qbit =>
+      qbit <? nq
+  | CnotInstr control target =>
+      (control <? nq) && (target <? nq)
+  | SwapInstr qbit1 qbit2 =>
+      (qbit1 <? nq) && (qbit2 <? nq)
+  | MeasureInstr qbit _ =>
+      qbit <? nq
+  | SeqInstr instrs =>
+      let fix list_validb
+          (instrs : list Instruction)
+          : bool :=
+        match instrs with
+        | [] =>
+            true
+        | instr :: rest =>
+            Instruction_qbits_validb instr
+            && list_validb rest
+        end
+      in
+      list_validb instrs
+  | IfInstr _ _ body =>
+      Instruction_qbits_validb body
+  | ResetInstr qbit =>
+      qbit <? nq
+  end.
+
+Fixpoint Instruction_list_qbits_validb (instrs: list Instruction) : bool :=
+  match instrs with
+  | [] => true
+  | instr :: rest =>
+      Instruction_qbits_validb instr
+      && Instruction_list_qbits_validb rest
+  end.
+
 Definition PatternRuleValid
     (rule : RewriteRule)
     : Prop :=
@@ -1140,7 +1179,7 @@ Proof.
            reflexivity.
 Qed.
 
-Theorem RewriteRule_apply_nth_sound:
+Lemma RewriteRule_apply_nth_sound:
   forall rule,
     RewriteRuleValid rule ->
     forall instr occurrence,
@@ -1162,6 +1201,34 @@ Proof.
   destruct status.
   - apply H; reflexivity.
   - rewrite H; reflexivity.
+Qed.
+
+Theorem Instruction_qbits_validb_spec :
+  forall instr,
+    Instruction_qbits_validb instr = true <->
+    Instruction_qbits_valid instr.
+Proof.
+  intros; split.
+  - apply Instruction_ind' with (instr:=instr); simpl in *; try constructor.
+    all: try (rewrite andb_true_iff in H; destruct H as [H0 H1]).
+    all: try rewrite Nat.ltb_lt in H.
+    all: try rewrite Nat.ltb_lt in H0, H1.
+    all: try assumption.
+    + induction is. constructor.
+      inversion H; subst.
+      rewrite andb_true_iff in H0; destruct H0.
+      constructor.
+      * apply H3. apply H0.
+      * apply IHis. apply H4. apply H1.
+    + apply H.
+      assumption.
+  - intros H.
+    induction H using Instruction_qbits_valid_induction with (P0 := fun instrs Hvalid =>
+      Instruction_list_qbits_validb instrs = true
+    ); simpl; try reflexivity.
+    all: try (rewrite andb_true_iff; split).
+    all: try rewrite Nat.ltb_lt.
+    all: try assumption. 
 Qed.
 
 End PATTERN.
