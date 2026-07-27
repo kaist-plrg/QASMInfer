@@ -1214,7 +1214,7 @@ Proof.
   - rewrite H; reflexivity.
 Qed.
 
-Theorem Instruction_qbits_validb_spec :
+Lemma Instruction_qbits_validb_spec :
   forall instr,
     Instruction_qbits_validb instr = true <->
     Instruction_qbits_valid instr.
@@ -1240,6 +1240,27 @@ Proof.
     all: try (rewrite andb_true_iff; split).
     all: try rewrite Nat.ltb_lt.
     all: try assumption. 
+Qed.
+
+Theorem Transform_spec_valid:
+  forall spec param rule,
+  spec.(transform_rule) param = Some rule ->
+  PatternRuleValid rule ->
+  forall (instr: Instruction) (occurrence: nat),
+  Instruction_qbits_validb instr = true ->
+  forall instr',
+  TransformSpec_apply spec param instr occurrence = Some instr' ->
+  Instruction_equiv nq instr instr'.
+Proof.
+  intros spec param rule Hrule Hpattern instr occurrence H instr' Happly.
+  rewrite Instruction_qbits_validb_spec in H.
+  unfold TransformSpec_apply in Happly.
+  destruct (transform_rule spec param) eqn:Htrans; try discriminate.
+  inversion Happly; subst.
+  apply RewriteRule_apply_nth_sound; try assumption.
+  apply PatternRuleValid_implies_RewriteRuleValid.
+  inversion Hrule; subst.
+  assumption.
 Qed.
 
 End PATTERN.
