@@ -319,33 +319,41 @@ Definition Instruction_list_simp
   command or generated termination proof is used.
 *)
 
-Fixpoint RewriteRule_match_count_list
+Definition RewriteRule_match_at
     (rule : RewriteRule) (instrs : list Instruction) : nat :=
-  match instrs with
-  | [] =>
-      match RewriteRule_apply rule [] with
-      | Some _ => 1
-      | None => 0
-      end
-  | _ :: rest =>
-      match RewriteRule_apply rule instrs with
-      | Some _ =>
-          S (RewriteRule_match_count_list rule rest)
-
-      | None =>
-          RewriteRule_match_count_list rule rest
-      end
+  match RewriteRule_apply rule instrs with
+  | Some _ => 1
+  | None => 0
   end.
 
 Fixpoint RewriteRule_match_count
-    (rule : RewriteRule) (instr : Instruction) : nat :=
+    (rule : RewriteRule) (instr : Instruction) {struct instr} : nat :=
   match instr with
   | SeqInstr instrs =>
-      RewriteRule_match_count_list rule instrs
+      let fix count_list (xs : list Instruction) : nat :=
+          match xs with
+          | [] =>
+              0%nat
+          | head :: rest =>
+              (RewriteRule_match_at rule xs
+              +
+              (match head with
+               | SeqInstr _ =>
+                  RewriteRule_match_count rule head
+               | IfInstr _ _ _ =>
+                  RewriteRule_match_count rule head
+               | _ =>
+                   0
+               end)
+              +
+              count_list rest)%nat
+          end
+      in
+      count_list instrs
   | IfInstr _ _ body =>
       RewriteRule_match_count rule body
   | _ =>
-      RewriteRule_match_count_list rule [instr]
+      RewriteRule_match_at rule [instr]
   end.
 
 Inductive RewriteStatus : Type :=
@@ -1306,10 +1314,10 @@ Definition Transform_spec_list : list TransformSpec :=
 
 (* If occurrence is smaller than match count, applying really changes the instruction. *)
 Lemma RewriteRule_apply_nth_list_neq:
-  forall rule instrs occurrence,
+  forall rule instr occurrence,
   RewriteRuleValid nq rule ->
-  (occurrence < RewriteRule_match_count_list rule instrs)%nat ->
-  RewriteRule_apply_nth rule (SeqInstr instrs) occurrence <> SeqInstr instrs.
+  (occurrence < RewriteRule_match_count rule instr)%nat ->
+  RewriteRule_apply_nth rule instr occurrence <> instr.
 Proof.
   intros.
 Admitted.

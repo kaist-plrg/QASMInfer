@@ -55,7 +55,7 @@ Extract Constant total_order_T =>
 Extract Constant Rlt_dec => "(fun x y -> x < y)".
 Extract Constant Rgt_dec => "(fun x y -> x > y)".
 Extract Constant R_eqb =>
-  "(fun x y -> Float.abs (x -. y) <= 1e-12)".
+  "(fun x y -> Float.abs (x -. y) <= 1e-4)".
 
 Extract Constant RTC => "fun x -> {re=x; im=0.0}".
 Extract Constant RTIm => "fun y -> {re=0.0; im=y}".

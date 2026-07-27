@@ -166,13 +166,38 @@ let expression_of_angle angle =
   if Float.is_finite value then Ok (Real value)
   else Error "cannot sugar a rotation with a non-finite angle"
 
+let check_angle_eqb real expected =
+  match real, expected with
+  | (theta, phi, lambda), (theta', phi', lambda') ->
+    Extracted.r_eqb theta theta'   &&
+    Extracted.r_eqb phi phi'       &&
+    Extracted.r_eqb lambda lambda'
+
+let sugar_standard_gate real = (* TODO : more standard gate sugaring needed *)
+  let pi = 3.14159265358979 in
+  let pi2 = Float.div pi 2.0 in
+  if check_angle_eqb real (0.0, 0.0, 0.0) then Some "id"
+  else if check_angle_eqb real (pi, 0.0, pi) then Some "x"
+  else if check_angle_eqb real (pi, pi2, pi2) then Some "y"
+  else if check_angle_eqb real (0.0, 0.0, pi) then Some "z"
+  else if check_angle_eqb real (pi2, 0.0, pi) then Some "h"
+  else None
+
 let qop_of_leaf q_assignment c_assignment = function
-  | RotateInstr (theta, phi, lambda, qubit) ->
-      let* theta = expression_of_angle theta in
-      let* phi = expression_of_angle phi in
-      let* lambda = expression_of_angle lambda in
-      let* argument = argument_of_index Quantum q_assignment qubit in
-      Ok (Uop (U ([ theta; phi; lambda ], (fst argument, Some (snd argument)))))
+  | RotateInstr (theta, phi, lambda, qubit) -> (
+      match sugar_standard_gate (theta, phi, lambda) with
+      | Some id -> 
+        let* argument = argument_of_index Quantum q_assignment qubit in
+        let arg = (fst argument, Some (snd argument)) in
+        Ok (Uop (Gate (id, [], [arg])))
+      | None ->
+        let* theta = expression_of_angle theta in
+        let* phi = expression_of_angle phi in
+        let* lambda = expression_of_angle lambda in
+        let* argument = argument_of_index Quantum q_assignment qubit in
+        let arg = (fst argument, Some (snd argument)) in
+        Ok (Uop (U ([ theta; phi; lambda ], arg)))
+    )
   | CnotInstr (control, target) ->
       let* control = argument_of_index Quantum q_assignment control in
       let* target = argument_of_index Quantum q_assignment target in

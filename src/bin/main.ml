@@ -19,6 +19,7 @@ type command =
       source : string;
       destination : string;
       verbose : bool;
+      step: int option;
     }
 
 type result_entry = {
@@ -35,6 +36,7 @@ let parse_args argv =
   let emit_json = ref false in
   let unoptimize = ref false in
   let output_file = ref None in
+  let step = ref None in
   let positionals = ref [] in
   let set_output_file path =
     match !output_file with
@@ -50,6 +52,7 @@ let parse_args argv =
         Arg.Set verbose,
         "Print intermediate QASMCore representation" );
       ("-v", Arg.Set verbose, "Short for --verbose");
+      ("--step", Arg.Int (fun n -> step := Some n), "Set step number of unoptimization");
       ("--json", Arg.Set emit_json, "Emit result as JSON");
       ( "--output",
         Arg.String set_output_file,
@@ -73,10 +76,12 @@ let parse_args argv =
   | true, _ when Option.is_some !output_file ->
       usage_error "--output/-o cannot be used with --unoptimize"
   | true, [ source; destination ] ->
-      Unoptimize { source; destination; verbose = !verbose }
+      Unoptimize { source; destination; verbose = !verbose; step = !step }
   | true, _ ->
       usage_error
         "--unoptimize expects exactly two positional arguments: SOURCE DESTINATION"
+  | false, _ when Option.is_some !step ->
+      usage_error "--step cannot "
   | false, [ source ] ->
       Execute
         {
@@ -238,11 +243,11 @@ let execute source verbose emit_json output_file =
   in
   write_result output_file result
 
-let unoptimize source destination verbose =
+let unoptimize source destination step verbose =
   let nq, nc, instr, q_assignment, c_assignment =
     parse_and_desugar source
   in
-  let transformed = Unoptimize.unoptimize instr nq in
+  let transformed = Unoptimize.unoptimize instr step nq in
   log_instruction verbose transformed;
   let output =
     match Q2.sugar nq nc q_assignment c_assignment transformed with
@@ -263,8 +268,9 @@ let main argv =
     | Execute { source; verbose; emit_json; output_file } ->
         execute source verbose emit_json output_file;
         0
-    | Unoptimize { source; destination; verbose } ->
-        unoptimize source destination verbose;
+    | Unoptimize { source; destination; step; verbose; } ->
+        let step = Option.value step ~default:1 in
+        unoptimize source destination step verbose;
         0
   with
   | Arg.Help message ->

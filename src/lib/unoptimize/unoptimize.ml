@@ -33,8 +33,7 @@ let try_transform rng specs nq instr =
     match random_parameter rng nq spec.param_count with
     | None -> None
     | Some param ->
-      let count = transformSpec_count spec param instr
-      in
+      let count = transformSpec_count spec param instr in
       if count <= 0
       then None
       else
@@ -42,14 +41,14 @@ let try_transform rng specs nq instr =
         in
         transformSpec_apply spec param instr occurrence
 
-let unoptimize_with_state rng instr nq =
+let unoptimize_with_state rng instr step nq =
   let specs =
     Array.of_list
       (transform_spec_list nq)
   in
 
   let rec loop successful_steps current =
-    if successful_steps >= 100
+    if successful_steps >= step
     then current
     else
       match try_transform rng specs nq current
@@ -61,10 +60,10 @@ let unoptimize_with_state rng instr nq =
   in
   loop 0 instr
 
-let unoptimize instr nq =
+let unoptimize instr step nq =
   let rng =
     Random.State.make_self_init ()
   in
   if instruction_qbits_validb nq instr
-  then unoptimize_with_state rng instr nq
+  then unoptimize_with_state rng instr step nq
   else failwith "Instruction qbit index is not valid."
