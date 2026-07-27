@@ -173,14 +173,20 @@ let check_angle_eqb real expected =
     Extracted.r_eqb phi phi'       &&
     Extracted.r_eqb lambda lambda'
 
-let sugar_standard_gate real = (* TODO : more standard gate sugaring needed *)
+let sugar_standard_gate real = (* TODO : sx, sxdg is a gate sequence *)
+  let check = check_angle_eqb real in
   let pi = 3.14159265358979 in
   let pi2 = Float.div pi 2.0 in
-  if check_angle_eqb real (0.0, 0.0, 0.0) then Some "id"
-  else if check_angle_eqb real (pi, 0.0, pi) then Some "x"
-  else if check_angle_eqb real (pi, pi2, pi2) then Some "y"
-  else if check_angle_eqb real (0.0, 0.0, pi) then Some "z"
-  else if check_angle_eqb real (pi2, 0.0, pi) then Some "h"
+  let pi4 = Float.div pi 4.0 in
+  if check (0.0, 0.0, 0.0) then Some "id"
+  else if check (pi, 0.0, pi) then Some "x"
+  else if check (pi, pi2, pi2) then Some "y"
+  else if check (0.0, 0.0, pi) then Some "z"
+  else if check (pi2, 0.0, pi) then Some "h"
+  else if check (0.0, 0.0, pi2) then Some "s"
+  else if check (0.0, 0.0, Float.neg pi2) then Some "sdg" 
+  else if check (0.0, 0.0, pi4) then Some "t"
+  else if check (0.0, 0.0, Float.neg pi4) then Some "tdg"
   else None
 
 let qop_of_leaf q_assignment c_assignment = function

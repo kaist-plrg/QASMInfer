@@ -7,6 +7,9 @@ From Stdlib Require Export Program.Equality.
 
 From Stdlib.FSets Require Import FMapPositive FMapFacts.
 
+From Stdlib Require Import List.
+Import ListNotations.
+
 Bind Scope Complex_scope with Complex.
 Open Scope Matrix_scope.
 
@@ -41,6 +44,26 @@ Definition Gate_S (qbit: nat): Instruction :=
 Definition Gate_Sdg (qbit: nat): Instruction :=
   Gate_P (-PI2) qbit.
 
+Definition Gate_T (qbit: nat): Instruction :=
+  Gate_P (PI/4) qbit.
+
+Definition Gate_Tdg (qbit: nat): Instruction :=
+  Gate_P (-(PI/4)) qbit.
+
+Definition Gate_SX (qbit: nat): Instruction :=
+  SeqInstr [
+    (Gate_Sdg qbit);
+    (Gate_H qbit);
+    (Gate_Sdg qbit)
+  ].
+
+Definition Gate_SXdg (qbit: nat): Instruction :=
+  SeqInstr [
+    Gate_S qbit;
+    Gate_H qbit;
+    Gate_S qbit
+  ].
+
 End GATES.
 
 Notation "'I' q" := (Gate_I q) (in custom qasm at level 0, q constr at level 0).
@@ -51,6 +74,11 @@ Notation "'Z' q" := (Gate_Z q) (in custom qasm at level 0, q constr at level 0).
 Notation "'H' q" := (Gate_H q) (in custom qasm at level 0, q constr at level 0).
 Notation "'S' q" := (Gate_S q) (in custom qasm at level 0, q constr at level 0).
 Notation "'Sdg' q" := (Gate_Sdg q) (in custom qasm at level 0, q constr at level 0).
+
+Notation "'T' q" := (Gate_T q) (in custom qasm at level 0, q constr at level 0).
+Notation "'Tdg' q" := (Gate_Tdg q) (in custom qasm at level 0, q constr at level 0).
+Notation "'SX' q" := (Gate_SX q) (in custom qasm at level 0, q constr at level 0).
+Notation "'SXdg' q" := (Gate_SXdg q) (in custom qasm at level 0, q constr at level 0).
 
 Notation "'P' ( λ ) q" :=
   (Gate_P λ q)
