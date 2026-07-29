@@ -14,7 +14,7 @@ From Stdlib Require Import ZArith Reals.
 From Stdlib Require ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZInt ExtrOcamlIntConv.
 Require Import QASMInfer.program.Program.
 Require Import QASMInfer.matrix.Complex.
-Require Import QASMInfer.transform.Function.
+Require Import QASMInfer.transform.Rewrite.
 
 Set Extraction Output Directory ".".
 Extraction Language OCaml.
@@ -54,9 +54,6 @@ Extract Constant total_order_T =>
   else if (y < x) then None else (Some false))".
 Extract Constant Rlt_dec => "(fun x y -> x < y)".
 Extract Constant Rgt_dec => "(fun x y -> x > y)".
-Extract Constant R_eqb =>
-  "(fun x y -> Float.abs (x -. y) <= 1e-4)".
-
 Extract Constant RTC => "fun x -> {re=x; im=0.0}".
 Extract Constant RTIm => "fun y -> {re=0.0; im=y}".
 Extract Constant NTC => "fun n -> {re=float_of_int n; im=0.0}".
@@ -87,6 +84,7 @@ Extract Inlined Constant com_inv => "Complex.inv".
 Extraction "extracted.ml"
   Execute_and_calculate_prob
   flatten_core
+  Angle_eqb_mod_2
   Instruction_qbits_validb
   TransformSpec_count
   TransformSpec_apply

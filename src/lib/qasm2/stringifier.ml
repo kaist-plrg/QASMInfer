@@ -121,13 +121,18 @@ let string_of_program program =
 (* OpenQASMCore stringifier *)
 (****************************)
 
+let string_of_angle = function
+  | PiAngle q when q.qden = 1 -> Printf.sprintf "%d π" q.qnum
+  | PiAngle q -> Printf.sprintf "%d/%d π" q.qnum q.qden
+  | RealAngle value -> RbaseSymbolsImpl.coq_Rrepr value |> Printf.sprintf "%f"
+
 let rec string_of_instruction = function
   | NopInstr -> "NopInstr"
   | RotateInstr (x, y, z, i) ->
-      Printf.sprintf "RotateInstr (%f, %f, %f, %d)"
-        (RbaseSymbolsImpl.coq_Rrepr x)
-        (RbaseSymbolsImpl.coq_Rrepr y)
-        (RbaseSymbolsImpl.coq_Rrepr z)
+      Printf.sprintf "RotateInstr (%s, %s, %s, %d)"
+        (string_of_angle x)
+        (string_of_angle y)
+        (string_of_angle z)
         i
   | CnotInstr (i, j) -> Printf.sprintf "CnotInstr (%d, %d)" i j
   | SwapInstr (i, j) -> Printf.sprintf "SwapInstr (%d, %d)" i j
@@ -150,10 +155,10 @@ let rec string_of_instruction = function
 let rec string_of_qc_ir = function
   | NopIr -> "NopIr"
   | RotateIr (x, y, z, i) ->
-      Printf.sprintf "RotateIr (%f, %f, %f, %d)"
-        (RbaseSymbolsImpl.coq_Rrepr x)
-        (RbaseSymbolsImpl.coq_Rrepr y)
-        (RbaseSymbolsImpl.coq_Rrepr z)
+      Printf.sprintf "RotateIr (%s, %s, %s, %d)"
+        (string_of_angle x)
+        (string_of_angle y)
+        (string_of_angle z)
         i
   | CnotIr (i, j) -> Printf.sprintf "CnotIr (%d, %d)" i j
   | MeasureIr (i, j) -> Printf.sprintf "MeasureIr (%d, %d)" i j

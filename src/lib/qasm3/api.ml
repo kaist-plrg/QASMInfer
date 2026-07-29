@@ -162,16 +162,26 @@ let qelib_decl =
     GateDecl
       ( ("sx", [], [ "a" ]),
         [
-          GUop (Gate ("sdg", [], [ ("a", None) ]));
-          GUop (Gate ("h", [], [ ("a", None) ]));
-          GUop (Gate ("sdg", [], [ ("a", None) ]));
+          GUop
+            (U
+               ( [
+                   BinaryOp (Div, Pi, Nninteger 2);
+                   BinaryOp (Div, UnaryOp (UMinus, Pi), Nninteger 2);
+                   BinaryOp (Div, Pi, Nninteger 2);
+                 ],
+                 ("a", None) ));
         ] );
     GateDecl
       ( ("sxdg", [], [ "a" ]),
         [
-          GUop (Gate ("s", [], [ ("a", None) ]));
-          GUop (Gate ("h", [], [ ("a", None) ]));
-          GUop (Gate ("s", [], [ ("a", None) ]));
+          GUop
+            (U
+               ( [
+                   BinaryOp (Div, Pi, Nninteger 2);
+                   BinaryOp (Div, Pi, Nninteger 2);
+                   BinaryOp (Div, UnaryOp (UMinus, Pi), Nninteger 2);
+                 ],
+                 ("a", None) ));
         ] );
     GateDecl
       ( ("cz", [], [ "a"; "b" ]),
@@ -789,9 +799,14 @@ let stdgates_decl =
     GateDecl
       ( ("sx", [], [ "a" ]),
         [
-          GUop (Gate ("sdg", [], [ ("a", None) ]));
-          GUop (Gate ("h", [], [ ("a", None) ]));
-          GUop (Gate ("sdg", [], [ ("a", None) ]));
+          GUop
+            (U
+               ( [
+                   BinaryOp (Div, Pi, Nninteger 2);
+                   BinaryOp (Div, UnaryOp (UMinus, Pi), Nninteger 2);
+                   BinaryOp (Div, Pi, Nninteger 2);
+                 ],
+                 ("a", None) ));
         ] );
     GateDecl
       ( ("cz", [], [ "a"; "b" ]),

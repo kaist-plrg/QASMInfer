@@ -2,22 +2,22 @@ QASM2 and QASM3 conversion is quiet, emits reparsable canonical QASM2, and is
 stable when applied a second time.  The three invocations also cover the mode
 option before, between, and after the two positional paths.
 
-  $ qasminfer --unoptimize qasm2.qasm qasm2.once.qasm >qasm2.stdout 2>qasm2.stderr
+  $ qasminfer --step 0 --unoptimize qasm2.qasm qasm2.once.qasm >qasm2.stdout 2>qasm2.stderr
   $ test ! -s qasm2.stdout
   $ test ! -s qasm2.stderr
   $ head -n 1 qasm2.once.qasm
   OPENQASM 2.0;
-  $ qasminfer --unopt qasm2.qasm qasm2.alias.qasm >qasm2-alias.stdout 2>qasm2-alias.stderr
+  $ qasminfer --step 0 --unopt qasm2.qasm qasm2.alias.qasm >qasm2-alias.stdout 2>qasm2-alias.stderr
   $ test ! -s qasm2-alias.stdout
   $ test ! -s qasm2-alias.stderr
   $ cmp qasm2.once.qasm qasm2.alias.qasm
-  $ qasminfer qasm2.once.qasm --unoptimize qasm2.twice.qasm >qasm2-twice.stdout 2>qasm2-twice.stderr
+  $ qasminfer qasm2.once.qasm --step 0 --unoptimize qasm2.twice.qasm >qasm2-twice.stdout 2>qasm2-twice.stderr
   $ test ! -s qasm2-twice.stdout
   $ test ! -s qasm2-twice.stderr
   $ cmp qasm2.once.qasm qasm2.twice.qasm
   $ cp qasm2.qasm qasm2.in-place.qasm
   $ chmod u+w qasm2.in-place.qasm
-  $ qasminfer --unoptimize qasm2.in-place.qasm qasm2.in-place.qasm >in-place.stdout 2>in-place.stderr
+  $ qasminfer --step 0 --unoptimize qasm2.in-place.qasm qasm2.in-place.qasm >in-place.stdout 2>in-place.stderr
   $ test ! -s in-place.stdout
   $ test ! -s in-place.stderr
   $ cmp qasm2.once.qasm qasm2.in-place.qasm
@@ -28,7 +28,7 @@ option before, between, and after the two positional paths.
   $ test ! -s qasm2-generated.stderr
   $ cmp qasm2-source.json qasm2-generated.json
 
-  $ qasminfer qasm3.qasm qasm3.once.qasm --unoptimize >qasm3.stdout 2>qasm3.stderr
+  $ qasminfer qasm3.qasm qasm3.once.qasm --step 0 --unoptimize >qasm3.stdout 2>qasm3.stderr
   $ test ! -s qasm3.stdout
   $ test ! -s qasm3.stderr
   $ head -n 1 qasm3.once.qasm
@@ -36,7 +36,7 @@ option before, between, and after the two positional paths.
   $ grep -F 'qreg qasm3_physical_1[1];' qasm3.once.qasm
   qreg qasm3_physical_1[1];
   $ grep -F '$' qasm3.once.qasm >/dev/null; test $? -ne 0
-  $ qasminfer --unoptimize qasm3.once.qasm qasm3.twice.qasm >qasm3-twice.stdout 2>qasm3-twice.stderr
+  $ qasminfer --step 0 --unoptimize qasm3.once.qasm qasm3.twice.qasm >qasm3-twice.stdout 2>qasm3-twice.stderr
   $ test ! -s qasm3-twice.stdout
   $ test ! -s qasm3-twice.stderr
   $ cmp qasm3.once.qasm qasm3.twice.qasm
@@ -44,7 +44,7 @@ option before, between, and after the two positional paths.
 Verbose conversion diagnostics stay on stderr and do not contaminate either
 stdout or the QASM destination.
 
-  $ qasminfer --unoptimize qasm2.qasm verbose.qasm --verbose >verbose.stdout 2>verbose.stderr
+  $ qasminfer --step 0 --unoptimize qasm2.qasm verbose.qasm --verbose >verbose.stdout 2>verbose.stderr
   $ test ! -s verbose.stdout
   $ test -s verbose.stderr
   $ cmp qasm2.once.qasm verbose.qasm

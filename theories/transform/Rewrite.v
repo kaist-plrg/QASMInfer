@@ -70,9 +70,6 @@ End FLATTEN_FUNCTION.
 
 Section PATTERN.
 
-Definition R_eqb (x y: R): bool :=
-  if Req_EM_T x y then true else false.
-
 Definition PatternMap : Type := NatMap.t nat.
 
 Definition PatternMap_empty : PatternMap := NatMap.empty _.
@@ -122,7 +119,7 @@ Definition NatPattern_inst
 
 Inductive InstructionPattern: Type :=
   | PNop: InstructionPattern
-  | PRotate: R -> R -> R -> NatPattern -> InstructionPattern 
+  | PRotate: Angle -> Angle -> Angle -> NatPattern -> InstructionPattern 
   | PCnot: NatPattern -> NatPattern -> InstructionPattern 
   | PSwap: NatPattern -> NatPattern -> InstructionPattern 
   | PMeasure: NatPattern -> NatPattern -> InstructionPattern 
@@ -137,9 +134,9 @@ Definition InstructionPattern_match
   | PNop, NopInstr => Some map
   | PRotate theta' phi' lambda' qbit_pattern,
     RotateInstr theta phi lambda qbit =>
-      if R_eqb theta theta' then
-        if R_eqb phi phi' then
-          if R_eqb lambda lambda' then
+      if Angle_eqb theta theta' then
+        if Angle_eqb phi phi' then
+          if Angle_eqb lambda lambda' then
             NatPattern_match qbit_pattern qbit map
           else
             None
@@ -463,22 +460,22 @@ Definition RewriteRule_apply_nth
   fst (RewriteRule_apply_nth_result rule instr occurrence).
 
 Definition Pat_I (qbit_pattern : NatPattern) : InstructionPattern :=
-  PRotate 0 0 0 qbit_pattern.
+  PRotate A0 A0 A0 qbit_pattern.
 
 Definition Pat_X (qbit_pattern : NatPattern) : InstructionPattern :=
-  PRotate PI 0 PI qbit_pattern.
+  PRotate API A0 API qbit_pattern.
 
 Definition Pat_Y (qbit_pattern : NatPattern) : InstructionPattern :=
-  PRotate PI PI2 PI2 qbit_pattern.
+  PRotate API API2 API2 qbit_pattern.
 
 Definition Pat_Z (qbit_pattern : NatPattern) : InstructionPattern :=
-  PRotate 0 0 PI qbit_pattern.
+  PRotate A0 A0 API qbit_pattern.
 
 Definition Pat_H (qbit_pattern : NatPattern) : InstructionPattern :=
-  PRotate PI2 0 PI qbit_pattern.
+  PRotate API2 A0 API qbit_pattern.
 
 Definition Pat_S (qbit_pattern : NatPattern) : InstructionPattern :=
-  PRotate 0 0 PI2 qbit_pattern.
+  PRotate A0 A0 API2 qbit_pattern.
 
 Variable nq: nat.
 
@@ -640,16 +637,33 @@ Definition TransformSpec_apply
 (* ================================================================ *)
 (* Proof                                                            *)
 (* ================================================================ *)
-Lemma R_eqb_eq :
+Lemma Q_eqb_exact_eq :
   forall x y,
-    R_eqb x y = true ->
+    Q_eqb_exact x y = true ->
     x = y.
 Proof.
   intros x y Heq.
-  unfold R_eqb in Heq.
-  destruct (Req_EM_T x y) as [Hxy | Hxy].
-  - exact Hxy.
-  - discriminate.
+  unfold Q_eqb_exact in Heq.
+  apply andb_true_iff in Heq as [Hnum Hden].
+  apply Z.eqb_eq in Hnum.
+  apply Pos.eqb_eq in Hden.
+  destruct x as [xnum xden].
+  destruct y as [ynum yden].
+  simpl in *.
+  subst.
+  reflexivity.
+Qed.
+
+Lemma Angle_eqb_eq :
+  forall x y,
+    Angle_eqb x y = true ->
+    x = y.
+Proof.
+  intros x y Heq.
+  destruct x as [qx | rx], y as [qy | ry]; simpl in Heq; try discriminate.
+  apply Q_eqb_exact_eq in Heq.
+  subst.
+  reflexivity.
 Qed.
 
 Lemma PatternMap_extends_refl :
@@ -809,9 +823,9 @@ Proof.
     | qbit
   ]; try discriminate; inversion Hmatch; subst.
   - apply PatternMap_extends_refl.
-  - destruct (R_eqb theta theta');
-    destruct (R_eqb phi phi');
-    destruct (R_eqb lambda lambda'); try discriminate.
+  - destruct (Angle_eqb theta theta');
+    destruct (Angle_eqb phi phi');
+    destruct (Angle_eqb lambda lambda'); try discriminate.
     apply NatPattern_match_extends with qbit_pattern qbit.
     assumption.
   - destruct (NatPattern_match control_pattern control map) eqn:H; try discriminate.
@@ -858,10 +872,10 @@ Proof.
     | qbit
   ]; try discriminate; inversion Hmatch as [H]; subst.
   - reflexivity.
-  - destruct (R_eqb theta theta') eqn:Htheta;
-    destruct (R_eqb phi phi') eqn:Hphi;
-    destruct (R_eqb lambda lambda') eqn:Hlambda; try discriminate.
-    apply R_eqb_eq in Htheta, Hphi, Hlambda; subst.
+  - destruct (Angle_eqb theta theta') eqn:Htheta;
+    destruct (Angle_eqb phi phi') eqn:Hphi;
+    destruct (Angle_eqb lambda lambda') eqn:Hlambda; try discriminate.
+    apply Angle_eqb_eq in Htheta, Hphi, Hlambda; subst.
     simpl.
     erewrite NatPattern_match_sound with (value := qbit).
     reflexivity.

@@ -1,32 +1,17 @@
 [
     {
         "name": "I_to_XX",
-        "lhs": [
-            "id"
-        ],
-        "rhs": [
-            "x",
-            "x"
-        ]
+        "lhs": ["id"],
+        "rhs": ["x", "x"]
     },
     {
         "name": "I_to_YY",
-        "lhs": [
-            "id"
-        ],
-        "rhs": [
-            "y",
-            "y"
-        ]
+        "lhs": ["id"],
+        "rhs": ["y", "y"]
     },
     {
         "name": "I_to_ZZ",
-        "lhs": [
-            "id"
-        ],
-        "rhs": [
-            "z",
-            "z"
-        ]
+        "lhs": ["id"],
+        "rhs": ["z", "z"]
     }
 ]

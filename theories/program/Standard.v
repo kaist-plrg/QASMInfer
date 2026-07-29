@@ -19,52 +19,85 @@ Section GATES.
 
 (* QE Standard Gates *)
 Definition Gate_P (lambda: R) (qbit: nat): Instruction :=
-  RotateInstr 0 0 lambda qbit.
+  RotateInstr A0 A0 (RealAngle lambda) qbit.
 
 Definition Gate_I (qbit: nat): Instruction :=
-  Gate_P 0 qbit.
+  RotateInstr A0 A0 A0 qbit.
 
 (* Pauli Gates *)
 Definition Gate_X (qbit: nat): Instruction :=
-  RotateInstr PI 0 PI qbit.
+  RotateInstr API A0 API qbit.
 
 Definition Gate_Y (qbit: nat): Instruction :=
-  RotateInstr PI PI2 PI2 qbit.
+  RotateInstr API API2 API2 qbit.
 
 Definition Gate_Z (qbit: nat): Instruction :=
-  Gate_P PI qbit.
+  RotateInstr A0 A0 API qbit.
 
 (* Clifford Gates *)
 Definition Gate_H (qbit: nat): Instruction :=
-  RotateInstr PI2 0 PI qbit.
+  RotateInstr API2 A0 API qbit.
 
 Definition Gate_S (qbit: nat): Instruction :=
-  Gate_P PI2 qbit.
+  RotateInstr A0 A0 API2 qbit.
 
 Definition Gate_Sdg (qbit: nat): Instruction :=
-  Gate_P (-PI2) qbit.
+  RotateInstr A0 A0 ANPI2 qbit.
 
 Definition Gate_T (qbit: nat): Instruction :=
-  Gate_P (PI/4) qbit.
+  RotateInstr A0 A0 API4 qbit.
 
 Definition Gate_Tdg (qbit: nat): Instruction :=
-  Gate_P (-(PI/4)) qbit.
+  RotateInstr A0 A0 ANPI4 qbit.
 
 Definition Gate_SX (qbit: nat): Instruction :=
-  SeqInstr [
-    (Gate_Sdg qbit);
-    (Gate_H qbit);
-    (Gate_Sdg qbit)
-  ].
+  RotateInstr API2 ANPI2 API2 qbit.
 
 Definition Gate_SXdg (qbit: nat): Instruction :=
-  SeqInstr [
-    Gate_S qbit;
-    Gate_H qbit;
-    Gate_S qbit
-  ].
+  RotateInstr API2 API2 ANPI2 qbit.
 
 End GATES.
+
+Lemma Angle_to_R_A0:
+  Angle_to_R A0 = 0%R.
+Proof. unfold A0, Angle_to_R, R_of_Q; simpl; field. Qed.
+
+Lemma Angle_to_R_API:
+  Angle_to_R API = PI.
+Proof. unfold API, Angle_to_R, R_of_Q; simpl; field. Qed.
+
+Lemma Angle_to_R_API2:
+  Angle_to_R API2 = PI2.
+Proof.
+  unfold API2, Angle_to_R, R_of_Q; simpl.
+  replace PI2 with (PI / 2)%R by (unfold PI; field).
+  field.
+Qed.
+
+Lemma Angle_to_R_ANPI2:
+  Angle_to_R ANPI2 = (- PI2)%R.
+Proof.
+  unfold ANPI2, Angle_to_R, R_of_Q; simpl.
+  replace PI2 with (PI / 2)%R by (unfold PI; field).
+  field.
+Qed.
+
+Lemma Angle_to_R_API4:
+  Angle_to_R API4 = (PI / 4)%R.
+Proof. unfold API4, Angle_to_R, R_of_Q; simpl; field. Qed.
+
+Lemma Angle_to_R_ANPI4:
+  Angle_to_R ANPI4 = (-(PI / 4))%R.
+Proof. unfold ANPI4, Angle_to_R, R_of_Q; simpl; field. Qed.
+
+Ltac angle_to_R_simpl :=
+  repeat
+    (rewrite Angle_to_R_A0 ||
+     rewrite Angle_to_R_API ||
+     rewrite Angle_to_R_API2 ||
+     rewrite Angle_to_R_ANPI2 ||
+     rewrite Angle_to_R_API4 ||
+     rewrite Angle_to_R_ANPI4).
 
 Notation "'I' q" := (Gate_I q) (in custom qasm at level 0, q constr at level 0).
 Notation "'X' q" := (Gate_X q) (in custom qasm at level 0, q constr at level 0).
@@ -448,6 +481,7 @@ Proof.
   apply functional_extensionality.
   intros branch.
   f_equal; f_equal; f_equal.
+  angle_to_R_simpl.
   rewrite Gate_P_matrix_0_eye.
   apply mat_single_eye.
 Qed.
@@ -461,6 +495,7 @@ Proof.
   f_equal; f_equal.
   apply functional_extensionality.
   intros branch.
+  angle_to_R_simpl.
   f_equal. rewrite Gate_X_matrix_gphase.
   destruct (le_lt_dec nq qbit) as [H|H].
   - repeat rewrite (mat_single_out_of_bounds _ H).
@@ -479,6 +514,7 @@ Proof.
   f_equal; f_equal.
   apply functional_extensionality.
   intros branch.
+  angle_to_R_simpl.
   f_equal. rewrite Gate_Y_matrix_gphase.
   destruct (le_lt_dec nq qbit) as [H|H].
   - repeat rewrite (mat_single_out_of_bounds _ H).
@@ -497,6 +533,7 @@ Proof.
   f_equal; f_equal.
   apply functional_extensionality.
   intros branch.
+  angle_to_R_simpl.
   f_equal. rewrite Gate_Z_matrix_gphase.
   destruct (le_lt_dec nq qbit) as [H|H].
   - repeat rewrite (mat_single_out_of_bounds _ H).
@@ -515,6 +552,7 @@ Proof.
   f_equal; f_equal.
   apply functional_extensionality.
   intros branch.
+  angle_to_R_simpl.
   f_equal. rewrite Gate_H_matrix_gphase.
   destruct (le_lt_dec nq qbit) as [H|H].
   - repeat rewrite (mat_single_out_of_bounds _ H).
@@ -528,14 +566,19 @@ Lemma Matrix_of_P {qbit: nat} (lambda: R):
   Matrix_of qasm{ P(lambda) qbit } (mat_single nq qbit (mat_rot 0 0 lambda)).
 Proof.
   intros ps. simpl.
-  intros cstate. reflexivity.
+  intros cstate.
+  unfold Execute_rotate_instr, Execute_rotate_instr_branch.
+  angle_to_R_simpl.
+  reflexivity.
 Qed.
 
 Lemma Matrix_of_cnot {qbit1 qbit2: nat}:
   Matrix_of qasm{ cx qbit1 qbit2 } (mat_cnot qbit1 qbit2).
 Proof.
   intros ps. simpl.
-  intros cstate. reflexivity.
+  intros cstate.
+  unfold Execute_rotate_instr, Execute_rotate_instr_branch.
+  reflexivity.
 Qed.
 
 Lemma Matrix_of_swap {qbit1 qbit2: nat}:

@@ -32,11 +32,17 @@ let expect_error fragment = function
 
 let r value = E.RbaseSymbolsImpl.coq_Rabst value
 
+let real_angle value = E.RealAngle (r value)
+
+let pi_angle numerator denominator =
+  E.PiAngle { E.qnum = numerator; qden = denominator }
+
 let test_unoptimize_nop_is_exact_identity () =
 let instruction =
   E.SeqInstr
     [
-      E.RotateInstr (r 0.25, r (-0.5), r 1.75, 2);
+      E.RotateInstr
+        (real_angle 0.25, real_angle (-0.5), real_angle 1.75, 2);
       E.CnotInstr (2, 0);
       E.SwapInstr (0, 2);
       E.MeasureInstr (2, 1);
@@ -240,7 +246,7 @@ let singleton_map index argument = IntMap.add index argument IntMap.empty
 
 let test_sugar_reports_missing_quantum_mapping () =
   Q2.sugar 1 0 IntMap.empty IntMap.empty
-    (E.RotateInstr (r 0.0, r 0.0, r 0.0, 0))
+    (E.RotateInstr (pi_angle 0 1, pi_angle 0 1, pi_angle 0 1, 0))
   |> expect_error "missing quantum mapping"
 
 let test_sugar_reports_missing_classical_mapping () =
@@ -265,7 +271,7 @@ let test_sugar_rejects_partial_register_condition () =
   in
   Q2.sugar 1 2 (singleton_map 0 ("q", 0)) c_assignment
     (E.IfInstr
-       (0, true, E.RotateInstr (r Float.pi, r 0.0, r Float.pi, 0)))
+       (0, true, E.RotateInstr (pi_angle 1 1, pi_angle 0 1, pi_angle 1 1, 0)))
   |> expect_error "unrepresentable conditional"
 
 let test_sugar_splits_safe_conditional_sequence () =
@@ -278,7 +284,7 @@ let test_sugar_splits_safe_conditional_sequence () =
       ( 0,
         false,
         E.SeqInstr
-          [ E.RotateInstr (r (Float.pi /. 2.0), r 0.0, r Float.pi, 0);
+          [ E.RotateInstr (pi_angle 1 2, pi_angle 0 1, pi_angle 1 1, 0);
             E.MeasureInstr (0, 1) ] )
   in
   let program =

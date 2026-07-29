@@ -4,6 +4,7 @@ Require Import QASMInfer.property.All.
 Require Import QASMInfer.operator.All.
 
 From Stdlib Require Import List.
+From Stdlib Require Import QArith.
 From Stdlib.FSets Require Import FMapPositive FMapFacts.
 
 Module PFacts := WFacts_fun PositiveMap.E PositiveMap.
@@ -22,9 +23,54 @@ Variable nc : nat.  (* number of classical bits *)
 
 (* desugared QASM instructions ================================================================== *)
 
+Inductive Angle : Type :=
+| PiAngle : Q -> Angle
+| RealAngle : R -> Angle.
+
+Definition R_of_Q (q : Q) : R :=
+  (IZR (Qnum q) / IZR (Z.pos (Qden q)))%R.
+
+Definition Angle_to_R (angle : Angle) : R :=
+  match angle with
+  | PiAngle q => (R_of_Q q * PI)%R
+  | RealAngle r => r
+  end.
+
+Definition Q_is_even_integer (q : Q) : bool :=
+  let q' := Qred q in
+  match Qden q' with
+  | xH => Z.even (Qnum q')
+  | _ => false
+  end.
+
+Definition Q_eqb_mod_2 (x y : Q) : bool :=
+  Q_is_even_integer (x - y)%Q.
+
+Definition Q_eqb_exact (x y : Q) : bool :=
+  Z.eqb (Qnum x) (Qnum y) && Pos.eqb (Qden x) (Qden y).
+
+Definition Angle_eqb (x y : Angle) : bool :=
+  match x, y with
+  | PiAngle qx, PiAngle qy => Q_eqb_exact qx qy
+  | _, _ => false
+  end.
+
+Definition Angle_eqb_mod_2 (x y : Angle) : bool :=
+  match x, y with
+  | PiAngle qx, PiAngle qy => Q_eqb_mod_2 qx qy
+  | _, _ => false
+  end.
+
+Definition A0 : Angle := PiAngle 0.
+Definition API : Angle := PiAngle 1.
+Definition API2 : Angle := PiAngle (1 # 2).
+Definition ANPI2 : Angle := PiAngle ((-1) # 2).
+Definition API4 : Angle := PiAngle (1 # 4).
+Definition ANPI4 : Angle := PiAngle ((-1) # 4).
+
 Inductive Instruction : Type :=
 | NopInstr: Instruction
-| RotateInstr: R -> R -> R -> nat -> Instruction  (* U (theta phi lambda) qbit *)
+| RotateInstr: Angle -> Angle -> Angle -> nat -> Instruction  (* U (theta phi lambda) qbit *)
 | CnotInstr: nat -> nat -> Instruction  (* CnotInstr a b: flip b iff a *)
 | SwapInstr: nat -> nat -> Instruction  (* SwapInstr a b: swap a b *)
 | MeasureInstr: nat -> nat -> Instruction  (* MeasureInstr q c: *)
@@ -50,7 +96,7 @@ Proof.
   intro instr.
   destruct instr.
   - exact Hnop.
-  - exact (Hrot r r0 r1 n).
+  - exact (Hrot a a0 a1 n).
   - exact (Hcnot n n0).
   - exact (Hswap n n0).
   - exact (Hmeas n n0).
@@ -768,13 +814,16 @@ Definition fold_step (F: PositiveMap.key -> Branch -> ProgramState)
   (k: PositiveMap.key) (b: Branch) (acc: ProgramState): ProgramState :=
   ProgramState_merge acc (F k b).
 
-Definition Execute_rotate_instr_branch (theta phi lambda: R) (target: nat) (branch: Branch): Branch :=
+Definition Execute_rotate_instr_branch (theta phi lambda: Angle) (target: nat) (branch: Branch): Branch :=
   {|
-    B_qstate := den_uop (mat_single nq target (mat_rot theta phi lambda)) (B_qstate branch) ;
+    B_qstate := den_uop
+      (mat_single nq target
+        (mat_rot (Angle_to_R theta) (Angle_to_R phi) (Angle_to_R lambda)))
+      (B_qstate branch) ;
     B_prob := B_prob branch;
   |}.
 
-Definition Execute_rotate_instr (theta phi lambda: R) (target: nat) (ps: ProgramState): ProgramState :=
+Definition Execute_rotate_instr (theta phi lambda: Angle) (target: nat) (ps: ProgramState): ProgramState :=
   PositiveMap.map (Execute_rotate_instr_branch theta phi lambda target) ps.
 
 
@@ -887,7 +936,7 @@ Definition Execute_and_calculate_prob (instr: Instruction) :=
 (* Proof about quantum states =================================================================== *)
 
 Lemma Execute_rotate_instr_valid:
-  forall (theta phi lambda: R) (target: nat) (ps: ProgramState),
+  forall (theta phi lambda: Angle) (target: nat) (ps: ProgramState),
   ProgramState_valid ps ->
   ProgramState_valid (Execute_rotate_instr theta phi lambda target ps).
 Proof.
@@ -1469,7 +1518,7 @@ Notation "x" := x (in custom qasm at level 0, x constr at level 0).
 Notation "'nop'" := NopInstr (in custom qasm at level 0).
 
 Notation "'U' ( θ , φ , λ ) q" :=
-  (RotateInstr θ φ λ q)
+  (RotateInstr (RealAngle θ) (RealAngle φ) (RealAngle λ) q)
   (in custom qasm at level 0,
      θ constr at level 0, φ constr at level 0, λ constr at level 0, q constr at level 0).
 

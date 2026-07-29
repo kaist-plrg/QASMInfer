@@ -242,9 +242,9 @@ let rec desugar_macro_program (qasm_dp : program_dp)
 type qc_ir =
   | NopIr
   | RotateIr of
-      RbaseSymbolsImpl.coq_R
-      * RbaseSymbolsImpl.coq_R
-      * RbaseSymbolsImpl.coq_R
+      angle
+      * angle
+      * angle
       * int
   | CnotIr of int * int
   | MeasureIr of int * int
@@ -337,7 +337,64 @@ let eval_exp_list (exp_list : exp list) : float * float * float =
       (eval_exp theta_exp, eval_exp phi_exp, eval_exp lambda_exp)
   | _ -> failwith "invalid exp list length"
 
-let float_to_R = RbaseSymbolsImpl.coq_Rabst
+let rec gcd a b =
+  if b = 0 then abs a else gcd b (a mod b)
+
+let normalize_q num den =
+  if den = 0 then invalid_arg "zero denominator in exact angle";
+  let sign = if den < 0 then -1 else 1 in
+  let num = num * sign in
+  let den = abs den in
+  let divisor = gcd (abs num) den in
+  { qnum = num / divisor; qden = den / divisor }
+
+let q_zero = normalize_q 0 1
+
+let q_add left right =
+  normalize_q
+    ((left.qnum * right.qden) + (right.qnum * left.qden))
+    (left.qden * right.qden)
+
+let q_neg value = { value with qnum = -value.qnum }
+
+let q_sub left right = q_add left (q_neg right)
+
+let q_mul_int value factor = normalize_q (value.qnum * factor) value.qden
+
+let q_div_int value divisor = normalize_q value.qnum (value.qden * divisor)
+
+let rec pi_multiple_of_exp = function
+  | Pi -> Some (normalize_q 1 1)
+  | Nninteger 0 -> Some q_zero
+  | Real value when value = 0.0 -> Some q_zero
+  | UnaryOp (UMinus, expression) ->
+      Option.map q_neg (pi_multiple_of_exp expression)
+  | BinaryOp (Plus, left, right) -> (
+      match pi_multiple_of_exp left, pi_multiple_of_exp right with
+      | Some left, Some right -> Some (q_add left right)
+      | _ -> None)
+  | BinaryOp (Minus, left, right) -> (
+      match pi_multiple_of_exp left, pi_multiple_of_exp right with
+      | Some left, Some right -> Some (q_sub left right)
+      | _ -> None)
+  | BinaryOp (Times, left, Nninteger factor)
+  | BinaryOp (Times, Nninteger factor, left) ->
+      Option.map (fun value -> q_mul_int value factor) (pi_multiple_of_exp left)
+  | BinaryOp (Div, left, Nninteger divisor) ->
+      if divisor = 0 then None
+      else Option.map (fun value -> q_div_int value divisor) (pi_multiple_of_exp left)
+  | _ -> None
+
+let angle_of_exp expression =
+  match pi_multiple_of_exp expression with
+  | Some q -> PiAngle q
+  | None -> RealAngle (RbaseSymbolsImpl.coq_Rabst (eval_exp expression))
+
+let eval_angle_list (exp_list : exp list) : angle * angle * angle =
+  match exp_list with
+  | [ theta_exp; phi_exp; lambda_exp ] ->
+      (angle_of_exp theta_exp, angle_of_exp phi_exp, angle_of_exp lambda_exp)
+  | _ -> failwith "invalid exp list length"
 
 let desugar_qasm_qop (assignment_q_rev : int QASMArgMap.t)
     (assignment_c_rev : int QASMArgMap.t) (qasm_qop : qop_dp) : qc_ir =
@@ -349,11 +406,11 @@ let desugar_qasm_qop (assignment_q_rev : int QASMArgMap.t)
           deref_or_fail arg2 "desugar_qasm_qop: CX: invalid argument"
             assignment_q_rev )
   | Uop_dp (U_dp (exp_list, arg)) ->
-      let theta, phi, lambda = eval_exp_list exp_list in
+      let theta, phi, lambda = eval_angle_list exp_list in
       RotateIr
-        ( float_to_R theta,
-          float_to_R phi,
-          float_to_R lambda,
+        ( theta,
+          phi,
+          lambda,
           deref_or_fail arg "desugar_qasm_qop: U: invalid argument"
             assignment_q_rev )
   | Meas_dp (qarg, carg) ->

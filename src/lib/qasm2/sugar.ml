@@ -162,31 +162,66 @@ let argument_of_index kind assignments index =
   else Ok assignments.(index)
 
 let expression_of_angle angle =
-  let value = RbaseSymbolsImpl.coq_Rrepr angle in
-  if Float.is_finite value then Ok (Real value)
-  else Error "cannot sugar a rotation with a non-finite angle"
+  match angle with
+  | PiAngle q ->
+      let numerator = q.qnum in
+      let denominator = q.qden in
+      let abs_numerator = abs numerator in
+      let base =
+        match abs_numerator, denominator with
+        | 0, _ -> Nninteger 0
+        | 1, 1 -> Pi
+        | 1, _ -> BinaryOp (Div, Pi, Nninteger denominator)
+        | _, 1 -> BinaryOp (Times, Nninteger abs_numerator, Pi)
+        | _, _ ->
+            BinaryOp
+              ( Div,
+                BinaryOp (Times, Nninteger abs_numerator, Pi),
+                Nninteger denominator )
+      in
+      if numerator < 0 then Ok (UnaryOp (UMinus, base)) else Ok base
+  | RealAngle angle ->
+      let value = RbaseSymbolsImpl.coq_Rrepr angle in
+      if Float.is_finite value then Ok (Real value)
+      else Error "cannot sugar a rotation with a non-finite angle"
 
-let check_angle_eqb real expected =
-  match real, expected with
-  | (theta, phi, lambda), (theta', phi', lambda') ->
-    Extracted.r_eqb theta theta'   &&
-    Extracted.r_eqb phi phi'       &&
-    Extracted.r_eqb lambda lambda'
+let gcd a b =
+  let rec loop a b = if b = 0 then abs a else loop b (a mod b) in
+  loop a b
 
-let sugar_standard_gate real = (* TODO : sx, sxdg is a gate sequence *)
-  let check = check_angle_eqb real in
-  let pi = 3.14159265358979 in
-  let pi2 = Float.div pi 2.0 in
-  let pi4 = Float.div pi 4.0 in
-  if check (0.0, 0.0, 0.0) then Some "id"
-  else if check (pi, 0.0, pi) then Some "x"
-  else if check (pi, pi2, pi2) then Some "y"
-  else if check (0.0, 0.0, pi) then Some "z"
-  else if check (pi2, 0.0, pi) then Some "h"
-  else if check (0.0, 0.0, pi2) then Some "s"
-  else if check (0.0, 0.0, Float.neg pi2) then Some "sdg" 
-  else if check (0.0, 0.0, pi4) then Some "t"
-  else if check (0.0, 0.0, Float.neg pi4) then Some "tdg"
+let normalize_q num den =
+  if den = 0 then invalid_arg "zero denominator in exact angle";
+  let sign = if den < 0 then -1 else 1 in
+  let num = num * sign in
+  let den = abs den in
+  let divisor = gcd (abs num) den in
+  { qnum = num / divisor; qden = den / divisor }
+
+let q_of_int num = normalize_q num 1
+
+let q num den = normalize_q num den
+
+let check_angle_eqb angles expected =
+  match angles with
+  | theta, phi, lambda ->
+      let theta', phi', lambda' = expected in
+      angle_eqb_mod_2 theta (PiAngle theta')
+      && angle_eqb_mod_2 phi (PiAngle phi')
+      && angle_eqb_mod_2 lambda (PiAngle lambda')
+
+let sugar_standard_gate angles =
+  let check = check_angle_eqb angles in
+  if check (q_of_int 0, q_of_int 0, q_of_int 0) then Some "id"
+  else if check (q_of_int 1, q_of_int 0, q_of_int 1) then Some "x"
+  else if check (q_of_int 1, q 1 2, q 1 2) then Some "y"
+  else if check (q_of_int 0, q_of_int 0, q_of_int 1) then Some "z"
+  else if check (q 1 2, q_of_int 0, q_of_int 1) then Some "h"
+  else if check (q_of_int 0, q_of_int 0, q 1 2) then Some "s"
+  else if check (q_of_int 0, q_of_int 0, q (-1) 2) then Some "sdg"
+  else if check (q_of_int 0, q_of_int 0, q 1 4) then Some "t"
+  else if check (q_of_int 0, q_of_int 0, q (-1) 4) then Some "tdg"
+  else if check (q 1 2, q (-1) 2, q 1 2) then Some "sx"
+  else if check (q 1 2, q 1 2, q (-1) 2) then Some "sxdg"
   else None
 
 let qop_of_leaf q_assignment c_assignment = function
@@ -438,6 +473,17 @@ let statements_of_instruction qregs cregs q_assignment c_assignment instruction
   in
   Result.map List.rev (collect [] instruction)
 
+let qelib_gate_names =
+  [ "id"; "x"; "y"; "z"; "h"; "s"; "sdg"; "t"; "tdg"; "sx"; "sxdg" ]
+
+let qop_uses_qelib = function
+  | Uop (Gate (name, _, _)) -> List.mem name qelib_gate_names
+  | Uop (U _ | CX _) | Meas _ | Reset _ -> false
+
+let statement_uses_qelib = function
+  | Qop qop | If (_, _, qop) -> qop_uses_qelib qop
+  | Include _ | Decl _ | GateDecl _ | OpaqueDecl _ | Barrier _ -> false
+
 let sugar nq nc q_assignment c_assignment instruction =
   let* q_entries = collect_assignments Quantum nq q_assignment in
   let* c_entries = collect_assignments Classical nc c_assignment in
@@ -456,4 +502,8 @@ let sugar nq nc q_assignment c_assignment instruction =
     List.map (fun reg -> Decl (QReg (reg.name, reg.size))) qregs
     @ List.map (fun reg -> Decl (CReg (reg.name, reg.size))) cregs
   in
-  Ok (declarations @ statements)
+  let includes =
+    if List.exists statement_uses_qelib statements then [ Include "qelib1.inc" ]
+    else []
+  in
+  Ok (includes @ declarations @ statements)

@@ -191,7 +191,7 @@ Proof.
   - apply Heq.
 Qed.
 
-Lemma Execute_rotate_instr_Proper (theta phi lambda: R) (target: nat):
+Lemma Execute_rotate_instr_Proper (theta phi lambda: Angle) (target: nat):
   Proper (ProgramState_equiv ==> ProgramState_equiv) (Execute_rotate_instr nq theta phi lambda target).
 Proof.
   intros ps1 ps2 Heq cstate.
