@@ -1639,6 +1639,7 @@ Proof.
     apply (proj2 Heffective (ResetInstr target) result Happly).
 Qed.
 
+(* Effectiveness of transformation *)
 Theorem TransformSpec_apply_neq:
   forall spec param rule instr occurrence instr',
   transform_rule spec param = Some rule ->
@@ -1656,6 +1657,8 @@ Proof.
   inversion Happly; subst.
   eapply RewriteRule_apply_nth_list_neq; eauto.
 Qed.
+
+Check Instruction_behavioral_equiv_implies_result_equiv.
 
 Theorem Transform_functions_valid:
   forall (instr: Instruction) (occurrence: nat),

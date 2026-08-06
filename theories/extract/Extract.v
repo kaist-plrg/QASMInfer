@@ -14,7 +14,7 @@ From Stdlib Require Import ZArith Reals.
 From Stdlib Require ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZBigInt ExtrOcamlIntConv.
 Require Import QASMInfer.program.Program.
 Require Import QASMInfer.matrix.Complex.
-Require Import QASMInfer.transform.Rewrite.
+Require Import QASMInfer.transform.RewriteUnopt.
 Require Import QASMInfer.transform.StandardValid.
 
 Set Extraction Output Directory ".".

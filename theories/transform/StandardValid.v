@@ -4,7 +4,7 @@ Require Import QASMInfer.operator.All.
 Require Import QASMInfer.program.All.
 Require Import QASMInfer.transform.Commute.
 Require Import QASMInfer.transform.Equiv.
-Require Import QASMInfer.transform.Rewrite.
+Require Import QASMInfer.transform.RewriteUnopt.
 
 From Stdlib Require Import Bool.
 From Stdlib Require Import List.
