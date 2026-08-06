@@ -381,14 +381,33 @@ Fixpoint RewriteRule_apply_nth_list_result
               )
           | S occurrence' =>
               (*
-                Preserve the original overlapping-match behavior:
-                after skipping this match, advance by one instruction.
+                After skipping the match at this list position, continue in
+                the same order used by RewriteRule_match_count: first search a
+                structured current instruction, then the remaining siblings.
               *)
-              let '(rest', status) :=
-                RewriteRule_apply_nth_list_result
-                  rule rewrite_instr rest occurrence'
-              in
-              (current :: rest', status)
+              match current with
+              | SeqInstr _ | IfInstr _ _ _ =>
+                  let '(current', current_status) :=
+                    rewrite_instr current occurrence'
+                  in
+                  match current_status with
+                  | RewriteDone =>
+                      (current' :: rest, RewriteDone)
+
+                  | RewriteContinue occurrence'' =>
+                      let '(rest', rest_status) :=
+                        RewriteRule_apply_nth_list_result
+                          rule rewrite_instr rest occurrence''
+                      in
+                      (current' :: rest', rest_status)
+                  end
+              | _ =>
+                  let '(rest', status) :=
+                    RewriteRule_apply_nth_list_result
+                      rule rewrite_instr rest occurrence'
+                  in
+                  (current :: rest', status)
+              end
           end
       | None =>
           (*
@@ -629,10 +648,29 @@ Definition TransformSpec_apply
     : option Instruction :=
   match transform_rule spec param with
   | Some rule =>
-      Some (RewriteRule_apply_nth rule instr occurrence)
+      match RewriteRule_apply_nth_result rule instr occurrence with
+      | (instr', RewriteDone) =>
+          Some instr'
+      | (_, RewriteContinue _) =>
+          None
+      end
   | None =>
       None
   end.
+
+Definition RewriteRuleEffective (rule: RewriteRule) : Prop :=
+  (forall instrs result,
+    RewriteRule_apply rule instrs = Some result ->
+    RewriteResult_replacement result
+      ++ skipn (RewriteResult_consumed result) instrs
+    <> instrs)
+  /\
+  (forall instr result,
+    RewriteRule_apply rule [instr] = Some result ->
+    Instruction_list_simp
+      (RewriteResult_replacement result
+       ++ skipn (RewriteResult_consumed result) [instr])
+    <> instr).
 
 (* ================================================================ *)
 (* Proof                                                            *)
@@ -1105,16 +1143,29 @@ Definition RewriteRule_apply_nth_result_list_sound
     instrs' = instrs
   end.
 
+Ltac solve_rewrite_apply_nth_list_atomic rule instrs occurrence Hresult IHHvalid0 :=
+  destruct
+	    (RewriteRule_apply_nth_list_result
+	      rule (RewriteRule_apply_nth_result rule)
+	      instrs occurrence)
+	    as [rest' rest_status] eqn:Hrest_result;
+	  specialize (IHHvalid0 occurrence rest' rest_status Hrest_result);
+	  destruct rest_status;
+	  inversion Hresult; subst;
+	  [ repeat rewrite Instruction_equiv_Seq_list_eq;
+	    apply Instruction_equiv_rewrite_end;
+	    exact IHHvalid0
+  | f_equal; exact IHHvalid0
+  ].
+
 Lemma RewriteRule_apply_nth_result_sound:
   forall rule, RewriteRuleValid rule ->
   forall instr, Instruction_qbits_valid instr ->
   forall occurrence instr' status,
   RewriteRule_apply_nth_result rule instr occurrence = (instr', status) ->
   match status with
-  | RewriteDone =>
-    Instruction_equiv nq instr instr'
-  | RewriteContinue _ =>
-    instr' = instr
+  | RewriteDone => Instruction_equiv nq instr instr'
+  | RewriteContinue _ => instr' = instr
   end.
 Proof.
   intros rule Hrule instr Hvalid.
@@ -1151,24 +1202,88 @@ Proof.
   - destruct
       (RewriteRule_apply rule (instr :: instrs))
       as [result |] eqn:Happly.
-    + destruct occurrence.
-      * inversion Hresult; subst.
-        apply Hrule.
-        constructor; assumption.
-        assumption.
-      * destruct
-          (RewriteRule_apply_nth_list_result
-            rule (RewriteRule_apply_nth_result rule)
-            instrs occurrence)
-          as [rest' rest_status] eqn:Hrest_result.
-        inversion Hresult; subst.
-        specialize (IHHvalid0 occurrence rest' status Hrest_result).
-        destruct status.
-        -- repeat rewrite Instruction_equiv_Seq_list_eq.
-           apply Instruction_equiv_rewrite_end.
-           exact IHHvalid0.
-        -- f_equal.
-           exact IHHvalid0.
+	    + destruct occurrence.
+	      * inversion Hresult; subst.
+	        apply Hrule.
+	        constructor; assumption.
+	        assumption.
+	      * destruct instr
+	          as [| theta phi lambda target
+	             | control target
+	             | qbit1 qbit2
+	             | qbit cbit
+	             | seq_instrs
+	             | cbit expected body
+	             | target].
+	        -- solve_rewrite_apply_nth_list_atomic rule instrs occurrence Hresult IHHvalid0.
+	        -- solve_rewrite_apply_nth_list_atomic rule instrs occurrence Hresult IHHvalid0.
+	        -- solve_rewrite_apply_nth_list_atomic rule instrs occurrence Hresult IHHvalid0.
+	        -- solve_rewrite_apply_nth_list_atomic rule instrs occurrence Hresult IHHvalid0.
+	        -- solve_rewrite_apply_nth_list_atomic rule instrs occurrence Hresult IHHvalid0.
+	        -- destruct
+	             (RewriteRule_apply_nth_result rule (SeqInstr seq_instrs) occurrence)
+	             as [current' current_status] eqn:Hcurrent_result.
+	           destruct current_status as [| occurrence'].
+	           ++ inversion Hresult; subst.
+	              specialize
+	                (IHHvalid occurrence current' RewriteDone Hcurrent_result).
+	              repeat rewrite Instruction_equiv_Seq_list_eq.
+	              apply Instruction_equiv_rewrite_start.
+	              exact IHHvalid.
+	           ++ destruct
+		                (RewriteRule_apply_nth_list_result
+		                   rule (RewriteRule_apply_nth_result rule)
+		                   instrs occurrence')
+		                as [rest' rest_status] eqn:Hrest_result.
+		              specialize
+		                (IHHvalid
+		                   occurrence current'
+		                   (RewriteContinue occurrence')
+		                   Hcurrent_result).
+		              simpl in IHHvalid.
+		              subst current'.
+		              specialize
+		                (IHHvalid0 occurrence' rest' rest_status Hrest_result).
+		              destruct rest_status.
+		              ** inversion Hresult; subst.
+		                 repeat rewrite Instruction_equiv_Seq_list_eq.
+		                 apply Instruction_equiv_rewrite_end.
+		                 exact IHHvalid0.
+		              ** inversion Hresult; subst.
+		                 f_equal.
+	        -- destruct
+	             (RewriteRule_apply_nth_result
+	                rule (IfInstr cbit expected body) occurrence)
+	             as [current' current_status] eqn:Hcurrent_result.
+	           destruct current_status as [| occurrence'].
+	           ++ inversion Hresult; subst.
+	              specialize
+	                (IHHvalid occurrence current' RewriteDone Hcurrent_result).
+	              repeat rewrite Instruction_equiv_Seq_list_eq.
+	              apply Instruction_equiv_rewrite_start.
+	              exact IHHvalid.
+	           ++ destruct
+		                (RewriteRule_apply_nth_list_result
+		                   rule (RewriteRule_apply_nth_result rule)
+		                   instrs occurrence')
+		                as [rest' rest_status] eqn:Hrest_result.
+		              specialize
+		                (IHHvalid
+		                   occurrence current'
+		                   (RewriteContinue occurrence')
+		                   Hcurrent_result).
+		              simpl in IHHvalid.
+		              subst current'.
+		              specialize
+		                (IHHvalid0 occurrence' rest' rest_status Hrest_result).
+		              destruct rest_status.
+		              ** inversion Hresult; subst.
+		                 repeat rewrite Instruction_equiv_Seq_list_eq.
+		                 apply Instruction_equiv_rewrite_end.
+		                 exact IHHvalid0.
+		              ** inversion Hresult; subst.
+		                 f_equal.
+	        -- solve_rewrite_apply_nth_list_atomic rule instrs occurrence Hresult IHHvalid0.
     + destruct
         (RewriteRule_apply_nth_result
            rule instr occurrence)
@@ -1270,11 +1385,19 @@ Proof.
   rewrite Instruction_qbits_validb_spec in H.
   unfold TransformSpec_apply in Happly.
   destruct (transform_rule spec param) eqn:Htrans; try discriminate.
+  inversion Hrule; subst.
+  destruct
+    (RewriteRule_apply_nth_result rule instr occurrence)
+    as [applied status] eqn:Hresult.
+  destruct status; try discriminate.
   inversion Happly; subst.
+  replace instr' with (RewriteRule_apply_nth rule instr occurrence).
   apply RewriteRule_apply_nth_sound; try assumption.
   apply PatternRuleValid_implies_RewriteRuleValid.
-  inversion Hrule; subst.
   assumption.
+  unfold RewriteRule_apply_nth.
+  rewrite Hresult.
+  reflexivity.
 Qed.
 
 End PATTERN.
@@ -1319,15 +1442,220 @@ Definition Transform_spec_list : list TransformSpec :=
     |}
   ].
 
-(* If occurrence is smaller than match count, applying really changes the instruction. *)
+(* If applying reaches RewriteDone, the selected rewrite really changes the instruction. *)
 Lemma RewriteRule_apply_nth_list_neq:
-  forall rule instr occurrence,
-  RewriteRuleValid nq rule ->
-  (occurrence < RewriteRule_match_count rule instr)%nat ->
-  RewriteRule_apply_nth rule instr occurrence <> instr.
+  forall rule,
+  RewriteRuleEffective rule ->
+  forall instr occurrence instr',
+  RewriteRule_apply_nth_result rule instr occurrence = (instr', RewriteDone) ->
+  instr' <> instr.
 Proof.
-  intros.
-Admitted.
+  intros rule Heffective instr.
+  induction instr using Instruction_ind';
+    intros occurrence instr' Hdone; simpl in *.
+  - destruct (RewriteRule_apply rule [NopInstr]) as [result |] eqn:Happly;
+      try discriminate.
+    destruct occurrence; try discriminate.
+    inversion Hdone; subst.
+    apply (proj2 Heffective NopInstr result Happly).
+  - destruct (RewriteRule_apply rule [RotateInstr theta phi lambda target])
+      as [result |] eqn:Happly; try discriminate.
+    destruct occurrence; try discriminate.
+    inversion Hdone; subst.
+    apply
+      (proj2 Heffective (RotateInstr theta phi lambda target) result Happly).
+  - destruct (RewriteRule_apply rule [CnotInstr control target])
+      as [result |] eqn:Happly; try discriminate.
+    destruct occurrence; try discriminate.
+    inversion Hdone; subst.
+    apply (proj2 Heffective (CnotInstr control target) result Happly).
+  - destruct (RewriteRule_apply rule [SwapInstr q1 q2])
+      as [result |] eqn:Happly; try discriminate.
+    destruct occurrence; try discriminate.
+    inversion Hdone; subst.
+    apply (proj2 Heffective (SwapInstr q1 q2) result Happly).
+  - destruct (RewriteRule_apply rule [MeasureInstr qbit cbit])
+      as [result |] eqn:Happly; try discriminate.
+    destruct occurrence; try discriminate.
+    inversion Hdone; subst.
+    apply (proj2 Heffective (MeasureInstr qbit cbit) result Happly).
+  - destruct
+      (RewriteRule_apply_nth_list_result
+        rule (RewriteRule_apply_nth_result rule) is occurrence)
+      as [instrs' status] eqn:Hlist; try discriminate.
+    inversion Hdone; subst; clear Hdone.
+    assert (Hneq_list: instrs' <> is).
+    {
+      revert occurrence instrs' Hlist.
+      induction H as [| current rest Hcurrent Hrest IHrest];
+        intros occurrence instrs' Hlist Heq; simpl in Hlist.
+      - discriminate.
+      - destruct (RewriteRule_apply rule (current :: rest))
+          as [result |] eqn:Happly.
+        + destruct occurrence.
+	          * inversion Hlist; subst instrs'.
+            apply (proj1 Heffective (current :: rest) result Happly).
+            assumption.
+	          * destruct current
+	              as [| theta phi lambda target
+	                 | control target
+	                 | qbit1 qbit2
+	                 | qbit cbit
+	                 | seq_instrs
+	                 | cbit expected body
+	                 | target].
+	            -- destruct
+	                 (RewriteRule_apply_nth_list_result
+	                   rule (RewriteRule_apply_nth_result rule)
+	                   rest occurrence)
+	                 as [rest' rest_status] eqn:Hrest_result;
+	               destruct rest_status; try discriminate.
+	               inversion Heq; subst.
+	               apply (IHrest occurrence rest' Hrest_result).
+	               inversion Hlist; reflexivity.
+	            -- destruct
+	                 (RewriteRule_apply_nth_list_result
+	                   rule (RewriteRule_apply_nth_result rule)
+	                   rest occurrence)
+	                 as [rest' rest_status] eqn:Hrest_result;
+	               destruct rest_status; try discriminate.
+	               inversion Heq; subst.
+	               apply (IHrest occurrence rest' Hrest_result).
+	               inversion Hlist; reflexivity.
+	            -- destruct
+	                 (RewriteRule_apply_nth_list_result
+	                   rule (RewriteRule_apply_nth_result rule)
+	                   rest occurrence)
+	                 as [rest' rest_status] eqn:Hrest_result;
+	               destruct rest_status; try discriminate.
+	               inversion Heq; subst.
+	               apply (IHrest occurrence rest' Hrest_result).
+	               inversion Hlist; reflexivity.
+	            -- destruct
+	                 (RewriteRule_apply_nth_list_result
+	                   rule (RewriteRule_apply_nth_result rule)
+	                   rest occurrence)
+	                 as [rest' rest_status] eqn:Hrest_result;
+	               destruct rest_status; try discriminate.
+	               inversion Heq; subst.
+	               apply (IHrest occurrence rest' Hrest_result).
+	               inversion Hlist; reflexivity.
+	            -- destruct
+	                 (RewriteRule_apply_nth_list_result
+	                   rule (RewriteRule_apply_nth_result rule)
+	                   rest occurrence)
+	                 as [rest' rest_status] eqn:Hrest_result;
+	               destruct rest_status; try discriminate.
+	               inversion Heq; subst.
+	               apply (IHrest occurrence rest' Hrest_result).
+	               inversion Hlist; reflexivity.
+	            -- destruct
+	                 (RewriteRule_apply_nth_result
+	                   rule (SeqInstr seq_instrs) occurrence)
+	                 as [current' current_status] eqn:Hcurrent_result.
+	               destruct current_status as [| occurrence'].
+	               ++ inversion Heq; subst.
+	                  inversion Hlist; subst.
+	                  eapply Hcurrent; eauto.
+	               ++ destruct
+	                    (RewriteRule_apply_nth_list_result
+	                      rule (RewriteRule_apply_nth_result rule)
+	                      rest occurrence')
+	                    as [rest' rest_status] eqn:Hrest_result.
+		                  destruct rest_status.
+		                  ** inversion Heq; subst.
+		                     apply (IHrest occurrence' rest' Hrest_result).
+		                     inversion Hlist; reflexivity.
+		                  ** discriminate.
+	            -- destruct
+	                 (RewriteRule_apply_nth_result
+	                   rule (IfInstr cbit expected body) occurrence)
+	                 as [current' current_status] eqn:Hcurrent_result.
+	               destruct current_status as [| occurrence'].
+	               ++ inversion Heq; subst.
+	                  inversion Hlist; subst.
+	                  eapply Hcurrent; eauto.
+	               ++ destruct
+	                    (RewriteRule_apply_nth_list_result
+	                      rule (RewriteRule_apply_nth_result rule)
+	                      rest occurrence')
+	                    as [rest' rest_status] eqn:Hrest_result.
+		                  destruct rest_status.
+		                  ** inversion Heq; subst.
+		                     apply (IHrest occurrence' rest' Hrest_result).
+		                     inversion Hlist; reflexivity.
+		                  ** discriminate.
+	            -- destruct
+	                 (RewriteRule_apply_nth_list_result
+	                   rule (RewriteRule_apply_nth_result rule)
+	                   rest occurrence)
+	                 as [rest' rest_status] eqn:Hrest_result;
+	               destruct rest_status; try discriminate.
+	               inversion Heq; subst.
+	               apply (IHrest occurrence rest' Hrest_result).
+	               inversion Hlist; reflexivity.
+	        + destruct
+	            (RewriteRule_apply_nth_result rule current occurrence)
+	            as [current' current_status] eqn:Hcurrent_result.
+	          destruct current_status as [| occurrence'].
+	          * inversion Heq; subst.
+	            inversion Hlist; subst.
+	            eapply Hcurrent; eauto.
+	          * destruct
+	              (RewriteRule_apply_nth_list_result
+	                rule (RewriteRule_apply_nth_result rule)
+	                rest occurrence')
+	              as [rest' rest_status] eqn:Hrest_result.
+	            destruct rest_status.
+	            -- inversion Heq; subst.
+	               apply (IHrest occurrence' rest' Hrest_result).
+	               inversion Hlist; reflexivity.
+	            -- discriminate.
+    }
+    intro Heq.
+    inversion Heq; subst.
+    contradiction.
+	  - match type of Hdone with
+	    | context[RewriteRule_apply_nth_result rule ?body occurrence] =>
+	      destruct
+	        (RewriteRule_apply_nth_result rule body occurrence)
+	        as [body' status] eqn:Hbody
+	    end; try discriminate.
+	    inversion Hdone; subst.
+	    intro Heq.
+	    inversion Heq; subst.
+	    match goal with
+	    | Hbody_neq :
+	        forall occurrence instr',
+	        RewriteRule_apply_nth_result rule ?body occurrence =
+	          (instr', RewriteDone) ->
+	        instr' <> ?body |- _ =>
+	      eapply Hbody_neq; eauto
+	    end.
+	  - destruct (RewriteRule_apply rule [ResetInstr target])
+	      as [result |] eqn:Happly; try discriminate.
+	    destruct occurrence; try discriminate.
+	    inversion Hdone; subst.
+    apply (proj2 Heffective (ResetInstr target) result Happly).
+Qed.
+
+Theorem TransformSpec_apply_neq:
+  forall spec param rule instr occurrence instr',
+  transform_rule spec param = Some rule ->
+  RewriteRuleEffective rule ->
+  TransformSpec_apply spec param instr occurrence = Some instr' ->
+  instr' <> instr.
+Proof.
+  intros spec param rule instr occurrence instr' Hrule Heffective Happly.
+  unfold TransformSpec_apply in Happly.
+  rewrite Hrule in Happly.
+  destruct
+    (RewriteRule_apply_nth_result rule instr occurrence)
+    as [applied status] eqn:Hresult.
+  destruct status; try discriminate.
+  inversion Happly; subst.
+  eapply RewriteRule_apply_nth_list_neq; eauto.
+Qed.
 
 Theorem Transform_functions_valid:
   forall (instr: Instruction) (occurrence: nat),
@@ -1345,7 +1673,13 @@ Proof.
   all: unfold TransformSpec_apply; simpl.
   all: intros param instr'; destruct param; intros H'; try discriminate.
   1: destruct (n <? nq)%nat eqn:Hn; try discriminate; rewrite Nat.ltb_lt in Hn. 
+  all: destruct
+    (RewriteRule_apply_nth_result (Rule_Insert_I n) instr occurrence)
+    as [applied status] eqn:Hresult.
+  all: destruct status; try discriminate.
   all: inversion H'; subst.
+  all: replace instr' with (RewriteRule_apply_nth (Rule_Insert_I n) instr occurrence)
+    by (unfold RewriteRule_apply_nth; rewrite Hresult; reflexivity).
   all: apply RewriteRule_apply_nth_sound; try assumption.
   all: apply PatternRuleValid_implies_RewriteRuleValid.
   all: intros map lhs rhs Hlhs Hrhs Hvalid; simpl in Hlhs, Hrhs.
