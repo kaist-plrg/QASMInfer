@@ -1289,30 +1289,6 @@ Definition Rule_Insert_I (qbit: nat) : RewriteRule :=
     rule_rhs := [Pat_I (NatExact qbit)]
   |}.
 
-Definition Rule_I_to_XX : RewriteRule :=
-  {|
-    rule_lhs := [Pat_I (NatVar 0)];
-    rule_rhs := [Pat_X (NatVar 0); Pat_X (NatVar 0)]
-  |}.
-
-Definition Rule_I_to_YY : RewriteRule :=
-  {|
-    rule_lhs := [Pat_I (NatVar 0)];
-    rule_rhs := [Pat_Y (NatVar 0); Pat_Y (NatVar 0)]
-  |}.
-
-Definition Rule_I_to_ZZ : RewriteRule :=
-  {|
-    rule_lhs := [Pat_I (NatVar 0)];
-    rule_rhs := [Pat_Z (NatVar 0); Pat_Z (NatVar 0)]
-  |}.
-
-Definition Rule_I_to_HH : RewriteRule :=
-  {|
-    rule_lhs := [Pat_I (NatVar 0)];
-    rule_rhs := [Pat_H (NatVar 0); Pat_H (NatVar 0)]
-  |}.
-
 Definition Transform_simple_rule (rule: RewriteRule) : TransformParameter -> option RewriteRule :=
   fun param =>
     match param with
@@ -1340,11 +1316,7 @@ Definition Transform_spec_list : list TransformSpec :=
         | _ => None
         end;
       param_count := 1;
-    |};
-    TransformSpec_simple_rule "I_to_XX" Rule_I_to_XX;
-    TransformSpec_simple_rule "I_to_YY" Rule_I_to_YY;
-    TransformSpec_simple_rule "I_to_ZZ" Rule_I_to_ZZ;
-    TransformSpec_simple_rule "I_to_HH" Rule_I_to_HH
+    |}
   ].
 
 (* If occurrence is smaller than match count, applying really changes the instruction. *)
@@ -1377,20 +1349,10 @@ Proof.
   all: apply RewriteRule_apply_nth_sound; try assumption.
   all: apply PatternRuleValid_implies_RewriteRuleValid.
   all: intros map lhs rhs Hlhs Hrhs Hvalid; simpl in Hlhs, Hrhs.
-  2-5: destruct (NatMap.find 0%nat map)
-    as [qbit |] eqn:Hqbit;
-    try discriminate.
   all: inversion Hlhs; subst lhs.
   all: inversion Hrhs; subst rhs.
   all: symmetry.
   1: apply Transform_I; assumption.
-  1: apply Transform_X_X.
-  2: apply Transform_Y_Y.
-  3: apply Transform_Z_Z.
-  4: apply Transform_H_H.
-  all: inversion Hvalid as [| h rt Hinstr Hrest]; subst.
-  all: inversion Hinstr; subst.
-  all: assumption.
 Qed.
 
 End TRANSFORM_FUNCTIONS.

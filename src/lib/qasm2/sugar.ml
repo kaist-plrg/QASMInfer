@@ -166,36 +166,48 @@ let expression_of_angle angle =
   | PiAngle q ->
       let numerator = q.qnum in
       let denominator = q.qden in
-      let abs_numerator = abs numerator in
+      let abs_numerator = Big_int_Z.abs_big_int numerator in
+      let abs_numerator_int = Big_int_Z.int_of_big_int abs_numerator in
+      let denominator_int = Big_int_Z.int_of_big_int denominator in
       let base =
-        match abs_numerator, denominator with
+        match
+          Big_int_Z.int_of_big_int abs_numerator,
+          Big_int_Z.int_of_big_int denominator
+        with
         | 0, _ -> Nninteger 0
         | 1, 1 -> Pi
-        | 1, _ -> BinaryOp (Div, Pi, Nninteger denominator)
-        | _, 1 -> BinaryOp (Times, Nninteger abs_numerator, Pi)
+        | 1, _ -> BinaryOp (Div, Pi, Nninteger denominator_int)
+        | _, 1 -> BinaryOp (Times, Nninteger abs_numerator_int, Pi)
         | _, _ ->
             BinaryOp
               ( Div,
-                BinaryOp (Times, Nninteger abs_numerator, Pi),
-                Nninteger denominator )
+                BinaryOp (Times, Nninteger abs_numerator_int, Pi),
+                Nninteger denominator_int )
       in
-      if numerator < 0 then Ok (UnaryOp (UMinus, base)) else Ok base
+      if Big_int_Z.sign_big_int numerator < 0 then Ok (UnaryOp (UMinus, base))
+      else Ok base
   | RealAngle angle ->
       let value = RbaseSymbolsImpl.coq_Rrepr angle in
       if Float.is_finite value then Ok (Real value)
       else Error "cannot sugar a rotation with a non-finite angle"
 
-let gcd a b =
-  let rec loop a b = if b = 0 then abs a else loop b (a mod b) in
-  loop a b
+let big_int_of_int = Big_int_Z.big_int_of_int
 
 let normalize_q num den =
-  if den = 0 then invalid_arg "zero denominator in exact angle";
-  let sign = if den < 0 then -1 else 1 in
-  let num = num * sign in
-  let den = abs den in
-  let divisor = gcd (abs num) den in
-  { qnum = num / divisor; qden = den / divisor }
+  let num = big_int_of_int num in
+  let den = big_int_of_int den in
+  if Big_int_Z.eq_big_int den Big_int_Z.zero_big_int then
+    invalid_arg "zero denominator in exact angle";
+  let num, den =
+    if Big_int_Z.sign_big_int den < 0 then
+      (Big_int_Z.minus_big_int num, Big_int_Z.minus_big_int den)
+    else (num, den)
+  in
+  let divisor = Big_int_Z.gcd_big_int (Big_int_Z.abs_big_int num) den in
+  {
+    qnum = Big_int_Z.div_big_int num divisor;
+    qden = Big_int_Z.div_big_int den divisor;
+  }
 
 let q_of_int num = normalize_q num 1
 

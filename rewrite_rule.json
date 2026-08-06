@@ -13,5 +13,10 @@
         "name": "I_to_ZZ",
         "lhs": ["id"],
         "rhs": ["z", "z"]
+    },
+    {
+        "name": "I_to_HH",
+        "lhs": ["id"],
+        "rhs": ["h", "h"]
     }
 ]

@@ -35,7 +35,11 @@ let r value = E.RbaseSymbolsImpl.coq_Rabst value
 let real_angle value = E.RealAngle (r value)
 
 let pi_angle numerator denominator =
-  E.PiAngle { E.qnum = numerator; qden = denominator }
+  E.PiAngle
+    {
+      E.qnum = Big_int_Z.big_int_of_int numerator;
+      qden = Big_int_Z.big_int_of_int denominator;
+    }
 
 let test_unoptimize_nop_is_exact_identity () =
 let instruction =
@@ -66,7 +70,7 @@ let desugar_qasm2 source =
 let sorted_probabilities nq nc instruction =
   E.execute_and_calculate_prob nq nc instruction
   |> List.map (fun (state, probability) ->
-         (state, E.RbaseSymbolsImpl.coq_Rrepr probability))
+         (Big_int_Z.int_of_big_int state, E.RbaseSymbolsImpl.coq_Rrepr probability))
   |> List.sort (fun (left, _) (right, _) -> compare left right)
 
 let require_same_distribution ~context nq nc left right =

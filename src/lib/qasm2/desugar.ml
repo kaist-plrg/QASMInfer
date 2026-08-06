@@ -337,34 +337,46 @@ let eval_exp_list (exp_list : exp list) : float * float * float =
       (eval_exp theta_exp, eval_exp phi_exp, eval_exp lambda_exp)
   | _ -> failwith "invalid exp list length"
 
-let rec gcd a b =
-  if b = 0 then abs a else gcd b (a mod b)
+let big_int_of_int = Big_int_Z.big_int_of_int
 
 let normalize_q num den =
-  if den = 0 then invalid_arg "zero denominator in exact angle";
-  let sign = if den < 0 then -1 else 1 in
-  let num = num * sign in
-  let den = abs den in
-  let divisor = gcd (abs num) den in
-  { qnum = num / divisor; qden = den / divisor }
+  if Big_int_Z.eq_big_int den Big_int_Z.zero_big_int then
+    invalid_arg "zero denominator in exact angle";
+  let num, den =
+    if Big_int_Z.sign_big_int den < 0 then
+      (Big_int_Z.minus_big_int num, Big_int_Z.minus_big_int den)
+    else (num, den)
+  in
+  let divisor = Big_int_Z.gcd_big_int (Big_int_Z.abs_big_int num) den in
+  {
+    qnum = Big_int_Z.div_big_int num divisor;
+    qden = Big_int_Z.div_big_int den divisor;
+  }
 
-let q_zero = normalize_q 0 1
+let q_zero = normalize_q Big_int_Z.zero_big_int Big_int_Z.unit_big_int
 
 let q_add left right =
   normalize_q
-    ((left.qnum * right.qden) + (right.qnum * left.qden))
-    (left.qden * right.qden)
+    (Big_int_Z.add_big_int
+       (Big_int_Z.mult_big_int left.qnum right.qden)
+       (Big_int_Z.mult_big_int right.qnum left.qden))
+    (Big_int_Z.mult_big_int left.qden right.qden)
 
-let q_neg value = { value with qnum = -value.qnum }
+let q_neg value = { value with qnum = Big_int_Z.minus_big_int value.qnum }
 
 let q_sub left right = q_add left (q_neg right)
 
-let q_mul_int value factor = normalize_q (value.qnum * factor) value.qden
+let q_mul_int value factor =
+  normalize_q
+    (Big_int_Z.mult_big_int value.qnum (big_int_of_int factor))
+    value.qden
 
-let q_div_int value divisor = normalize_q value.qnum (value.qden * divisor)
+let q_div_int value divisor =
+  normalize_q value.qnum
+    (Big_int_Z.mult_big_int value.qden (big_int_of_int divisor))
 
 let rec pi_multiple_of_exp = function
-  | Pi -> Some (normalize_q 1 1)
+  | Pi -> Some (normalize_q Big_int_Z.unit_big_int Big_int_Z.unit_big_int)
   | Nninteger 0 -> Some q_zero
   | Real value when value = 0.0 -> Some q_zero
   | UnaryOp (UMinus, expression) ->

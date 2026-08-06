@@ -22,6 +22,68 @@ option before, between, and after the two positional paths.
   $ test ! -s in-place.stderr
   $ cmp qasm2.once.qasm qasm2.in-place.qasm
 
+Rule files are validated before unoptimization and then added to the extracted
+transform spec list.
+
+  $ printf '[{"name":"I_to_XX_from_file","lhs":["id"],"rhs":["x","x"]}]\n' > valid-rules.json
+  $ qasminfer --rule-file valid-rules.json --step 0 --unoptimize qasm2.qasm qasm2.rules.qasm >rules.stdout 2>rules.stderr
+  $ test ! -s rules.stdout
+  $ test ! -s rules.stderr
+  $ cmp qasm2.once.qasm qasm2.rules.qasm
+
+  $ printf '[{"name":"bad_h_to_i","lhs":["h"],"rhs":["id"]}]\n' > invalid-rules.json
+  $ qasminfer --rule-file invalid-rules.json --step 0 --unoptimize qasm2.qasm invalid-rule-output.qasm >invalid-rules.stdout 2>invalid-rules.stderr
+  [1]
+  $ test ! -e invalid-rule-output.qasm
+  $ test ! -s invalid-rules.stdout
+  $ cat invalid-rules.stderr
+  qasminfer: invalid rule file invalid-rules.json: rule #1 bad_h_to_i (h -> id) is not valid up to global omega phase
+
+The --rule option restricts unoptimization to a named rule from the combined
+built-in and rule-file transform spec list, and it cannot be combined with
+--step.
+
+  $ cat > named-rule-target.qasm <<'EOF'
+  > OPENQASM 2.0;
+  > include "qelib1.inc";
+  > qreg q[1];
+  > id q[0];
+  > EOF
+  $ qasminfer --rule-file valid-rules.json --rule I_to_XX_from_file --unoptimize named-rule-target.qasm named-rule-output.qasm >named-rule.stdout 2>named-rule.stderr
+  $ test ! -s named-rule.stdout
+  $ test ! -s named-rule.stderr
+  $ grep -F 'x q[0];' named-rule-output.qasm | wc -l | tr -d ' '
+  2
+
+  $ qasminfer --rule-file valid-rules.json --rule I_to_XX_from_file --unoptimize qasm2.qasm no-match-rule-output.qasm >no-match-rule.stdout 2>no-match-rule.stderr
+  [1]
+  $ test ! -e no-match-rule-output.qasm
+  $ test ! -s no-match-rule.stdout
+  $ cat no-match-rule.stderr
+  qasminfer: Transformation rule 'I_to_XX_from_file' is not applicable to the current instruction.
+
+  $ qasminfer --rule Missing_rule --unoptimize qasm2.qasm missing-rule-output.qasm >missing-rule.stdout 2>missing-rule.stderr
+  [1]
+  $ test ! -e missing-rule-output.qasm
+  $ test ! -s missing-rule.stdout
+  $ cat missing-rule.stderr
+  qasminfer: No transformation rule named 'Missing_rule'.
+
+  $ printf '[{"name":"dup","lhs":["id"],"rhs":["x","x"]},{"name":"dup","lhs":["id"],"rhs":["y","y"]}]\n' > duplicate-rules.json
+  $ qasminfer --rule-file duplicate-rules.json --rule Insert_I --unoptimize named-rule-target.qasm duplicate-rule-output.qasm >duplicate-rule.stdout 2>duplicate-rule.stderr
+  [1]
+  $ test ! -e duplicate-rule-output.qasm
+  $ test ! -s duplicate-rule.stdout
+  $ cat duplicate-rule.stderr
+  qasminfer: Duplicate transformation rule name 'dup'.
+
+  $ qasminfer --rule Insert_I --step 1 --unoptimize qasm2.qasm rule-step-conflict.qasm >rule-step-conflict.stdout 2>rule-step-conflict.stderr
+  [2]
+  $ test ! -e rule-step-conflict.qasm
+  $ test ! -s rule-step-conflict.stdout
+  $ head -n 1 rule-step-conflict.stderr
+  --rule cannot be used with --step
+
   $ qasminfer --json qasm2.qasm >qasm2-source.json 2>qasm2-source.stderr
   $ qasminfer --json qasm2.once.qasm >qasm2-generated.json 2>qasm2-generated.stderr
   $ test ! -s qasm2-source.stderr

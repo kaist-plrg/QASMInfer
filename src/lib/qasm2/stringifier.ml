@@ -122,8 +122,11 @@ let string_of_program program =
 (****************************)
 
 let string_of_angle = function
-  | PiAngle q when q.qden = 1 -> Printf.sprintf "%d π" q.qnum
-  | PiAngle q -> Printf.sprintf "%d/%d π" q.qnum q.qden
+  | PiAngle q when Big_int_Z.eq_big_int q.qden Big_int_Z.unit_big_int ->
+      Printf.sprintf "%s π" (Big_int_Z.string_of_big_int q.qnum)
+  | PiAngle q ->
+      Printf.sprintf "%s/%s π" (Big_int_Z.string_of_big_int q.qnum)
+        (Big_int_Z.string_of_big_int q.qden)
   | RealAngle value -> RbaseSymbolsImpl.coq_Rrepr value |> Printf.sprintf "%f"
 
 let rec string_of_instruction = function

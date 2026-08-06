@@ -11,10 +11,11 @@ Separate Extraction parity. *)
 Require Import Extraction.
 From Stdlib Require Import ExtrOcamlNativeString.
 From Stdlib Require Import ZArith Reals.
-From Stdlib Require ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZInt ExtrOcamlIntConv.
+From Stdlib Require ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZBigInt ExtrOcamlIntConv.
 Require Import QASMInfer.program.Program.
 Require Import QASMInfer.matrix.Complex.
 Require Import QASMInfer.transform.Rewrite.
+Require Import QASMInfer.transform.StandardValid.
 
 Set Extraction Output Directory ".".
 Extraction Language OCaml.
@@ -28,14 +29,12 @@ Extract Inlined Constant Nat.div => "(/)".
 Extract Inlined Constant Nat.modulo => "(mod)".
 (* Extract Inlined Constant pow_2 => "(fun n -> Int.shift_left 1 n)". *)
 
-Extract Constant Pos.succ => "Stdlib.succ".
-
 Extract Inlined Constant Reals.ClassicalDedekindReals.DReal => "float".
 Extract Inductive Reals.Cauchy.ConstructiveCauchyReals.CReal => "float"
   [ "(fun (seq, scale) -> seq scale)" ]
   "(fun f _ -> f (fun _ -> assert false) 0)".
 
-Extract Inlined Constant IZR => "float_of_int".
+Extract Inlined Constant IZR => "Big_int_Z.float_of_big_int".
 
 Extract Constant RbaseSymbolsImpl.R => "float".
 Extract Constant RbaseSymbolsImpl.R0 => "0.0".
@@ -88,6 +87,10 @@ Extraction "extracted.ml"
   Instruction_qbits_validb
   TransformSpec_count
   TransformSpec_apply
+  TransformSpec_simple_rule
+  StandardGate
+  standard_gate_name
+  standard_rule_of_sequences
   Transform_spec_list.
 
 (* Extraction "quantum_core.ml" Execute_and_calculate_prob. *)
