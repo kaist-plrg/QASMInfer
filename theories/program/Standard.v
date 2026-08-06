@@ -60,16 +60,16 @@ End GATES.
 
 Lemma Angle_to_R_A0:
   Angle_to_R A0 = 0%R.
-Proof. unfold A0, Angle_to_R, R_of_Q; simpl; field. Qed.
+Proof. unfold A0, Angle_to_R, Q2R; simpl; field. Qed.
 
 Lemma Angle_to_R_API:
   Angle_to_R API = PI.
-Proof. unfold API, Angle_to_R, R_of_Q; simpl; field. Qed.
+Proof. unfold API, Angle_to_R, Q2R; simpl; field. Qed.
 
 Lemma Angle_to_R_API2:
   Angle_to_R API2 = PI2.
 Proof.
-  unfold API2, Angle_to_R, R_of_Q; simpl.
+  unfold API2, Angle_to_R, Q2R; simpl.
   replace PI2 with (PI / 2)%R by (unfold PI; field).
   field.
 Qed.
@@ -77,18 +77,18 @@ Qed.
 Lemma Angle_to_R_ANPI2:
   Angle_to_R ANPI2 = (- PI2)%R.
 Proof.
-  unfold ANPI2, Angle_to_R, R_of_Q; simpl.
+  unfold ANPI2, Angle_to_R, Q2R; simpl.
   replace PI2 with (PI / 2)%R by (unfold PI; field).
   field.
 Qed.
 
 Lemma Angle_to_R_API4:
   Angle_to_R API4 = (PI / 4)%R.
-Proof. unfold API4, Angle_to_R, R_of_Q; simpl; field. Qed.
+Proof. unfold API4, Angle_to_R, Q2R; simpl; field. Qed.
 
 Lemma Angle_to_R_ANPI4:
   Angle_to_R ANPI4 = (-(PI / 4))%R.
-Proof. unfold ANPI4, Angle_to_R, R_of_Q; simpl; field. Qed.
+Proof. unfold ANPI4, Angle_to_R, Q2R; simpl; field. Qed.
 
 Ltac angle_to_R_simpl :=
   repeat

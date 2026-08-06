@@ -2,6 +2,8 @@ Require Import QASMInfer.util.All.
 Require Import QASMInfer.matrix.All.
 Require Import QASMInfer.operator.All.
 Require Import QASMInfer.program.All.
+Require Import QASMInfer.transform.Commute.
+Require Import QASMInfer.transform.Equiv.
 Require Import QASMInfer.transform.Rewrite.
 
 From Stdlib Require Import Bool.
@@ -124,7 +126,7 @@ Definition domega_mul (x y : DOmega) : DOmega :=
   domega_make (p0 - p4) (p1 - p5) (p2 - p6) p3.
 
 Definition complex_of_Q (q : Q) : Complex :=
-  RTC (R_of_Q q).
+  RTC (Q2R q).
 
 Definition omega : Complex :=
   com_iexp (PI / 4)%R.
@@ -151,67 +153,9 @@ Lemma complex_of_Q_eq :
     complex_of_Q x = complex_of_Q y.
 Proof.
   intros x y H.
-  assert (R_of_Q x = Q2R x) as Hx.
-  { unfold R_of_Q, Q2R.
-    field.
-    apply not_0_IZR.
-    discriminate. }
-  assert (R_of_Q y = Q2R y) as Hy.
-  { unfold R_of_Q, Q2R.
-    field.
-    apply not_0_IZR.
-    discriminate. }
   unfold complex_of_Q.
-  rewrite Hx, Hy.
   rewrite (Qeq_eqR x y H).
   reflexivity.
-Qed.
-
-Lemma R_of_Q_eq_Q2R :
-  forall q,
-    R_of_Q q = Q2R q.
-Proof.
-  intro q.
-  unfold R_of_Q, Q2R.
-  field.
-  apply not_0_IZR.
-  discriminate.
-Qed.
-
-Lemma R_of_Q_plus :
-  forall x y,
-    R_of_Q (x + y) = (R_of_Q x + R_of_Q y)%R.
-Proof.
-  intros x y.
-  repeat rewrite R_of_Q_eq_Q2R.
-  apply Q2R_plus.
-Qed.
-
-Lemma R_of_Q_opp :
-  forall x,
-    R_of_Q (- x) = (- R_of_Q x)%R.
-Proof.
-  intro x.
-  repeat rewrite R_of_Q_eq_Q2R.
-  apply Q2R_opp.
-Qed.
-
-Lemma R_of_Q_minus :
-  forall x y,
-    R_of_Q (x - y) = (R_of_Q x - R_of_Q y)%R.
-Proof.
-  intros x y.
-  repeat rewrite R_of_Q_eq_Q2R.
-  apply Q2R_minus.
-Qed.
-
-Lemma R_of_Q_mult :
-  forall x y,
-    R_of_Q (x * y) = (R_of_Q x * R_of_Q y)%R.
-Proof.
-  intros x y.
-  repeat rewrite R_of_Q_eq_Q2R.
-  apply Q2R_mult.
 Qed.
 
 Lemma domega_eqb_sound :
@@ -240,8 +184,48 @@ Proof.
   intros [a0 a1 a2 a3] [b0 b1 b2 b3].
   unfold complex_of_domega, domega_add, domega_make, complex_of_Q.
   simpl.
-  repeat rewrite R_of_Q_plus.
-  apply com_proj_eq; simpl; ring.
+  repeat rewrite Q2R_plus.
+  apply com_proj_eq; simpl; lra.
+Qed.
+
+Lemma omega_sq :
+  (omega * omega)%com = Ione.
+Proof.
+  unfold omega.
+  rewrite <- com_iexp_mul.
+  replace (PI / 4 + PI / 4)%R with (PI / 2)%R by field.
+  apply com_iexp_PI2.
+Qed.
+
+Lemma complex_of_domega_neg :
+  forall x,
+    complex_of_domega (domega_neg x) = (- complex_of_domega x)%com.
+Proof.
+  intros [a0 a1 a2 a3].
+  unfold complex_of_domega, domega_neg, domega_make, complex_of_Q.
+  simpl.
+  repeat rewrite Q2R_opp.
+  apply com_proj_eq; simpl; lra.
+Qed.
+
+Lemma complex_of_domega_mul :
+  forall x y,
+    complex_of_domega (domega_mul x y) =
+    (complex_of_domega x * complex_of_domega y)%com.
+Proof.
+  intros [a0 a1 a2 a3] [b0 b1 b2 b3].
+  unfold complex_of_domega, domega_mul, domega_make, complex_of_Q.
+  simpl.
+  repeat (rewrite Q2R_plus || rewrite Q2R_minus || rewrite Q2R_mult).
+  repeat rewrite omega_sq.
+  repeat rewrite com_Ione_sq'.
+  repeat rewrite com_Ione_sq.
+  apply com_proj_eq; simpl.
+  all: rewrite cos_PI4, sin_PI4.
+  all: field_simplify_eq; try solve [apply sqrt2_neq_0].
+  all: replace (sqrt 2 ^ 2)%R with 2%R by
+    (simpl; rewrite Rmult_1_r; rewrite sqrt_sqrt; lra).
+  all: nra.
 Qed.
 
 Definition domega_pow8 (n : nat) : DOmega :=
@@ -360,6 +344,56 @@ Definition domega_matrix_to_matrix (x : DOmegaMatrix) : Matrix 1%nat :=
     (bas_mat (complex_of_domega (domega_matrix_10 x)))
     (bas_mat (complex_of_domega (domega_matrix_11 x))).
 
+Lemma domega_matrix_eye_to_matrix :
+  domega_matrix_to_matrix domega_matrix_eye = mat_eye.
+Proof.
+  unfold domega_matrix_to_matrix, domega_matrix_eye, domega_matrix_make,
+    complex_of_domega, domega_one, domega_zero, domega_make, complex_of_Q,
+    Q2R.
+  simpl.
+  repeat (f_equal; try lca).
+Qed.
+
+Lemma domega_matrix_equiv_to_matrix :
+  forall x y,
+    domega_matrix_equiv x y ->
+    domega_matrix_to_matrix x = domega_matrix_to_matrix y.
+Proof.
+  intros x y [H00 [H01 [H10 H11]]].
+  unfold domega_matrix_to_matrix.
+  unfold domega_equiv in *.
+  destruct x as [x00 x01 x10 x11].
+  destruct y as [y00 y01 y10 y11].
+  simpl in *.
+  rewrite H00, H01, H10, H11.
+  reflexivity.
+Qed.
+
+Lemma domega_matrix_scale_to_matrix :
+  forall scalar x,
+    domega_matrix_to_matrix (domega_matrix_scale scalar x) =
+    complex_of_domega scalar .* domega_matrix_to_matrix x.
+Proof.
+  intros scalar [a b c d].
+  unfold domega_matrix_to_matrix, domega_matrix_scale, domega_matrix_make.
+  simpl.
+  repeat rewrite complex_of_domega_mul.
+  reflexivity.
+Qed.
+
+Lemma domega_matrix_mul_to_matrix :
+  forall x y,
+    domega_matrix_to_matrix (domega_matrix_mul x y) =
+    mat_mul (domega_matrix_to_matrix x) (domega_matrix_to_matrix y).
+Proof.
+  intros [a b c d] [e f g h].
+  unfold domega_matrix_to_matrix, domega_matrix_mul, domega_matrix_make.
+  simpl.
+  repeat rewrite complex_of_domega_add.
+  repeat rewrite complex_of_domega_mul.
+  reflexivity.
+Qed.
+
 End DOMEGA_MATRIX.
 
 Section STANDARD_GATE_MATRICES.
@@ -441,6 +475,77 @@ Definition standard_seq_domega_matrix (gates : list StandardGate)
 Definition standard_seq_matrix (gates : list StandardGate) : Matrix 1%nat :=
   domega_matrix_to_matrix (standard_seq_domega_matrix gates).
 
+Lemma standard_seq_matrix_fold_left :
+  forall gates acc,
+    domega_matrix_to_matrix
+      (fold_left
+         (fun acc gate =>
+            domega_matrix_mul (standard_gate_domega_matrix gate) acc)
+         gates
+         acc) =
+    fold_left
+      (fun acc gate => mat_mul (standard_gate_matrix gate) acc)
+      gates
+      (domega_matrix_to_matrix acc).
+Proof.
+  induction gates as [| gate rest IH]; intros acc; simpl.
+  - reflexivity.
+  - rewrite IH.
+    rewrite domega_matrix_mul_to_matrix.
+    reflexivity.
+Qed.
+
+Lemma standard_seq_matrix_fold_right :
+  forall gates,
+    standard_seq_matrix gates =
+    fold_right
+      (fun gate acc => mat_mul acc (standard_gate_matrix gate))
+      mat_eye
+      gates.
+Proof.
+  intro gates.
+  unfold standard_seq_matrix, standard_seq_domega_matrix.
+  rewrite standard_seq_matrix_fold_left.
+  assert (Hfold :
+    forall acc,
+      fold_left
+        (fun acc gate => mat_mul (standard_gate_matrix gate) acc)
+        gates
+        acc =
+      mat_mul
+        (fold_right
+           (fun gate prod => mat_mul prod (standard_gate_matrix gate))
+           mat_eye
+           gates)
+        acc).
+  { induction gates as [| gate rest IH]; intros acc; cbn [fold_left fold_right].
+    - rewrite mat_mul_eye_l.
+      reflexivity.
+    - rewrite IH.
+      rewrite mat_mul_assoc.
+      reflexivity. }
+  rewrite Hfold.
+  rewrite domega_matrix_eye_to_matrix.
+  rewrite mat_mul_eye_r.
+  reflexivity.
+Qed.
+
+Lemma standard_seq_matrix_fold_right_map :
+  forall gates,
+    standard_seq_matrix gates =
+    fold_right
+      (fun mat acc => mat_mul acc mat)
+      mat_eye
+      (map standard_gate_matrix gates).
+Proof.
+  intro gates.
+  rewrite standard_seq_matrix_fold_right.
+  induction gates as [| gate rest IH]; cbn [map fold_right].
+  - reflexivity.
+  - rewrite IH.
+    reflexivity.
+Qed.
+
 End STANDARD_GATE_MATRICES.
 
 Section MATRIX_CORRESPONDENCE.
@@ -448,28 +553,28 @@ Section MATRIX_CORRESPONDENCE.
 Lemma complex_of_domega_zero :
   complex_of_domega domega_zero = Czero.
 Proof.
-  unfold complex_of_domega, domega_zero, domega_make, complex_of_Q, R_of_Q.
+  unfold complex_of_domega, domega_zero, domega_make, complex_of_Q, Q2R.
   simpl; lca.
 Qed.
 
 Lemma complex_of_domega_one :
   complex_of_domega domega_one = Cone.
 Proof.
-  unfold complex_of_domega, domega_one, domega_make, complex_of_Q, R_of_Q.
+  unfold complex_of_domega, domega_one, domega_make, complex_of_Q, Q2R.
   simpl; lca.
 Qed.
 
 Lemma complex_of_domega_w :
   complex_of_domega domega_w = omega.
 Proof.
-  unfold complex_of_domega, domega_w, domega_make, complex_of_Q, R_of_Q.
+  unfold complex_of_domega, domega_w, domega_make, complex_of_Q, Q2R.
   simpl; lca.
 Qed.
 
 Lemma complex_of_domega_w2 :
   complex_of_domega domega_w2 = Ione.
 Proof.
-  unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, R_of_Q.
+  unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, Q2R.
   simpl.
   replace (omega * omega)%com with (com_iexp (PI / 2)).
   - rewrite com_iexp_PI2. lca.
@@ -482,12 +587,12 @@ Qed.
 Lemma complex_of_domega_w3 :
   complex_of_domega domega_w3 = (omega * Ione)%com.
 Proof.
-  unfold complex_of_domega, domega_w3, domega_make, complex_of_Q, R_of_Q.
+  unfold complex_of_domega, domega_w3, domega_make, complex_of_Q, Q2R.
   simpl.
   replace (omega * omega)%com with Ione.
   - lca.
   - rewrite <- complex_of_domega_w2.
-    unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, R_of_Q.
+    unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, Q2R.
     simpl; lca.
 Qed.
 
@@ -495,7 +600,7 @@ Lemma complex_of_domega_neg_one :
   complex_of_domega (domega_neg domega_one) = (- Cone)%com.
 Proof.
   unfold complex_of_domega, domega_neg, domega_one, domega_make, complex_of_Q,
-    R_of_Q.
+    Q2R.
   simpl.
   lca.
 Qed.
@@ -504,12 +609,12 @@ Lemma complex_of_domega_neg_w2 :
   complex_of_domega (domega_neg domega_w2) = (- Ione)%com.
 Proof.
   unfold complex_of_domega, domega_neg, domega_w2, domega_make, complex_of_Q,
-    R_of_Q.
+    Q2R.
   simpl.
   replace (omega * omega)%com with Ione.
   - lca.
   - rewrite <- complex_of_domega_w2.
-    unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, R_of_Q.
+    unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, Q2R.
     simpl.
     lca.
 Qed.
@@ -518,12 +623,12 @@ Lemma complex_of_domega_neg_w3 :
   complex_of_domega (domega_neg domega_w3) = (- (omega * Ione))%com.
 Proof.
   unfold complex_of_domega, domega_neg, domega_w3, domega_make, complex_of_Q,
-    R_of_Q.
+    Q2R.
   simpl.
   replace (omega * omega)%com with Ione.
   - lca.
   - rewrite <- complex_of_domega_w2.
-    unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, R_of_Q.
+    unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, Q2R.
     simpl.
     lca.
 Qed.
@@ -576,18 +681,18 @@ Proof.
     with
       (complex_of_Q qhalf
        * (omega - (omega * Ione)))%com.
-  - unfold complex_of_Q, R_of_Q, qhalf, omega.
+  - unfold complex_of_Q, Q2R, qhalf, omega.
     simpl.
     unfold com_iexp.
     rewrite cos_PI4, sin_PI4.
     lca.
   - unfold domega_h_scalar, complex_of_domega, domega_make, complex_of_Q,
-      R_of_Q, qhalf.
+      Q2R, qhalf.
     simpl.
     replace (omega * omega)%com with Ione.
     + lca.
     + rewrite <- complex_of_domega_w2.
-      unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, R_of_Q.
+      unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, Q2R.
       simpl.
       lca.
 Qed.
@@ -603,14 +708,14 @@ Proof.
     with (- (/ sqrt 2)%R)%com.
   - repeat (f_equal; try lca).
   - unfold domega_h_scalar, complex_of_domega, domega_neg, domega_make,
-      complex_of_Q, R_of_Q, qhalf.
+      complex_of_Q, Q2R, qhalf.
     simpl.
     replace (omega * omega)%com with Ione.
     + unfold omega, com_iexp.
       rewrite cos_PI4, sin_PI4.
       lca.
     + rewrite <- complex_of_domega_w2.
-      unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, R_of_Q.
+      unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, Q2R.
       simpl.
       lca.
 Qed.
@@ -700,12 +805,12 @@ Lemma complex_of_domega_half_one_plus_i :
 Proof.
   unfold domega_half_one_plus_i, domega_one_plus_i, domega_add,
     domega_scale, domega_make, domega_one, domega_w2.
-  unfold complex_of_domega, complex_of_Q, R_of_Q.
+  unfold complex_of_domega, complex_of_Q, Q2R.
   simpl.
   replace (omega * omega)%com with Ione.
   - lca.
   - rewrite <- complex_of_domega_w2.
-    unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, R_of_Q.
+    unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, Q2R.
     simpl.
     lca.
 Qed.
@@ -717,12 +822,12 @@ Proof.
   unfold domega_half_one_minus_i, domega_one_minus_i, domega_sub,
     domega_add, domega_neg, domega_scale, domega_make, domega_one,
     domega_w2.
-  unfold complex_of_domega, complex_of_Q, R_of_Q.
+  unfold complex_of_domega, complex_of_Q, Q2R.
   simpl.
   replace (omega * omega)%com with Ione.
   - lca.
   - rewrite <- complex_of_domega_w2.
-    unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, R_of_Q.
+    unfold complex_of_domega, domega_w2, domega_make, complex_of_Q, Q2R.
     simpl.
     lca.
 Qed.
@@ -888,6 +993,78 @@ Definition standard_gate_pattern
   | Std_SXdg => PRotate API2 API2 ANPI2 qbit_pattern
   end.
 
+Definition standard_gate_pattern_instr
+    (gate : StandardGate) (qbit : nat)
+    : Instruction :=
+  match gate with
+  | Std_I => RotateInstr A0 A0 A0 qbit
+  | Std_X => RotateInstr API A0 API qbit
+  | Std_Y => RotateInstr API API2 API2 qbit
+  | Std_Z => RotateInstr A0 A0 API qbit
+  | Std_H => RotateInstr API2 A0 API qbit
+  | Std_S => RotateInstr A0 A0 API2 qbit
+  | Std_Sdg => RotateInstr A0 A0 ANPI2 qbit
+  | Std_T => RotateInstr A0 A0 API4 qbit
+  | Std_Tdg => RotateInstr A0 A0 ANPI4 qbit
+  | Std_SX => RotateInstr API2 ANPI2 API2 qbit
+  | Std_SXdg => RotateInstr API2 API2 ANPI2 qbit
+  end.
+
+Lemma Matrix_of_standard_gate_pattern :
+  forall nq gate qbit,
+    Matrix_of nq (standard_gate_pattern_instr gate qbit)
+      (mat_single nq qbit (standard_gate_matrix gate)).
+Proof.
+  intros nq gate qbit.
+  destruct gate; unfold standard_gate_pattern_instr.
+  - eapply Matrix_of_rotate_with_global_phase.
+    angle_to_R_simpl.
+    rewrite standard_gate_matrix_I.
+    rewrite Gate_P_matrix_0_eye.
+    unfold gphase.
+    rewrite com_iexp_0, mat_scale_1.
+    reflexivity.
+  - eapply Matrix_of_rotate_with_global_phase.
+    angle_to_R_simpl.
+    rewrite standard_gate_matrix_X.
+    apply Gate_X_matrix_gphase.
+  - eapply Matrix_of_rotate_with_global_phase.
+    angle_to_R_simpl.
+    rewrite standard_gate_matrix_Y.
+    apply Gate_Y_matrix_gphase.
+  - eapply Matrix_of_rotate_with_global_phase.
+    angle_to_R_simpl.
+    rewrite standard_gate_matrix_Z.
+    apply Gate_Z_matrix_gphase.
+  - eapply Matrix_of_rotate_with_global_phase.
+    angle_to_R_simpl.
+    rewrite standard_gate_matrix_H.
+    apply Gate_H_matrix_gphase.
+  - eapply Matrix_of_rotate_with_global_phase.
+    angle_to_R_simpl.
+    rewrite standard_gate_matrix_S.
+    apply phase_gate_matrix_gphase.
+  - eapply Matrix_of_rotate_with_global_phase.
+    angle_to_R_simpl.
+    rewrite standard_gate_matrix_Sdg.
+    apply phase_gate_matrix_gphase.
+  - eapply Matrix_of_rotate_with_global_phase.
+    angle_to_R_simpl.
+    rewrite standard_gate_matrix_T.
+    apply phase_gate_matrix_gphase.
+  - eapply Matrix_of_rotate_with_global_phase.
+    angle_to_R_simpl.
+    replace (-(PI / 4))%R with (- PI / 4)%R by field.
+    rewrite standard_gate_matrix_Tdg.
+    apply phase_gate_matrix_gphase.
+  - eapply Matrix_of_rotate_with_global_phase.
+    angle_to_R_simpl.
+    apply standard_gate_matrix_SX_gphase.
+  - eapply Matrix_of_rotate_with_global_phase.
+    angle_to_R_simpl.
+    apply standard_gate_matrix_SXdg_gphase.
+Qed.
+
 Definition standard_rule_of_sequences
     (lhs rhs : list StandardGate) : option RewriteRule :=
   if standard_transform_validb lhs rhs then
@@ -899,16 +1076,277 @@ Definition standard_rule_of_sequences
   else
     None.
 
-Compute standard_transform_validb [Std_H; Std_H] [Std_I].
+Lemma domega_phase_gphase :
+  forall phase,
+    In phase domega_phase_list ->
+    exists lambda,
+      complex_of_domega phase = gphase lambda.
+Proof.
+  intros phase Hin.
+  simpl in Hin.
+  repeat destruct Hin as [Hin | Hin]; subst; try contradiction.
+  - exists 0%R.
+    rewrite complex_of_domega_one.
+    unfold gphase.
+    rewrite com_iexp_0.
+    reflexivity.
+  - exists (PI / 4)%R.
+    rewrite complex_of_domega_w.
+    unfold omega, gphase.
+    reflexivity.
+  - exists (PI / 2)%R.
+    rewrite complex_of_domega_w2.
+    unfold gphase.
+    rewrite com_iexp_PI2.
+    reflexivity.
+  - exists (PI / 4 + PI / 2)%R.
+    rewrite complex_of_domega_w3.
+    unfold omega, gphase.
+    rewrite <- com_iexp_PI2.
+    rewrite <- com_iexp_mul.
+    reflexivity.
+  - exists PI.
+    rewrite complex_of_domega_neg_one.
+    unfold gphase.
+    rewrite com_iexp_PI.
+    lca.
+  - exists (PI + PI / 4)%R.
+    rewrite complex_of_domega_neg, complex_of_domega_w.
+    unfold omega, gphase.
+    replace (- com_iexp (PI / 4))%com
+      with (com_iexp PI * com_iexp (PI / 4))%com
+      by (rewrite com_iexp_PI; lca).
+    rewrite <- com_iexp_mul.
+    reflexivity.
+  - exists (PI + PI / 2)%R.
+    rewrite complex_of_domega_neg_w2.
+    unfold gphase.
+    replace (- Ione)%com with (com_iexp PI * Ione)%com
+      by (rewrite com_iexp_PI; lca).
+    rewrite <- com_iexp_PI2.
+    rewrite <- com_iexp_mul.
+    reflexivity.
+  - exists (PI + PI / 4 + PI / 2)%R.
+    rewrite complex_of_domega_neg_w3.
+    unfold omega, gphase.
+    replace (- (com_iexp (PI / 4) * Ione))%com
+      with (com_iexp PI * (com_iexp (PI / 4) * Ione))%com
+      by (rewrite com_iexp_PI; lca).
+    rewrite <- com_iexp_PI2.
+    rewrite com_mul_assoc.
+    repeat rewrite <- com_iexp_mul.
+    reflexivity.
+Qed.
 
-Compute standard_transform_validb [Std_X; Std_X] [Std_I].
+Lemma standard_transform_validb_matrix_sound :
+  forall lhs rhs,
+    standard_transform_validb lhs rhs = true ->
+    exists lambda,
+      standard_seq_matrix lhs =
+      mat_scale (gphase lambda) (standard_seq_matrix rhs).
+Proof.
+  intros lhs rhs Hvalid.
+  destruct (standard_transform_validb_sound _ _ Hvalid)
+    as [phase [Hphase Hequiv]].
+  destruct (domega_phase_gphase _ Hphase) as [lambda Hlambda].
+  exists lambda.
+  unfold standard_seq_matrix.
+  rewrite (domega_matrix_equiv_to_matrix _ _ Hequiv).
+  rewrite domega_matrix_scale_to_matrix.
+  rewrite Hlambda.
+  reflexivity.
+Qed.
 
-Compute standard_transform_validb [Std_S; Std_S] [Std_Z].
+Lemma standard_gate_pattern_inst :
+  forall gate subst qbit,
+    NatMap.find 0%nat subst = Some qbit ->
+    InstructionPattern_inst
+      (standard_gate_pattern gate (NatVar 0))
+      subst =
+    Some (standard_gate_pattern_instr gate qbit).
+Proof.
+  intros gate subst qbit Hfind.
+  destruct gate; simpl; rewrite Hfind; reflexivity.
+Qed.
 
-Compute standard_transform_validb [Std_T; Std_T] [Std_S].
+Lemma standard_gate_pattern_inst_list :
+  forall gates subst qbit,
+    NatMap.find 0%nat subst = Some qbit ->
+    InstructionPattern_inst_list
+      (map (fun gate => standard_gate_pattern gate (NatVar 0)) gates)
+      subst =
+    Some (map (fun gate => standard_gate_pattern_instr gate qbit) gates).
+Proof.
+  induction gates as [| gate rest IH]; intros subst qbit Hfind; simpl.
+  - reflexivity.
+  - rewrite standard_gate_pattern_inst with (qbit := qbit).
+    + rewrite IH with (qbit := qbit).
+      * reflexivity.
+      * assumption.
+    + assumption.
+Qed.
 
-Compute standard_transform_validb [Std_X; Std_Y] [Std_Z].
+Lemma standard_gate_pattern_inst_list_none :
+  forall gates subst,
+    NatMap.find 0%nat subst = None ->
+    InstructionPattern_inst_list
+      (map (fun gate => standard_gate_pattern gate (NatVar 0)) gates)
+      subst =
+    match gates with
+    | [] => Some []
+    | _ :: _ => None
+    end.
+Proof.
+  destruct gates as [| gate rest]; intros subst Hfind; simpl.
+  - reflexivity.
+  - destruct gate; simpl; rewrite Hfind; reflexivity.
+Qed.
 
-Compute standard_transform_validb [Std_H] [Std_I].
+Lemma Matrix_of_standard_gate_pattern_list :
+  forall nq qbit gates,
+    Matrix_of_list nq
+      (map (fun gate => standard_gate_pattern_instr gate qbit) gates)
+      (map (fun gate => mat_single nq qbit (standard_gate_matrix gate)) gates).
+Proof.
+  induction gates as [| gate rest IH]; simpl.
+  - apply nil_mat.
+  - apply cons_mat.
+    + apply Matrix_of_standard_gate_pattern.
+    + apply IH.
+Qed.
+
+Lemma standard_sequence_matrix_of_list_product :
+  forall nq qbit gates,
+    fold_right
+      (fun mat acc => mat_mul acc mat)
+      mat_eye
+      (map (fun gate => mat_single nq qbit (standard_gate_matrix gate)) gates) =
+    if Nat.ltb qbit nq
+    then mat_single nq qbit (standard_seq_matrix gates)
+    else mat_eye.
+Proof.
+  intros nq qbit gates.
+  destruct (Nat.ltb qbit nq) eqn:Hqbit.
+  - apply Nat.ltb_lt in Hqbit.
+    rewrite standard_seq_matrix_fold_right_map.
+    induction gates as [| gate rest IH]; cbn [map fold_right].
+    + rewrite mat_single_eye.
+      reflexivity.
+    + rewrite IH.
+      rewrite mat_single_factorized.
+      reflexivity.
+  - apply Nat.ltb_ge in Hqbit.
+    induction gates as [| gate rest IH]; cbn [map fold_right].
+    + reflexivity.
+    + rewrite IH.
+      rewrite mat_single_out_of_bounds by lia.
+      rewrite mat_mul_eye_l.
+      reflexivity.
+Qed.
+
+Lemma standard_transform_validb_matrix_list_sound :
+  forall nq qbit lhs rhs,
+    standard_transform_validb lhs rhs = true ->
+    exists lambda,
+      fold_right
+        (fun mat acc => mat_mul acc mat)
+        mat_eye
+        (map (fun gate => mat_single nq qbit (standard_gate_matrix gate)) lhs) =
+      mat_scale
+        (gphase lambda)
+        (fold_right
+           (fun mat acc => mat_mul acc mat)
+           mat_eye
+           (map
+              (fun gate => mat_single nq qbit (standard_gate_matrix gate))
+              rhs)).
+Proof.
+  intros nq qbit lhs rhs Hvalid.
+  destruct (standard_transform_validb_matrix_sound _ _ Hvalid)
+    as [lambda Hmatrix].
+  destruct (Nat.ltb qbit nq) eqn:Hqbit.
+  - exists lambda.
+    rewrite (standard_sequence_matrix_of_list_product nq qbit lhs).
+    rewrite (standard_sequence_matrix_of_list_product nq qbit rhs).
+    rewrite Hqbit.
+    apply Nat.ltb_lt in Hqbit.
+    rewrite Hmatrix.
+    rewrite mat_single_scale by lia.
+    reflexivity.
+  - exists 0%R.
+    rewrite (standard_sequence_matrix_of_list_product nq qbit lhs).
+    rewrite (standard_sequence_matrix_of_list_product nq qbit rhs).
+    rewrite Hqbit.
+    unfold gphase.
+    rewrite com_iexp_0, mat_scale_1.
+    reflexivity.
+Qed.
+
+Lemma standard_transform_rule_pattern_valid :
+  forall nq lhs_gates rhs_gates,
+    standard_transform_validb lhs_gates rhs_gates = true ->
+    PatternRuleValid nq
+      {|
+        rule_lhs :=
+          map (fun gate => standard_gate_pattern gate (NatVar 0)) lhs_gates;
+        rule_rhs :=
+          map (fun gate => standard_gate_pattern gate (NatVar 0)) rhs_gates
+      |}.
+Proof.
+  intros nq lhs_gates rhs_gates Hvalid subst lhs rhs Hlhs Hrhs _.
+  simpl in *.
+  destruct (NatMap.find 0%nat subst) as [qbit |] eqn:Hfind.
+  - rewrite (standard_gate_pattern_inst_list lhs_gates subst qbit Hfind) in Hlhs.
+    rewrite (standard_gate_pattern_inst_list rhs_gates subst qbit Hfind) in Hrhs.
+    inversion Hlhs; inversion Hrhs; subst; clear Hlhs Hrhs.
+    eapply Instruction_equiv_of_seqs_from_matrix.
+    + apply Matrix_of_standard_gate_pattern_list.
+    + apply Matrix_of_standard_gate_pattern_list.
+    + apply standard_transform_validb_matrix_list_sound.
+      assumption.
+  - rewrite (standard_gate_pattern_inst_list_none lhs_gates subst Hfind) in Hlhs.
+    rewrite (standard_gate_pattern_inst_list_none rhs_gates subst Hfind) in Hrhs.
+    destruct lhs_gates as [| lhs_gate lhs_rest]; try discriminate.
+    destruct rhs_gates as [| rhs_gate rhs_rest]; try discriminate.
+    inversion Hlhs; inversion Hrhs; subst.
+    reflexivity.
+Qed.
+
+Lemma standard_rule_of_sequences_pattern_valid :
+  forall nq lhs rhs rule,
+    standard_rule_of_sequences lhs rhs = Some rule ->
+    PatternRuleValid nq rule.
+Proof.
+  intros nq lhs rhs rule Hrule.
+  unfold standard_rule_of_sequences in Hrule.
+  destruct (standard_transform_validb lhs rhs) eqn:Hvalid; try discriminate.
+  inversion Hrule; subst; clear Hrule.
+  apply standard_transform_rule_pattern_valid.
+  assumption.
+Qed.
+
+Theorem standard_rule_transform_spec_valid :
+  forall nq name lhs rhs rule param instr occurrence instr',
+    standard_rule_of_sequences lhs rhs = Some rule ->
+    Instruction_qbits_validb nq instr = true ->
+    TransformSpec_apply (TransformSpec_simple_rule name rule) param instr occurrence
+    = Some instr' ->
+    Instruction_equiv nq instr instr'.
+Proof.
+  intros nq name lhs rhs rule param instr occurrence instr'
+    Hrule Hvalid Happly.
+  destruct param; simpl in Happly; try discriminate.
+  eapply (Transform_spec_valid
+    nq
+    (TransformSpec_simple_rule name rule)
+    Param_None
+    rule).
+  - simpl.
+    reflexivity.
+  - eapply standard_rule_of_sequences_pattern_valid.
+    apply Hrule.
+  - apply Hvalid.
+  - apply Happly.
+Qed.
 
 End STANDARD_CHECKER.

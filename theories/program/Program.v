@@ -4,7 +4,7 @@ Require Import QASMInfer.property.All.
 Require Import QASMInfer.operator.All.
 
 From Stdlib Require Import List.
-From Stdlib Require Import QArith.
+From Stdlib Require Import QArith Qreals.
 From Stdlib.FSets Require Import FMapPositive FMapFacts.
 
 Module PFacts := WFacts_fun PositiveMap.E PositiveMap.
@@ -27,12 +27,9 @@ Inductive Angle : Type :=
 | PiAngle : Q -> Angle
 | RealAngle : R -> Angle.
 
-Definition R_of_Q (q : Q) : R :=
-  (IZR (Qnum q) / IZR (Z.pos (Qden q)))%R.
-
 Definition Angle_to_R (angle : Angle) : R :=
   match angle with
-  | PiAngle q => (R_of_Q q * PI)%R
+  | PiAngle q => (Q2R q * PI)%R
   | RealAngle r => r
   end.
 
