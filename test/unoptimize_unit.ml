@@ -64,6 +64,34 @@ let instruction =
   require (result = instruction)
     "unoptimize_nop must preserve every instruction constructor exactly"
 
+let rec swaps_of_instruction = function
+  | E.SwapInstr (qbit1, qbit2) -> [ (qbit1, qbit2) ]
+  | E.SeqInstr instructions -> List.concat_map swaps_of_instruction instructions
+  | E.IfInstr (_, _, body) -> swaps_of_instruction body
+  | E.NopInstr
+  | E.RotateInstr _
+  | E.CnotInstr _
+  | E.MeasureInstr _
+  | E.ResetInstr _ ->
+      []
+
+let test_insert_swap_uses_distinct_parameters () =
+  for _ = 1 to 20 do
+    let transformed =
+      Unoptimize.unoptimize ~rule_name:"Insert_Swap" E.NopInstr 1 2
+    in
+    match swaps_of_instruction transformed with
+    | [] -> failf "Insert_Swap did not insert a swap instruction"
+    | swaps ->
+        List.iter
+          (fun (qbit1, qbit2) ->
+            require (qbit1 <> qbit2)
+              (Printf.sprintf
+                 "Insert_Swap generated equal qbit parameters (%d, %d)"
+                 qbit1 qbit2))
+          swaps
+  done
+
 let desugar_qasm2 source =
   source |> Q2.parse_string |> Q2.inline_qelib |> Q2.desugar
 
@@ -262,12 +290,16 @@ let test_sugar_rejects_reserved_quantum_register_name () =
   Q2.sugar 1 0 (singleton_map 0 ("cos", 0)) IntMap.empty E.NopInstr
   |> expect_error "quantum register name \"cos\" is not valid OpenQASM 2"
 
-let test_sugar_rejects_swap () =
+let test_sugar_prints_swap () =
   let q_assignment =
     IntMap.empty |> IntMap.add 0 ("q", 0) |> IntMap.add 1 ("q", 1)
   in
-  Q2.sugar 2 0 q_assignment IntMap.empty (E.SwapInstr (0, 1))
-  |> expect_error "unsupported SwapInstr"
+  let rendered =
+    Q2.sugar 2 0 q_assignment IntMap.empty (E.SwapInstr (0, 1))
+    |> ok_or_fail |> Q2.string_of_program
+  in
+  require_contains rendered "include \"qelib1.inc\";";
+  require_contains rendered "swap q[0],q[1];"
 
 let test_sugar_rejects_partial_register_condition () =
   let c_assignment =
@@ -321,6 +353,8 @@ let test_sugar_rejects_conditional_sequence_that_mutates_guard () =
 
 let tests =
   [ ("unoptimize_nop exact identity", test_unoptimize_nop_is_exact_identity);
+    ( "Insert_Swap uses distinct parameters",
+      test_insert_swap_uses_distinct_parameters );
     ("QASM2 semantic round trip", test_qasm2_sugar_round_trip);
     ( "QASM3 physical rename collision",
       test_qasm3_physical_qubit_rename_avoids_collisions );
@@ -332,7 +366,7 @@ let tests =
     ("missing classical map", test_sugar_reports_missing_classical_mapping);
     ( "reserved quantum register name",
       test_sugar_rejects_reserved_quantum_register_name );
-    ("unsupported swap", test_sugar_rejects_swap);
+    ("sugar swap", test_sugar_prints_swap);
     ("unrepresentable condition", test_sugar_rejects_partial_register_condition);
     ("safe conditional split", test_sugar_splits_safe_conditional_sequence);
     ( "unsafe conditional mutation",

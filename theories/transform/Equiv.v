@@ -1108,6 +1108,37 @@ Proof.
   apply Instruction_equiv_equivalence.
 Qed.
 
+Global Instance Instruction_behavioral_equiv_Equivalence (nq: nat):
+  Equivalence (Instruction_behavioral_equiv nq).
+Proof.
+  apply Instruction_behavioral_equiv_equivalence.
+Qed.
+
+Global Instance Instruction_behavioral_equiv_Proper (nq : nat) :
+  Proper
+    (Instruction_equiv nq ==> Instruction_equiv nq ==> iff)
+    (Instruction_behavioral_equiv nq).
+Proof.
+  intros instr1 instr1' Hequiv1 instr2 instr2' Hequiv2.
+  split; intro Hbehavioral.
+  - transitivity instr1.
+    + symmetry.
+      apply Instruction_equiv_implies_behavioral_equiv.
+      exact Hequiv1.
+    + transitivity instr2.
+      * exact Hbehavioral.
+      * apply Instruction_equiv_implies_behavioral_equiv.
+        exact Hequiv2.
+  - transitivity instr1'.
+    + apply Instruction_equiv_implies_behavioral_equiv.
+      exact Hequiv1.
+    + transitivity instr2'.
+      * exact Hbehavioral.
+      * symmetry.
+        apply Instruction_equiv_implies_behavioral_equiv.
+        exact Hequiv2.
+Qed.
+
 Global Instance qasm_seq_equiv_Proper (nq : nat) :
   Proper (Instruction_equiv nq ==> Instruction_equiv nq ==> Instruction_equiv nq) qasm_seq.
 Proof.

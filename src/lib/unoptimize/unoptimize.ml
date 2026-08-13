@@ -115,12 +115,16 @@ let random_parameter rng nq param_count =
           (Param_qbit1
              (Random.State.int rng nq))
   | 2 ->
-      if nq <= 0 then None
+      if nq < 2 then None
       else
+        let qbit1 = Random.State.int rng nq in
+        let qbit2_offset = Random.State.int rng (nq - 1) in
+        let qbit2 =
+          if qbit2_offset < qbit1 then qbit2_offset else qbit2_offset + 1
+        in
         Some
           (Param_qbit2
-             (Random.State.int rng nq,
-              Random.State.int rng nq))
+             (qbit1, qbit2))
   | _ ->
       None
 

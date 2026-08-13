@@ -1283,28 +1283,33 @@ Proof.
 Qed.
 
 Lemma standard_transform_rule_pattern_valid :
-  forall nq lhs_gates rhs_gates,
+  forall nq name lhs_gates rhs_gates,
     standard_transform_validb lhs_gates rhs_gates = true ->
-    PatternRuleValid nq
-      {|
-        rule_lhs :=
-          map (fun gate => standard_gate_pattern gate (NatVar 0)) lhs_gates;
-        rule_rhs :=
-          map (fun gate => standard_gate_pattern gate (NatVar 0)) rhs_gates
-      |}.
+    PatternRuleEquivValid nq
+      (TransformSpec_simple_rule name
+        {|
+          rule_lhs :=
+            map (fun gate => standard_gate_pattern gate (NatVar 0)) lhs_gates;
+          rule_rhs :=
+            map (fun gate => standard_gate_pattern gate (NatVar 0)) rhs_gates
+        |})
+      Param_None.
 Proof.
-  intros nq lhs_gates rhs_gates Hvalid subst lhs rhs Hlhs Hrhs _.
+  intros nq name lhs_gates rhs_gates Hvalid.
+  simpl.
+  intros rule Hrule subst lhs rhs Hlhs Hrhs _.
+  inversion Hrule; subst rule; clear Hrule.
   simpl in *.
-  destruct (NatMap.find 0%nat subst) as [qbit |] eqn:Hfind.
-  - rewrite (standard_gate_pattern_inst_list lhs_gates subst qbit Hfind) in Hlhs.
+    destruct (NatMap.find 0%nat subst) as [qbit |] eqn:Hfind.
+    + rewrite (standard_gate_pattern_inst_list lhs_gates subst qbit Hfind) in Hlhs.
     rewrite (standard_gate_pattern_inst_list rhs_gates subst qbit Hfind) in Hrhs.
     inversion Hlhs; inversion Hrhs; subst; clear Hlhs Hrhs.
     eapply Instruction_equiv_of_seqs_from_matrix.
-    + apply Matrix_of_standard_gate_pattern_list.
-    + apply Matrix_of_standard_gate_pattern_list.
-    + apply standard_transform_validb_matrix_list_sound.
+    * apply Matrix_of_standard_gate_pattern_list.
+    * apply Matrix_of_standard_gate_pattern_list.
+    * apply standard_transform_validb_matrix_list_sound.
       assumption.
-  - rewrite (standard_gate_pattern_inst_list_none lhs_gates subst Hfind) in Hlhs.
+    + rewrite (standard_gate_pattern_inst_list_none lhs_gates subst Hfind) in Hlhs.
     rewrite (standard_gate_pattern_inst_list_none rhs_gates subst Hfind) in Hrhs.
     destruct lhs_gates as [| lhs_gate lhs_rest]; try discriminate.
     destruct rhs_gates as [| rhs_gate rhs_rest]; try discriminate.
@@ -1313,11 +1318,13 @@ Proof.
 Qed.
 
 Lemma standard_rule_of_sequences_pattern_valid :
-  forall nq lhs rhs rule,
+  forall nq name lhs rhs rule,
     standard_rule_of_sequences lhs rhs = Some rule ->
-    PatternRuleValid nq rule.
+    PatternRuleEquivValid nq
+      (TransformSpec_simple_rule name rule)
+      Param_None.
 Proof.
-  intros nq lhs rhs rule Hrule.
+  intros nq name lhs rhs rule Hrule.
   unfold standard_rule_of_sequences in Hrule.
   destruct (standard_transform_validb lhs rhs) eqn:Hvalid; try discriminate.
   inversion Hrule; subst; clear Hrule.
@@ -1326,27 +1333,17 @@ Proof.
 Qed.
 
 Theorem standard_rule_transform_spec_valid :
-  forall nq name lhs rhs rule param instr occurrence instr',
+  forall nq name lhs rhs rule,
     standard_rule_of_sequences lhs rhs = Some rule ->
-    Instruction_qbits_validb nq instr = true ->
-    TransformSpec_apply (TransformSpec_simple_rule name rule) param instr occurrence
-    = Some instr' ->
-    Instruction_equiv nq instr instr'.
+    TransformSpecValid nq (TransformSpec_simple_rule name rule).
 Proof.
-  intros nq name lhs rhs rule param instr occurrence instr'
-    Hrule Hvalid Happly.
-  destruct param; simpl in Happly; try discriminate.
-  eapply (Transform_spec_valid
-    nq
-    (TransformSpec_simple_rule name rule)
-    Param_None
-    rule).
-  - simpl.
-    reflexivity.
-  - eapply standard_rule_of_sequences_pattern_valid.
-    apply Hrule.
-  - apply Hvalid.
-  - apply Happly.
+  intros nq name lhs rhs rule Hrule.
+  unfold TransformSpecValid.
+  intros param.
+  destruct param; simpl.
+  all: try (intros rule' Hnone; discriminate).
+  eapply standard_rule_of_sequences_pattern_valid.
+  apply Hrule.
 Qed.
 
 End STANDARD_CHECKER.
