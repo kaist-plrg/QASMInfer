@@ -104,35 +104,97 @@ let specs_of_rule_file path =
   | Sys_error message -> Error message
   | Yojson.Json_error message -> Error ("invalid JSON: " ^ message)
 
-let random_parameter rng nq param_count =
-  match param_count with
-  | 0 ->
+let pi_angle numerator denominator =
+  PiAngle
+    {
+      qnum = Big_int_Z.big_int_of_int numerator;
+      qden = Big_int_Z.big_int_of_int denominator;
+    }
+
+let random_qbit2 rng nq =
+  let qbit1 = Random.State.int rng nq in
+  let qbit2_offset = Random.State.int rng (nq - 1) in
+  let qbit2 =
+    if qbit2_offset < qbit1 then qbit2_offset else qbit2_offset + 1
+  in
+  (qbit1, qbit2)
+
+let random_rotation rng qbit =
+  match Random.State.int rng 6 with
+  | 0 -> RotateInstr (pi_angle 0 1, pi_angle 0 1, pi_angle 0 1, qbit)
+  | 1 -> RotateInstr (pi_angle 1 1, pi_angle 0 1, pi_angle 1 1, qbit)
+  | 2 -> RotateInstr (pi_angle 1 1, pi_angle 0 1, pi_angle 0 1, qbit)
+  | 3 -> RotateInstr (pi_angle 1 2, pi_angle 0 1, pi_angle 1 1, qbit)
+  | 4 -> RotateInstr (pi_angle 0 1, pi_angle 0 1, pi_angle 1 2, qbit)
+  | _ -> RotateInstr (pi_angle 0 1, pi_angle 0 1, pi_angle 1 4, qbit)
+
+let random_atomic_instruction rng nq nc =
+  let choices = ref [ (fun () -> NopInstr) ] in
+  if nq > 0 then (
+    choices :=
+      (fun () -> random_rotation rng (Random.State.int rng nq))
+      :: (fun () -> ResetInstr (Random.State.int rng nq))
+      :: !choices;
+    if nc > 0 then
+      choices :=
+        (fun () ->
+          MeasureInstr (Random.State.int rng nq, Random.State.int rng nc))
+        :: !choices);
+  if nq > 1 then (
+    choices :=
+      (fun () ->
+        let control, target = random_qbit2 rng nq in
+        CnotInstr (control, target))
+      :: !choices;
+    choices :=
+      (fun () ->
+        let qbit1, qbit2 = random_qbit2 rng nq in
+        SwapInstr (qbit1, qbit2))
+      :: !choices);
+  List.nth !choices (Random.State.int rng (List.length !choices)) ()
+
+let rec random_instruction rng nq nc depth =
+  if depth <= 0 then random_atomic_instruction rng nq nc
+  else
+    match Random.State.int rng (if nc > 0 then 3 else 2) with
+    | 0 ->
+        random_atomic_instruction rng nq nc
+    | 1 ->
+        SeqInstr
+          [
+            random_instruction rng nq nc (depth - 1);
+            random_instruction rng nq nc (depth - 1);
+          ]
+    | _ ->
+        IfInstr
+          ( Random.State.int rng nc,
+            Random.State.bool rng,
+            random_instruction rng nq nc (depth - 1) )
+
+let random_parameter rng nq nc param_kind =
+  match param_kind with
+  | ParamKind_None ->
       Some Param_None
-  | 1 ->
+  | ParamKind_qbit1 ->
       if nq <= 0 then None
-      else
-        Some
-          (Param_qbit1
-             (Random.State.int rng nq))
-  | 2 ->
+      else Some (Param_qbit1 (Random.State.int rng nq))
+  | ParamKind_qbit2 ->
       if nq < 2 then None
       else
-        let qbit1 = Random.State.int rng nq in
-        let qbit2_offset = Random.State.int rng (nq - 1) in
-        let qbit2 =
-          if qbit2_offset < qbit1 then qbit2_offset else qbit2_offset + 1
-        in
+        let qbit1, qbit2 = random_qbit2 rng nq in
+        Some (Param_qbit2 (qbit1, qbit2))
+  | ParamKind_cbit_instr ->
+      if nc <= 0 then None
+      else
         Some
-          (Param_qbit2
-             (qbit1, qbit2))
-  | _ ->
-      None
+          (Param_cbit_instr
+             (Random.State.int rng nc, random_instruction rng nq nc 2))
 
-let try_transform rng specs nq instr =
+let try_transform rng specs nq nc instr =
   let candidates =
     Array.fold_left
       (fun acc spec ->
-    match random_parameter rng nq spec.param_count with
+    match random_parameter rng nq nc spec.transform_param_kind with
     | None -> acc
     | Some param ->
       let count = transformSpec_count spec param instr in
@@ -180,7 +242,7 @@ let filter_specs_by_name rule_name specs =
         (Printf.sprintf "No transformation rule named '%s'." rule_name)
   | _ -> matched
 
-let unoptimize_with_state ?specs ?rule_name rng instr step nq =
+let unoptimize_with_state ?specs ?rule_name rng instr step nq nc =
   let specs =
     let specs = combined_specs nq specs |> ensure_unique_spec_names in
     let specs =
@@ -196,7 +258,7 @@ let unoptimize_with_state ?specs ?rule_name rng instr step nq =
     if successful_steps >= step
     then current
     else
-      match try_transform rng specs nq current
+      match try_transform rng specs nq nc current
       with
       | None ->
           let message =
@@ -214,10 +276,10 @@ let unoptimize_with_state ?specs ?rule_name rng instr step nq =
   in
   loop 0 instr
 
-let unoptimize ?specs ?rule_name instr step nq =
+let unoptimize ?specs ?rule_name instr step nq nc =
   let rng =
     Random.State.make_self_init ()
   in
   if instruction_qbits_validb nq instr
-  then unoptimize_with_state ?specs ?rule_name rng instr step nq
+  then unoptimize_with_state ?specs ?rule_name rng instr step nq nc
   else failwith "Instruction qbit index is not valid."

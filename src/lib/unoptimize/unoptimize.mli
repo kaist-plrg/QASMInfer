@@ -6,4 +6,5 @@ val unoptimize :
   Extracted.instruction ->
   int ->
   int ->
+  int ->
   Extracted.instruction

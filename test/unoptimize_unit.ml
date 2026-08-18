@@ -79,6 +79,7 @@ let test_insert_swap_uses_distinct_parameters () =
   for _ = 1 to 20 do
     let transformed =
       Unoptimize.unoptimize ~rule_name:"Insert_Swap" E.NopInstr 1 2
+        0
     in
     match swaps_of_instruction transformed with
     | [] -> failf "Insert_Swap did not insert a swap instruction"
@@ -91,6 +92,62 @@ let test_insert_swap_uses_distinct_parameters () =
                  qbit1 qbit2))
           swaps
   done
+
+let test_double_if_accepts_any_instruction () =
+  let instruction = E.IfInstr (0, false, E.CnotInstr (0, 1)) in
+  let transformed =
+    Unoptimize.unoptimize ~rule_name:"Double_If_H_False" instruction 1 2 1
+  in
+  match transformed with
+  | E.IfInstr (0, false, E.IfInstr (0, false, E.CnotInstr (0, 1))) -> ()
+  | _ -> failf "Double_If_H_False did not duplicate a non-H body"
+
+let rec contradictory_if_cbits outer_cond = function
+  | E.IfInstr (outer_cbit, cond, E.IfInstr (inner_cbit, inner_cond, body))
+    when cond = outer_cond && inner_cond = not outer_cond ->
+      if outer_cbit = inner_cbit then
+        outer_cbit :: contradictory_if_cbits outer_cond body
+      else contradictory_if_cbits outer_cond body
+  | E.SeqInstr instructions ->
+      List.concat_map (contradictory_if_cbits outer_cond) instructions
+  | E.IfInstr (_, _, body) ->
+      contradictory_if_cbits outer_cond body
+  | E.NopInstr
+  | E.RotateInstr _
+  | E.CnotInstr _
+  | E.SwapInstr _
+  | E.MeasureInstr _
+  | E.ResetInstr _ ->
+      []
+
+let test_insert_contradictory_if_generates_valid_cbit () =
+  for _ = 1 to 20 do
+    let transformed =
+      Unoptimize.unoptimize ~rule_name:"Insert_Contradictory_If" E.NopInstr 1
+        2 2
+    in
+    require (E.instruction_qbits_validb 2 transformed)
+      "Insert_Contradictory_If generated an invalid qbit index";
+    match contradictory_if_cbits false transformed with
+    | [] -> failf "Insert_Contradictory_If did not insert a contradictory if"
+    | cbits ->
+        List.iter
+          (fun cbit ->
+            require (0 <= cbit && cbit < 2)
+              (Printf.sprintf
+                 "Insert_Contradictory_If generated invalid cbit %d"
+                 cbit))
+          cbits
+  done
+
+let test_insert_contradictory_if_true_first () =
+  let transformed =
+    Unoptimize.unoptimize ~rule_name:"Insert_Contradictory_If_True" E.NopInstr
+      1 2 2
+  in
+  match contradictory_if_cbits true transformed with
+  | [] -> failf "Insert_Contradictory_If_True did not insert a true-first if"
+  | _ -> ()
 
 let desugar_qasm2 source =
   source |> Q2.parse_string |> Q2.inline_qelib |> Q2.desugar
@@ -355,6 +412,11 @@ let tests =
   [ ("unoptimize_nop exact identity", test_unoptimize_nop_is_exact_identity);
     ( "Insert_Swap uses distinct parameters",
       test_insert_swap_uses_distinct_parameters );
+    ("Double_If accepts any instruction", test_double_if_accepts_any_instruction);
+    ( "Insert_Contradictory_If uses valid cbit",
+      test_insert_contradictory_if_generates_valid_cbit );
+    ( "Insert_Contradictory_If_True inserts true-first condition",
+      test_insert_contradictory_if_true_first );
     ("QASM2 semantic round trip", test_qasm2_sugar_round_trip);
     ( "QASM3 physical rename collision",
       test_qasm3_physical_qubit_rename_avoids_collisions );

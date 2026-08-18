@@ -286,7 +286,7 @@ let unoptimize source destination step verbose rule_file rule_name =
     parse_and_desugar source
   in
   let transformed =
-    try Unoptimize.unoptimize ?specs ?rule_name instr step nq with
+    try Unoptimize.unoptimize ?specs ?rule_name instr step nq nc with
     | Failure message -> raise (Cli_error message)
   in
   log_instruction verbose transformed;

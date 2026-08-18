@@ -70,17 +70,97 @@ End FLATTEN_FUNCTION.
 
 Section PATTERN.
 
-Definition PatternMap : Type := NatMap.t nat.
+Fixpoint Instruction_eqb (instr1 instr2 : Instruction) {struct instr1} : bool :=
+  match instr1, instr2 with
+  | NopInstr, NopInstr =>
+      true
+  | RotateInstr theta1 phi1 lambda1 qbit1,
+    RotateInstr theta2 phi2 lambda2 qbit2 =>
+      Angle_eqb theta1 theta2
+      && Angle_eqb phi1 phi2
+      && Angle_eqb lambda1 lambda2
+      && Nat.eqb qbit1 qbit2
+  | CnotInstr control1 target1,
+    CnotInstr control2 target2 =>
+      Nat.eqb control1 control2 && Nat.eqb target1 target2
+  | SwapInstr qbit1 qbit2,
+    SwapInstr qbit1' qbit2' =>
+      Nat.eqb qbit1 qbit1' && Nat.eqb qbit2 qbit2'
+  | MeasureInstr qbit1 cbit1,
+    MeasureInstr qbit2 cbit2 =>
+      Nat.eqb qbit1 qbit2 && Nat.eqb cbit1 cbit2
+  | SeqInstr instrs1,
+    SeqInstr instrs2 =>
+      let fix list_eqb
+          (instrs1 instrs2 : list Instruction)
+          {struct instrs1}
+          : bool :=
+        match instrs1, instrs2 with
+        | [], [] =>
+            true
+        | instr1 :: rest1, instr2 :: rest2 =>
+            Instruction_eqb instr1 instr2 && list_eqb rest1 rest2
+        | _, _ =>
+            false
+        end
+      in
+      list_eqb instrs1 instrs2
+  | IfInstr cbit1 expected1 body1,
+    IfInstr cbit2 expected2 body2 =>
+      Nat.eqb cbit1 cbit2
+      && Bool.eqb expected1 expected2
+      && Instruction_eqb body1 body2
+  | ResetInstr qbit1,
+    ResetInstr qbit2 =>
+      Nat.eqb qbit1 qbit2
+  | _, _ =>
+      false
+  end.
 
-Definition PatternMap_empty : PatternMap := NatMap.empty _.
+Record PatternMap : Type := {
+  pattern_nat_map : NatMap.t nat;
+  pattern_instr_map : NatMap.t Instruction
+}.
+
+Definition PatternMap_empty : PatternMap :=
+  {|
+    pattern_nat_map := NatMap.empty _;
+    pattern_instr_map := NatMap.empty _
+  |}.
 
 Definition PatternMap_bind (variable value : nat) (map : PatternMap)
     : option PatternMap :=
-  match NatMap.find variable map with
+  match NatMap.find variable (pattern_nat_map map) with
   | None =>
-      Some (NatMap.add variable value map)
+      Some
+        {|
+          pattern_nat_map :=
+            NatMap.add variable value (pattern_nat_map map);
+          pattern_instr_map :=
+            pattern_instr_map map
+        |}
   | Some old_value =>
       if Nat.eqb old_value value
+      then Some map
+      else None
+  end.
+
+Definition PatternMap_bind_instr
+    (variable : nat)
+    (instr : Instruction)
+    (map : PatternMap)
+    : option PatternMap :=
+  match NatMap.find variable (pattern_instr_map map) with
+  | None =>
+      Some
+        {|
+          pattern_nat_map :=
+            pattern_nat_map map;
+          pattern_instr_map :=
+            NatMap.add variable instr (pattern_instr_map map)
+        |}
+  | Some old_instr =>
+      if Instruction_eqb old_instr instr
       then Some map
       else None
   end.
@@ -88,9 +168,13 @@ Definition PatternMap_bind (variable value : nat) (map : PatternMap)
 Definition PatternMap_extends
     (map1 map2 : PatternMap)
     : Prop :=
-  forall variable value,
-    NatMap.find variable map1 = Some value ->
-    NatMap.find variable map2 = Some value.
+  (forall variable value,
+    NatMap.find variable (pattern_nat_map map1) = Some value ->
+    NatMap.find variable (pattern_nat_map map2) = Some value)
+  /\
+  (forall variable instr,
+    NatMap.find variable (pattern_instr_map map1) = Some instr ->
+    NatMap.find variable (pattern_instr_map map2) = Some instr).
 
 Inductive NatPattern: Type :=
   | NatExact: nat -> NatPattern
@@ -114,7 +198,7 @@ Definition NatPattern_inst
   match pattern with
   | NatExact value => Some value
   | NatVar variable =>
-      NatMap.find variable subst
+      NatMap.find variable (pattern_nat_map subst)
   end.
 
 Definition Instruction_list_simp
@@ -180,7 +264,9 @@ Inductive InstructionPattern: Type :=
   | PSwap: NatPattern -> NatPattern -> InstructionPattern 
   | PMeasure: NatPattern -> NatPattern -> InstructionPattern 
   | PReset: NatPattern -> InstructionPattern
-  | PIf: NatPattern -> bool -> list InstructionPattern -> InstructionPattern.
+  | PIf: NatPattern -> bool -> list InstructionPattern -> InstructionPattern
+  | PInstrVar: nat -> InstructionPattern
+  | PInstrExact: Instruction -> InstructionPattern.
 
 Lemma InstructionPattern_ind' :
   forall (P : InstructionPattern -> Prop),
@@ -193,9 +279,11 @@ Lemma InstructionPattern_ind' :
     (forall cbit expected body_patterns,
       Forall P body_patterns ->
       P (PIf cbit expected body_patterns)) ->
+    (forall variable, P (PInstrVar variable)) ->
+    (forall instr, P (PInstrExact instr)) ->
     forall pattern, P pattern.
 Proof.
-  intros P Hnop Hrotate Hcnot Hswap Hmeasure Hreset Hif.
+  intros P Hnop Hrotate Hcnot Hswap Hmeasure Hreset Hif Hinstr_var Hinstr_exact.
   fix IH 1.
   intro pattern.
   destruct pattern.
@@ -211,6 +299,8 @@ Proof.
     + constructor.
       * apply IH.
       * apply IHpatterns.
+  - apply Hinstr_var.
+  - apply Hinstr_exact.
 Qed.
 
 Fixpoint InstructionPattern_match
@@ -268,6 +358,15 @@ Fixpoint InstructionPattern_match
           body_patterns
           (InstructionPattern_body_view body)
           map'
+      else None
+  | PInstrVar variable, _ =>
+      PatternMap_bind_instr
+        variable
+        (InstructionPattern_canonicalize instr)
+        map
+  | PInstrExact expected_instr, _ =>
+      if Instruction_eqb expected_instr (InstructionPattern_canonicalize instr)
+      then Some map
       else None
   | _, _ =>
       None
@@ -347,6 +446,10 @@ Fixpoint InstructionPattern_inst
           body_patterns
       in
       Some (IfInstr cbit expected (Instruction_list_simp body_instrs))
+  | PInstrVar variable =>
+      NatMap.find variable (pattern_instr_map map)
+  | PInstrExact instr =>
+      Some instr
   end.
 
 Fixpoint InstructionPattern_inst_list
@@ -969,7 +1072,14 @@ Fixpoint Instruction_list_qbits_validb (instrs: list Instruction) : bool :=
 Inductive TransformParameter : Type :=
   | Param_None : TransformParameter
   | Param_qbit1 : nat -> TransformParameter
-  | Param_qbit2 : nat -> nat -> TransformParameter.
+  | Param_qbit2 : nat -> nat -> TransformParameter
+  | Param_cbit_instr : nat -> Instruction -> TransformParameter.
+
+Inductive TransformParamKind : Type :=
+  | ParamKind_None : TransformParamKind
+  | ParamKind_qbit1 : TransformParamKind
+  | ParamKind_qbit2 : TransformParamKind
+  | ParamKind_cbit_instr : TransformParamKind.
 
 Inductive TransformStrategy : Type :=
   | TransformTopLevel : TransformStrategy
@@ -980,7 +1090,7 @@ Record TransformSpec : Type := {
   transform_rule : TransformParameter -> option RewriteRule;
   transform_postprocess : TransformParameter -> Instruction -> Instruction;
   transform_strategy : TransformStrategy;
-  param_count : nat; (* Parameter count of TransformParameter; to inform OCaml implementation *)
+  transform_param_kind : TransformParamKind;
 }.
 
 Definition TransformSpec_count
@@ -1056,12 +1166,86 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma Instruction_eqb_eq :
+  forall instr1 instr2,
+    Instruction_eqb instr1 instr2 = true ->
+    instr1 = instr2.
+Proof.
+  induction instr1 as [
+    | theta1 phi1 lambda1 qbit1
+    | control1 target1
+    | qbit1 qbit2
+    | qbit1 cbit1
+    | instrs1 Hinstrs1
+    | cbit1 expected1 body1 Hbody1
+    | qbit1
+  ] using Instruction_ind';
+  intros instr2 Heq;
+  destruct instr2 as [
+    | theta2 phi2 lambda2 qbit2'
+    | control2 target2
+    | qbit1' qbit2'
+    | measure_qbit2 cbit2
+    | instrs2
+    | cbit2 expected2 body2
+    | reset_qbit2
+  ]; simpl in Heq; try discriminate.
+  - reflexivity.
+  - apply andb_true_iff in Heq as [Hangles Hqbit].
+    apply andb_true_iff in Hangles as [Hangles Hlambda].
+    apply andb_true_iff in Hangles as [Htheta Hphi].
+    apply Angle_eqb_eq in Htheta.
+    apply Angle_eqb_eq in Hphi.
+    apply Angle_eqb_eq in Hlambda.
+    apply Nat.eqb_eq in Hqbit.
+    subst.
+    reflexivity.
+  - apply andb_true_iff in Heq as [Hcontrol Htarget].
+    apply Nat.eqb_eq in Hcontrol.
+    apply Nat.eqb_eq in Htarget.
+    subst.
+    reflexivity.
+  - apply andb_true_iff in Heq as [Hqbit1 Hqbit2].
+    apply Nat.eqb_eq in Hqbit1.
+    apply Nat.eqb_eq in Hqbit2.
+    subst.
+    reflexivity.
+  - apply andb_true_iff in Heq as [Hqbit Hcbit].
+    apply Nat.eqb_eq in Hqbit.
+    apply Nat.eqb_eq in Hcbit.
+    subst.
+    reflexivity.
+  - f_equal.
+    revert instrs2 Heq Hinstrs1.
+    induction instrs1 as [| instr1 instrs1 IHinstrs1];
+    intros instrs2 Heq Hinstrs1;
+    destruct instrs2 as [| instr2 instrs2];
+    simpl in Heq; try discriminate.
+    + reflexivity.
+    + apply andb_true_iff in Heq as [Hhead Htail].
+      inversion Hinstrs1 as [| ? ? Hhead_ih Htail_ih]; subst.
+      f_equal.
+      * exact (Hhead_ih instr2 Hhead).
+      * apply IHinstrs1.
+        -- change (Instruction_eqb (SeqInstr instrs1) (SeqInstr instrs2) = true).
+           exact Htail.
+        -- exact Htail_ih.
+  - apply andb_true_iff in Heq as [Hcond Hbody].
+    apply andb_true_iff in Hcond as [Hcbit Hexpected].
+    apply Nat.eqb_eq in Hcbit.
+    destruct expected1, expected2; simpl in Hexpected; try discriminate;
+    apply Hbody1 in Hbody; subst; reflexivity.
+  - apply Nat.eqb_eq in Heq.
+    subst.
+    reflexivity.
+Qed.
+
 Lemma PatternMap_extends_refl :
   forall map,
     PatternMap_extends map map.
 Proof.
   unfold PatternMap_extends.
-  auto.
+  split; auto.
 Qed.
 
 Lemma PatternMap_extends_trans :
@@ -1071,10 +1255,16 @@ Lemma PatternMap_extends_trans :
     PatternMap_extends map1 map3.
 Proof.
   unfold PatternMap_extends.
-  intros map1 map2 map3 H12 H23 variable value Hfind.
-  apply H23.
-  apply H12.
-  exact Hfind.
+  intros map1 map2 map3 [H12_nat H12_instr] [H23_nat H23_instr].
+  split.
+  - intros variable value Hfind.
+    apply H23_nat.
+    apply H12_nat.
+    exact Hfind.
+  - intros variable instr Hfind.
+    apply H23_instr.
+    apply H12_instr.
+    exact Hfind.
 Qed.
 
 Lemma PatternMap_bind_extends :
@@ -1084,34 +1274,87 @@ Lemma PatternMap_bind_extends :
 Proof.
   intros variable value map map' Hbind.
   unfold PatternMap_bind in Hbind.
-  destruct (NatMap.find variable map) as [old_value |] eqn:Hfind.
+  destruct (NatMap.find variable (pattern_nat_map map))
+    as [old_value |] eqn:Hfind.
   - destruct (Nat.eqb old_value value) eqn:Heq; try discriminate.
     inversion Hbind; subst.
     apply PatternMap_extends_refl.
   - inversion Hbind; subst.
     unfold PatternMap_extends.
-    intros key old Hkey.
-    destruct (Nat.eq_dec key variable) as [Heq | Hneq].
-    + subst key.
-      rewrite Hfind in Hkey.
-      discriminate.
-    + rewrite NatMapFacts.add_neq_o.
-      * exact Hkey.
-      * lia.
+    simpl.
+    split.
+    + intros key old Hkey.
+      destruct (Nat.eq_dec key variable) as [Heq | Hneq].
+      * subst key.
+        rewrite Hfind in Hkey.
+        discriminate.
+      * rewrite NatMapFacts.add_neq_o.
+        -- exact Hkey.
+        -- lia.
+    + intros key instr Hkey.
+      exact Hkey.
 Qed.
 
 Lemma PatternMap_bind_find :
   forall variable value map map',
     PatternMap_bind variable value map = Some map' ->
-    NatMap.find variable map' = Some value.
+    NatMap.find variable (pattern_nat_map map') = Some value.
 Proof.
   intros variable value map map' Hbind.
   unfold PatternMap_bind in Hbind.
-  destruct (NatMap.find variable map) as [old_value |] eqn:Hfind.
+  destruct (NatMap.find variable (pattern_nat_map map))
+    as [old_value |] eqn:Hfind.
   - destruct (Nat.eqb old_value value) eqn:Heq; try discriminate.
     apply Nat.eqb_eq in Heq.
     inversion Hbind; subst.
     apply Hfind.
+  - inversion Hbind; subst.
+    apply NatMapFacts.add_eq_o.
+    reflexivity.
+Qed.
+
+Lemma PatternMap_bind_instr_extends :
+  forall variable instr map map',
+    PatternMap_bind_instr variable instr map = Some map' ->
+    PatternMap_extends map map'.
+Proof.
+  intros variable instr map map' Hbind.
+  unfold PatternMap_bind_instr in Hbind.
+  destruct (NatMap.find variable (pattern_instr_map map))
+    as [old_instr |] eqn:Hfind.
+  - destruct (Instruction_eqb old_instr instr); try discriminate.
+    inversion Hbind; subst.
+    apply PatternMap_extends_refl.
+  - inversion Hbind; subst.
+    unfold PatternMap_extends.
+    simpl.
+    split.
+    + intros key value Hkey.
+      exact Hkey.
+    + intros key old Hkey.
+      destruct (Nat.eq_dec key variable) as [Heq | Hneq].
+      * subst key.
+        rewrite Hfind in Hkey.
+        discriminate.
+      * rewrite NatMapFacts.add_neq_o.
+        -- exact Hkey.
+        -- lia.
+Qed.
+
+Lemma PatternMap_bind_instr_find :
+  forall variable instr map map',
+    PatternMap_bind_instr variable instr map = Some map' ->
+    NatMap.find variable (pattern_instr_map map') = Some instr.
+Proof.
+  intros variable instr map map' Hbind.
+  unfold PatternMap_bind_instr in Hbind.
+  destruct (NatMap.find variable (pattern_instr_map map))
+    as [old_instr |] eqn:Hfind.
+  - destruct (Instruction_eqb old_instr instr) eqn:Heq; try discriminate.
+    apply Instruction_eqb_eq in Heq.
+    inversion Hbind; subst.
+    subst.
+    exact Hfind.
   - inversion Hbind; subst.
     apply NatMapFacts.add_eq_o.
     reflexivity.
@@ -1155,7 +1398,7 @@ Proof.
   intros pattern map1 map2 value Hextends Hinst.
   destruct pattern; simpl in *.
   - apply Hinst.
-  - apply Hextends.
+  - apply (proj1 Hextends).
     apply Hinst.
 Qed.
 
@@ -1172,6 +1415,8 @@ Proof.
     | qbit_pattern cbit_pattern
     | qbit_pattern
     | cbit_pattern expected body_patterns Hbody_patterns
+    | instr_variable
+    | exact_instr
   ] using InstructionPattern_ind';
   intros map1 map2 instr Hextends Hinst; simpl in *.
   - assumption.
@@ -1241,6 +1486,13 @@ Proof.
         rewrite (Hhead_extends map1 map2 body_instr Hextends Hbody_instr).
         rewrite (IHpatterns body_instrs' eq_refl Htail_extends).
         reflexivity.
+  - destruct (NatMap.find instr_variable (pattern_instr_map map1))
+      as [found_instr |] eqn:Hfound; try discriminate.
+    inversion Hinst; subst; clear Hinst.
+    apply (proj2 Hextends) in Hfound.
+    rewrite Hfound.
+    reflexivity.
+  - exact Hinst.
 Qed.
 
 Lemma InstructionPattern_match_extends :
@@ -1255,6 +1507,8 @@ Proof.
     | qbit_pattern cbit_pattern
     | qbit_pattern
     | cbit_pattern expected_pattern body_patterns Hbody_patterns
+    | instr_variable
+    | exact_instr
   ] using InstructionPattern_ind';
   intros instr map map' Hmatch.
   - destruct instr; simpl in Hmatch; try discriminate.
@@ -1364,6 +1618,14 @@ Proof.
         -- eapply Hhead_extends.
            apply Hhead.
         -- eapply IHpatterns; eauto.
+  - simpl in Hmatch.
+    eapply PatternMap_bind_instr_extends.
+    apply Hmatch.
+  - simpl in Hmatch.
+    destruct (Instruction_eqb exact_instr (InstructionPattern_canonicalize instr));
+    try discriminate.
+    inversion Hmatch; subst.
+    apply PatternMap_extends_refl.
 Qed.
 
 Lemma InstructionPattern_match_sound :
@@ -1379,6 +1641,8 @@ Proof.
     | qbit_pattern cbit_pattern
     | qbit_pattern
     | cbit_pattern expected_pattern body_patterns Hbody_patterns
+    | instr_variable
+    | exact_instr
   ] using InstructionPattern_ind';
   intros instr map map' Hmatch.
   - destruct instr; simpl in Hmatch; try discriminate.
@@ -1550,6 +1814,16 @@ Proof.
       destruct body; reflexivity.
     + apply Hbody_extends.
     + apply Hcbit_inst.
+  - simpl in Hmatch.
+    apply PatternMap_bind_instr_find in Hmatch.
+    simpl.
+    exact Hmatch.
+  - simpl in Hmatch.
+    destruct (Instruction_eqb exact_instr (InstructionPattern_canonicalize instr))
+      eqn:Hinstr_eq; try discriminate.
+    apply Instruction_eqb_eq in Hinstr_eq.
+    subst exact_instr.
+    reflexivity.
 Qed.
 
 Lemma InstructionPattern_match_list_extends :
@@ -2705,22 +2979,35 @@ Definition Rule_Swap_To_3Cnot (qbit1 qbit2: nat) : RewriteRule :=
        PCnot (NatExact qbit1) (NatExact qbit2)]
   |}.
 
-Definition Rule_Double_If_H (cond : bool) : RewriteRule :=
+Definition Rule_Double_If (cond : bool) : RewriteRule :=
   {|
     rule_lhs :=
       [PIf (NatVar 0) cond
-        [Pat_H (NatVar 1)]];
+        [PInstrVar 0]];
     rule_rhs :=
       [PIf (NatVar 0) cond
         [PIf (NatVar 0) cond
-          [Pat_H (NatVar 1)]]]
+          [PInstrVar 0]]]
   |}.
 
-Definition Rule_Double_If_H_True : RewriteRule :=
-  Rule_Double_If_H true.
+Definition Rule_Double_If_True : RewriteRule :=
+  Rule_Double_If true.
 
-Definition Rule_Double_If_H_False : RewriteRule :=
-  Rule_Double_If_H false.
+Definition Rule_Double_If_False : RewriteRule :=
+  Rule_Double_If false.
+
+Definition Rule_Insert_Contradictory_If
+    (outer_cond : bool)
+    (cbit : nat)
+    (instr : Instruction)
+    : RewriteRule :=
+  {|
+    rule_lhs := [];
+    rule_rhs :=
+      [PIf (NatExact cbit) outer_cond
+        [PIf (NatExact cbit) (negb outer_cond)
+          [PInstrExact instr]]]
+  |}.
 
 Definition Transform_simple_rule (rule: RewriteRule) : TransformParameter -> option RewriteRule :=
   fun param =>
@@ -2735,7 +3022,7 @@ Definition TransformSpec_simple_rule (name: string) (rule: RewriteRule) : Transf
     transform_rule := Transform_simple_rule rule;
     transform_postprocess := fun _ instr => instr;
     transform_strategy := TransformDeep;
-    param_count := 0;
+    transform_param_kind := ParamKind_None;
   |}.
 
 Definition TransformSpec_Insert_I : TransformSpec :=
@@ -2751,7 +3038,7 @@ Definition TransformSpec_Insert_I : TransformSpec :=
       end;
     transform_postprocess := fun _ instr => instr;
     transform_strategy := TransformDeep;
-    param_count := 1;
+    transform_param_kind := ParamKind_qbit1;
   |}.
 
 Definition TransformSpec_Insert_Swap : TransformSpec :=
@@ -2773,7 +3060,7 @@ Definition TransformSpec_Insert_Swap : TransformSpec :=
           instr
       end;
     transform_strategy := TransformTopLevel;
-    param_count := 2;
+    transform_param_kind := ParamKind_qbit2;
   |}.
 
 Definition TransformSpec_Insert_Cnot_Cnot : TransformSpec :=
@@ -2789,7 +3076,7 @@ Definition TransformSpec_Insert_Cnot_Cnot : TransformSpec :=
       end;
     transform_postprocess := fun _ instr => instr;
     transform_strategy := TransformDeep;
-    param_count := 2;
+    transform_param_kind := ParamKind_qbit2;
   |}.
 
 Definition TransformSpec_Swap_To_3Cnot : TransformSpec :=
@@ -2805,8 +3092,33 @@ Definition TransformSpec_Swap_To_3Cnot : TransformSpec :=
       end;
     transform_postprocess := fun _ instr => instr;
     transform_strategy := TransformDeep;
-    param_count := 2;
+    transform_param_kind := ParamKind_qbit2;
   |}.
+
+Definition TransformSpec_Insert_Contradictory_If
+    (name : string)
+    (outer_cond : bool)
+    : TransformSpec :=
+  {|
+    transform_name := name;
+    transform_rule := fun param =>
+      match param with
+      | Param_cbit_instr cbit instr =>
+          if Instruction_qbits_validb nq instr
+          then Some (Rule_Insert_Contradictory_If outer_cond cbit instr)
+          else None
+      | _ => None
+      end;
+    transform_postprocess := fun _ instr => instr;
+    transform_strategy := TransformDeep;
+    transform_param_kind := ParamKind_cbit_instr;
+  |}.
+
+Definition TransformSpec_Insert_Contradictory_If_False : TransformSpec :=
+  TransformSpec_Insert_Contradictory_If "Insert_If_FT" false.
+
+Definition TransformSpec_Insert_Contradictory_If_True : TransformSpec :=
+  TransformSpec_Insert_Contradictory_If "Insert_If_TF" true.
 
 Definition Transform_spec_list : list TransformSpec :=
   [
@@ -2814,8 +3126,10 @@ Definition Transform_spec_list : list TransformSpec :=
     TransformSpec_Insert_Swap;
     TransformSpec_Insert_Cnot_Cnot;
     TransformSpec_Swap_To_3Cnot;
-    TransformSpec_simple_rule "Double_If_H_True" Rule_Double_If_H_True;
-    TransformSpec_simple_rule "Double_If_H_False" Rule_Double_If_H_False
+    TransformSpec_Insert_Contradictory_If_False;
+    TransformSpec_Insert_Contradictory_If_True;
+    TransformSpec_simple_rule "Double_If_True" Rule_Double_If_True;
+    TransformSpec_simple_rule "Double_If_False" Rule_Double_If_False
   ].
 
 Lemma TransformSpec_Insert_I_valid :
@@ -2824,7 +3138,7 @@ Proof.
   unfold TransformSpecValid, TransformSpec_Insert_I.
   simpl.
   intros param.
-  destruct param as [| qbit | qbit1 qbit2]; simpl.
+  destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
   destruct (qbit <? nq) eqn:Hqbit; simpl.
   - intros rule Hrule subst lhs rhs Hlhs Hrhs _.
@@ -2850,7 +3164,7 @@ Proof.
   unfold TransformSpecValid, TransformSpec_Insert_Swap.
   simpl.
   intros param.
-  destruct param as [| qbit | qbit1 qbit2]; simpl.
+  destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
   destruct ((qbit1 <? nq) && (qbit2 <? nq)) eqn:Hqbits; simpl.
   - intros rule Hrule subst lhs rhs suffix Hlhs Hrhs Hvalid.
@@ -2915,7 +3229,7 @@ Proof.
     TransformSpec_Insert_Cnot_Cnot.
   simpl.
   intros param.
-  destruct param as [| qbit | qbit1 qbit2]; simpl.
+  destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
   destruct ((qbit1 <? nq) && (qbit2 <? nq)) eqn:Hqbits; simpl.
   - intros rule Hrule map lhs rhs Hlhs Hrhs _.
@@ -2951,7 +3265,7 @@ Proof.
     TransformSpec_Swap_To_3Cnot.
   simpl.
   intros param.
-  destruct param as [| qbit | qbit1 qbit2]; simpl.
+  destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
   destruct ((qbit1 <? nq) && (qbit2 <? nq)) eqn:Hqbits; simpl.
   - intros rule Hrule map lhs rhs Hlhs Hrhs _.
@@ -2977,24 +3291,66 @@ Proof.
     discriminate.
 Qed.
 
-Lemma TransformSpec_Double_If_H_valid :
+Lemma TransformSpec_Insert_Contradictory_If_valid :
+  forall name outer_cond,
+  TransformSpecValid nq
+    (TransformSpec_Insert_Contradictory_If name outer_cond).
+Proof.
+  intros name outer_cond.
+  unfold TransformSpecValid, TransformSpec_Insert_Contradictory_If.
+  simpl.
+  intros param.
+  destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
+  all: try (intros rule Hrule; discriminate).
+  destruct (Instruction_qbits_validb nq instr) eqn:Hinstr; simpl.
+  - intros rule Hrule map lhs rhs Hlhs Hrhs _.
+    cbn [transform_rule] in Hrule.
+    rewrite Hinstr in Hrule.
+    injection Hrule as <-.
+    simpl in Hlhs, Hrhs.
+    injection Hlhs as <-.
+    injection Hrhs as <-.
+    symmetry.
+    rewrite Instruction_equiv_Seq_singleton.
+    destruct outer_cond; simpl.
+    + apply Transform_if_nop_tf.
+    + apply Transform_if_nop_ft.
+  - intros rule Hrule.
+    cbn [transform_rule] in Hrule.
+    rewrite Hinstr in Hrule.
+    discriminate.
+Qed.
+
+Lemma TransformSpec_Insert_Contradictory_If_False_valid :
+  TransformSpecValid nq TransformSpec_Insert_Contradictory_If_False.
+Proof.
+  apply TransformSpec_Insert_Contradictory_If_valid.
+Qed.
+
+Lemma TransformSpec_Insert_Contradictory_If_True_valid :
+  TransformSpecValid nq TransformSpec_Insert_Contradictory_If_True.
+Proof.
+  apply TransformSpec_Insert_Contradictory_If_valid.
+Qed.
+
+Lemma TransformSpec_Double_If_valid :
   forall name cond,
   TransformSpecValid nq
-    (TransformSpec_simple_rule name (Rule_Double_If_H cond)).
+    (TransformSpec_simple_rule name (Rule_Double_If cond)).
 Proof.
   intros name cond.
   unfold TransformSpecValid, TransformSpec_simple_rule, Transform_simple_rule.
   simpl.
   intros param.
-  destruct param as [| qbit | qbit1 qbit2]; simpl.
+  destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
-  intros rule Hrule subst lhs rhs Hlhs Hrhs Hvalid.
+  intros rule Hrule subst lhs rhs Hlhs Hrhs _.
   injection Hrule as <-.
-  unfold Rule_Double_If_H in Hlhs, Hrhs.
+  unfold Rule_Double_If in Hlhs, Hrhs.
   simpl in Hlhs, Hrhs.
-  destruct (NatMap.find 0%nat subst) as [cbit |] eqn:Hcbit;
+  destruct (NatMap.find 0%nat (pattern_nat_map subst)) as [cbit |];
   try discriminate.
-  destruct (NatMap.find 1%nat subst) as [qbit |] eqn:Hqbit;
+  destruct (NatMap.find 0%nat (pattern_instr_map subst)) as [instr |];
   try discriminate.
   injection Hlhs as <-.
   injection Hrhs as <-.
@@ -3003,18 +3359,18 @@ Proof.
   apply Transform_double_if.
 Qed.
 
-Lemma TransformSpec_Double_If_H_True_valid :
+Lemma TransformSpec_Double_If_True_valid :
   TransformSpecValid nq
-    (TransformSpec_simple_rule "Double_If_H_True" Rule_Double_If_H_True).
+    (TransformSpec_simple_rule "Double_If_True" Rule_Double_If_True).
 Proof.
-  apply TransformSpec_Double_If_H_valid.
+  apply TransformSpec_Double_If_valid.
 Qed.
 
-Lemma TransformSpec_Double_If_H_False_valid :
+Lemma TransformSpec_Double_If_False_valid :
   TransformSpecValid nq
-    (TransformSpec_simple_rule "Double_If_H_False" Rule_Double_If_H_False).
+    (TransformSpec_simple_rule "Double_If_False" Rule_Double_If_False).
 Proof.
-  apply TransformSpec_Double_If_H_valid.
+  apply TransformSpec_Double_If_valid.
 Qed.
 
 Theorem Transform_spec_list_valid :
@@ -3025,8 +3381,10 @@ Proof.
   - apply TransformSpec_Insert_Swap_valid.
   - apply TransformSpec_Insert_Cnot_Cnot_valid.
   - apply TransformSpec_Swap_To_3Cnot_valid.
-  - apply TransformSpec_Double_If_H_True_valid.
-  - apply TransformSpec_Double_If_H_False_valid.
+  - apply TransformSpec_Insert_Contradictory_If_False_valid.
+  - apply TransformSpec_Insert_Contradictory_If_True_valid.
+  - apply TransformSpec_Double_If_True_valid.
+  - apply TransformSpec_Double_If_False_valid.
 Qed.
 
 End TRANSFORM_FUNCTIONS.
