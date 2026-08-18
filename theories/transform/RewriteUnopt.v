@@ -117,18 +117,107 @@ Definition NatPattern_inst
       NatMap.find variable subst
   end.
 
+Definition Instruction_list_simp
+    (instrs : list Instruction)
+    : Instruction :=
+  match instrs with
+  | [] =>
+      NopInstr
+  | [instr] =>
+      instr
+  | _ =>
+      SeqInstr instrs
+  end.
+
+Definition InstructionPattern_body_view
+    (instr : Instruction)
+    : list Instruction :=
+  match instr with
+  | NopInstr =>
+      []
+  | SeqInstr instrs =>
+      instrs
+  | _ =>
+      [instr]
+  end.
+
+Fixpoint InstructionPattern_canonicalize
+    (instr : Instruction)
+    : Instruction :=
+  match instr with
+  | SeqInstr instrs =>
+      SeqInstr
+        (fold_right
+          (fun instr acc =>
+            InstructionPattern_canonicalize instr :: acc)
+          []
+          instrs)
+  | IfInstr cbit expected NopInstr =>
+      IfInstr cbit expected NopInstr
+  | IfInstr cbit expected (SeqInstr instrs) =>
+      IfInstr
+        cbit
+        expected
+        (Instruction_list_simp
+          (fold_right
+            (fun instr acc =>
+              InstructionPattern_canonicalize instr :: acc)
+            []
+            instrs))
+  | IfInstr cbit expected body =>
+      IfInstr
+        cbit
+        expected
+        (InstructionPattern_canonicalize body)
+  | _ =>
+      instr
+  end.
+
 Inductive InstructionPattern: Type :=
   | PNop: InstructionPattern
   | PRotate: Angle -> Angle -> Angle -> NatPattern -> InstructionPattern 
   | PCnot: NatPattern -> NatPattern -> InstructionPattern 
   | PSwap: NatPattern -> NatPattern -> InstructionPattern 
   | PMeasure: NatPattern -> NatPattern -> InstructionPattern 
-  | PReset: NatPattern -> InstructionPattern.
+  | PReset: NatPattern -> InstructionPattern
+  | PIf: NatPattern -> bool -> list InstructionPattern -> InstructionPattern.
 
-Definition InstructionPattern_match
+Lemma InstructionPattern_ind' :
+  forall (P : InstructionPattern -> Prop),
+    P PNop ->
+    (forall theta phi lambda qbit, P (PRotate theta phi lambda qbit)) ->
+    (forall control target, P (PCnot control target)) ->
+    (forall qbit1 qbit2, P (PSwap qbit1 qbit2)) ->
+    (forall qbit cbit, P (PMeasure qbit cbit)) ->
+    (forall qbit, P (PReset qbit)) ->
+    (forall cbit expected body_patterns,
+      Forall P body_patterns ->
+      P (PIf cbit expected body_patterns)) ->
+    forall pattern, P pattern.
+Proof.
+  intros P Hnop Hrotate Hcnot Hswap Hmeasure Hreset Hif.
+  fix IH 1.
+  intro pattern.
+  destruct pattern.
+  - exact Hnop.
+  - apply Hrotate.
+  - apply Hcnot.
+  - apply Hswap.
+  - apply Hmeasure.
+  - apply Hreset.
+  - apply Hif.
+    induction l as [| pattern patterns IHpatterns].
+    + constructor.
+    + constructor.
+      * apply IH.
+      * apply IHpatterns.
+Qed.
+
+Fixpoint InstructionPattern_match
     (pattern : InstructionPattern)
     (instr : Instruction)
     (map : PatternMap)
+    {struct pattern}
     : option PatternMap :=
   match pattern, instr with
   | PNop, NopInstr => Some map
@@ -154,9 +243,58 @@ Definition InstructionPattern_match
   | PReset qbit_pattern,
     ResetInstr qbit =>
       NatPattern_match qbit_pattern qbit map
+  | PIf cbit_pattern expected_pattern body_patterns,
+    IfInstr cbit expected body =>
+      if Bool.eqb expected_pattern expected
+      then
+        let* map' := NatPattern_match cbit_pattern cbit map in
+        let fix match_exact_list
+            (patterns : list InstructionPattern)
+            (instrs : list Instruction)
+            (map : PatternMap)
+            {struct patterns}
+            : option PatternMap :=
+          match patterns, instrs with
+          | [], [] =>
+              Some map
+          | pattern :: pattern_rest, instr :: instr_rest =>
+              let* map' := InstructionPattern_match pattern instr map in
+              match_exact_list pattern_rest instr_rest map'
+          | _, _ =>
+              None
+          end
+        in
+        match_exact_list
+          body_patterns
+          (InstructionPattern_body_view body)
+          map'
+      else None
   | _, _ =>
       None
   end.
+
+Definition InstructionPattern_match_exact_list
+    (patterns : list InstructionPattern)
+    (instrs : list Instruction)
+    (map : PatternMap)
+    : option PatternMap :=
+  let fix match_exact_list
+      (patterns : list InstructionPattern)
+      (instrs : list Instruction)
+      (map : PatternMap)
+      {struct patterns}
+      : option PatternMap :=
+    match patterns, instrs with
+    | [], [] =>
+        Some map
+    | pattern :: pattern_rest, instr :: instr_rest =>
+        let* map' := InstructionPattern_match pattern instr map in
+        match_exact_list pattern_rest instr_rest map'
+    | _, _ =>
+        None
+    end
+  in
+  match_exact_list patterns instrs map.
 
 Fixpoint InstructionPattern_match_list
     (patterns : list InstructionPattern)
@@ -171,9 +309,10 @@ Fixpoint InstructionPattern_match_list
       InstructionPattern_match_list pattern_rest instr_rest map'
   end.
 
-Definition InstructionPattern_inst
+Fixpoint InstructionPattern_inst
     (pattern : InstructionPattern)
     (map : PatternMap)
+    {struct pattern}
     : option Instruction :=
   match pattern with
   | PNop => Some NopInstr
@@ -195,6 +334,19 @@ Definition InstructionPattern_inst
   | PReset qbit_pattern =>
       let* qbit := NatPattern_inst qbit_pattern map in
       Some (ResetInstr qbit)
+  | PIf cbit_pattern expected body_patterns =>
+      let* cbit := NatPattern_inst cbit_pattern map in
+      let* body_instrs :=
+        fold_right
+          (fun pattern instrs =>
+            let* instr := InstructionPattern_inst pattern map in
+            let* instrs := instrs in
+            Some (instr :: instrs)
+          )
+          (Some [])
+          body_patterns
+      in
+      Some (IfInstr cbit expected (Instruction_list_simp body_instrs))
   end.
 
 Fixpoint InstructionPattern_inst_list
@@ -236,18 +388,6 @@ Definition RewriteRule_apply
     RewriteResult_consumed := length (rule_lhs rule);
     RewriteResult_replacement := replacement
   |}.
-
-Definition Instruction_list_simp
-    (instrs : list Instruction)
-    : Instruction :=
-  match instrs with
-  | [] =>
-      NopInstr
-  | [instr] =>
-      instr
-  | _ =>
-      SeqInstr instrs
-  end.
 
 (* ================================================================ *)
 (* Deep rewrite traversal                                           *)
@@ -319,8 +459,8 @@ Fixpoint RewriteRule_match_count
               (match head with
                | SeqInstr _ =>
                   RewriteRule_match_count rule head
-               | IfInstr _ _ _ =>
-                  RewriteRule_match_count rule head
+               | IfInstr _ _ body =>
+                  RewriteRule_match_count rule body
                | _ =>
                    0
                end)
@@ -330,7 +470,8 @@ Fixpoint RewriteRule_match_count
       in
       count_list instrs
   | IfInstr _ _ body =>
-      RewriteRule_match_count rule body
+      (RewriteRule_match_at rule [instr]
+       + RewriteRule_match_count rule body)%nat
   | _ =>
       RewriteRule_match_at rule [instr]
   end.
@@ -557,9 +698,23 @@ Fixpoint RewriteRule_apply_deep_list_result
               )
           | S occurrence' =>
               match current with
-              | SeqInstr _ | IfInstr _ _ _ =>
+              | SeqInstr _ =>
                   let '(current', current_status) :=
                     rewrite_instr current occurrence'
+                  in
+                  match current_status with
+                  | RewriteDone =>
+                      (current' :: rest, RewriteDone)
+                  | RewriteContinue occurrence'' =>
+                      let '(rest', rest_status) :=
+                        RewriteRule_apply_deep_list_result
+                          rule rewrite_instr rest occurrence''
+                      in
+                      (current' :: rest', rest_status)
+                  end
+              | IfInstr cbit expected body =>
+                  let '(current', current_status) :=
+                    rewrite_instr (IfInstr cbit expected body) (S occurrence')
                   in
                   match current_status with
                   | RewriteDone =>
@@ -610,10 +765,29 @@ Fixpoint RewriteRule_apply_deep_result
       in
       (SeqInstr instrs', status)
   | IfInstr cbit expected body =>
-      let '(body', status) :=
-        RewriteRule_apply_deep_result rule body occurrence
-      in
-      (IfInstr cbit expected body', status)
+      match RewriteRule_apply rule [instr] with
+      | Some result =>
+          match occurrence with
+          | O =>
+              ( Instruction_list_simp
+                  (RewriteResult_replacement result
+                   ++ skipn
+                        (RewriteResult_consumed result)
+                        [instr]),
+                RewriteDone
+              )
+          | S occurrence' =>
+              let '(body', status) :=
+                RewriteRule_apply_deep_result rule body occurrence'
+              in
+              (IfInstr cbit expected body', status)
+          end
+      | None =>
+          let '(body', status) :=
+            RewriteRule_apply_deep_result rule body occurrence
+          in
+          (IfInstr cbit expected body', status)
+      end
   | _ =>
       match RewriteRule_apply rule [instr] with
       | Some result =>
@@ -658,6 +832,46 @@ Definition Pat_H (qbit_pattern : NatPattern) : InstructionPattern :=
 
 Definition Pat_S (qbit_pattern : NatPattern) : InstructionPattern :=
   PRotate A0 A0 API2 qbit_pattern.
+
+Example InstructionPattern_match_if_atomic_body :
+  InstructionPattern_match
+    (PIf (NatExact 0) true [Pat_H (NatExact 1)])
+    (IfInstr 0 true (RotateInstr API2 A0 API 1))
+    PatternMap_empty =
+  Some PatternMap_empty.
+Proof.
+  reflexivity.
+Qed.
+
+Example InstructionPattern_match_if_singleton_seq_body :
+  InstructionPattern_match
+    (PIf (NatExact 0) true [Pat_H (NatExact 1)])
+    (IfInstr 0 true (SeqInstr [RotateInstr API2 A0 API 1]))
+    PatternMap_empty =
+  Some PatternMap_empty.
+Proof.
+  reflexivity.
+Qed.
+
+Example InstructionPattern_match_if_requires_exact_body_length :
+  InstructionPattern_match
+    (PIf (NatExact 0) true [Pat_H (NatExact 1); Pat_X (NatExact 1)])
+    (IfInstr 0 true (SeqInstr [RotateInstr API2 A0 API 1]))
+    PatternMap_empty =
+  None.
+Proof.
+  reflexivity.
+Qed.
+
+Example InstructionPattern_match_if_bool_mismatch :
+  InstructionPattern_match
+    (PIf (NatExact 0) true [Pat_H (NatExact 1)])
+    (IfInstr 0 false (RotateInstr API2 A0 API 1))
+    PatternMap_empty =
+  None.
+Proof.
+  reflexivity.
+Qed.
 
 Variable nq: nat.
 
@@ -951,30 +1165,82 @@ Lemma InstructionPattern_inst_extends :
     InstructionPattern_inst pattern map1 = Some instr ->
     InstructionPattern_inst pattern map2 = Some instr.
 Proof.
-  intros pattern map1 map2 instr Hextends Hinst.
-  destruct pattern; simpl in *.
+  induction pattern as [
+    | theta phi lambda qbit_pattern
+    | control_pattern target_pattern
+    | qbit1_pattern qbit2_pattern
+    | qbit_pattern cbit_pattern
+    | qbit_pattern
+    | cbit_pattern expected body_patterns Hbody_patterns
+  ] using InstructionPattern_ind';
+  intros map1 map2 instr Hextends Hinst; simpl in *.
   - assumption.
-  - destruct (NatPattern_inst n map1) as [qbit |] eqn:Hqbit; try discriminate.
+  - destruct (NatPattern_inst qbit_pattern map1) as [qbit |] eqn:Hqbit; try discriminate.
     rewrite NatPattern_inst_extends with (map1 := map1) (value := qbit).
     all: assumption.
-  - destruct (NatPattern_inst n map1) as [control |] eqn:Hcontrol; try discriminate.
-    destruct (NatPattern_inst n0 map1) as [target |] eqn:Htarget; try discriminate.
+  - destruct (NatPattern_inst control_pattern map1) as [control |] eqn:Hcontrol; try discriminate.
+    destruct (NatPattern_inst target_pattern map1) as [target |] eqn:Htarget; try discriminate.
     rewrite NatPattern_inst_extends with (map1 := map1) (value := control).
     rewrite NatPattern_inst_extends with (map1 := map1) (value := target).
     all: assumption.
-  - destruct (NatPattern_inst n map1) as [qbit1 |] eqn:Hqbit1; try discriminate.
-    destruct (NatPattern_inst n0 map1) as [qbit2 |] eqn:Hqbit2; try discriminate.
+  - destruct (NatPattern_inst qbit1_pattern map1) as [qbit1 |] eqn:Hqbit1; try discriminate.
+    destruct (NatPattern_inst qbit2_pattern map1) as [qbit2 |] eqn:Hqbit2; try discriminate.
     rewrite NatPattern_inst_extends with (map1 := map1) (value := qbit1).
     rewrite NatPattern_inst_extends with (map1 := map1) (value := qbit2).
     all: assumption.
-  - destruct (NatPattern_inst n map1) as [qbit |] eqn:Hqbit; try discriminate.
-    destruct (NatPattern_inst n0 map1) as [cbit |] eqn:Hcbit; try discriminate.
+  - destruct (NatPattern_inst qbit_pattern map1) as [qbit |] eqn:Hqbit; try discriminate.
+    destruct (NatPattern_inst cbit_pattern map1) as [cbit |] eqn:Hcbit; try discriminate.
     rewrite NatPattern_inst_extends with (map1 := map1) (value := qbit).
     rewrite NatPattern_inst_extends with (map1 := map1) (value := cbit).
     all: assumption.
-  - destruct (NatPattern_inst n map1) as [qbit |] eqn:Hqbit; try discriminate.
+  - destruct (NatPattern_inst qbit_pattern map1) as [qbit |] eqn:Hqbit; try discriminate.
     rewrite NatPattern_inst_extends with (map1 := map1) (value := qbit).
     all: assumption.
+  - destruct (NatPattern_inst cbit_pattern map1) as [cbit_value |] eqn:Hcbit;
+    try discriminate.
+    destruct
+      (fold_right
+        (fun pattern instrs =>
+          let* instr := InstructionPattern_inst pattern map1 in
+          let* instrs := instrs in
+          Some (instr :: instrs))
+        (Some [])
+        body_patterns)
+      as [body_instrs |] eqn:Hbody; try discriminate.
+    inversion Hinst; subst; clear Hinst.
+    erewrite NatPattern_inst_extends with
+      (map1 := map1) (value := cbit_value); try eassumption.
+    replace
+      (fold_right
+        (fun pattern instrs =>
+          let* instr := InstructionPattern_inst pattern map2 in
+          let* instrs := instrs in
+          Some (instr :: instrs))
+        (Some [])
+        body_patterns)
+      with (Some body_instrs).
+    + reflexivity.
+    + symmetry.
+      revert body_instrs Hbody Hbody_patterns.
+      induction body_patterns as [| pattern patterns IHpatterns];
+      intros body_instrs Hbody Hforall; simpl in *.
+      * exact Hbody.
+      * inversion Hforall as [| ? ? Hhead_extends Htail_extends]; subst.
+        destruct (InstructionPattern_inst pattern map1)
+          as [body_instr |] eqn:Hbody_instr; try discriminate.
+        destruct
+          (fold_right
+            (fun pattern instrs =>
+              let* instr := InstructionPattern_inst pattern map1 in
+              let* instrs := instrs in
+              Some (instr :: instrs))
+            (Some [])
+            patterns)
+          as [body_instrs' |] eqn:Hbody_instrs; try discriminate.
+        inversion Hbody; subst.
+        rewrite (Hhead_extends map1 map2 body_instr Hextends Hbody_instr).
+        rewrite (IHpatterns body_instrs' eq_refl Htail_extends).
+        reflexivity.
 Qed.
 
 Lemma InstructionPattern_match_extends :
@@ -982,108 +1248,308 @@ Lemma InstructionPattern_match_extends :
     InstructionPattern_match pattern instr map = Some map' ->
     PatternMap_extends map map'.
 Proof.
-  intros pattern instr map map' Hmatch.
-  destruct pattern as [
+  induction pattern as [
     | theta' phi' lambda' qbit_pattern
     | control_pattern target_pattern
     | qbit1_pattern qbit2_pattern
     | qbit_pattern cbit_pattern
     | qbit_pattern
-  ], instr as [
-    | theta phi lambda qbit
-    | control target
-    | qbit1 qbit2
-    | qbit cbit
-    | instrs
-    | cbit expected body
-    | qbit
-  ]; try discriminate; inversion Hmatch; subst.
-  - apply PatternMap_extends_refl.
-  - destruct (Angle_eqb theta theta');
+    | cbit_pattern expected_pattern body_patterns Hbody_patterns
+  ] using InstructionPattern_ind';
+  intros instr map map' Hmatch.
+  - destruct instr; simpl in Hmatch; try discriminate.
+    inversion Hmatch; subst.
+    apply PatternMap_extends_refl.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (Angle_eqb theta theta');
     destruct (Angle_eqb phi phi');
     destruct (Angle_eqb lambda lambda'); try discriminate.
-    apply NatPattern_match_extends with qbit_pattern qbit.
-    assumption.
-  - destruct (NatPattern_match control_pattern control map) eqn:H; try discriminate.
-    apply PatternMap_extends_trans with p.
-    + apply NatPattern_match_extends with control_pattern control.
-      assumption.
-    + apply NatPattern_match_extends with target_pattern target.
-      assumption.
-  - destruct (NatPattern_match qbit1_pattern qbit1 map) eqn:H; try discriminate.
-    apply PatternMap_extends_trans with p.
-    + apply NatPattern_match_extends with qbit1_pattern qbit1.
-      assumption.
-    + apply NatPattern_match_extends with qbit2_pattern qbit2.
-      assumption.
-  - destruct (NatPattern_match qbit_pattern qbit map) eqn:H; try discriminate.
-    apply PatternMap_extends_trans with p.
-    + apply NatPattern_match_extends with qbit_pattern qbit.
-      assumption.
-    + apply NatPattern_match_extends with cbit_pattern cbit.
-      assumption.
-  - apply NatPattern_match_extends with qbit_pattern qbit.
-    assumption.
+    eapply NatPattern_match_extends.
+    apply Hmatch.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (NatPattern_match control_pattern control map)
+      as [map_control |] eqn:Hcontrol; try discriminate.
+    apply PatternMap_extends_trans with map_control.
+    + eapply NatPattern_match_extends.
+      apply Hcontrol.
+    + eapply NatPattern_match_extends.
+      apply Hmatch.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (NatPattern_match qbit1_pattern qbit1 map)
+      as [map_qbit1 |] eqn:Hqbit1; try discriminate.
+    apply PatternMap_extends_trans with map_qbit1.
+    + eapply NatPattern_match_extends.
+      apply Hqbit1.
+    + eapply NatPattern_match_extends.
+      apply Hmatch.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (NatPattern_match qbit_pattern qbit map)
+      as [map_qbit |] eqn:Hqbit; try discriminate.
+    apply PatternMap_extends_trans with map_qbit.
+    + eapply NatPattern_match_extends.
+      apply Hqbit.
+    + eapply NatPattern_match_extends.
+      apply Hmatch.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    eapply NatPattern_match_extends.
+    apply Hmatch.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (Bool.eqb expected_pattern expected); try discriminate.
+    destruct (NatPattern_match cbit_pattern cbit map)
+      as [map_cbit |] eqn:Hcbit; try discriminate.
+    apply PatternMap_extends_trans with map_cbit.
+    + eapply NatPattern_match_extends.
+      apply Hcbit.
+    + clear Hcbit.
+      revert map_cbit map' Hmatch Hbody_patterns.
+      generalize (InstructionPattern_body_view body) as body_instrs.
+      induction body_patterns as [| pattern patterns IHpatterns];
+      intros body_instrs map_body map' Hmatch Hforall;
+      destruct body_instrs as [| instr instrs];
+      simpl in Hmatch; try discriminate.
+      * inversion Hmatch; subst.
+        apply PatternMap_extends_refl.
+      * inversion Hforall as [| ? ? Hhead_extends Htail_extends]; subst.
+        destruct (InstructionPattern_match pattern instr map_body)
+          as [map_head |] eqn:Hhead; try discriminate.
+        apply PatternMap_extends_trans with map_head.
+        -- eapply Hhead_extends.
+           apply Hhead.
+        -- eapply IHpatterns; eauto.
 Qed.
 
 Lemma InstructionPattern_match_sound :
   forall pattern instr map map',
     InstructionPattern_match pattern instr map = Some map' ->
-    InstructionPattern_inst pattern map' = Some instr.
+    InstructionPattern_inst pattern map' =
+      Some (InstructionPattern_canonicalize instr).
 Proof.
-  intros pattern instr map map' Hmatch.
-  destruct pattern as [
+  induction pattern as [
     | theta' phi' lambda' qbit_pattern
     | control_pattern target_pattern
     | qbit1_pattern qbit2_pattern
     | qbit_pattern cbit_pattern
     | qbit_pattern
-  ], instr as [
-    | theta phi lambda qbit
-    | control target
-    | qbit1 qbit2
-    | qbit cbit
-    | instrs
-    | cbit expected body
-    | qbit
-  ]; try discriminate; inversion Hmatch as [H]; subst.
-  - reflexivity.
-  - destruct (Angle_eqb theta theta') eqn:Htheta;
+    | cbit_pattern expected_pattern body_patterns Hbody_patterns
+  ] using InstructionPattern_ind';
+  intros instr map map' Hmatch.
+  - destruct instr; simpl in Hmatch; try discriminate.
+    inversion Hmatch; subst.
+    reflexivity.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (Angle_eqb theta theta') eqn:Htheta;
     destruct (Angle_eqb phi phi') eqn:Hphi;
     destruct (Angle_eqb lambda lambda') eqn:Hlambda; try discriminate.
     apply Angle_eqb_eq in Htheta, Hphi, Hlambda; subst.
     simpl.
     erewrite NatPattern_match_sound with (value := qbit).
     reflexivity.
-    apply H.
-  - destruct (NatPattern_match control_pattern control map) eqn:H'; try discriminate.
+    apply Hmatch.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (NatPattern_match control_pattern control map)
+      as [map_control |] eqn:Hcontrol; try discriminate.
     simpl.
     erewrite NatPattern_inst_extends with (value := control).
     erewrite NatPattern_match_sound with (value := target).
     + reflexivity.
-    + apply H.
-    + eapply NatPattern_match_extends. apply H.
-    + eapply NatPattern_match_sound. apply H'.
-  - destruct (NatPattern_match qbit1_pattern qbit1 map) eqn:H'; try discriminate.
+    + apply Hmatch.
+    + eapply NatPattern_match_extends. apply Hmatch.
+    + eapply NatPattern_match_sound. apply Hcontrol.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (NatPattern_match qbit1_pattern qbit1 map)
+      as [map_qbit1 |] eqn:Hqbit1; try discriminate.
     simpl.
     erewrite NatPattern_inst_extends with (value := qbit1).
     erewrite NatPattern_match_sound with (value := qbit2).
     + reflexivity.
-    + apply H.
-    + eapply NatPattern_match_extends. apply H.
-    + eapply NatPattern_match_sound. apply H'.
-  - destruct (NatPattern_match qbit_pattern qbit map) eqn:H'; try discriminate.
+    + apply Hmatch.
+    + eapply NatPattern_match_extends. apply Hmatch.
+    + eapply NatPattern_match_sound. apply Hqbit1.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (NatPattern_match qbit_pattern qbit map)
+      as [map_qbit |] eqn:Hqbit; try discriminate.
     simpl.
     erewrite NatPattern_inst_extends with (value := qbit).
     erewrite NatPattern_match_sound with (value := cbit).
     + reflexivity.
-    + apply H.
-    + eapply NatPattern_match_extends. apply H.
-    + eapply NatPattern_match_sound. apply H'.
-  - simpl.
+    + apply Hmatch.
+    + eapply NatPattern_match_extends. apply Hmatch.
+    + eapply NatPattern_match_sound. apply Hqbit.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    simpl.
     erewrite NatPattern_match_sound with (value := qbit).
     reflexivity.
-    apply H.
+    apply Hmatch.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (Bool.eqb expected_pattern expected) eqn:Hexpected;
+    try discriminate.
+    assert (Hexpected_eq : expected_pattern = expected).
+    {
+      destruct expected_pattern, expected; simpl in Hexpected;
+      try discriminate; reflexivity.
+    }
+    subst expected.
+    destruct (NatPattern_match cbit_pattern cbit map)
+      as [map_cbit |] eqn:Hcbit; try discriminate.
+    assert (Hcbit_inst : NatPattern_inst cbit_pattern map_cbit = Some cbit).
+    {
+      eapply NatPattern_match_sound.
+      apply Hcbit.
+    }
+    clear Hcbit.
+    assert (
+      Hbody :
+        fold_right
+          (fun pattern instrs =>
+            let* instr := InstructionPattern_inst pattern map' in
+            let* instrs := instrs in
+            Some (instr :: instrs))
+          (Some [])
+          body_patterns =
+        Some
+          (fold_right
+            (fun instr acc =>
+              InstructionPattern_canonicalize instr :: acc)
+            []
+            (InstructionPattern_body_view body))
+        /\
+        PatternMap_extends map_cbit map'
+    ).
+    {
+      clear Hcbit_inst.
+      revert map_cbit map' Hmatch Hbody_patterns.
+      generalize (InstructionPattern_body_view body) as body_instrs.
+      induction body_patterns as [| pattern patterns IHpatterns];
+      intros body_instrs map_body map_final Hmatch Hforall;
+      destruct body_instrs as [| instr instrs];
+      simpl in Hmatch; try discriminate.
+      - inversion Hmatch; subst.
+        split.
+        + reflexivity.
+        + apply PatternMap_extends_refl.
+      - inversion Hforall as [| ? ? Hhead_sound Htail_sound]; subst.
+        destruct (InstructionPattern_match pattern instr map_body)
+          as [map_head |] eqn:Hhead; try discriminate.
+        destruct (IHpatterns instrs map_head map_final Hmatch Htail_sound)
+          as [Htail_inst Htail_extends].
+        split.
+        + simpl.
+          erewrite InstructionPattern_inst_extends with
+            (map1 := map_head)
+            (map2 := map_final)
+            (instr := InstructionPattern_canonicalize instr).
+          * rewrite Htail_inst.
+            reflexivity.
+          * apply Htail_extends.
+          * exact (Hhead_sound instr map_body map_head Hhead).
+        + apply PatternMap_extends_trans with map_head.
+          * eapply InstructionPattern_match_extends.
+            apply Hhead.
+          * apply Htail_extends.
+    }
+    destruct Hbody as [Hbody_inst Hbody_extends].
+    simpl.
+    erewrite NatPattern_inst_extends with (value := cbit).
+    + rewrite Hbody_inst.
+      destruct body; reflexivity.
+    + apply Hbody_extends.
+    + apply Hcbit_inst.
 Qed.
 
 Lemma InstructionPattern_match_list_extends :
@@ -1117,7 +1583,8 @@ Lemma InstructionPattern_match_list_decompose :
       instrs = matched ++ suffix
       /\
       InstructionPattern_inst_list
-        patterns map' = Some matched
+        patterns map' =
+          Some (List.map InstructionPattern_canonicalize matched)
       /\
       length matched = length patterns.
 Proof.
@@ -1152,16 +1619,18 @@ Qed.
 Lemma RewriteRule_apply_decompose :
   forall rule instrs result,
     RewriteRule_apply rule instrs = Some result ->
-    exists map lhs rhs suffix,
-      instrs = lhs ++ suffix
+    exists map raw_lhs lhs rhs suffix,
+      instrs = raw_lhs ++ suffix
       /\
       InstructionPattern_inst_list
         (rule_lhs rule) map = Some lhs
       /\
+      lhs = List.map InstructionPattern_canonicalize raw_lhs
+      /\
       InstructionPattern_inst_list
         (rule_rhs rule) map = Some rhs
       /\
-      RewriteResult_consumed result = length lhs
+      RewriteResult_consumed result = length raw_lhs
       /\
       RewriteResult_replacement result = rhs.
 Proof.
@@ -1177,8 +1646,13 @@ Proof.
   clear Happly.
   destruct (InstructionPattern_match_list_decompose
     (rule_lhs rule) instrs PatternMap_empty map Hmatch)
-  as (lhs & suffix & Hinstrs & Hlhs & Hlength).
-  exists map, lhs, rhs, suffix.
+  as (raw_lhs & suffix & Hinstrs & Hlhs & Hlength).
+  exists
+    map,
+    raw_lhs,
+    (List.map InstructionPattern_canonicalize raw_lhs),
+    rhs,
+    suffix.
   repeat split; try assumption.
   simpl.
   symmetry.
@@ -1271,6 +1745,180 @@ Proof.
     + apply H. inversion H0. assumption.
 Qed.
 
+Lemma InstructionPattern_canonicalize_equiv :
+  forall instr,
+    Instruction_equiv nq
+      instr
+      (InstructionPattern_canonicalize instr).
+Proof.
+  apply Instruction_ind'; simpl; try reflexivity.
+  - intros instrs Hforall.
+    induction instrs as [| instr instrs IHinstrs]; simpl; try reflexivity.
+    inversion Hforall as [| ? ? Hhead Htail]; subst.
+    repeat rewrite Instruction_equiv_Seq_list_eq.
+    apply qasm_seq_equiv_Proper.
+    + exact Hhead.
+    + apply IHinstrs.
+      exact Htail.
+  - intros cbit expected body Hbody.
+    destruct body; simpl in *.
+    + reflexivity.
+    + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper.
+      transitivity (SeqInstr (List.map InstructionPattern_canonicalize l)).
+      * exact Hbody.
+      * symmetry.
+        apply Instruction_list_simp_eq.
+    + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper; exact Hbody.
+Qed.
+
+Lemma InstructionPattern_canonicalize_list_equiv :
+  forall instrs,
+    Instruction_equiv nq
+      (SeqInstr instrs)
+      (SeqInstr (List.map InstructionPattern_canonicalize instrs)).
+Proof.
+  intros instrs.
+  induction instrs as [| instr instrs IHinstrs]; simpl; try reflexivity.
+  repeat rewrite Instruction_equiv_Seq_list_eq.
+  apply qasm_seq_equiv_Proper.
+  - apply InstructionPattern_canonicalize_equiv.
+  - exact IHinstrs.
+Qed.
+
+Lemma Instruction_list_simp_qbits_valid :
+  forall instrs,
+    Instruction_list_qbits_valid instrs ->
+    Instruction_qbits_valid (Instruction_list_simp instrs).
+Proof.
+  intros instrs Hvalid.
+  destruct instrs as [| instr instrs]; simpl.
+  - constructor.
+  - destruct instrs as [| instr' instrs]; simpl.
+    + inversion Hvalid; subst.
+      assumption.
+    + constructor.
+      exact Hvalid.
+Qed.
+
+Lemma InstructionPattern_canonicalize_qbits_valid :
+  forall instr,
+    Instruction_qbits_valid instr ->
+    Instruction_qbits_valid (InstructionPattern_canonicalize instr).
+Proof.
+  intro instr.
+  induction instr as [
+    | theta phi lambda qbit
+    | control target
+    | qbit1 qbit2
+    | qbit cbit
+    | instrs Hforall
+    | cbit expected body Hbody_ih
+    | qbit
+  ] using Instruction_ind'; simpl.
+  - intros _.
+    constructor.
+  - intros Hvalid.
+    exact Hvalid.
+  - intros Hvalid.
+    exact Hvalid.
+  - intros Hvalid.
+    exact Hvalid.
+  - intros Hvalid.
+    exact Hvalid.
+  - intros Hvalid.
+    inversion Hvalid as [| | | | | ? Hlist_valid | |]; subst.
+    constructor.
+    revert Hforall Hlist_valid.
+    induction instrs as [| instr instrs IHinstrs];
+    intros Hforall Hlist_valid; simpl.
+    + constructor.
+    + inversion Hforall as [| ? ? Hhead_ih Htail_ih]; subst.
+      inversion Hlist_valid as [| ? ? Hhead_valid Htail_valid]; subst.
+      constructor.
+      * apply Hhead_ih.
+        exact Hhead_valid.
+      * apply IHinstrs.
+        -- constructor.
+           exact Htail_valid.
+        -- exact Htail_ih.
+        -- exact Htail_valid.
+  - intros Hvalid.
+    inversion Hvalid as [| | | | | | ? ? ? Hbody_valid |]; subst.
+    destruct body as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit'
+      | instrs
+      | cbit' expected' body'
+      | qbit
+    ]; simpl in *.
+    + constructor.
+      apply Hbody_ih.
+      exact Hbody_valid.
+    + constructor.
+      apply Hbody_ih.
+      exact Hbody_valid.
+    + constructor.
+      apply Hbody_ih.
+      exact Hbody_valid.
+    + constructor.
+      apply Hbody_ih.
+      exact Hbody_valid.
+    + constructor.
+      apply Hbody_ih.
+      exact Hbody_valid.
+    + constructor.
+      apply Instruction_list_simp_qbits_valid.
+      specialize (Hbody_ih Hbody_valid).
+      simpl in Hbody_ih.
+      inversion Hbody_ih as [| | | | | ? Hcanonical_list_valid | |]; subst.
+      exact Hcanonical_list_valid.
+    + constructor.
+      apply Hbody_ih.
+      exact Hbody_valid.
+    + constructor.
+      apply Hbody_ih.
+      exact Hbody_valid.
+  - intros Hvalid.
+    exact Hvalid.
+Qed.
+
+Lemma InstructionPattern_canonicalize_list_qbits_valid :
+  forall instrs,
+    Instruction_list_qbits_valid instrs ->
+    Instruction_list_qbits_valid
+      (List.map InstructionPattern_canonicalize instrs).
+Proof.
+  intros instrs Hvalid.
+  induction instrs as [| instr instrs IHinstrs]; simpl.
+  - constructor.
+  - inversion Hvalid; subst.
+    constructor.
+    + apply InstructionPattern_canonicalize_qbits_valid.
+      exact H1.
+    + apply IHinstrs.
+      exact H2.
+Qed.
+
+Lemma Instruction_list_qbits_valid_app :
+  forall lhs rhs,
+    Instruction_list_qbits_valid lhs ->
+    Instruction_list_qbits_valid rhs ->
+    Instruction_list_qbits_valid (lhs ++ rhs).
+Proof.
+  intros lhs rhs Hlhs Hrhs.
+  induction Hlhs.
+  - exact Hrhs.
+  - simpl.
+    constructor; assumption.
+Qed.
+
 (* Connection between rewriting scheme and instruction equality proof *)
 
 Definition PatternRuleValid
@@ -1355,12 +2003,33 @@ Proof.
   intros rule Hrule.
   intros instrs result Hvalid Happly.
   destruct (RewriteRule_apply_decompose rule instrs result Happly)
-    as (subst & lhs & rhs & suffix & Hinstrs & Hlhs & Hrhs & Hconsumed & Hreplacement).
-  subst instrs.
+    as (subst & raw_lhs & lhs & rhs & suffix
+      & Hinstrs & Hlhs & Hlhs_eq & Hrhs & Hconsumed & Hreplacement).
+  subst instrs lhs.
+  destruct (Instruction_list_qbits_valid_app_inv raw_lhs suffix Hvalid)
+    as [Hraw_lhs_valid Hsuffix_valid].
+  assert (
+    Hlhs_valid :
+      Instruction_list_qbits_valid
+        (List.map InstructionPattern_canonicalize raw_lhs ++ suffix)
+  ).
+  {
+    apply Instruction_list_qbits_valid_app.
+    - apply InstructionPattern_canonicalize_list_qbits_valid.
+      exact Hraw_lhs_valid.
+    - exact Hsuffix_valid.
+  }
   rewrite Hconsumed.
   rewrite Hreplacement.
   rewrite skipn_prefix_length.
-  eapply Hpattern; eauto.
+  transitivity
+    (SeqInstr
+      (List.map InstructionPattern_canonicalize raw_lhs ++ suffix)).
+  - apply Instruction_equiv_implies_behavioral_equiv.
+    repeat rewrite Instruction_equiv_Seq_list_list_eq.
+    apply Instruction_equiv_rewrite_start.
+    apply InstructionPattern_canonicalize_list_equiv.
+  - eapply Hpattern; eauto.
 Qed.
 
 Theorem TransformSpec_rule_valid :
@@ -1386,16 +2055,32 @@ Proof.
   unfold RewriteRuleEquivValid.
   intros rule Hrule instrs result Hvalid Happly.
   destruct (RewriteRule_apply_decompose rule instrs result Happly)
-    as (subst & lhs & rhs & suffix & Hinstrs & Hlhs & Hrhs & Hconsumed & Hreplacement).
-  subst instrs.
-  destruct (Instruction_list_qbits_valid_app_inv lhs suffix Hvalid)
-    as [Hlhs_valid _].
+    as (subst & raw_lhs & lhs & rhs & suffix
+      & Hinstrs & Hlhs & Hlhs_eq & Hrhs & Hconsumed & Hreplacement).
+  subst instrs lhs.
+  destruct (Instruction_list_qbits_valid_app_inv raw_lhs suffix Hvalid)
+    as [Hraw_lhs_valid Hsuffix_valid].
+  assert (
+    Hlhs_valid :
+      Instruction_list_qbits_valid
+        (List.map InstructionPattern_canonicalize raw_lhs)
+  ).
+  {
+    apply InstructionPattern_canonicalize_list_qbits_valid.
+    exact Hraw_lhs_valid.
+  }
   rewrite Hconsumed.
   rewrite Hreplacement.
   rewrite skipn_prefix_length.
-  repeat rewrite Instruction_equiv_Seq_list_list_eq.
-  apply Instruction_equiv_rewrite_start.
-  eapply Hpattern; eauto.
+  transitivity
+    (SeqInstr
+      (List.map InstructionPattern_canonicalize raw_lhs ++ suffix)).
+  - repeat rewrite Instruction_equiv_Seq_list_list_eq.
+    apply Instruction_equiv_rewrite_start.
+    apply InstructionPattern_canonicalize_list_equiv.
+  - repeat rewrite Instruction_equiv_Seq_list_list_eq.
+    apply Instruction_equiv_rewrite_start.
+    eapply Hpattern; eauto.
 Qed.
 
 Theorem TransformSpec_rule_equiv_valid :
@@ -1743,14 +2428,104 @@ Proof.
                | qbit1 qbit2
                | qbit cbit
                | seq_instrs
-               | cbit expected body
-               | target].
-          all: try solve [
-            solve_rewrite_apply_deep_list_atomic
-              rule instrs occurrence Hresult IHHvalid0
-          ].
-          all: solve_rewrite_apply_deep_list_structured
-            rule instrs Hresult IHHvalid IHHvalid0.
+	               | cbit expected body
+	               | target].
+	          all: try solve [
+	            solve_rewrite_apply_deep_list_atomic
+	              rule instrs occurrence Hresult IHHvalid0
+	          ].
+		          -- solve_rewrite_apply_deep_list_structured
+		              rule instrs Hresult IHHvalid IHHvalid0.
+	          -- destruct (RewriteRule_apply rule [IfInstr cbit expected body])
+	               as [root_result |] eqn:Hroot.
+	             ++ destruct
+	                  (RewriteRule_apply_deep_result rule body occurrence)
+	                  as [body' body_status] eqn:Hbody_result.
+	                assert (
+	                  Hcurrent_result :
+	                    RewriteRule_apply_deep_result
+	                      rule (IfInstr cbit expected body) (S occurrence)
+	                    =
+	                    (IfInstr cbit expected body', body_status)
+	                ).
+	                {
+	                  simpl.
+	                  rewrite Hroot.
+	                  rewrite Hbody_result.
+	                  reflexivity.
+	                }
+	                specialize
+	                  (IHHvalid
+	                    (S occurrence)
+	                    (IfInstr cbit expected body')
+	                    body_status
+	                    Hcurrent_result).
+	                destruct body_status as [| occurrence''].
+	                ** inversion Hresult; subst.
+	                   repeat rewrite Instruction_equiv_Seq_list_eq.
+	                   apply Instruction_equiv_rewrite_start.
+	                   exact IHHvalid.
+	                ** simpl in IHHvalid.
+	                   inversion IHHvalid; subst.
+	                   destruct
+	                     (RewriteRule_apply_deep_list_result
+	                       rule (RewriteRule_apply_deep_result rule)
+	                       instrs occurrence'')
+	                     as [rest' rest_status] eqn:Hrest_result.
+	                   specialize
+	                     (IHHvalid0
+	                       occurrence'' rest' rest_status Hrest_result).
+	                   destruct rest_status.
+	                   --- inversion Hresult; subst.
+	                       repeat rewrite Instruction_equiv_Seq_list_eq.
+	                       apply Instruction_equiv_rewrite_end.
+	                       exact IHHvalid0.
+		                   --- inversion Hresult; subst.
+		                       f_equal.
+	             ++ destruct
+	                  (RewriteRule_apply_deep_result rule body (S occurrence))
+	                  as [body' body_status] eqn:Hbody_result.
+	                assert (
+	                  Hcurrent_result :
+	                    RewriteRule_apply_deep_result
+	                      rule (IfInstr cbit expected body) (S occurrence)
+	                    =
+	                    (IfInstr cbit expected body', body_status)
+	                ).
+	                {
+	                  simpl.
+	                  rewrite Hroot.
+	                  rewrite Hbody_result.
+	                  reflexivity.
+	                }
+	                specialize
+	                  (IHHvalid
+	                    (S occurrence)
+	                    (IfInstr cbit expected body')
+	                    body_status
+	                    Hcurrent_result).
+	                destruct body_status as [| occurrence''].
+	                ** inversion Hresult; subst.
+	                   repeat rewrite Instruction_equiv_Seq_list_eq.
+	                   apply Instruction_equiv_rewrite_start.
+	                   exact IHHvalid.
+	                ** simpl in IHHvalid.
+	                   inversion IHHvalid; subst.
+	                   destruct
+	                     (RewriteRule_apply_deep_list_result
+	                       rule (RewriteRule_apply_deep_result rule)
+	                       instrs occurrence'')
+	                     as [rest' rest_status] eqn:Hrest_result.
+	                   specialize
+	                     (IHHvalid0
+	                       occurrence'' rest' rest_status Hrest_result).
+	                   destruct rest_status.
+	                   --- inversion Hresult; subst.
+	                       repeat rewrite Instruction_equiv_Seq_list_eq.
+	                       apply Instruction_equiv_rewrite_end.
+	                       exact IHHvalid0.
+		                   --- inversion Hresult; subst.
+		                       f_equal.
       + solve_rewrite_apply_deep_list_structured
           rule instrs Hresult IHHvalid IHHvalid0.
   }
@@ -1773,17 +2548,44 @@ Proof.
       destruct status; subst.
       + exact Hlist_sound.
       + reflexivity.
-    - inversion Hvalid as [| | | | | | ? ? ? Hbody_valid |]; subst.
-      destruct
-        (RewriteRule_apply_deep_result rule instr occurrence)
-        as [body' status'] eqn:Hbody.
-      inversion Hresult; subst.
-      specialize (IHinstr Hbody_valid occurrence body' status Hbody)
-        as Hbody_sound.
-      destruct status; subst.
-      + apply Instruction_if_Proper.
-        exact Hbody_sound.
-      + reflexivity.
+	    - inversion Hvalid as [| | | | | | ? ? ? Hbody_valid |]; subst.
+	      destruct (RewriteRule_apply rule [IfInstr cbit cond instr])
+	        as [root_result |] eqn:Hroot.
+	      + destruct occurrence as [| occurrence'].
+	        * inversion Hresult; subst.
+	          transitivity (SeqInstr [IfInstr cbit cond instr]).
+	          -- symmetry.
+	             apply Instruction_equiv_Seq_singleton.
+	          -- transitivity
+	               (SeqInstr
+	                 (RewriteResult_replacement root_result
+	                  ++ skipn
+	                       (RewriteResult_consumed root_result)
+	                       [IfInstr cbit cond instr])).
+	             ++ eapply Hrule; eauto.
+	                constructor; [exact Hvalid | constructor].
+	             ++ symmetry.
+	                apply Instruction_list_simp_eq.
+	        * destruct
+	            (RewriteRule_apply_deep_result rule instr occurrence')
+	            as [body' status'] eqn:Hbody.
+	          inversion Hresult; subst.
+	          specialize (IHinstr Hbody_valid occurrence' body' status Hbody)
+	            as Hbody_sound.
+	          destruct status; subst.
+	          -- apply Instruction_if_Proper.
+	             exact Hbody_sound.
+	          -- reflexivity.
+	      + destruct
+	          (RewriteRule_apply_deep_result rule instr occurrence)
+	          as [body' status'] eqn:Hbody.
+	        inversion Hresult; subst.
+	        specialize (IHinstr Hbody_valid occurrence body' status Hbody)
+	          as Hbody_sound.
+	        destruct status; subst.
+	        * apply Instruction_if_Proper.
+	          exact Hbody_sound.
+	        * reflexivity.
   }
   exact instr_sound.
 Qed.
@@ -1886,6 +2688,40 @@ Definition Rule_Insert_Swap (qbit1 qbit2: nat) : RewriteRule :=
     rule_rhs := [PSwap (NatExact qbit1) (NatExact qbit2)]
   |}.
 
+Definition Rule_Insert_Cnot_Cnot (qbit1 qbit2: nat) : RewriteRule :=
+  {|
+    rule_lhs := [];
+    rule_rhs :=
+      [PCnot (NatExact qbit1) (NatExact qbit2);
+       PCnot (NatExact qbit1) (NatExact qbit2)]
+  |}.
+
+Definition Rule_Swap_To_3Cnot (qbit1 qbit2: nat) : RewriteRule :=
+  {|
+    rule_lhs := [PSwap (NatExact qbit1) (NatExact qbit2)];
+    rule_rhs :=
+      [PCnot (NatExact qbit1) (NatExact qbit2);
+       PCnot (NatExact qbit2) (NatExact qbit1);
+       PCnot (NatExact qbit1) (NatExact qbit2)]
+  |}.
+
+Definition Rule_Double_If_H (cond : bool) : RewriteRule :=
+  {|
+    rule_lhs :=
+      [PIf (NatVar 0) cond
+        [Pat_H (NatVar 1)]];
+    rule_rhs :=
+      [PIf (NatVar 0) cond
+        [PIf (NatVar 0) cond
+          [Pat_H (NatVar 1)]]]
+  |}.
+
+Definition Rule_Double_If_H_True : RewriteRule :=
+  Rule_Double_If_H true.
+
+Definition Rule_Double_If_H_False : RewriteRule :=
+  Rule_Double_If_H false.
+
 Definition Transform_simple_rule (rule: RewriteRule) : TransformParameter -> option RewriteRule :=
   fun param =>
     match param with
@@ -1940,10 +2776,46 @@ Definition TransformSpec_Insert_Swap : TransformSpec :=
     param_count := 2;
   |}.
 
+Definition TransformSpec_Insert_Cnot_Cnot : TransformSpec :=
+  {|
+    transform_name := "Insert_Cnot_Cnot";
+    transform_rule := fun param =>
+      match param with
+      | Param_qbit2 qbit1 qbit2 =>
+          if (qbit1 <? nq) && (qbit2 <? nq)
+          then Some (Rule_Insert_Cnot_Cnot qbit1 qbit2)
+          else None
+      | _ => None
+      end;
+    transform_postprocess := fun _ instr => instr;
+    transform_strategy := TransformDeep;
+    param_count := 2;
+  |}.
+
+Definition TransformSpec_Swap_To_3Cnot : TransformSpec :=
+  {|
+    transform_name := "Swap_To_3Cnot";
+    transform_rule := fun param =>
+      match param with
+      | Param_qbit2 qbit1 qbit2 =>
+          if (qbit1 <? nq) && (qbit2 <? nq)
+          then Some (Rule_Swap_To_3Cnot qbit1 qbit2)
+          else None
+      | _ => None
+      end;
+    transform_postprocess := fun _ instr => instr;
+    transform_strategy := TransformDeep;
+    param_count := 2;
+  |}.
+
 Definition Transform_spec_list : list TransformSpec :=
   [
     TransformSpec_Insert_I;
-    TransformSpec_Insert_Swap
+    TransformSpec_Insert_Swap;
+    TransformSpec_Insert_Cnot_Cnot;
+    TransformSpec_Swap_To_3Cnot;
+    TransformSpec_simple_rule "Double_If_H_True" Rule_Double_If_H_True;
+    TransformSpec_simple_rule "Double_If_H_False" Rule_Double_If_H_False
   ].
 
 Lemma TransformSpec_Insert_I_valid :
@@ -2001,12 +2873,160 @@ Proof.
     discriminate.
 Qed.
 
+Lemma Instruction_equiv_Nop_Seq_nil :
+  Instruction_equiv nq NopInstr (SeqInstr []).
+Proof.
+  intros ps _.
+  cbn [Execute_suppl].
+  reflexivity.
+Qed.
+
+Lemma Instruction_equiv_Seq_two :
+  forall instr1 instr2,
+    Instruction_equiv nq
+      (SeqInstr [instr1; instr2])
+      qasm{ instr1; instr2 }.
+Proof.
+  intros instr1 instr2.
+  transitivity qasm{ instr1; seq[ [instr2] ] }.
+  - apply Instruction_equiv_Seq_list_eq.
+  - apply Instruction_equiv_rewrite_end.
+    apply Instruction_equiv_Seq_singleton.
+Qed.
+
+Lemma Instruction_equiv_Seq_three :
+  forall instr1 instr2 instr3,
+    Instruction_equiv nq
+      (SeqInstr [instr1; instr2; instr3])
+      qasm{ instr1; instr2; instr3 }.
+Proof.
+  intros instr1 instr2 instr3.
+  transitivity qasm{ instr1; seq[ [instr2; instr3] ] }.
+  - apply Instruction_equiv_Seq_list_eq.
+  - apply Instruction_equiv_rewrite_end.
+    apply Instruction_equiv_Seq_two.
+Qed.
+
+Lemma TransformSpec_Insert_Cnot_Cnot_valid :
+  TransformSpecValid nq TransformSpec_Insert_Cnot_Cnot.
+Proof.
+  unfold
+    TransformSpecValid,
+    TransformSpec_Insert_Cnot_Cnot.
+  simpl.
+  intros param.
+  destruct param as [| qbit | qbit1 qbit2]; simpl.
+  all: try (intros rule Hrule; discriminate).
+  destruct ((qbit1 <? nq) && (qbit2 <? nq)) eqn:Hqbits; simpl.
+  - intros rule Hrule map lhs rhs Hlhs Hrhs _.
+    cbn [transform_rule] in Hrule.
+    rewrite Hqbits in Hrule.
+    injection Hrule as <-.
+    apply andb_true_iff in Hqbits as [Hqbit1 Hqbit2].
+    apply Nat.ltb_lt in Hqbit1.
+    apply Nat.ltb_lt in Hqbit2.
+    simpl in Hlhs, Hrhs.
+    inversion Hlhs; subst; clear Hlhs.
+    inversion Hrhs; subst; clear Hrhs.
+    symmetry.
+    transitivity qasm{ I qbit1 }.
+    + transitivity qasm{ cx qbit1 qbit2; cx qbit1 qbit2 }.
+      * apply Instruction_equiv_Seq_two.
+      * apply Transform_cnot_cnot; assumption.
+    + transitivity NopInstr.
+      * apply Transform_I.
+        assumption.
+      * apply Instruction_equiv_Nop_Seq_nil.
+  - intros rule Hrule.
+    cbn [transform_rule] in Hrule.
+    rewrite Hqbits in Hrule.
+    discriminate.
+Qed.
+
+Lemma TransformSpec_Swap_To_3Cnot_valid :
+  TransformSpecValid nq TransformSpec_Swap_To_3Cnot.
+Proof.
+  unfold
+    TransformSpecValid,
+    TransformSpec_Swap_To_3Cnot.
+  simpl.
+  intros param.
+  destruct param as [| qbit | qbit1 qbit2]; simpl.
+  all: try (intros rule Hrule; discriminate).
+  destruct ((qbit1 <? nq) && (qbit2 <? nq)) eqn:Hqbits; simpl.
+  - intros rule Hrule map lhs rhs Hlhs Hrhs _.
+    cbn [transform_rule] in Hrule.
+    rewrite Hqbits in Hrule.
+    injection Hrule as <-.
+    apply andb_true_iff in Hqbits as [Hqbit1 Hqbit2].
+    apply Nat.ltb_lt in Hqbit1.
+    apply Nat.ltb_lt in Hqbit2.
+    simpl in Hlhs, Hrhs.
+    inversion Hlhs; subst; clear Hlhs.
+    inversion Hrhs; subst; clear Hrhs.
+    symmetry.
+    transitivity qasm{ cx qbit1 qbit2; cx qbit2 qbit1; cx qbit1 qbit2 }.
+    + apply Instruction_equiv_Seq_three.
+    + transitivity qasm{ swap qbit1 qbit2 }.
+      * apply Transform_3cnot_swap; assumption.
+      * symmetry.
+        apply Instruction_equiv_Seq_singleton.
+  - intros rule Hrule.
+    cbn [transform_rule] in Hrule.
+    rewrite Hqbits in Hrule.
+    discriminate.
+Qed.
+
+Lemma TransformSpec_Double_If_H_valid :
+  forall name cond,
+  TransformSpecValid nq
+    (TransformSpec_simple_rule name (Rule_Double_If_H cond)).
+Proof.
+  intros name cond.
+  unfold TransformSpecValid, TransformSpec_simple_rule, Transform_simple_rule.
+  simpl.
+  intros param.
+  destruct param as [| qbit | qbit1 qbit2]; simpl.
+  all: try (intros rule Hrule; discriminate).
+  intros rule Hrule subst lhs rhs Hlhs Hrhs Hvalid.
+  injection Hrule as <-.
+  unfold Rule_Double_If_H in Hlhs, Hrhs.
+  simpl in Hlhs, Hrhs.
+  destruct (NatMap.find 0%nat subst) as [cbit |] eqn:Hcbit;
+  try discriminate.
+  destruct (NatMap.find 1%nat subst) as [qbit |] eqn:Hqbit;
+  try discriminate.
+  injection Hlhs as <-.
+  injection Hrhs as <-.
+  repeat rewrite Instruction_equiv_Seq_singleton.
+  symmetry.
+  apply Transform_double_if.
+Qed.
+
+Lemma TransformSpec_Double_If_H_True_valid :
+  TransformSpecValid nq
+    (TransformSpec_simple_rule "Double_If_H_True" Rule_Double_If_H_True).
+Proof.
+  apply TransformSpec_Double_If_H_valid.
+Qed.
+
+Lemma TransformSpec_Double_If_H_False_valid :
+  TransformSpecValid nq
+    (TransformSpec_simple_rule "Double_If_H_False" Rule_Double_If_H_False).
+Proof.
+  apply TransformSpec_Double_If_H_valid.
+Qed.
+
 Theorem Transform_spec_list_valid :
   Forall (TransformSpecValid nq) Transform_spec_list.
 Proof.
   repeat constructor.
   - apply TransformSpec_Insert_I_valid.
   - apply TransformSpec_Insert_Swap_valid.
+  - apply TransformSpec_Insert_Cnot_Cnot_valid.
+  - apply TransformSpec_Swap_To_3Cnot_valid.
+  - apply TransformSpec_Double_If_H_True_valid.
+  - apply TransformSpec_Double_If_H_False_valid.
 Qed.
 
 End TRANSFORM_FUNCTIONS.
