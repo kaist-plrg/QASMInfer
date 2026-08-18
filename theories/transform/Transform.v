@@ -144,61 +144,11 @@ Proof.
   - f_equal.
     unfold Execute_rotate_instr_branch.
     f_equal.
+    angle_to_R_simpl.
     rewrite Gate_P_matrix_periodic.
     rewrite (mat_single_scale _ _ H).
     apply den_uop_gphase.
   - reflexivity. 
-Qed.
-
-Corollary Transform_S_S: forall (qbit: nat),
-  Qbit_index_valid qbit ->
-  Instruction_equiv nq
-  qasm{ S qbit; S qbit }
-  qasm{ Z qbit }.
-Proof.
-  intros qbit H.
-  unfold Gate_S, Gate_Z.
-  replace PI with (PI2 + PI2)%R by (unfold PI; field).
-  apply (Transform_P_P qbit _ _ H).
-Qed.
-
-Corollary Transform_S_Sdg: forall (qbit: nat),
-  Qbit_index_valid qbit ->
-  Instruction_equiv nq
-  qasm{ S qbit; Sdg qbit }
-  qasm{ I qbit }.
-Proof.
-  intros qbit H.
-  unfold Gate_S, Gate_Sdg, Gate_I.
-  replace 0%R with (PI2 + (- PI2))%R by field.
-  apply (Transform_P_P qbit _ _ H).
-Qed.
-
-Corollary Transform_Sdg_S: forall (qbit: nat),
-  Qbit_index_valid qbit ->
-  Instruction_equiv nq
-  qasm{ Sdg qbit; S qbit }
-  qasm{ I qbit }.
-Proof.
-  intros qbit H.
-  unfold Gate_S, Gate_Sdg, Gate_I.
-  replace 0%R with ((- PI2) + PI2)%R by field.
-  apply (Transform_P_P qbit _ _ H).
-Qed.
-
-Corollary Transform_Sdg_Sdg: forall (qbit: nat),
-  Qbit_index_valid qbit ->
-  Instruction_equiv nq
-  qasm{ Sdg qbit; Sdg qbit }
-  qasm{ Z qbit }.
-Proof.
-  intros qbit H.
-  unfold Gate_S, Gate_Sdg, Gate_Z.
-  apply Instruction_equiv_equivalence with (y := Gate_P ((-PI2) + (-PI2)) qbit).
-  - apply (Transform_P_P qbit _ _ H).
-  - replace PI with ((-PI) + 2*PI)%R by field.
-    replace ((- PI2) + (-PI2))%R with (-PI)%R by (unfold PI; field).
-    apply (Transform_P_periodic qbit _ H).
 Qed.
 
 Lemma Transform_X_Y: forall (qbit: nat),

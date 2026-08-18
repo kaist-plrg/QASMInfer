@@ -121,21 +121,32 @@ let string_of_program program =
 (* OpenQASMCore stringifier *)
 (****************************)
 
+let string_of_angle = function
+  | PiAngle q when Big_int_Z.eq_big_int q.qden Big_int_Z.unit_big_int ->
+      Printf.sprintf "%s π" (Big_int_Z.string_of_big_int q.qnum)
+  | PiAngle q ->
+      Printf.sprintf "%s/%s π" (Big_int_Z.string_of_big_int q.qnum)
+        (Big_int_Z.string_of_big_int q.qden)
+  | RealAngle value -> RbaseSymbolsImpl.coq_Rrepr value |> Printf.sprintf "%f"
+
 let rec string_of_instruction = function
   | NopInstr -> "NopInstr"
   | RotateInstr (x, y, z, i) ->
-      Printf.sprintf "RotateInstr (%f, %f, %f, %d)"
-        (RbaseSymbolsImpl.coq_Rrepr x)
-        (RbaseSymbolsImpl.coq_Rrepr y)
-        (RbaseSymbolsImpl.coq_Rrepr z)
+      Printf.sprintf "RotateInstr (%s, %s, %s, %d)"
+        (string_of_angle x)
+        (string_of_angle y)
+        (string_of_angle z)
         i
   | CnotInstr (i, j) -> Printf.sprintf "CnotInstr (%d, %d)" i j
   | SwapInstr (i, j) -> Printf.sprintf "SwapInstr (%d, %d)" i j
   | MeasureInstr (i, j) -> Printf.sprintf "MeasureInstr (%d, %d)" i j
-  (* JYJ TODO : temp *)
-  | SeqInstr [] -> failwith "Empty SeqInstr"
-  | SeqInstr (h :: t) ->
-      string_of_instruction h ^ "\n" ^ string_of_instruction (SeqInstr t)
+  | SeqInstr instrs ->
+      let contents =
+        instrs
+        |> List.map string_of_instruction
+        |> String.concat ";\n"
+      in
+      Printf.sprintf "[\n%s\n]" contents
   | IfInstr (i, b, instr) ->
       Printf.sprintf "IfInstr (%d, %b, \n%s)" i b (string_of_instruction instr)
   | ResetInstr i -> Printf.sprintf "ResetInstr %d" i
@@ -147,15 +158,15 @@ let rec string_of_instruction = function
 let rec string_of_qc_ir = function
   | NopIr -> "NopIr"
   | RotateIr (x, y, z, i) ->
-      Printf.sprintf "RotateIr (%f, %f, %f, %d)"
-        (RbaseSymbolsImpl.coq_Rrepr x)
-        (RbaseSymbolsImpl.coq_Rrepr y)
-        (RbaseSymbolsImpl.coq_Rrepr z)
+      Printf.sprintf "RotateIr (%s, %s, %s, %d)"
+        (string_of_angle x)
+        (string_of_angle y)
+        (string_of_angle z)
         i
   | CnotIr (i, j) -> Printf.sprintf "CnotIr (%d, %d)" i j
   | MeasureIr (i, j) -> Printf.sprintf "MeasureIr (%d, %d)" i j
   | ResetIr i -> Printf.sprintf "ResetIr %d" i
-  | SeqIr (ir1, ir2) -> string_of_qc_ir ir1 ^ "\n" ^ string_of_qc_ir ir2
+  | SeqIr irs -> String.concat "\n" (List.map string_of_qc_ir irs)
   | IfIr (i, b, ir) ->
       Printf.sprintf "IfIr (%d, %b, \n%s)" i b (string_of_qc_ir ir)
 

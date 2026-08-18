@@ -62,8 +62,8 @@ Definition Instruction_behavioral_equiv (instr1 instr2: Instruction): Prop :=
 
 (* Equality of result, weakest equality definition *)
 Definition Instruction_result_equiv (instr1 instr2: Instruction): Prop :=  
-  Execute_and_calculate_prob (Instr_max_index instr1) nc instr1 =
-  Execute_and_calculate_prob (Instr_max_index instr2) nc instr2.
+  Execute_and_calculate_prob nq nc instr1 =
+  Execute_and_calculate_prob nq nc instr2.
 
 (* ============================================================================================== *)
 (* Check equivalence ============================================================================ *)
@@ -136,7 +136,7 @@ Proof.
     symmetry.
     apply H.
   - intros instr1 instr2 instr3 H12 H23.
-    transitivity (Execute_and_calculate_prob (Instr_max_index instr2) nc instr2).
+    transitivity (Execute_and_calculate_prob nq nc instr2).
     + apply H12.
     + apply H23.
 Qed.
@@ -191,7 +191,7 @@ Proof.
   - apply Heq.
 Qed.
 
-Lemma Execute_rotate_instr_Proper (theta phi lambda: R) (target: nat):
+Lemma Execute_rotate_instr_Proper (theta phi lambda: Angle) (target: nat):
   Proper (ProgramState_equiv ==> ProgramState_equiv) (Execute_rotate_instr nq theta phi lambda target).
 Proof.
   intros ps1 ps2 Heq cstate.
@@ -916,17 +916,28 @@ Proof.
   apply Hinv.
 Qed.
 
+Lemma PositiveMap_elements_Equal:
+  forall {A: Type} (m1 m2: PositiveMap.t A),
+  PositiveMap.Equal m1 m2 -> PositiveMap.elements m1 = PositiveMap.elements m2.
+Proof.
+  intros A m1 m2 Heq.
+  apply POrd.elements_Equal_eqlistA in Heq.
+  induction Heq; try reflexivity.
+  destruct x as [k v], x' as [k' v'].
+  destruct H as [Hk Hv]; simpl in Hk, Hv; subst.
+  reflexivity.
+Qed.
+
 Lemma Instruction_behavioral_equiv_implies_result_equiv:
   forall (instr1 instr2: Instruction),
-  Instr_bounded nq instr1 -> Instr_bounded nq instr2 ->
   Instruction_behavioral_equiv instr1 instr2 -> Instruction_result_equiv instr1 instr2.
 Proof.
-  intros instr1 instr2 H1 H2 Hequiv.
-  unfold Instruction_result_equiv.
+  intros instr1 instr2 Hequiv.
   unfold Instruction_behavioral_equiv, ProgramState_behavioral_equiv in Hequiv.
-
-  unfold Execute_and_calculate_prob, Execute.
-Admitted.
+  apply PositiveMap_elements_Equal.
+  apply Hequiv.
+  apply ProgramState_init_valid.
+Qed.
 
 Lemma Execute_suppl_seq:
   forall (ps: ProgramState nq) (instr1 instr2: Instruction),
@@ -1095,6 +1106,37 @@ Global Instance Instruction_equiv_Equivalence (nq: nat):
   Equivalence (Instruction_equiv nq).
 Proof.
   apply Instruction_equiv_equivalence.
+Qed.
+
+Global Instance Instruction_behavioral_equiv_Equivalence (nq: nat):
+  Equivalence (Instruction_behavioral_equiv nq).
+Proof.
+  apply Instruction_behavioral_equiv_equivalence.
+Qed.
+
+Global Instance Instruction_behavioral_equiv_Proper (nq : nat) :
+  Proper
+    (Instruction_equiv nq ==> Instruction_equiv nq ==> iff)
+    (Instruction_behavioral_equiv nq).
+Proof.
+  intros instr1 instr1' Hequiv1 instr2 instr2' Hequiv2.
+  split; intro Hbehavioral.
+  - transitivity instr1.
+    + symmetry.
+      apply Instruction_equiv_implies_behavioral_equiv.
+      exact Hequiv1.
+    + transitivity instr2.
+      * exact Hbehavioral.
+      * apply Instruction_equiv_implies_behavioral_equiv.
+        exact Hequiv2.
+  - transitivity instr1'.
+    + apply Instruction_equiv_implies_behavioral_equiv.
+      exact Hequiv1.
+    + transitivity instr2'.
+      * exact Hbehavioral.
+      * symmetry.
+        apply Instruction_equiv_implies_behavioral_equiv.
+        exact Hequiv2.
 Qed.
 
 Global Instance qasm_seq_equiv_Proper (nq : nat) :

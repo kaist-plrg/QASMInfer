@@ -33,6 +33,12 @@ Definition option_map {A B : Type} (o: option A) (f: A -> B): option B :=
 Notation "x >>= f" := (option_bind x f) (at level 50, left associativity).
 Notation "x >>| f" := (option_map x f) (at level 50, left associativity).
 Notation "x |> f" := ((fun x' => f x') x) (at level 50, left associativity).
+Notation "'let*' x ':=' e1 'in' e2" :=
+  (match e1 with
+   | Some x => e2
+   | None => None
+   end)
+  (at level 61, x pattern, right associativity).
 
 Definition list_init {A: Type} (n: nat) (f: nat -> A): list A :=
   map f (seq 0 n).

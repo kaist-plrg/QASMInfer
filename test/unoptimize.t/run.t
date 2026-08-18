@@ -2,25 +2,87 @@ QASM2 and QASM3 conversion is quiet, emits reparsable canonical QASM2, and is
 stable when applied a second time.  The three invocations also cover the mode
 option before, between, and after the two positional paths.
 
-  $ qasminfer --unoptimize qasm2.qasm qasm2.once.qasm >qasm2.stdout 2>qasm2.stderr
+  $ qasminfer --step 0 --unoptimize qasm2.qasm qasm2.once.qasm >qasm2.stdout 2>qasm2.stderr
   $ test ! -s qasm2.stdout
   $ test ! -s qasm2.stderr
   $ head -n 1 qasm2.once.qasm
   OPENQASM 2.0;
-  $ qasminfer --unopt qasm2.qasm qasm2.alias.qasm >qasm2-alias.stdout 2>qasm2-alias.stderr
+  $ qasminfer --step 0 --unopt qasm2.qasm qasm2.alias.qasm >qasm2-alias.stdout 2>qasm2-alias.stderr
   $ test ! -s qasm2-alias.stdout
   $ test ! -s qasm2-alias.stderr
   $ cmp qasm2.once.qasm qasm2.alias.qasm
-  $ qasminfer qasm2.once.qasm --unoptimize qasm2.twice.qasm >qasm2-twice.stdout 2>qasm2-twice.stderr
+  $ qasminfer qasm2.once.qasm --step 0 --unoptimize qasm2.twice.qasm >qasm2-twice.stdout 2>qasm2-twice.stderr
   $ test ! -s qasm2-twice.stdout
   $ test ! -s qasm2-twice.stderr
   $ cmp qasm2.once.qasm qasm2.twice.qasm
   $ cp qasm2.qasm qasm2.in-place.qasm
   $ chmod u+w qasm2.in-place.qasm
-  $ qasminfer --unoptimize qasm2.in-place.qasm qasm2.in-place.qasm >in-place.stdout 2>in-place.stderr
+  $ qasminfer --step 0 --unoptimize qasm2.in-place.qasm qasm2.in-place.qasm >in-place.stdout 2>in-place.stderr
   $ test ! -s in-place.stdout
   $ test ! -s in-place.stderr
   $ cmp qasm2.once.qasm qasm2.in-place.qasm
+
+Rule files are validated before unoptimization and then added to the extracted
+transform spec list.
+
+  $ printf '[{"name":"I_to_XX_from_file","lhs":["id"],"rhs":["x","x"]}]\n' > valid-rules.json
+  $ qasminfer --rule-file valid-rules.json --step 0 --unoptimize qasm2.qasm qasm2.rules.qasm >rules.stdout 2>rules.stderr
+  $ test ! -s rules.stdout
+  $ test ! -s rules.stderr
+  $ cmp qasm2.once.qasm qasm2.rules.qasm
+
+  $ printf '[{"name":"bad_h_to_i","lhs":["h"],"rhs":["id"]}]\n' > invalid-rules.json
+  $ qasminfer --rule-file invalid-rules.json --step 0 --unoptimize qasm2.qasm invalid-rule-output.qasm >invalid-rules.stdout 2>invalid-rules.stderr
+  [1]
+  $ test ! -e invalid-rule-output.qasm
+  $ test ! -s invalid-rules.stdout
+  $ cat invalid-rules.stderr
+  qasminfer: invalid rule file invalid-rules.json: rule #1 bad_h_to_i (h -> id) is not valid up to global omega phase
+
+The --rule option restricts unoptimization to a named rule from the combined
+built-in and rule-file transform spec list, and it cannot be combined with
+--step.
+
+  $ cat > named-rule-target.qasm <<'EOF'
+  > OPENQASM 2.0;
+  > include "qelib1.inc";
+  > qreg q[1];
+  > id q[0];
+  > EOF
+  $ qasminfer --rule-file valid-rules.json --rule I_to_XX_from_file --unoptimize named-rule-target.qasm named-rule-output.qasm >named-rule.stdout 2>named-rule.stderr
+  $ test ! -s named-rule.stdout
+  $ test ! -s named-rule.stderr
+  $ grep -F 'x q[0];' named-rule-output.qasm | wc -l | tr -d ' '
+  2
+
+  $ qasminfer --rule-file valid-rules.json --rule I_to_XX_from_file --unoptimize qasm2.qasm no-match-rule-output.qasm >no-match-rule.stdout 2>no-match-rule.stderr
+  [1]
+  $ test ! -e no-match-rule-output.qasm
+  $ test ! -s no-match-rule.stdout
+  $ cat no-match-rule.stderr
+  qasminfer: Transformation rule 'I_to_XX_from_file' is not applicable to the current instruction.
+
+  $ qasminfer --rule Missing_rule --unoptimize qasm2.qasm missing-rule-output.qasm >missing-rule.stdout 2>missing-rule.stderr
+  [1]
+  $ test ! -e missing-rule-output.qasm
+  $ test ! -s missing-rule.stdout
+  $ cat missing-rule.stderr
+  qasminfer: No transformation rule named 'Missing_rule'.
+
+  $ printf '[{"name":"dup","lhs":["id"],"rhs":["x","x"]},{"name":"dup","lhs":["id"],"rhs":["y","y"]}]\n' > duplicate-rules.json
+  $ qasminfer --rule-file duplicate-rules.json --rule Insert_I --unoptimize named-rule-target.qasm duplicate-rule-output.qasm >duplicate-rule.stdout 2>duplicate-rule.stderr
+  [1]
+  $ test ! -e duplicate-rule-output.qasm
+  $ test ! -s duplicate-rule.stdout
+  $ cat duplicate-rule.stderr
+  qasminfer: Duplicate transformation rule name 'dup'.
+
+  $ qasminfer --rule Insert_I --step 1 --unoptimize qasm2.qasm rule-step-conflict.qasm >rule-step-conflict.stdout 2>rule-step-conflict.stderr
+  [2]
+  $ test ! -e rule-step-conflict.qasm
+  $ test ! -s rule-step-conflict.stdout
+  $ head -n 1 rule-step-conflict.stderr
+  --rule cannot be used with --step
 
   $ qasminfer --json qasm2.qasm >qasm2-source.json 2>qasm2-source.stderr
   $ qasminfer --json qasm2.once.qasm >qasm2-generated.json 2>qasm2-generated.stderr
@@ -28,7 +90,7 @@ option before, between, and after the two positional paths.
   $ test ! -s qasm2-generated.stderr
   $ cmp qasm2-source.json qasm2-generated.json
 
-  $ qasminfer qasm3.qasm qasm3.once.qasm --unoptimize >qasm3.stdout 2>qasm3.stderr
+  $ qasminfer qasm3.qasm qasm3.once.qasm --step 0 --unoptimize >qasm3.stdout 2>qasm3.stderr
   $ test ! -s qasm3.stdout
   $ test ! -s qasm3.stderr
   $ head -n 1 qasm3.once.qasm
@@ -36,7 +98,7 @@ option before, between, and after the two positional paths.
   $ grep -F 'qreg qasm3_physical_1[1];' qasm3.once.qasm
   qreg qasm3_physical_1[1];
   $ grep -F '$' qasm3.once.qasm >/dev/null; test $? -ne 0
-  $ qasminfer --unoptimize qasm3.once.qasm qasm3.twice.qasm >qasm3-twice.stdout 2>qasm3-twice.stderr
+  $ qasminfer --step 0 --unoptimize qasm3.once.qasm qasm3.twice.qasm >qasm3-twice.stdout 2>qasm3-twice.stderr
   $ test ! -s qasm3-twice.stdout
   $ test ! -s qasm3-twice.stderr
   $ cmp qasm3.once.qasm qasm3.twice.qasm
@@ -44,7 +106,7 @@ option before, between, and after the two positional paths.
 Verbose conversion diagnostics stay on stderr and do not contaminate either
 stdout or the QASM destination.
 
-  $ qasminfer --unoptimize qasm2.qasm verbose.qasm --verbose >verbose.stdout 2>verbose.stderr
+  $ qasminfer --step 0 --unoptimize qasm2.qasm verbose.qasm --verbose >verbose.stdout 2>verbose.stderr
   $ test ! -s verbose.stdout
   $ test -s verbose.stderr
   $ cmp qasm2.once.qasm verbose.qasm

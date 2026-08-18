@@ -32,24 +32,122 @@ let expect_error fragment = function
 
 let r value = E.RbaseSymbolsImpl.coq_Rabst value
 
+let real_angle value = E.RealAngle (r value)
+
+let pi_angle numerator denominator =
+  E.PiAngle
+    {
+      E.qnum = Big_int_Z.big_int_of_int numerator;
+      qden = Big_int_Z.big_int_of_int denominator;
+    }
+
 let test_unoptimize_nop_is_exact_identity () =
-  let instruction =
-    E.SeqInstr
-      ( E.RotateInstr (r 0.25, r (-0.5), r 1.75, 2),
-        E.SeqInstr
-          ( E.CnotInstr (2, 0),
-            E.SeqInstr
-              ( E.SwapInstr (0, 2),
-                E.SeqInstr
-                  ( E.MeasureInstr (2, 1),
-                    E.IfInstr
-                      ( 1,
-                        true,
-                        E.SeqInstr (E.ResetInstr 2, E.NopInstr) ) ) ) ) )
+let instruction =
+  E.SeqInstr
+    [
+      E.RotateInstr
+        (real_angle 0.25, real_angle (-0.5), real_angle 1.75, 2);
+      E.CnotInstr (2, 0);
+      E.SwapInstr (0, 2);
+      E.MeasureInstr (2, 1);
+      E.IfInstr
+        ( 1,
+          true,
+          E.SeqInstr
+            [
+              E.ResetInstr 2;
+              E.NopInstr;
+            ] );
+    ]
   in
   let result = Unoptimize.unoptimize_nop instruction in
   require (result = instruction)
     "unoptimize_nop must preserve every instruction constructor exactly"
+
+let rec swaps_of_instruction = function
+  | E.SwapInstr (qbit1, qbit2) -> [ (qbit1, qbit2) ]
+  | E.SeqInstr instructions -> List.concat_map swaps_of_instruction instructions
+  | E.IfInstr (_, _, body) -> swaps_of_instruction body
+  | E.NopInstr
+  | E.RotateInstr _
+  | E.CnotInstr _
+  | E.MeasureInstr _
+  | E.ResetInstr _ ->
+      []
+
+let test_insert_swap_uses_distinct_parameters () =
+  for _ = 1 to 20 do
+    let transformed =
+      Unoptimize.unoptimize ~rule_name:"Insert_Swap" E.NopInstr 1 2
+        0
+    in
+    match swaps_of_instruction transformed with
+    | [] -> failf "Insert_Swap did not insert a swap instruction"
+    | swaps ->
+        List.iter
+          (fun (qbit1, qbit2) ->
+            require (qbit1 <> qbit2)
+              (Printf.sprintf
+                 "Insert_Swap generated equal qbit parameters (%d, %d)"
+                 qbit1 qbit2))
+          swaps
+  done
+
+let test_double_if_accepts_any_instruction () =
+  let instruction = E.IfInstr (0, false, E.CnotInstr (0, 1)) in
+  let transformed =
+    Unoptimize.unoptimize ~rule_name:"Double_If_H_False" instruction 1 2 1
+  in
+  match transformed with
+  | E.IfInstr (0, false, E.IfInstr (0, false, E.CnotInstr (0, 1))) -> ()
+  | _ -> failf "Double_If_H_False did not duplicate a non-H body"
+
+let rec contradictory_if_cbits outer_cond = function
+  | E.IfInstr (outer_cbit, cond, E.IfInstr (inner_cbit, inner_cond, body))
+    when cond = outer_cond && inner_cond = not outer_cond ->
+      if outer_cbit = inner_cbit then
+        outer_cbit :: contradictory_if_cbits outer_cond body
+      else contradictory_if_cbits outer_cond body
+  | E.SeqInstr instructions ->
+      List.concat_map (contradictory_if_cbits outer_cond) instructions
+  | E.IfInstr (_, _, body) ->
+      contradictory_if_cbits outer_cond body
+  | E.NopInstr
+  | E.RotateInstr _
+  | E.CnotInstr _
+  | E.SwapInstr _
+  | E.MeasureInstr _
+  | E.ResetInstr _ ->
+      []
+
+let test_insert_contradictory_if_generates_valid_cbit () =
+  for _ = 1 to 20 do
+    let transformed =
+      Unoptimize.unoptimize ~rule_name:"Insert_Contradictory_If" E.NopInstr 1
+        2 2
+    in
+    require (E.instruction_qbits_validb 2 transformed)
+      "Insert_Contradictory_If generated an invalid qbit index";
+    match contradictory_if_cbits false transformed with
+    | [] -> failf "Insert_Contradictory_If did not insert a contradictory if"
+    | cbits ->
+        List.iter
+          (fun cbit ->
+            require (0 <= cbit && cbit < 2)
+              (Printf.sprintf
+                 "Insert_Contradictory_If generated invalid cbit %d"
+                 cbit))
+          cbits
+  done
+
+let test_insert_contradictory_if_true_first () =
+  let transformed =
+    Unoptimize.unoptimize ~rule_name:"Insert_Contradictory_If_True" E.NopInstr
+      1 2 2
+  in
+  match contradictory_if_cbits true transformed with
+  | [] -> failf "Insert_Contradictory_If_True did not insert a true-first if"
+  | _ -> ()
 
 let desugar_qasm2 source =
   source |> Q2.parse_string |> Q2.inline_qelib |> Q2.desugar
@@ -57,7 +155,7 @@ let desugar_qasm2 source =
 let sorted_probabilities nq nc instruction =
   E.execute_and_calculate_prob nq nc instruction
   |> List.map (fun (state, probability) ->
-         (state, E.RbaseSymbolsImpl.coq_Rrepr probability))
+         (Big_int_Z.int_of_big_int state, E.RbaseSymbolsImpl.coq_Rrepr probability))
   |> List.sort (fun (left, _) (right, _) -> compare left right)
 
 let require_same_distribution ~context nq nc left right =
@@ -102,10 +200,12 @@ let rec instruction_exists predicate instruction =
   predicate instruction
   ||
   match instruction with
-  | E.SeqInstr (left, right) ->
-      instruction_exists predicate left || instruction_exists predicate right
-  | E.IfInstr (_, _, body) -> instruction_exists predicate body
-  | _ -> false
+  | E.SeqInstr instructions ->
+      List.exists (instruction_exists predicate) instructions
+  | E.IfInstr (_, _, body) ->
+      instruction_exists predicate body
+  | _ ->
+      false
 
 let test_qasm2_sugar_round_trip () =
   let source =
@@ -141,7 +241,6 @@ reset right[0];
   require_constructor "ResetInstr" (function E.ResetInstr _ -> true | _ -> false);
   require_constructor "SeqInstr" (function E.SeqInstr _ -> true | _ -> false);
   require_constructor "IfInstr" (function E.IfInstr _ -> true | _ -> false);
-  require_constructor "NopInstr" (function E.NopInstr -> true | _ -> false);
   let _, rendered =
     sugar_and_reparse nq nc instruction q_assignment c_assignment
   in
@@ -236,7 +335,7 @@ let singleton_map index argument = IntMap.add index argument IntMap.empty
 
 let test_sugar_reports_missing_quantum_mapping () =
   Q2.sugar 1 0 IntMap.empty IntMap.empty
-    (E.RotateInstr (r 0.0, r 0.0, r 0.0, 0))
+    (E.RotateInstr (pi_angle 0 1, pi_angle 0 1, pi_angle 0 1, 0))
   |> expect_error "missing quantum mapping"
 
 let test_sugar_reports_missing_classical_mapping () =
@@ -248,12 +347,16 @@ let test_sugar_rejects_reserved_quantum_register_name () =
   Q2.sugar 1 0 (singleton_map 0 ("cos", 0)) IntMap.empty E.NopInstr
   |> expect_error "quantum register name \"cos\" is not valid OpenQASM 2"
 
-let test_sugar_rejects_swap () =
+let test_sugar_prints_swap () =
   let q_assignment =
     IntMap.empty |> IntMap.add 0 ("q", 0) |> IntMap.add 1 ("q", 1)
   in
-  Q2.sugar 2 0 q_assignment IntMap.empty (E.SwapInstr (0, 1))
-  |> expect_error "unsupported SwapInstr"
+  let rendered =
+    Q2.sugar 2 0 q_assignment IntMap.empty (E.SwapInstr (0, 1))
+    |> ok_or_fail |> Q2.string_of_program
+  in
+  require_contains rendered "include \"qelib1.inc\";";
+  require_contains rendered "swap q[0],q[1];"
 
 let test_sugar_rejects_partial_register_condition () =
   let c_assignment =
@@ -261,7 +364,7 @@ let test_sugar_rejects_partial_register_condition () =
   in
   Q2.sugar 1 2 (singleton_map 0 ("q", 0)) c_assignment
     (E.IfInstr
-       (0, true, E.RotateInstr (r Float.pi, r 0.0, r Float.pi, 0)))
+       (0, true, E.RotateInstr (pi_angle 1 1, pi_angle 0 1, pi_angle 1 1, 0)))
   |> expect_error "unrepresentable conditional"
 
 let test_sugar_splits_safe_conditional_sequence () =
@@ -274,8 +377,8 @@ let test_sugar_splits_safe_conditional_sequence () =
       ( 0,
         false,
         E.SeqInstr
-          ( E.RotateInstr (r (Float.pi /. 2.0), r 0.0, r Float.pi, 0),
-            E.MeasureInstr (0, 1) ) )
+          [ E.RotateInstr (pi_angle 1 2, pi_angle 0 1, pi_angle 1 1, 0);
+            E.MeasureInstr (0, 1) ] )
   in
   let program =
     Q2.sugar 1 2 q_assignment c_assignment instruction |> ok_or_fail
@@ -299,7 +402,7 @@ let test_sugar_rejects_conditional_sequence_that_mutates_guard () =
     E.IfInstr
       ( 0,
         false,
-        E.SeqInstr (E.MeasureInstr (0, 0), E.ResetInstr 0) )
+        E.SeqInstr [E.MeasureInstr (0, 0); E.ResetInstr 0] )
   in
   Q2.sugar 1 1 (singleton_map 0 ("q", 0))
     (singleton_map 0 ("flag", 0)) instruction
@@ -307,6 +410,13 @@ let test_sugar_rejects_conditional_sequence_that_mutates_guard () =
 
 let tests =
   [ ("unoptimize_nop exact identity", test_unoptimize_nop_is_exact_identity);
+    ( "Insert_Swap uses distinct parameters",
+      test_insert_swap_uses_distinct_parameters );
+    ("Double_If accepts any instruction", test_double_if_accepts_any_instruction);
+    ( "Insert_Contradictory_If uses valid cbit",
+      test_insert_contradictory_if_generates_valid_cbit );
+    ( "Insert_Contradictory_If_True inserts true-first condition",
+      test_insert_contradictory_if_true_first );
     ("QASM2 semantic round trip", test_qasm2_sugar_round_trip);
     ( "QASM3 physical rename collision",
       test_qasm3_physical_qubit_rename_avoids_collisions );
@@ -318,7 +428,7 @@ let tests =
     ("missing classical map", test_sugar_reports_missing_classical_mapping);
     ( "reserved quantum register name",
       test_sugar_rejects_reserved_quantum_register_name );
-    ("unsupported swap", test_sugar_rejects_swap);
+    ("sugar swap", test_sugar_prints_swap);
     ("unrepresentable condition", test_sugar_rejects_partial_register_condition);
     ("safe conditional split", test_sugar_splits_safe_conditional_sequence);
     ( "unsafe conditional mutation",

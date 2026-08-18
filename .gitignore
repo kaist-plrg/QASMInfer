@@ -3,6 +3,7 @@
 /src/lib/extracted/extracted.ml
 
 .*.qasm
+*.qasm
 
 *.cache
 .DS_Store

@@ -19,6 +19,9 @@ type command =
       source : string;
       destination : string;
       verbose : bool;
+      step: int option;
+      rule_file : string option;
+      rule_name : string option;
     }
 
 type result_entry = {
@@ -35,6 +38,9 @@ let parse_args argv =
   let emit_json = ref false in
   let unoptimize = ref false in
   let output_file = ref None in
+  let step = ref None in
+  let rule_file = ref None in
+  let rule_name = ref None in
   let positionals = ref [] in
   let set_output_file path =
     match !output_file with
@@ -50,6 +56,13 @@ let parse_args argv =
         Arg.Set verbose,
         "Print intermediate QASMCore representation" );
       ("-v", Arg.Set verbose, "Short for --verbose");
+      ("--step", Arg.Int (fun n -> step := Some n), "Set step number of unoptimization");
+      ( "--rule",
+        Arg.String (fun name -> rule_name := Some name),
+        "Apply only the transform rule named NAME once" );
+      ( "--rule-file",
+        Arg.String (fun path -> rule_file := Some path),
+        "Read standard-gate rewrite rules from JSON FILE for --unoptimize" );
       ("--json", Arg.Set emit_json, "Emit result as JSON");
       ( "--output",
         Arg.String set_output_file,
@@ -72,11 +85,27 @@ let parse_args argv =
       usage_error "--json cannot be used with --unoptimize"
   | true, _ when Option.is_some !output_file ->
       usage_error "--output/-o cannot be used with --unoptimize"
+  | true, _ when Option.is_some !rule_name && Option.is_some !step ->
+      usage_error "--rule cannot be used with --step"
   | true, [ source; destination ] ->
-      Unoptimize { source; destination; verbose = !verbose }
+      Unoptimize
+        {
+          source;
+          destination;
+          verbose = !verbose;
+          step = !step;
+          rule_file = !rule_file;
+          rule_name = !rule_name;
+        }
   | true, _ ->
       usage_error
         "--unoptimize expects exactly two positional arguments: SOURCE DESTINATION"
+  | false, _ when Option.is_some !step ->
+      usage_error "--step cannot "
+  | false, _ when Option.is_some !rule_file ->
+      usage_error "--rule-file can only be used with --unoptimize"
+  | false, _ when Option.is_some !rule_name ->
+      usage_error "--rule can only be used with --unoptimize"
   | false, [ source ] ->
       Execute
         {
@@ -92,9 +121,14 @@ let rec to_binary n =
   else if n = 1 then "1"
   else to_binary (n / 2) ^ string_of_int (n mod 2)
 
-let to_map = List.fold_left (fun acc (k, v) -> IntMap.add k v acc) IntMap.empty
+let int_of_cstate = Big_int_Z.int_of_big_int
 
-let dense_list (nc: int) (exec_res: (int * float) list): float list =
+let to_map =
+  List.fold_left
+    (fun acc (k, v) -> IntMap.add (int_of_cstate k) v acc)
+    IntMap.empty
+
+let dense_list (nc: int) exec_res : float list =
   let sparse_map = to_map exec_res in
   (* interpreted value of IH of Rocq's positive, also # of possible classical states *)
   let num_classical_states = Int.shift_left 1 nc in
@@ -238,11 +272,23 @@ let execute source verbose emit_json output_file =
   in
   write_result output_file result
 
-let unoptimize source destination verbose =
+let unoptimize source destination step verbose rule_file rule_name =
+  let specs =
+    match rule_file with
+    | None -> None
+    | Some path -> (
+        match Unoptimize.specs_of_rule_file path with
+        | Ok specs -> Some specs
+        | Error message ->
+            raise (Cli_error ("invalid rule file " ^ path ^ ": " ^ message)))
+  in
   let nq, nc, instr, q_assignment, c_assignment =
     parse_and_desugar source
   in
-  let transformed = Unoptimize.unoptimize_nop instr in
+  let transformed =
+    try Unoptimize.unoptimize ?specs ?rule_name instr step nq nc with
+    | Failure message -> raise (Cli_error message)
+  in
   log_instruction verbose transformed;
   let output =
     match Q2.sugar nq nc q_assignment c_assignment transformed with
@@ -263,8 +309,9 @@ let main argv =
     | Execute { source; verbose; emit_json; output_file } ->
         execute source verbose emit_json output_file;
         0
-    | Unoptimize { source; destination; verbose } ->
-        unoptimize source destination verbose;
+    | Unoptimize { source; destination; step; verbose; rule_file; rule_name } ->
+        let step = Option.value step ~default:1 in
+        unoptimize source destination step verbose rule_file rule_name;
         0
   with
   | Arg.Help message ->
