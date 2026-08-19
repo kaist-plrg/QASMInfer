@@ -190,18 +190,138 @@ let random_parameter rng nq nc param_kind =
           (Param_cbit_instr
              (Random.State.int rng nc, random_instruction rng nq nc 2))
 
-let try_transform rng specs nq nc instr =
+type manual_parameters = {
+  qbits : int list option;
+  cbits : int list option;
+  occurrence : int option;
+}
+
+type applicable_rule = {
+  name : string;
+  param : string;
+  occurrences : int;
+}
+
+let string_of_param_kind = function
+  | ParamKind_None -> "none"
+  | ParamKind_qbit1 -> "qbit1"
+  | ParamKind_qbit2 -> "qbit2"
+  | ParamKind_cbit_instr -> "cbit_instr"
+
+let representative_parameter nq nc = function
+  | ParamKind_None -> Some Param_None
+  | ParamKind_qbit1 ->
+      if nq <= 0 then None else Some (Param_qbit1 0)
+  | ParamKind_qbit2 ->
+      if nq < 2 then None else Some (Param_qbit2 (0, 1))
+  | ParamKind_cbit_instr ->
+      if nc <= 0 then None else Some (Param_cbit_instr (0, NopInstr))
+
+let manual_requested = function
+  | None -> false
+  | Some { qbits; cbits; occurrence } ->
+      Option.is_some qbits || Option.is_some cbits || Option.is_some occurrence
+
+let manual_numeric_requested = function
+  | None -> false
+  | Some { qbits; cbits; _ } -> Option.is_some qbits || Option.is_some cbits
+
+let validate_manual_values manual =
+  let check_values name = function
+    | None -> ()
+    | Some values ->
+        List.iter
+          (fun value ->
+            if value < 0 then
+              failwith (Printf.sprintf "%s must contain non-negative integers." name))
+          values
+  in
+  Option.iter
+    (fun { qbits; cbits; occurrence } ->
+      check_values "--qbits" qbits;
+      check_values "--cbits" cbits;
+      match occurrence with
+      | Some value when value < 0 -> failwith "--occurrence must be non-negative."
+      | _ -> ())
+    manual
+
+let require_arity option_name expected = function
+  | None -> ()
+  | Some values ->
+      let actual = List.length values in
+      if actual <> expected then
+        failwith
+          (Printf.sprintf "%s expects %d value(s), but got %d." option_name
+             expected actual)
+
+let manual_parameter rng nq nc spec manual =
+  let qbits, cbits =
+    match manual with
+    | None -> (None, None)
+    | Some { qbits; cbits; _ } -> (qbits, cbits)
+  in
+  let make_random () = random_parameter rng nq nc spec.transform_param_kind in
+  match spec.transform_param_kind with
+  | ParamKind_None ->
+      require_arity "--qbits" 0 qbits;
+      require_arity "--cbits" 0 cbits;
+      Some Param_None
+  | ParamKind_qbit1 -> (
+      require_arity "--cbits" 0 cbits;
+      match qbits with
+      | Some [ qbit ] -> Some (Param_qbit1 qbit)
+      | Some _ ->
+          require_arity "--qbits" 1 qbits;
+          None
+      | None -> make_random ())
+  | ParamKind_qbit2 -> (
+      require_arity "--cbits" 0 cbits;
+      match qbits with
+      | Some [ qbit1; qbit2 ] -> Some (Param_qbit2 (qbit1, qbit2))
+      | Some _ ->
+          require_arity "--qbits" 2 qbits;
+          None
+      | None -> make_random ())
+  | ParamKind_cbit_instr -> (
+      require_arity "--qbits" 0 qbits;
+      match cbits with
+      | Some [ cbit ] ->
+          if cbit >= nc then
+            failwith
+              (Printf.sprintf "Manual cbit %d is out of range for %d cbit(s)."
+                 cbit nc);
+          Some (Param_cbit_instr (cbit, random_instruction rng nq nc 2))
+      | Some _ ->
+          require_arity "--cbits" 1 cbits;
+          None
+      | None -> make_random ())
+
+let validate_manual_parameter spec param =
+  match spec.transform_rule param with
+  | Some _ -> ()
+  | None ->
+      failwith
+        (Printf.sprintf "Manual parameters are invalid for rule '%s'."
+           spec.transform_name)
+
+let validate_manual_occurrence spec occurrence count =
+  if occurrence < 0 then failwith "--occurrence must be non-negative.";
+  if occurrence >= count then
+    failwith
+      (Printf.sprintf
+         "Occurrence %d is out of range for rule '%s' with %d occurrence(s)."
+         occurrence spec.transform_name count)
+
+let try_transform rng ?manual specs nq nc instr =
   let candidates =
     Array.fold_left
       (fun acc spec ->
-    match random_parameter rng nq nc spec.transform_param_kind with
-    | None -> acc
-    | Some param ->
-      let count = transformSpec_count spec param instr in
-      if count <= 0
-          then acc
-      else
-          (spec, param, count) :: acc)
+        match manual_parameter rng nq nc spec manual with
+        | None -> acc
+        | Some param ->
+            if manual_numeric_requested manual then validate_manual_parameter spec param;
+            let count = transformSpec_count spec param instr in
+            if count <= 0 then acc else (spec, param, count) :: acc)
       []
       specs
   in
@@ -211,7 +331,13 @@ let try_transform rng specs nq nc instr =
       let spec, param, count =
         List.nth candidates (Random.State.int rng (List.length candidates))
       in
-      let occurrence = Random.State.int rng count in
+      let occurrence =
+        match manual with
+        | Some { occurrence = Some occurrence; _ } ->
+            validate_manual_occurrence spec occurrence count;
+            occurrence
+        | _ -> Random.State.int rng count
+      in
       transformSpec_apply spec param instr occurrence
 
 let combined_specs nq specs =
@@ -232,6 +358,25 @@ let ensure_unique_spec_names specs =
   in
   loop [] specs
 
+let applicable_rules ?specs instr nq nc =
+  if instruction_qbits_validb nq instr then
+    let specs = combined_specs nq specs |> ensure_unique_spec_names in
+    specs
+    |> List.filter_map (fun spec ->
+           match representative_parameter nq nc spec.transform_param_kind with
+           | None -> None
+           | Some param ->
+               let occurrences = transformSpec_count spec param instr in
+               if occurrences <= 0 then None
+               else
+                 Some
+                   {
+                     name = spec.transform_name;
+                     param = string_of_param_kind spec.transform_param_kind;
+                     occurrences;
+                   })
+  else failwith "Instruction qbit index is not valid."
+
 let filter_specs_by_name rule_name specs =
   let matched =
     List.filter (fun spec -> String.equal spec.transform_name rule_name) specs
@@ -242,7 +387,14 @@ let filter_specs_by_name rule_name specs =
         (Printf.sprintf "No transformation rule named '%s'." rule_name)
   | _ -> matched
 
-let unoptimize_with_state ?specs ?rule_name rng instr step nq nc =
+let unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc =
+  validate_manual_values manual;
+  if manual_requested manual then (
+    match rule_name with
+    | Some _ -> ()
+    | None -> failwith "Manual parameters require --rule.");
+  if manual_requested manual && step <> 1 then
+    failwith "Manual parameters require a single rewrite step.";
   let specs =
     let specs = combined_specs nq specs |> ensure_unique_spec_names in
     let specs =
@@ -258,7 +410,7 @@ let unoptimize_with_state ?specs ?rule_name rng instr step nq nc =
     if successful_steps >= step
     then current
     else
-      match try_transform rng specs nq nc current
+      match try_transform rng ?manual specs nq nc current
       with
       | None ->
           let message =
@@ -276,10 +428,10 @@ let unoptimize_with_state ?specs ?rule_name rng instr step nq nc =
   in
   loop 0 instr
 
-let unoptimize ?specs ?rule_name instr step nq nc =
+let unoptimize ?specs ?rule_name ?manual instr step nq nc =
   let rng =
     Random.State.make_self_init ()
   in
   if instruction_qbits_validb nq instr
-  then unoptimize_with_state ?specs ?rule_name rng instr step nq nc
+  then unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc
   else failwith "Instruction qbit index is not valid."

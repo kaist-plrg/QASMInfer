@@ -31,6 +31,75 @@ transform spec list.
   $ test ! -s rules.stderr
   $ cmp qasm2.once.qasm qasm2.rules.qasm
 
+The --unoptimize-rules command reports the applicable rule summaries without
+performing a rewrite.  Counts are lhs occurrences, and params are reported by
+kind rather than by concrete witness values.
+
+  $ qasminfer --unoptimize-rules qasm2.qasm >applicable-rules.stdout 2>applicable-rules.stderr
+  $ test ! -s applicable-rules.stderr
+  $ cat applicable-rules.stdout
+  Insert_I: occurrences=12 param=qbit1
+  Insert_Swap: occurrences=9 param=qbit2
+  Insert_Cnot_Cnot: occurrences=12 param=qbit2
+  Insert_If_FT: occurrences=12 param=cbit_instr
+  Insert_If_TF: occurrences=12 param=cbit_instr
+  Double_If_False: occurrences=1 param=none
+  $ grep -F 'Swap_To_3Cnot' applicable-rules.stdout; test $? -ne 0
+  $ qasminfer --unoptimize-rules qasm2.qasm --output applicable-rules.file >applicable-rules-file.stdout 2>applicable-rules-file.stderr
+  $ test ! -s applicable-rules-file.stdout
+  $ test ! -s applicable-rules-file.stderr
+  $ cmp applicable-rules.stdout applicable-rules.file
+
+  $ cat > applicable-id.qasm <<'EOF'
+  > OPENQASM 2.0;
+  > include "qelib1.inc";
+  > qreg q[1];
+  > id q[0];
+  > EOF
+  $ qasminfer --rule-file valid-rules.json --unoptimize-rules applicable-id.qasm | grep -F 'I_to_XX_from_file'
+  I_to_XX_from_file: occurrences=1 param=none
+
+  $ qasminfer --json --unoptimize-rules qasm2.qasm >applicable-rules.json 2>applicable-rules-json.stderr
+  $ test ! -s applicable-rules-json.stderr
+  $ cat applicable-rules.json
+  {
+    "source": "qasm2.qasm",
+    "qubits": 3,
+    "clbits": 3,
+    "rules": [
+      {
+        "name": "Insert_I",
+        "occurrences": 12,
+        "param": "qbit1"
+      },
+      {
+        "name": "Insert_Swap",
+        "occurrences": 9,
+        "param": "qbit2"
+      },
+      {
+        "name": "Insert_Cnot_Cnot",
+        "occurrences": 12,
+        "param": "qbit2"
+      },
+      {
+        "name": "Insert_If_FT",
+        "occurrences": 12,
+        "param": "cbit_instr"
+      },
+      {
+        "name": "Insert_If_TF",
+        "occurrences": 12,
+        "param": "cbit_instr"
+      },
+      {
+        "name": "Double_If_False",
+        "occurrences": 1,
+        "param": "none"
+      }
+    ]
+  }
+
   $ printf '[{"name":"bad_h_to_i","lhs":["h"],"rhs":["id"]}]\n' > invalid-rules.json
   $ qasminfer --rule-file invalid-rules.json --step 0 --unoptimize qasm2.qasm invalid-rule-output.qasm >invalid-rules.stdout 2>invalid-rules.stderr
   [1]
@@ -83,6 +152,99 @@ built-in and rule-file transform spec list, and it cannot be combined with
   $ test ! -s rule-step-conflict.stdout
   $ head -n 1 rule-step-conflict.stderr
   --rule cannot be used with --step
+
+Manual --qbits, --cbits, and --occurrence options fix the numeric part of a
+named unoptimization parameter.  They are accepted only with --unoptimize
+--rule.
+
+  $ cat > manual-target.qasm <<'EOF'
+  > OPENQASM 2.0;
+  > include "qelib1.inc";
+  > qreg q[2];
+  > creg c[2];
+  > x q[0];
+  > x q[1];
+  > EOF
+
+  $ qasminfer --rule Insert_I --qbits 1 --occurrence 0 --unoptimize manual-target.qasm manual-i.qasm >manual-i.stdout 2>manual-i.stderr
+  $ test ! -s manual-i.stdout
+  $ test ! -s manual-i.stderr
+  $ grep -F 'id q[1];' manual-i.qasm
+  id q[1];
+
+  $ qasminfer --rule Insert_Swap --qbits 0,1 --occurrence 0 --unoptimize manual-target.qasm manual-swap.qasm >manual-swap.stdout 2>manual-swap.stderr
+  $ test ! -s manual-swap.stdout
+  $ test ! -s manual-swap.stderr
+  $ grep -F 'swap q[0],q[1];' manual-swap.qasm
+  swap q[0],q[1];
+
+  $ qasminfer --rule Insert_Cnot_Cnot --qbits 0,1 --occurrence 0 --unoptimize manual-target.qasm manual-cnot.qasm >manual-cnot.stdout 2>manual-cnot.stderr
+  $ test ! -s manual-cnot.stdout
+  $ test ! -s manual-cnot.stderr
+  $ grep -F 'CX q[0],q[1];' manual-cnot.qasm | wc -l | tr -d ' '
+  2
+
+  $ qasminfer --rule Insert_I --qbits 0 --occurrence 99 --unoptimize manual-target.qasm manual-occurrence-fail.qasm >manual-occurrence-fail.stdout 2>manual-occurrence-fail.stderr
+  [1]
+  $ test ! -e manual-occurrence-fail.qasm
+  $ test ! -s manual-occurrence-fail.stdout
+  $ cat manual-occurrence-fail.stderr
+  qasminfer: Occurrence 99 is out of range for rule 'Insert_I' with 2 occurrence(s).
+
+  $ qasminfer --rule Insert_I --qbits 0,1 --unoptimize manual-target.qasm manual-arity-fail.qasm >manual-arity-fail.stdout 2>manual-arity-fail.stderr
+  [1]
+  $ test ! -e manual-arity-fail.qasm
+  $ test ! -s manual-arity-fail.stdout
+  $ cat manual-arity-fail.stderr
+  qasminfer: --qbits expects 1 value(s), but got 2.
+
+  $ qasminfer --rule Insert_I --qbits -1 --unoptimize manual-target.qasm manual-negative-fail.qasm >manual-negative-fail.stdout 2>manual-negative-fail.stderr
+  [2]
+  $ test ! -e manual-negative-fail.qasm
+  $ test ! -s manual-negative-fail.stdout
+  $ head -n 1 manual-negative-fail.stderr
+  qasminfer: --qbits expects non-negative integers.
+
+  $ qasminfer --rule Insert_I --qbits 0, --unoptimize manual-target.qasm manual-empty-fail.qasm >manual-empty-fail.stdout 2>manual-empty-fail.stderr
+  [2]
+  $ test ! -e manual-empty-fail.qasm
+  $ test ! -s manual-empty-fail.stdout
+  $ head -n 1 manual-empty-fail.stderr
+  qasminfer: --qbits expects comma-separated non-negative integers.
+
+  $ qasminfer --rule Insert_I --qbits '0 1' --unoptimize manual-target.qasm manual-space-fail.qasm >manual-space-fail.stdout 2>manual-space-fail.stderr
+  [2]
+  $ test ! -e manual-space-fail.qasm
+  $ test ! -s manual-space-fail.stdout
+  $ head -n 1 manual-space-fail.stderr
+  qasminfer: --qbits expects comma-separated non-negative integers.
+
+  $ qasminfer --rule Insert_I --qbits nope --unoptimize manual-target.qasm manual-non-int-fail.qasm >manual-non-int-fail.stdout 2>manual-non-int-fail.stderr
+  [2]
+  $ test ! -e manual-non-int-fail.qasm
+  $ test ! -s manual-non-int-fail.stdout
+  $ head -n 1 manual-non-int-fail.stderr
+  qasminfer: --qbits expects comma-separated non-negative integers.
+
+  $ qasminfer --rule Insert_I --qbits 0 --qbits 1 --unoptimize manual-target.qasm manual-duplicate-fail.qasm >manual-duplicate-fail.stdout 2>manual-duplicate-fail.stderr
+  [2]
+  $ test ! -e manual-duplicate-fail.qasm
+  $ test ! -s manual-duplicate-fail.stdout
+  $ head -n 1 manual-duplicate-fail.stderr
+  qasminfer: --qbits cannot be specified more than once.
+
+  $ qasminfer --qbits 0 --unoptimize manual-target.qasm manual-no-rule-fail.qasm >manual-no-rule-fail.stdout 2>manual-no-rule-fail.stderr
+  [2]
+  $ test ! -e manual-no-rule-fail.qasm
+  $ test ! -s manual-no-rule-fail.stdout
+  $ head -n 1 manual-no-rule-fail.stderr
+  --qbits, --cbits, and --occurrence require --rule
+
+  $ qasminfer --qbits 0 --unoptimize-rules manual-target.qasm >manual-rules-fail.stdout 2>manual-rules-fail.stderr
+  [2]
+  $ test ! -s manual-rules-fail.stdout
+  $ head -n 1 manual-rules-fail.stderr
+  --qbits, --cbits, and --occurrence cannot be used with --unoptimize-rules
 
   $ qasminfer --json qasm2.qasm >qasm2-source.json 2>qasm2-source.stderr
   $ qasminfer --json qasm2.once.qasm >qasm2-generated.json 2>qasm2-generated.stderr

@@ -2970,13 +2970,13 @@ Definition Rule_Insert_Cnot_Cnot (qbit1 qbit2: nat) : RewriteRule :=
        PCnot (NatExact qbit1) (NatExact qbit2)]
   |}.
 
-Definition Rule_Swap_To_3Cnot (qbit1 qbit2: nat) : RewriteRule :=
+Definition Rule_Swap_To_3Cnot : RewriteRule :=
   {|
-    rule_lhs := [PSwap (NatExact qbit1) (NatExact qbit2)];
+    rule_lhs := [PSwap (NatVar 0) (NatVar 1)];
     rule_rhs :=
-      [PCnot (NatExact qbit1) (NatExact qbit2);
-       PCnot (NatExact qbit2) (NatExact qbit1);
-       PCnot (NatExact qbit1) (NatExact qbit2)]
+      [PCnot (NatVar 0) (NatVar 1);
+       PCnot (NatVar 1) (NatVar 0);
+       PCnot (NatVar 0) (NatVar 1)]
   |}.
 
 Definition Rule_Double_If (cond : bool) : RewriteRule :=
@@ -3080,20 +3080,7 @@ Definition TransformSpec_Insert_Cnot_Cnot : TransformSpec :=
   |}.
 
 Definition TransformSpec_Swap_To_3Cnot : TransformSpec :=
-  {|
-    transform_name := "Swap_To_3Cnot";
-    transform_rule := fun param =>
-      match param with
-      | Param_qbit2 qbit1 qbit2 =>
-          if (qbit1 <? nq) && (qbit2 <? nq)
-          then Some (Rule_Swap_To_3Cnot qbit1 qbit2)
-          else None
-      | _ => None
-      end;
-    transform_postprocess := fun _ instr => instr;
-    transform_strategy := TransformDeep;
-    transform_param_kind := ParamKind_qbit2;
-  |}.
+  TransformSpec_simple_rule "Swap_To_3Cnot" Rule_Swap_To_3Cnot.
 
 Definition TransformSpec_Insert_Contradictory_If
     (name : string)
@@ -3262,33 +3249,31 @@ Lemma TransformSpec_Swap_To_3Cnot_valid :
 Proof.
   unfold
     TransformSpecValid,
-    TransformSpec_Swap_To_3Cnot.
+    TransformSpec_Swap_To_3Cnot,
+    TransformSpec_simple_rule,
+    Transform_simple_rule.
   simpl.
   intros param.
   destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
-  destruct ((qbit1 <? nq) && (qbit2 <? nq)) eqn:Hqbits; simpl.
-  - intros rule Hrule map lhs rhs Hlhs Hrhs _.
-    cbn [transform_rule] in Hrule.
-    rewrite Hqbits in Hrule.
-    injection Hrule as <-.
-    apply andb_true_iff in Hqbits as [Hqbit1 Hqbit2].
-    apply Nat.ltb_lt in Hqbit1.
-    apply Nat.ltb_lt in Hqbit2.
-    simpl in Hlhs, Hrhs.
-    inversion Hlhs; subst; clear Hlhs.
-    inversion Hrhs; subst; clear Hrhs.
-    symmetry.
-    transitivity qasm{ cx qbit1 qbit2; cx qbit2 qbit1; cx qbit1 qbit2 }.
-    + apply Instruction_equiv_Seq_three.
-    + transitivity qasm{ swap qbit1 qbit2 }.
-      * apply Transform_3cnot_swap; assumption.
-      * symmetry.
-        apply Instruction_equiv_Seq_singleton.
-  - intros rule Hrule.
-    cbn [transform_rule] in Hrule.
-    rewrite Hqbits in Hrule.
-    discriminate.
+  intros rule Hrule map lhs rhs Hlhs Hrhs Hvalid.
+  injection Hrule as <-.
+  simpl in Hlhs, Hrhs.
+  destruct (NatMap.find 0%nat (pattern_nat_map map)) as [qbit1 |];
+  try discriminate.
+  destruct (NatMap.find 1%nat (pattern_nat_map map)) as [qbit2 |];
+  try discriminate.
+  inversion Hlhs; subst; clear Hlhs.
+  inversion Hrhs; subst; clear Hrhs.
+  inversion Hvalid as [| ? ? Hswap_valid Hnil_valid]; subst.
+  inversion Hswap_valid; subst.
+  symmetry.
+  transitivity qasm{ cx qbit1 qbit2; cx qbit2 qbit1; cx qbit1 qbit2 }.
+  - apply Instruction_equiv_Seq_three.
+  - transitivity qasm{ swap qbit1 qbit2 }.
+    + apply Transform_3cnot_swap; assumption.
+    + symmetry.
+      apply Instruction_equiv_Seq_singleton.
 Qed.
 
 Lemma TransformSpec_Insert_Contradictory_If_valid :
