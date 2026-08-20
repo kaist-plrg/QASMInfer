@@ -3009,6 +3009,15 @@ Definition Rule_Insert_Contradictory_If
           [PInstrExact instr]]]
   |}.
 
+Definition Rule_Double_Reset : RewriteRule :=
+  {|
+    rule_lhs := [PReset (NatVar 0)];
+    rule_rhs := [
+      PReset (NatVar 0);
+      PReset (NatVar 0)
+    ]
+  |}.
+
 Definition Transform_simple_rule (rule: RewriteRule) : TransformParameter -> option RewriteRule :=
   fun param =>
     match param with
@@ -3116,7 +3125,8 @@ Definition Transform_spec_list : list TransformSpec :=
     TransformSpec_Insert_Contradictory_If_False;
     TransformSpec_Insert_Contradictory_If_True;
     TransformSpec_simple_rule "Double_If_True" Rule_Double_If_True;
-    TransformSpec_simple_rule "Double_If_False" Rule_Double_If_False
+    TransformSpec_simple_rule "Double_If_False" Rule_Double_If_False;
+    TransformSpec_simple_rule "Double_Reset" Rule_Double_Reset
   ].
 
 Lemma TransformSpec_Insert_I_valid :
@@ -3174,40 +3184,6 @@ Proof.
     discriminate.
 Qed.
 
-Lemma Instruction_equiv_Nop_Seq_nil :
-  Instruction_equiv nq NopInstr (SeqInstr []).
-Proof.
-  intros ps _.
-  cbn [Execute_suppl].
-  reflexivity.
-Qed.
-
-Lemma Instruction_equiv_Seq_two :
-  forall instr1 instr2,
-    Instruction_equiv nq
-      (SeqInstr [instr1; instr2])
-      qasm{ instr1; instr2 }.
-Proof.
-  intros instr1 instr2.
-  transitivity qasm{ instr1; seq[ [instr2] ] }.
-  - apply Instruction_equiv_Seq_list_eq.
-  - apply Instruction_equiv_rewrite_end.
-    apply Instruction_equiv_Seq_singleton.
-Qed.
-
-Lemma Instruction_equiv_Seq_three :
-  forall instr1 instr2 instr3,
-    Instruction_equiv nq
-      (SeqInstr [instr1; instr2; instr3])
-      qasm{ instr1; instr2; instr3 }.
-Proof.
-  intros instr1 instr2 instr3.
-  transitivity qasm{ instr1; seq[ [instr2; instr3] ] }.
-  - apply Instruction_equiv_Seq_list_eq.
-  - apply Instruction_equiv_rewrite_end.
-    apply Instruction_equiv_Seq_two.
-Qed.
-
 Lemma TransformSpec_Insert_Cnot_Cnot_valid :
   TransformSpecValid nq TransformSpec_Insert_Cnot_Cnot.
 Proof.
@@ -3232,12 +3208,12 @@ Proof.
     symmetry.
     transitivity qasm{ I qbit1 }.
     + transitivity qasm{ cx qbit1 qbit2; cx qbit1 qbit2 }.
-      * apply Instruction_equiv_Seq_two.
+      * rewrite Instruction_equiv_Seq_list_eq. reflexivity.
       * apply Transform_cnot_cnot; assumption.
     + transitivity NopInstr.
       * apply Transform_I.
         assumption.
-      * apply Instruction_equiv_Nop_Seq_nil.
+      * intros ps Hps. reflexivity.
   - intros rule Hrule.
     cbn [transform_rule] in Hrule.
     rewrite Hqbits in Hrule.
@@ -3269,7 +3245,7 @@ Proof.
   inversion Hswap_valid; subst.
   symmetry.
   transitivity qasm{ cx qbit1 qbit2; cx qbit2 qbit1; cx qbit1 qbit2 }.
-  - apply Instruction_equiv_Seq_three.
+  - repeat rewrite Instruction_equiv_Seq_list_eq. reflexivity.
   - transitivity qasm{ swap qbit1 qbit2 }.
     + apply Transform_3cnot_swap; assumption.
     + symmetry.
@@ -3358,6 +3334,30 @@ Proof.
   apply TransformSpec_Double_If_valid.
 Qed.
 
+Lemma TransformSpec_Double_Reset_valid :
+  TransformSpecValid nq
+    (TransformSpec_simple_rule "Double_Reset" Rule_Double_Reset).
+Proof.
+  unfold TransformSpecValid, TransformSpec_simple_rule, Transform_simple_rule.
+  simpl.
+  intros param.
+  destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
+  all: try (intros rule Hrule; discriminate).
+  intros rule Hrule subst lhs rhs Hlhs Hrhs Hvalid.
+  injection Hrule as <-.
+  unfold Rule_Double_Reset in Hlhs, Hrhs.
+  simpl in Hlhs, Hrhs.
+  destruct (NatMap.find 0%nat (pattern_nat_map subst)) as [qbit |];
+  try discriminate.
+  injection Hlhs as <-.
+  injection Hrhs as <-.
+  repeat rewrite Instruction_equiv_Seq_singleton.
+  symmetry.
+  apply Transform_double_reset.
+  inversion Hvalid; subst. inversion H1; subst.
+  assumption.
+Qed.
+
 Theorem Transform_spec_list_valid :
   Forall (TransformSpecValid nq) Transform_spec_list.
 Proof.
@@ -3370,6 +3370,7 @@ Proof.
   - apply TransformSpec_Insert_Contradictory_If_True_valid.
   - apply TransformSpec_Double_If_True_valid.
   - apply TransformSpec_Double_If_False_valid.
+  - apply TransformSpec_Double_Reset_valid.
 Qed.
 
 End TRANSFORM_FUNCTIONS.
