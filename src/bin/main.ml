@@ -22,6 +22,14 @@ type command =
       step: int option;
       rule_file : string option;
       rule_name : string option;
+      manual : Unoptimize.manual_parameters option;
+    }
+  | UnoptimizeRules of {
+      source : string;
+      verbose : bool;
+      emit_json : bool;
+      output_file : string option;
+      rule_file : string option;
     }
 
 type result_entry = {
@@ -31,17 +39,56 @@ type result_entry = {
 
 let usage_msg =
   "usage: qasminfer [OPTIONS] SOURCE\n\
-   \       qasminfer --unoptimize [--verbose] SOURCE DESTINATION"
+   \       qasminfer --unoptimize [--verbose] SOURCE DESTINATION\n\
+   \       qasminfer --unoptimize-rules [--json] SOURCE"
 
 let parse_args argv =
   let verbose = ref false in
   let emit_json = ref false in
   let unoptimize = ref false in
+  let unoptimize_rules = ref false in
   let output_file = ref None in
   let step = ref None in
   let rule_file = ref None in
   let rule_name = ref None in
+  let qbits = ref None in
+  let cbits = ref None in
+  let occurrence = ref None in
   let positionals = ref [] in
+  let parse_int_list option_name raw =
+    let parse_token token =
+      let token = String.trim token in
+      if token = "" then
+        raise
+          (Arg.Bad
+             (Printf.sprintf "%s expects comma-separated non-negative integers"
+                option_name));
+      try
+        let value = int_of_string token in
+        if value < 0 then
+          raise
+            (Arg.Bad
+               (Printf.sprintf "%s expects non-negative integers" option_name));
+        value
+      with Failure _ ->
+        raise
+          (Arg.Bad
+             (Printf.sprintf "%s expects comma-separated non-negative integers"
+                option_name))
+    in
+    String.split_on_char ',' raw |> List.map parse_token
+  in
+  let set_int_list option_name target raw =
+    match !target with
+    | None -> target := Some (parse_int_list option_name raw)
+    | Some _ -> raise (Arg.Bad (option_name ^ " cannot be specified more than once"))
+  in
+  let set_occurrence value =
+    if value < 0 then raise (Arg.Bad "--occurrence must be non-negative");
+    match !occurrence with
+    | None -> occurrence := Some value
+    | Some _ -> raise (Arg.Bad "--occurrence cannot be specified more than once")
+  in
   let set_output_file path =
     match !output_file with
     | None -> output_file := Some path
@@ -52,6 +99,9 @@ let parse_args argv =
         Arg.Set unoptimize,
         "Rewrite SOURCE as canonical OpenQASM 2 in DESTINATION" );
       ("--unopt", Arg.Set unoptimize, "Short for --unoptimize");
+      ( "--unoptimize-rules",
+        Arg.Set unoptimize_rules,
+        "List unoptimization rules applicable to SOURCE" );
       ( "--verbose",
         Arg.Set verbose,
         "Print intermediate QASMCore representation" );
@@ -60,9 +110,18 @@ let parse_args argv =
       ( "--rule",
         Arg.String (fun name -> rule_name := Some name),
         "Apply only the transform rule named NAME once" );
+      ( "--qbits",
+        Arg.String (set_int_list "--qbits" qbits),
+        "Set comma-separated qbit parameter(s) for --unoptimize --rule" );
+      ( "--cbits",
+        Arg.String (set_int_list "--cbits" cbits),
+        "Set comma-separated cbit parameter(s) for --unoptimize --rule" );
+      ( "--occurrence",
+        Arg.Int set_occurrence,
+        "Set rewrite occurrence for --unoptimize --rule" );
       ( "--rule-file",
         Arg.String (fun path -> rule_file := Some path),
-        "Read standard-gate rewrite rules from JSON FILE for --unoptimize" );
+        "Read standard-gate rewrite rules from JSON FILE" );
       ("--json", Arg.Set emit_json, "Emit result as JSON");
       ( "--output",
         Arg.String set_output_file,
@@ -80,14 +139,34 @@ let parse_args argv =
   in
   if Array.length argv <= 1 then
     raise (Arg.Bad (Arg.usage_string speclist usage_msg));
-  match (!unoptimize, positionals) with
-  | true, _ when !emit_json ->
+  let manual_options_used =
+    Option.is_some !qbits || Option.is_some !cbits || Option.is_some !occurrence
+  in
+  let manual =
+    if manual_options_used then
+      Some
+        {
+          Unoptimize.qbits = !qbits;
+          cbits = !cbits;
+          occurrence = !occurrence;
+        }
+    else None
+  in
+  match (!unoptimize, !unoptimize_rules, positionals) with
+  | true, true, _ ->
+      usage_error "--unoptimize cannot be used with --unoptimize-rules"
+  | false, true, _ when manual_options_used ->
+      usage_error
+        "--qbits, --cbits, and --occurrence cannot be used with --unoptimize-rules"
+  | true, false, _ when !emit_json ->
       usage_error "--json cannot be used with --unoptimize"
-  | true, _ when Option.is_some !output_file ->
+  | true, false, _ when Option.is_some !output_file ->
       usage_error "--output/-o cannot be used with --unoptimize"
-  | true, _ when Option.is_some !rule_name && Option.is_some !step ->
+  | true, false, _ when Option.is_some !rule_name && Option.is_some !step ->
       usage_error "--rule cannot be used with --step"
-  | true, [ source; destination ] ->
+  | true, false, _ when manual_options_used && Option.is_none !rule_name ->
+      usage_error "--qbits, --cbits, and --occurrence require --rule"
+  | true, false, [ source; destination ] ->
       Unoptimize
         {
           source;
@@ -96,17 +175,35 @@ let parse_args argv =
           step = !step;
           rule_file = !rule_file;
           rule_name = !rule_name;
+          manual;
         }
-  | true, _ ->
+  | true, false, _ ->
       usage_error
         "--unoptimize expects exactly two positional arguments: SOURCE DESTINATION"
-  | false, _ when Option.is_some !step ->
+  | false, true, _ when Option.is_some !step ->
+      usage_error "--step cannot be used with --unoptimize-rules"
+  | false, true, _ when Option.is_some !rule_name ->
+      usage_error "--rule cannot be used with --unoptimize-rules"
+  | false, true, [ source ] ->
+      UnoptimizeRules
+        {
+          source;
+          verbose = !verbose;
+          emit_json = !emit_json;
+          output_file = !output_file;
+          rule_file = !rule_file;
+        }
+  | false, true, _ ->
+      usage_error "--unoptimize-rules expects exactly one positional SOURCE"
+  | false, false, _ when manual_options_used ->
+      usage_error "--qbits, --cbits, and --occurrence can only be used with --unoptimize --rule"
+  | false, false, _ when Option.is_some !step ->
       usage_error "--step cannot "
-  | false, _ when Option.is_some !rule_file ->
-      usage_error "--rule-file can only be used with --unoptimize"
-  | false, _ when Option.is_some !rule_name ->
+  | false, false, _ when Option.is_some !rule_file ->
+      usage_error "--rule-file can only be used with --unoptimize or --unoptimize-rules"
+  | false, false, _ when Option.is_some !rule_name ->
       usage_error "--rule can only be used with --unoptimize"
-  | false, [ source ] ->
+  | false, false, [ source ] ->
       Execute
         {
           source;
@@ -114,7 +211,7 @@ let parse_args argv =
           emit_json = !emit_json;
           output_file = !output_file;
         }
-  | false, _ -> usage_error "execution expects exactly one positional SOURCE"
+  | false, false, _ -> usage_error "execution expects exactly one positional SOURCE"
 
 let rec to_binary n =
   if n = 0 then "0"
@@ -200,6 +297,31 @@ let json_of_result nq nc entries =
       "{\n  \"qubits\": %d,\n  \"clbits\": %d,\n  \"probabilities\": [\n%s\n  ]\n}\n"
       nq nc probabilities
 
+let text_of_applicable_rules rules =
+  rules
+  |> List.map (fun { Unoptimize.name; occurrences; param } ->
+         Printf.sprintf "%s: occurrences=%d param=%s" name occurrences param)
+  |> String.concat "\n"
+  |> fun body -> if body = "" then body else body ^ "\n"
+
+let json_of_applicable_rules source nq nc rules =
+  let rules_json =
+    rules
+    |> List.map (fun { Unoptimize.name; occurrences; param } ->
+           Printf.sprintf
+             "    {\n      \"name\": \"%s\",\n      \"occurrences\": %d,\n      \"param\": \"%s\"\n    }"
+             (json_escape name) occurrences (json_escape param))
+    |> String.concat ",\n"
+  in
+  if rules_json = "" then
+    Printf.sprintf
+      "{\n  \"source\": \"%s\",\n  \"qubits\": %d,\n  \"clbits\": %d,\n  \"rules\": []\n}\n"
+      (json_escape source) nq nc
+  else
+    Printf.sprintf
+      "{\n  \"source\": \"%s\",\n  \"qubits\": %d,\n  \"clbits\": %d,\n  \"rules\": [\n%s\n  ]\n}\n"
+      (json_escape source) nq nc rules_json
+
 let write_result output_file output =
   match output_file with
   | None -> output_string stdout output
@@ -272,21 +394,22 @@ let execute source verbose emit_json output_file =
   in
   write_result output_file result
 
-let unoptimize source destination step verbose rule_file rule_name =
-  let specs =
-    match rule_file with
-    | None -> None
-    | Some path -> (
-        match Unoptimize.specs_of_rule_file path with
-        | Ok specs -> Some specs
-        | Error message ->
-            raise (Cli_error ("invalid rule file " ^ path ^ ": " ^ message)))
-  in
+let specs_of_rule_file_option rule_file =
+  match rule_file with
+  | None -> None
+  | Some path -> (
+      match Unoptimize.specs_of_rule_file path with
+      | Ok specs -> Some specs
+      | Error message ->
+          raise (Cli_error ("invalid rule file " ^ path ^ ": " ^ message)))
+
+let unoptimize source destination step verbose rule_file rule_name manual =
+  let specs = specs_of_rule_file_option rule_file in
   let nq, nc, instr, q_assignment, c_assignment =
     parse_and_desugar source
   in
   let transformed =
-    try Unoptimize.unoptimize ?specs ?rule_name instr step nq nc with
+    try Unoptimize.unoptimize ?specs ?rule_name ?manual instr step nq nc with
     | Failure message -> raise (Cli_error message)
   in
   log_instruction verbose transformed;
@@ -296,6 +419,20 @@ let unoptimize source destination step verbose rule_file rule_name =
     | Error message -> failwith ("cannot sugar OpenQASMCore: " ^ message)
   in
   write_result (Some destination) output
+
+let unoptimize_rules source verbose emit_json output_file rule_file =
+  let specs = specs_of_rule_file_option rule_file in
+  let nq, nc, instr, _, _ = parse_and_desugar source in
+  log_instruction verbose instr;
+  let rules =
+    try Unoptimize.applicable_rules ?specs instr nq nc with
+    | Failure message -> raise (Cli_error message)
+  in
+  let output =
+    if emit_json then json_of_applicable_rules source nq nc rules
+    else text_of_applicable_rules rules
+  in
+  write_result output_file output
 
 let output_message channel message =
   output_string channel message;
@@ -309,9 +446,12 @@ let main argv =
     | Execute { source; verbose; emit_json; output_file } ->
         execute source verbose emit_json output_file;
         0
-    | Unoptimize { source; destination; step; verbose; rule_file; rule_name } ->
+    | Unoptimize { source; destination; step; verbose; rule_file; rule_name; manual } ->
         let step = Option.value step ~default:1 in
-        unoptimize source destination step verbose rule_file rule_name;
+        unoptimize source destination step verbose rule_file rule_name manual;
+        0
+    | UnoptimizeRules { source; verbose; emit_json; output_file; rule_file } ->
+        unoptimize_rules source verbose emit_json output_file rule_file;
         0
   with
   | Arg.Help message ->

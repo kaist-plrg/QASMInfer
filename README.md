@@ -5,13 +5,6 @@ QASMInfer itself is a verified exact inference engine for quantum circuits
 written in OpenQASM; this version keeps that execution path and adds a Rocq-side
 rewrite framework plus an OCaml CLI path for applying validated rewrite rules.
 
-The new framework is research code under active development. In particular, it
-is intended for studying semantics-preserving circuit expansion rules, not for
-text-preserving OpenQASM formatting or source-to-source refactoring.
-
-Currently, QASMInfer supports OpenQASM 2 and provides partial support for
-OpenQASM 3.
-
 ## Prereqs
 
 - `dune` (tested with 3.20.x)
@@ -45,53 +38,68 @@ src/bin/                         # CLI execution and OpenQASM rewrite modes
 
 ## Build and run
 
-The build pipeline ensures that the executable is generated from the Rocq
-development, including the extracted transformation framework.
+Build the Rocq development, extracted OCaml library, and CLI executable:
 
 ```bash
-dune build             # builds Rocq theory, extracts to OCaml, builds library + exe
+dune build
 ```
 
-The original exact inference mode is still available:
+Run exact inference:
 
 ```bash
 dune exec qasminfer -- test.qasm
 ```
 
-After installing into your opam switch:
+Install and run from the current opam switch:
 
 ```bash
-dune install           # installs library + executable
-qasminfer test.qasm    # run the installed executable
+dune install
+qasminfer test.qasm
 ```
 
-To apply the unoptimization framework without executing the circuit, use
-`--unoptimize` (or its `--unopt` alias) with an input and output path:
+Unoptimize a program without executing it:
 
 ```bash
 dune exec qasminfer -- --unoptimize input.qasm output.qasm
-# or, after installation:
-qasminfer --unoptimize input.qasm output.qasm
-# equivalently:
-qasminfer --unopt input.qasm output.qasm
 ```
 
-The rewrite path parses and inlines the supported input, lowers it to
-OpenQASMCore, applies extracted transformation specifications, and converts the
-result back to OpenQASM. Both supported OpenQASM 2 and partial OpenQASM 3
-inputs produce canonical OpenQASM 2 output.
+The rewrite path parses OpenQASM 2 or the supported OpenQASM 3 subset, lowers
+the program to OpenQASMCore, applies extracted transformation specifications,
+and emits canonical OpenQASM 2. This is a normalized rewrite, not a
+text-preserving one: comments, barriers, includes, gate declarations, call
+names, expression spelling, and parallel syntax may be lost or expanded.
 
-This is a normalized rewrite, not a text-preserving one. Comments, barriers,
-includes, gate declarations and call names, symbolic expression spelling, and
-parallel syntax may be lost or expanded. Use `--verbose` (or `-v`) to print the
-transformed OpenQASMCore program to stderr. Execution-only `--json` and
-`--output`/`-o` options cannot be combined with `--unoptimize`.
+### CLI options
 
-`--rule-file FILE` adds JSON-defined single-qubit standard-gate rewrite rules to
-the unoptimization rule set. The file may be an array of rules, or an object
-with a `rules` array. Each rule is validated exactly before rewriting starts,
-using arithmetic over `Q[omega] / (omega^4 + 1)` and accepting global phase by
-powers of `omega = exp(i pi / 4)`:
+- `--unoptimize SOURCE DESTINATION`, `--unopt SOURCE DESTINATION`: apply
+  unoptimization and write canonical OpenQASM 2.
+- `--unoptimize-rules SOURCE`: print the currently applicable unoptimization
+  rules without rewriting.
+- `--rule NAME`: restrict unoptimization to one built-in or loaded rule. This
+  applies exactly one rewrite and cannot be combined with `--step`.
+- `--step N`: apply up to `N` random unoptimization rewrites.
+- `--rule-file FILE`: append JSON-defined standard-gate rewrite rules after the
+  built-in rules.
+- `--qbits 0`, `--qbits 0,1`: manually choose qbit parameters for
+  `--unoptimize --rule NAME`.
+- `--cbits 0`: manually choose cbit parameters for
+  `--unoptimize --rule NAME`.
+- `--occurrence N`: manually choose the matched occurrence for
+  `--unoptimize --rule NAME`.
+- `--verbose`, `-v`: print the OpenQASMCore program to stderr.
+- `--json`: emit JSON in execution mode or `--unoptimize-rules` mode.
+- `--output FILE`, `-o FILE`: write execution or `--unoptimize-rules` output to
+  a file.
+
+Execution-only `--json` and `--output`/`-o` cannot be combined with
+`--unoptimize`. Manual parameter options require `--unoptimize --rule NAME`.
+
+### Rule files
+
+`--rule-file FILE` accepts either an array of rules or an object with a `rules`
+array. Each JSON rule is validated exactly before rewriting starts, using
+arithmetic over `Q[omega] / (omega^4 + 1)` and accepting global phase by powers
+of `omega = exp(i pi / 4)`:
 
 ```json
 [
@@ -103,19 +111,32 @@ Gate names are `id`, `x`, `y`, `z`, `h`, `s`, `sdg`, `t`, `tdg`, `sx`, and
 `sxdg`. Invalid rules, and duplicate rule names in the combined built-in and
 rule-file rule set, are rejected without writing the destination.
 
-`--rule NAME` restricts unoptimization to transform specs with the given name,
-including rules loaded from `--rule-file`. It can only be used with
-`--unoptimize`, cannot be combined with `--step`, and applies exactly one
-rewrite. If the named rule exists but has zero matches in the current program,
-the command returns an error instead of retrying.
+### Output formats
 
-Example output:
+Execution output:
 
 ```
 00 : 5.0000000000000011e-01   # probability for creg being [00]
 01 : 4.9999999999999989e-01   # probability for creg being [01]
 10 : 0.0000000000000000e+00   # probability for creg being [10]
 11 : 0.0000000000000000e+00   # probability for creg being [11]
+```
+
+Unoptimization writes canonical OpenQASM 2 to the destination file. For example,
+running:
+
+```bash
+dune exec qasminfer -- --unoptimize --rule Insert_Swap --qbits 0,1 input.qasm output.qasm
+```
+
+can produce:
+
+```qasm
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+swap q[0],q[1];
+h q[0];
 ```
 
 JSON output:

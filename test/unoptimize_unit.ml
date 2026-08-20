@@ -41,6 +41,15 @@ let pi_angle numerator denominator =
       qden = Big_int_Z.big_int_of_int denominator;
     }
 
+let manual ?qbits ?cbits ?occurrence () =
+  { Unoptimize.qbits; cbits; occurrence }
+
+let expect_failure_contains fragment f =
+  try
+    let _ = f () in
+    failf "expected failure containing %S" fragment
+  with Failure message -> require_contains message fragment
+
 let test_unoptimize_nop_is_exact_identity () =
 let instruction =
   E.SeqInstr
@@ -75,6 +84,31 @@ let rec swaps_of_instruction = function
   | E.ResetInstr _ ->
       []
 
+let rec cnots_of_instruction = function
+  | E.CnotInstr (control, target) -> [ (control, target) ]
+  | E.SeqInstr instructions -> List.concat_map cnots_of_instruction instructions
+  | E.IfInstr (_, _, body) -> cnots_of_instruction body
+  | E.NopInstr
+  | E.RotateInstr _
+  | E.SwapInstr _
+  | E.MeasureInstr _
+  | E.ResetInstr _ ->
+      []
+
+let rec identity_rotate_targets = function
+  | E.RotateInstr (theta, phi, lambda, qbit)
+    when theta = pi_angle 0 1 && phi = pi_angle 0 1 && lambda = pi_angle 0 1 ->
+      [ qbit ]
+  | E.SeqInstr instructions -> List.concat_map identity_rotate_targets instructions
+  | E.IfInstr (_, _, body) -> identity_rotate_targets body
+  | E.NopInstr
+  | E.RotateInstr _
+  | E.CnotInstr _
+  | E.SwapInstr _
+  | E.MeasureInstr _
+  | E.ResetInstr _ ->
+      []
+
 let test_insert_swap_uses_distinct_parameters () =
   for _ = 1 to 20 do
     let transformed =
@@ -93,14 +127,111 @@ let test_insert_swap_uses_distinct_parameters () =
           swaps
   done
 
+let test_swap_to_3cnot_uses_matched_swap_operands () =
+  let transformed =
+    Unoptimize.unoptimize ~rule_name:"Swap_To_3Cnot" (E.SwapInstr (0, 1)) 1
+      2 0
+  in
+  match transformed with
+  | E.SeqInstr
+      [
+        E.CnotInstr (0, 1);
+        E.CnotInstr (1, 0);
+        E.CnotInstr (0, 1);
+      ] ->
+      ()
+  | _ -> failf "Swap_To_3Cnot did not reuse the matched swap operands"
+
+let test_manual_qbit1_insert_i () =
+  let transformed =
+    Unoptimize.unoptimize ~rule_name:"Insert_I"
+      ~manual:(manual ~qbits:[ 1 ] ~occurrence:0 ()) E.NopInstr 1 2 0
+  in
+  require (List.mem 1 (identity_rotate_targets transformed))
+    "Insert_I did not use the manually selected qbit"
+
+let test_manual_qbit2_insert_swap () =
+  let transformed =
+    Unoptimize.unoptimize ~rule_name:"Insert_Swap"
+      ~manual:(manual ~qbits:[ 0; 1 ] ~occurrence:0 ()) E.NopInstr 1 2 0
+  in
+  require (swaps_of_instruction transformed = [ (0, 1) ])
+    "Insert_Swap did not use the manually selected qbit pair"
+
+let test_manual_qbit2_insert_cnot_cnot () =
+  let transformed =
+    Unoptimize.unoptimize ~rule_name:"Insert_Cnot_Cnot"
+      ~manual:(manual ~qbits:[ 0; 1 ] ~occurrence:0 ()) E.NopInstr 1 2 0
+  in
+  require (cnots_of_instruction transformed = [ (0, 1); (0, 1) ])
+    "Insert_Cnot_Cnot did not use the manually selected qbit pair"
+
+let test_manual_occurrence_selects_position () =
+  let source = E.SeqInstr [ E.ResetInstr 0; E.ResetInstr 1 ] in
+  let transformed =
+    Unoptimize.unoptimize ~rule_name:"Insert_I"
+      ~manual:(manual ~qbits:[ 0 ] ~occurrence:1 ()) source 1 2 0
+  in
+  match transformed with
+  | E.SeqInstr
+      [
+        E.ResetInstr 0;
+        E.RotateInstr (theta, phi, lambda, 0);
+        E.ResetInstr 1;
+      ]
+    when theta = pi_angle 0 1 && phi = pi_angle 0 1 && lambda = pi_angle 0 1 ->
+      ()
+  | _ -> failf "--occurrence did not select the requested rewrite position"
+
+let test_manual_parameter_errors () =
+  expect_failure_contains "--qbits expects 1 value(s), but got 2." (fun () ->
+      Unoptimize.unoptimize ~rule_name:"Insert_I"
+        ~manual:(manual ~qbits:[ 0; 1 ] ()) E.NopInstr 1 2 0);
+  expect_failure_contains "--qbits must contain non-negative integers." (fun () ->
+      Unoptimize.unoptimize ~rule_name:"Insert_I"
+        ~manual:(manual ~qbits:[ -1 ] ()) E.NopInstr 1 2 0);
+  expect_failure_contains "Manual parameters are invalid" (fun () ->
+      Unoptimize.unoptimize ~rule_name:"Insert_I"
+        ~manual:(manual ~qbits:[ 2 ] ()) E.NopInstr 1 2 0);
+  expect_failure_contains "Occurrence 10 is out of range" (fun () ->
+      Unoptimize.unoptimize ~rule_name:"Insert_I"
+        ~manual:(manual ~qbits:[ 0 ] ~occurrence:10 ()) E.NopInstr 1 2 0);
+  expect_failure_contains "Manual parameters require --rule." (fun () ->
+      Unoptimize.unoptimize ~manual:(manual ~qbits:[ 0 ] ()) E.NopInstr 1 2
+        0)
+
+let applicable_rule name rules =
+  List.find_opt (fun rule -> String.equal rule.Unoptimize.name name) rules
+
+let require_no_applicable_rule name rules =
+  match applicable_rule name rules with
+  | None -> ()
+  | Some _ -> failf "%s should not be applicable" name
+
+let test_applicable_rules_reports_swap_to_3cnot_only_for_swap () =
+  let without_swap = Unoptimize.applicable_rules E.NopInstr 2 0 in
+  require_no_applicable_rule "Swap_To_3Cnot" without_swap;
+  let with_swap = Unoptimize.applicable_rules (E.SwapInstr (0, 1)) 2 0 in
+  match applicable_rule "Swap_To_3Cnot" with_swap with
+  | Some { Unoptimize.param = "none"; occurrences = 1; _ } -> ()
+  | Some _ -> failf "Swap_To_3Cnot reported the wrong applicability summary"
+  | None -> failf "Swap_To_3Cnot should be applicable to a swap instruction"
+
+let test_applicable_rules_reports_param_kind_without_values () =
+  let rules = Unoptimize.applicable_rules E.NopInstr 2 1 in
+  match applicable_rule "Insert_Swap" rules with
+  | Some { Unoptimize.param = "qbit2"; occurrences = 1; _ } -> ()
+  | Some _ -> failf "Insert_Swap reported concrete param values"
+  | None -> failf "Insert_Swap should be applicable to NopInstr"
+
 let test_double_if_accepts_any_instruction () =
   let instruction = E.IfInstr (0, false, E.CnotInstr (0, 1)) in
   let transformed =
-    Unoptimize.unoptimize ~rule_name:"Double_If_H_False" instruction 1 2 1
+    Unoptimize.unoptimize ~rule_name:"Double_If_False" instruction 1 2 1
   in
   match transformed with
   | E.IfInstr (0, false, E.IfInstr (0, false, E.CnotInstr (0, 1))) -> ()
-  | _ -> failf "Double_If_H_False did not duplicate a non-H body"
+  | _ -> failf "Double_If_False did not duplicate a non-H body"
 
 let rec contradictory_if_cbits outer_cond = function
   | E.IfInstr (outer_cbit, cond, E.IfInstr (inner_cbit, inner_cond, body))
@@ -120,33 +251,40 @@ let rec contradictory_if_cbits outer_cond = function
   | E.ResetInstr _ ->
       []
 
+let test_manual_cbit_insert_if () =
+  let transformed =
+    Unoptimize.unoptimize ~rule_name:"Insert_If_FT"
+      ~manual:(manual ~cbits:[ 1 ] ~occurrence:0 ()) E.NopInstr 1 2 2
+  in
+  require (List.mem 1 (contradictory_if_cbits false transformed))
+    "Insert_If_FT did not use the manually selected cbit"
+
 let test_insert_contradictory_if_generates_valid_cbit () =
   for _ = 1 to 20 do
     let transformed =
-      Unoptimize.unoptimize ~rule_name:"Insert_Contradictory_If" E.NopInstr 1
+      Unoptimize.unoptimize ~rule_name:"Insert_If_FT" E.NopInstr 1
         2 2
     in
     require (E.instruction_qbits_validb 2 transformed)
-      "Insert_Contradictory_If generated an invalid qbit index";
+      "Insert_If_FT generated an invalid qbit index";
     match contradictory_if_cbits false transformed with
-    | [] -> failf "Insert_Contradictory_If did not insert a contradictory if"
+    | [] -> failf "Insert_If_FT did not insert a contradictory if"
     | cbits ->
         List.iter
           (fun cbit ->
             require (0 <= cbit && cbit < 2)
               (Printf.sprintf
-                 "Insert_Contradictory_If generated invalid cbit %d"
+                 "Insert_If_FT generated invalid cbit %d"
                  cbit))
           cbits
   done
 
 let test_insert_contradictory_if_true_first () =
   let transformed =
-    Unoptimize.unoptimize ~rule_name:"Insert_Contradictory_If_True" E.NopInstr
-      1 2 2
+    Unoptimize.unoptimize ~rule_name:"Insert_If_TF" E.NopInstr 1 2 2
   in
   match contradictory_if_cbits true transformed with
-  | [] -> failf "Insert_Contradictory_If_True did not insert a true-first if"
+  | [] -> failf "Insert_If_TF did not insert a true-first if"
   | _ -> ()
 
 let desugar_qasm2 source =
@@ -412,10 +550,22 @@ let tests =
   [ ("unoptimize_nop exact identity", test_unoptimize_nop_is_exact_identity);
     ( "Insert_Swap uses distinct parameters",
       test_insert_swap_uses_distinct_parameters );
+    ( "Swap_To_3Cnot uses matched swap operands",
+      test_swap_to_3cnot_uses_matched_swap_operands );
+    ("manual Insert_I qbit", test_manual_qbit1_insert_i);
+    ("manual Insert_Swap qbits", test_manual_qbit2_insert_swap);
+    ("manual Insert_Cnot_Cnot qbits", test_manual_qbit2_insert_cnot_cnot);
+    ("manual occurrence", test_manual_occurrence_selects_position);
+    ("manual parameter errors", test_manual_parameter_errors);
+    ( "applicable_rules reports Swap_To_3Cnot only for swaps",
+      test_applicable_rules_reports_swap_to_3cnot_only_for_swap );
+    ( "applicable_rules reports param kinds without values",
+      test_applicable_rules_reports_param_kind_without_values );
     ("Double_If accepts any instruction", test_double_if_accepts_any_instruction);
-    ( "Insert_Contradictory_If uses valid cbit",
+    ("manual Insert_If_FT cbit", test_manual_cbit_insert_if);
+    ( "Insert_If_FT uses valid cbit",
       test_insert_contradictory_if_generates_valid_cbit );
-    ( "Insert_Contradictory_If_True inserts true-first condition",
+    ( "Insert_If_TF inserts true-first condition",
       test_insert_contradictory_if_true_first );
     ("QASM2 semantic round trip", test_qasm2_sugar_round_trip);
     ( "QASM3 physical rename collision",
