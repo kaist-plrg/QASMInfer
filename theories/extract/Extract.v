@@ -15,7 +15,7 @@ From Stdlib Require ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZBigInt ExtrOcamlInt
 Require Import QASMInfer.program.Program.
 Require Import QASMInfer.matrix.Complex.
 Require Import QASMInfer.transform.RewriteUnopt.
-Require Import QASMInfer.transform.StandardValid.
+Require Import QASMInfer.domega.StandardValid.
 
 Set Extraction Output Directory ".".
 Extraction Language OCaml.

@@ -14,7 +14,7 @@
   program/Program.vo
   matrix/Complex.vo
   transform/RewriteUnopt.vo
-  transform/StandardValid.vo
+  domega/StandardValid.vo
   (source_tree .)
   (:patcher ../scripts/patch_extraction.sh)
   (:header_txt extract/extraction_header.txt))

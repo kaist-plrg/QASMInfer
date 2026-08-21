@@ -2,9 +2,7 @@ Require Import QASMInfer.util.All.
 Require Import QASMInfer.matrix.All.
 Require Import QASMInfer.operator.All.
 Require Import QASMInfer.program.All.
-Require Import QASMInfer.transform.Commute.
-Require Import QASMInfer.transform.Equiv.
-Require Import QASMInfer.transform.RewriteUnopt.
+Require Import QASMInfer.transform.All.
 
 From Stdlib Require Import Bool.
 From Stdlib Require Import List.
