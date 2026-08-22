@@ -2,8 +2,11 @@ Require Import QASMInfer.matrix.All.
 
 From Stdlib Require Import Bool.
 From Stdlib Require Import Lia.
+From Stdlib Require Import List.
 From Stdlib Require Import Reals.
 From Stdlib Require Import ZArith.
+
+Import ListNotations.
 
 Open Scope R_scope.
 Open Scope Complex_scope.
@@ -427,5 +430,22 @@ Proof.
     (simpl; rewrite Rmult_1_r; rewrite sqrt_sqrt; lra).
   all: nra.
 Qed.
+
+Fixpoint domega_pow8 (n : nat) : DOmega :=
+  match n with
+  | 0 => domega_one
+  | 1 => domega_w
+  | 2 => domega_w2
+  | 3 => domega_w3
+  | 4 => domega_neg domega_one
+  | 5 => domega_neg domega_w
+  | 6 => domega_neg domega_w2
+  | 7 => domega_neg domega_w3
+  | S (S (S (S (S (S (S (S n'))))))) => domega_pow8 n'
+  end.
+
+Definition domega_phase_list : list DOmega :=
+  [ domega_pow8 0; domega_pow8 1; domega_pow8 2; domega_pow8 3;
+    domega_pow8 4; domega_pow8 5; domega_pow8 6; domega_pow8 7 ].
 
 End DOMEGA_ARITHMETIC.

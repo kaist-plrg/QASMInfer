@@ -1157,7 +1157,7 @@ Qed.
 
 Lemma standard_gate_pattern_inst :
   forall gate subst qbit,
-    NatMap.find 0%nat (pattern_nat_map subst) = Some qbit ->
+    NatMap.find 0%nat (pattern_qbit_map subst) = Some qbit ->
     InstructionPattern_inst
       (standard_gate_pattern gate (NatVar 0))
       subst =
@@ -1169,7 +1169,7 @@ Qed.
 
 Lemma standard_gate_pattern_inst_list :
   forall gates subst qbit,
-    NatMap.find 0%nat (pattern_nat_map subst) = Some qbit ->
+    NatMap.find 0%nat (pattern_qbit_map subst) = Some qbit ->
     InstructionPattern_inst_list
       (map (fun gate => standard_gate_pattern gate (NatVar 0)) gates)
       subst =
@@ -1186,7 +1186,7 @@ Qed.
 
 Lemma standard_gate_pattern_inst_list_none :
   forall gates subst,
-    NatMap.find 0%nat (pattern_nat_map subst) = None ->
+    NatMap.find 0%nat (pattern_qbit_map subst) = None ->
     InstructionPattern_inst_list
       (map (fun gate => standard_gate_pattern gate (NatVar 0)) gates)
       subst =
@@ -1298,7 +1298,7 @@ Proof.
   intros rule Hrule subst lhs rhs Hlhs Hrhs _.
   inversion Hrule; subst rule; clear Hrule.
   simpl in *.
-    destruct (NatMap.find 0%nat (pattern_nat_map subst))
+    destruct (NatMap.find 0%nat (pattern_qbit_map subst))
       as [qbit |] eqn:Hfind.
     + rewrite (standard_gate_pattern_inst_list lhs_gates subst qbit Hfind) in Hlhs.
     rewrite (standard_gate_pattern_inst_list rhs_gates subst qbit Hfind) in Hrhs.
