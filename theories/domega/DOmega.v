@@ -1,4 +1,5 @@
 Require Import QASMInfer.matrix.All.
+Require Import QASMInfer.program.Standard.
 
 From Stdlib Require Import Bool.
 From Stdlib Require Import Lia.
@@ -53,6 +54,21 @@ Definition domega_neg (x : DOmega) : DOmega :=
     (- domega_d2 x)%Z
     (- domega_d3 x)%Z
     (domega_k x).
+
+Definition domega_minus_one : DOmega :=
+  domega_neg domega_one.
+
+Definition domega_minus_i : DOmega :=
+  domega_neg domega_w2.
+
+Definition domega_h_scalar : DOmega :=
+  domega_make 0%Z 1%Z 0%Z (-1)%Z 1.
+
+Definition domega_half_one_plus_i : DOmega :=
+  domega_make 1%Z 0%Z 1%Z 0%Z 1.
+
+Definition domega_half_one_minus_i : DOmega :=
+  domega_make 1%Z 0%Z (-1)%Z 0%Z 1.
 
 Definition domega_common_k (x y : DOmega) : nat :=
   Nat.max (domega_k x) (domega_k y).
@@ -407,6 +423,163 @@ Proof.
   lca.
 Qed.
 
+Lemma complex_of_domega_w :
+  complex_of_domega domega_w = omega.
+Proof.
+  unfold complex_of_domega, domega_w, domega_make, domega_coeff, rpow2.
+  simpl.
+  lca.
+Qed.
+
+Lemma complex_of_domega_w2 :
+  complex_of_domega domega_w2 = Ione.
+Proof.
+  unfold complex_of_domega, domega_w2, domega_make, domega_coeff, rpow2.
+  simpl.
+  repeat replace (0 / 1)%R with 0%R by lra.
+  replace (1 / 1)%R with 1%R by lra.
+  rewrite omega_pow2.
+  lca.
+Qed.
+
+Lemma complex_of_domega_w3 :
+  complex_of_domega domega_w3 = (omega * Ione)%com.
+Proof.
+  unfold complex_of_domega, domega_w3, domega_make, domega_coeff, rpow2.
+  simpl.
+  repeat replace (0 / 1)%R with 0%R by lra.
+  replace (1 / 1)%R with 1%R by lra.
+  rewrite omega_pow2.
+  lca.
+Qed.
+
+Lemma complex_of_domega_neg_one :
+  complex_of_domega domega_minus_one = (- Cone)%com.
+Proof.
+  unfold domega_minus_one.
+  rewrite complex_of_domega_neg, complex_of_domega_one.
+  lca.
+Qed.
+
+Lemma complex_of_domega_neg_w2 :
+  complex_of_domega domega_minus_i = (- Ione)%com.
+Proof.
+  unfold domega_minus_i.
+  rewrite complex_of_domega_neg, complex_of_domega_w2.
+  lca.
+Qed.
+
+Lemma complex_of_domega_neg_w3 :
+  complex_of_domega (domega_neg domega_w3) = (- (omega * Ione))%com.
+Proof.
+  rewrite complex_of_domega_neg, complex_of_domega_w3.
+  lca.
+Qed.
+
+Lemma complex_of_domega_neg_w3_exp :
+  complex_of_domega (domega_neg domega_w3) = com_iexp (- PI / 4).
+Proof.
+  rewrite complex_of_domega_neg_w3.
+  replace (- PI / 4)%R with (-(PI / 4))%R by field.
+  unfold omega, com_iexp.
+  rewrite cos_neg, sin_neg, cos_PI4, sin_PI4.
+  lca.
+Qed.
+
+Lemma domega_h_scalar_to_complex :
+  complex_of_domega domega_h_scalar = (/ sqrt 2)%R.
+Proof.
+  unfold domega_h_scalar, complex_of_domega, domega_make, domega_coeff,
+    rpow2.
+  simpl.
+  repeat replace (0 / 2)%R with 0%R by lra.
+  repeat replace (1 / 2)%R with (/ 2)%R by lra.
+  replace (-1 / 2)%R with (- / 2)%R by lra.
+  rewrite omega_pow2.
+  unfold omega, com_iexp.
+  rewrite cos_PI4, sin_PI4.
+  apply com_proj_eq; simpl.
+  - field_simplify_eq; try solve [apply sqrt2_neq_0].
+    replace (sqrt 2 ^ 2)%R with 2%R by
+      (simpl; rewrite Rmult_1_r; rewrite sqrt_sqrt; lra).
+    lra.
+  - field_simplify_eq; try solve [apply sqrt2_neq_0].
+    replace (sqrt 2 ^ 2)%R with 2%R by
+      (simpl; rewrite Rmult_1_r; rewrite sqrt_sqrt; lra).
+    lra.
+Qed.
+
+Lemma complex_of_domega_half_one_plus_i :
+  complex_of_domega domega_half_one_plus_i =
+  (RTC (1 / 2) * (Cone + Ione))%com.
+Proof.
+  unfold domega_half_one_plus_i, complex_of_domega, domega_make,
+    domega_coeff, rpow2.
+  simpl.
+  repeat replace (0 / 2)%R with 0%R by lra.
+  repeat replace (1 / 2)%R with (/ 2)%R by lra.
+  rewrite omega_pow2.
+  lca.
+Qed.
+
+Lemma complex_of_domega_half_one_minus_i :
+  complex_of_domega domega_half_one_minus_i =
+  (RTC (1 / 2) * (Cone - Ione))%com.
+Proof.
+  unfold domega_half_one_minus_i, complex_of_domega, domega_make,
+    domega_coeff, rpow2.
+  simpl.
+  repeat replace (0 / 2)%R with 0%R by lra.
+  repeat replace (1 / 2)%R with (/ 2)%R by lra.
+  replace (-1 / 2)%R with (- / 2)%R by lra.
+  rewrite omega_pow2.
+  lca.
+Qed.
+
+Lemma gphase_neg_shift :
+  forall a,
+    (- gphase a)%com = gphase (PI + a).
+Proof.
+  intros a.
+  unfold gphase, com_iexp.
+  apply com_proj_eq; simpl.
+  - rewrite cos_plus, cos_PI, sin_PI.
+    lra.
+  - rewrite sin_plus, cos_PI, sin_PI.
+    lra.
+Qed.
+
+Lemma complex_of_domega_w_gphase :
+  complex_of_domega domega_w = gphase (PI / 4).
+Proof.
+  rewrite complex_of_domega_w.
+  reflexivity.
+Qed.
+
+Lemma complex_of_domega_w2_gphase :
+  complex_of_domega domega_w2 = gphase (PI / 2).
+Proof.
+  rewrite complex_of_domega_w2.
+  unfold gphase.
+  symmetry.
+  apply com_iexp_PI2.
+Qed.
+
+Lemma complex_of_domega_w3_gphase :
+  complex_of_domega domega_w3 = gphase (3 * PI / 4).
+Proof.
+  unfold complex_of_domega, domega_w3, domega_make, domega_coeff,
+    rpow2, gphase, omega.
+  simpl.
+  repeat replace ((0 / 1)%R) with 0%R by lra.
+  replace ((1 / 1)%R) with 1%R by lra.
+  com_simpl.
+  repeat rewrite <- com_iexp_mul.
+  replace (PI / 4 + PI / 4 + PI / 4)%R with (3 * PI / 4)%R
+    by lra.
+  reflexivity.
+Qed.
+
 Lemma complex_of_domega_mul :
   forall x y,
     complex_of_domega (domega_mul x y) =
@@ -447,5 +620,41 @@ Fixpoint domega_pow8 (n : nat) : DOmega :=
 Definition domega_phase_list : list DOmega :=
   [ domega_pow8 0; domega_pow8 1; domega_pow8 2; domega_pow8 3;
     domega_pow8 4; domega_pow8 5; domega_pow8 6; domega_pow8 7 ].
+
+Lemma domega_phase_gphase :
+  forall phase,
+    In phase domega_phase_list ->
+    exists lambda,
+      complex_of_domega phase = gphase lambda.
+Proof.
+  intros phase Hin.
+  simpl in Hin.
+  repeat destruct Hin as [Hin | Hin]; subst; try contradiction.
+  - exists 0%R.
+    rewrite complex_of_domega_one.
+    unfold gphase.
+    rewrite com_iexp_0.
+    reflexivity.
+  - exists (PI / 4)%R.
+    apply complex_of_domega_w_gphase.
+  - exists (PI / 2)%R.
+    apply complex_of_domega_w2_gphase.
+  - exists (3 * PI / 4)%R.
+    apply complex_of_domega_w3_gphase.
+  - exists PI.
+    rewrite complex_of_domega_neg, complex_of_domega_one.
+    unfold gphase.
+    rewrite com_iexp_PI.
+    com_simpl.
+  - exists (PI + PI / 4)%R.
+    rewrite complex_of_domega_neg, complex_of_domega_w_gphase.
+    apply gphase_neg_shift.
+  - exists (PI + PI / 2)%R.
+    rewrite complex_of_domega_neg, complex_of_domega_w2_gphase.
+    apply gphase_neg_shift.
+  - exists (PI + 3 * PI / 4)%R.
+    rewrite complex_of_domega_neg, complex_of_domega_w3_gphase.
+    apply gphase_neg_shift.
+Qed.
 
 End DOMEGA_ARITHMETIC.

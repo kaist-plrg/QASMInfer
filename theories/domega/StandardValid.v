@@ -1295,7 +1295,7 @@ Lemma standard_transform_rule_pattern_valid :
 Proof.
   intros nq name lhs_gates rhs_gates Hvalid.
   simpl.
-  intros rule Hrule subst lhs rhs Hlhs Hrhs _.
+  intros rule Hrule subst lhs rhs _ _ Hlhs Hrhs _.
   inversion Hrule; subst rule; clear Hrule.
   simpl in *.
     destruct (NatMap.find 0%nat (pattern_qbit_map subst))

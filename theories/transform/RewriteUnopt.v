@@ -22,6 +22,7 @@ From Stdlib Require Import
 
 Module NatMap := FMapAVL.Make Nat_as_OT.
 Module NatMapFacts := WFacts_fun NatMap.E NatMap.
+Module NatMapProperties := WProperties_fun NatMap.E NatMap.
 
 Open Scope nat_scope.
 Bind Scope nat_scope with nat.
@@ -129,6 +130,17 @@ Definition PatternMap_empty : PatternMap :=
     pattern_cbit_map := NatMap.empty _;
     pattern_instr_map := NatMap.empty _
   |}.
+
+Definition NatMap_values_distinct (map : NatMap.t nat) : Prop :=
+  forall key1 key2 value,
+    NatMap.find key1 map = Some value ->
+    NatMap.find key2 map = Some value ->
+    key1 = key2.
+
+Definition PatternMap_distinct (map : PatternMap) : Prop :=
+  NatMap_values_distinct (pattern_qbit_map map)
+  /\
+  NatMap_values_distinct (pattern_cbit_map map).
 
 Definition NatMap_value_existsb (value : nat) (map : NatMap.t nat)
     : bool :=
@@ -533,6 +545,181 @@ Record RewriteRule : Type := {
   rule_rhs : list InstructionPattern
 }.
 
+Definition NatPattern_vars (pattern : NatPattern) : list nat :=
+  match pattern with
+  | NatExact _ => []
+  | NatVar variable => [variable]
+  end.
+
+Fixpoint InstructionPattern_qbit_vars
+    (pattern : InstructionPattern)
+    {struct pattern}
+    : list nat :=
+  match pattern with
+  | PNop =>
+      []
+  | PRotate _ _ _ qbit =>
+      NatPattern_vars qbit
+  | PCnot control target =>
+      NatPattern_vars control ++ NatPattern_vars target
+  | PSwap qbit1 qbit2 =>
+      NatPattern_vars qbit1 ++ NatPattern_vars qbit2
+  | PMeasure qbit _ =>
+      NatPattern_vars qbit
+  | PReset qbit =>
+      NatPattern_vars qbit
+  | PIf _ _ body =>
+      List.concat (map InstructionPattern_qbit_vars body)
+  | PInstrVar _ =>
+      []
+  | PInstrExact _ =>
+      []
+  end.
+
+Fixpoint InstructionPattern_cbit_vars
+    (pattern : InstructionPattern)
+    {struct pattern}
+    : list nat :=
+  match pattern with
+  | PNop =>
+      []
+  | PRotate _ _ _ _ =>
+      []
+  | PCnot _ _ =>
+      []
+  | PSwap _ _ =>
+      []
+  | PMeasure _ cbit =>
+      NatPattern_vars cbit
+  | PReset _ =>
+      []
+  | PIf cbit _ body =>
+      NatPattern_vars cbit
+      ++ List.concat (map InstructionPattern_cbit_vars body)
+  | PInstrVar _ =>
+      []
+  | PInstrExact _ =>
+      []
+  end.
+
+Fixpoint InstructionPattern_instr_vars
+    (pattern : InstructionPattern)
+    {struct pattern}
+    : list nat :=
+  match pattern with
+  | PNop =>
+      []
+  | PRotate _ _ _ _ =>
+      []
+  | PCnot _ _ =>
+      []
+  | PSwap _ _ =>
+      []
+  | PMeasure _ _ =>
+      []
+  | PReset _ =>
+      []
+  | PIf _ _ body =>
+      List.concat (map InstructionPattern_instr_vars body)
+  | PInstrVar variable =>
+      [variable]
+  | PInstrExact _ =>
+      []
+  end.
+
+Definition InstructionPattern_list_qbit_vars
+    (patterns : list InstructionPattern)
+    : list nat :=
+  List.concat (map InstructionPattern_qbit_vars patterns).
+
+Definition InstructionPattern_list_cbit_vars
+    (patterns : list InstructionPattern)
+    : list nat :=
+  List.concat (map InstructionPattern_cbit_vars patterns).
+
+Definition InstructionPattern_list_instr_vars
+    (patterns : list InstructionPattern)
+    : list nat :=
+  List.concat (map InstructionPattern_instr_vars patterns).
+
+Definition list_subset {A : Type} (xs ys : list A) : Prop :=
+  forall x, In x xs -> In x ys.
+
+Definition RewriteRule_safe (rule : RewriteRule) : Prop :=
+  list_subset
+    (InstructionPattern_list_qbit_vars (rule_rhs rule))
+    (InstructionPattern_list_qbit_vars (rule_lhs rule))
+  /\
+  list_subset
+    (InstructionPattern_list_cbit_vars (rule_rhs rule))
+    (InstructionPattern_list_cbit_vars (rule_lhs rule))
+  /\
+  list_subset
+    (InstructionPattern_list_instr_vars (rule_rhs rule))
+    (InstructionPattern_list_instr_vars (rule_lhs rule)).
+
+Definition nat_inb (needle : nat) (haystack : list nat) : bool :=
+  existsb (Nat.eqb needle) haystack.
+
+Definition list_subsetb (xs ys : list nat) : bool :=
+  forallb (fun x => nat_inb x ys) xs.
+
+Definition RewriteRule_safeb (rule : RewriteRule) : bool :=
+  list_subsetb
+    (InstructionPattern_list_qbit_vars (rule_rhs rule))
+    (InstructionPattern_list_qbit_vars (rule_lhs rule))
+  &&
+  list_subsetb
+    (InstructionPattern_list_cbit_vars (rule_rhs rule))
+    (InstructionPattern_list_cbit_vars (rule_lhs rule))
+  &&
+  list_subsetb
+    (InstructionPattern_list_instr_vars (rule_rhs rule))
+    (InstructionPattern_list_instr_vars (rule_lhs rule)).
+
+Lemma nat_inb_sound :
+  forall needle haystack,
+    nat_inb needle haystack = true ->
+    In needle haystack.
+Proof.
+  intros needle haystack H.
+  unfold nat_inb in H.
+  apply existsb_exists in H as [found [Hin Heq]].
+  apply Nat.eqb_eq in Heq.
+  subst.
+  exact Hin.
+Qed.
+
+Lemma list_subsetb_sound :
+  forall xs ys,
+    list_subsetb xs ys = true ->
+    list_subset xs ys.
+Proof.
+  intros xs ys Hsubset.
+  unfold list_subsetb in Hsubset.
+  unfold list_subset.
+  intros x Hin.
+  apply forallb_forall with (x := x) in Hsubset.
+  - apply nat_inb_sound.
+    exact Hsubset.
+  - exact Hin.
+Qed.
+
+Lemma RewriteRule_safeb_sound :
+  forall rule,
+    RewriteRule_safeb rule = true ->
+    RewriteRule_safe rule.
+Proof.
+  intros rule Hsafe.
+  unfold RewriteRule_safeb in Hsafe.
+  repeat rewrite andb_true_iff in Hsafe.
+  destruct Hsafe as [[Hqbit Hcbit] Hinstr].
+  unfold RewriteRule_safe.
+  repeat split;
+    apply list_subsetb_sound;
+    assumption.
+Qed.
+
 Record RewriteResult : Type := {
   RewriteResult_consumed : nat;
   RewriteResult_replacement : list Instruction
@@ -543,6 +730,8 @@ Definition RewriteRule_apply
     (rule : RewriteRule)
     (instrs : list Instruction)
     : option RewriteResult :=
+  if RewriteRule_safeb rule
+  then
   let* subst :=
     InstructionPattern_match_list
       (rule_lhs rule)
@@ -553,7 +742,8 @@ Definition RewriteRule_apply
   Some {|
     RewriteResult_consumed := length (rule_lhs rule);
     RewriteResult_replacement := replacement
-  |}.
+  |}
+  else None.
 
 (* ================================================================ *)
 (* Deep rewrite traversal                                           *)
@@ -1391,6 +1581,90 @@ Proof.
     exact Hfind.
 Qed.
 
+Lemma PatternMap_empty_distinct :
+  PatternMap_distinct PatternMap_empty.
+Proof.
+  unfold PatternMap_distinct, NatMap_values_distinct, PatternMap_empty.
+  simpl.
+  split; intros key1 key2 value Hfind1 Hfind2;
+    rewrite NatMapFacts.empty_o in Hfind1; discriminate.
+Qed.
+
+Lemma NatMap_value_existsb_false_find :
+  forall value map key,
+    NatMap_value_existsb value map = false ->
+    NatMap.find key map = Some value ->
+    False.
+Proof.
+  intros value map key.
+  unfold NatMap_value_existsb.
+  eapply
+    (NatMapProperties.fold_rec_bis
+      (elt := nat)
+      (A := bool)
+      (P := fun map acc =>
+        acc = false ->
+        NatMap.find key map = Some value ->
+        False)).
+  - intros m m' acc Heq Hacc Hfold Hfind.
+    apply Hacc.
+    + exact Hfold.
+    + unfold NatMap.Equal in Heq.
+      rewrite Heq.
+      exact Hfind.
+  - intros _ Hfind.
+    rewrite NatMapFacts.empty_o in Hfind.
+    discriminate.
+  - intros k found_value acc m Hmaps Hnotin IH Hfold Hfind.
+    destruct (Nat.eq_dec key k) as [Heq | Hneq].
+    + subst key.
+      rewrite NatMapFacts.add_eq_o in Hfind by reflexivity.
+      inversion Hfind; subst found_value.
+      simpl in Hfold.
+      rewrite Nat.eqb_refl in Hfold.
+      discriminate.
+    + rewrite NatMapFacts.add_neq_o in Hfind by lia.
+      simpl in Hfold.
+      apply Bool.orb_false_iff in Hfold as [_ Hacc].
+      eapply IH; eauto.
+Qed.
+
+Lemma NatMap_bind_distinct_values_distinct :
+  forall variable value map map',
+    NatMap_values_distinct map ->
+    NatMap_bind_distinct variable value map = Some map' ->
+    NatMap_values_distinct map'.
+Proof.
+  intros variable value map map' Hdistinct Hbind.
+  unfold NatMap_values_distinct in *.
+  unfold NatMap_bind_distinct in Hbind.
+  destruct (NatMap.find variable map) as [old_value |] eqn:Hfind.
+  - destruct (Nat.eqb old_value value) eqn:Heq; try discriminate.
+    inversion Hbind; subst.
+    exact Hdistinct.
+  - destruct (NatMap_value_existsb value map) eqn:Hexists; try discriminate.
+    inversion Hbind; subst.
+    intros key1 key2 found_value Hkey1 Hkey2.
+    destruct (Nat.eq_dec key1 variable) as [Hkey1_eq | Hkey1_neq];
+    destruct (Nat.eq_dec key2 variable) as [Hkey2_eq | Hkey2_neq].
+    + subst. reflexivity.
+    + subst key1.
+      rewrite NatMapFacts.add_eq_o in Hkey1 by reflexivity.
+      rewrite NatMapFacts.add_neq_o in Hkey2 by lia.
+      inversion Hkey1; subst found_value.
+      exfalso.
+      eapply NatMap_value_existsb_false_find; eauto.
+    + subst key2.
+      rewrite NatMapFacts.add_neq_o in Hkey1 by lia.
+      rewrite NatMapFacts.add_eq_o in Hkey2 by reflexivity.
+      inversion Hkey2; subst found_value.
+      exfalso.
+      eapply NatMap_value_existsb_false_find; eauto.
+    + rewrite NatMapFacts.add_neq_o in Hkey1 by lia.
+      rewrite NatMapFacts.add_neq_o in Hkey2 by lia.
+      eapply Hdistinct; eauto.
+Qed.
+
 Lemma NatMap_bind_distinct_extends :
   forall variable value map map',
     NatMap_bind_distinct variable value map = Some map' ->
@@ -1534,6 +1808,192 @@ Proof.
       * rewrite NatMapFacts.add_neq_o.
         -- exact Hkey.
         -- lia.
+Qed.
+
+Definition PatternMap_domain_subset
+    (map : PatternMap)
+    (qbits cbits instrs : list nat)
+    : Prop :=
+  (forall variable value,
+    NatMap.find variable (pattern_qbit_map map) = Some value ->
+    In variable qbits)
+  /\
+  (forall variable value,
+    NatMap.find variable (pattern_cbit_map map) = Some value ->
+    In variable cbits)
+  /\
+  (forall variable instr,
+    NatMap.find variable (pattern_instr_map map) = Some instr ->
+    In variable instrs).
+
+Lemma PatternMap_empty_domain_subset :
+  PatternMap_domain_subset PatternMap_empty [] [] [].
+Proof.
+  unfold PatternMap_domain_subset, PatternMap_empty.
+  simpl.
+  repeat split; intros variable value Hfind;
+    rewrite NatMapFacts.empty_o in Hfind; discriminate.
+Qed.
+
+Lemma PatternMap_domain_subset_weaken :
+  forall map q1 c1 i1 q2 c2 i2,
+    PatternMap_domain_subset map q1 c1 i1 ->
+    list_subset q1 q2 ->
+    list_subset c1 c2 ->
+    list_subset i1 i2 ->
+    PatternMap_domain_subset map q2 c2 i2.
+Proof.
+  unfold PatternMap_domain_subset, list_subset.
+  intros map q1 c1 i1 q2 c2 i2
+    [Hq [Hc Hi]] Hqsub Hcsub Hisub.
+  repeat split; eauto.
+Qed.
+
+Lemma PatternMap_bind_qbit_domain_subset :
+  forall variable value map map' qbits cbits instrs,
+    PatternMap_domain_subset map qbits cbits instrs ->
+    PatternMap_bind_qbit variable value map = Some map' ->
+    PatternMap_domain_subset map' (variable :: qbits) cbits instrs.
+Proof.
+  intros variable value map map' qbits cbits instrs
+    [Hq [Hc Hi]] Hbind.
+  unfold PatternMap_domain_subset.
+  unfold PatternMap_bind_qbit in Hbind.
+  destruct (NatMap_bind_distinct variable value (pattern_qbit_map map))
+    as [qbit_map |] eqn:Hqbit; try discriminate.
+  inversion Hbind; subst; simpl.
+  repeat split.
+  - intros key old Hfind.
+    destruct (Nat.eq_dec key variable) as [Heq | Hneq].
+    + subst. simpl. auto.
+    + right.
+      unfold NatMap_bind_distinct in Hqbit.
+      destruct (NatMap.find variable (pattern_qbit_map map)); try
+        (destruct (Nat.eqb n value); inversion Hqbit; subst; exact (Hq _ _ Hfind)).
+      destruct (NatMap_value_existsb value (pattern_qbit_map map));
+        try discriminate.
+      inversion Hqbit; subst.
+      rewrite NatMapFacts.add_neq_o in Hfind by lia.
+      eapply Hq; eauto.
+  - intros key old Hfind.
+    eapply Hc; eauto.
+  - intros key instr Hfind.
+    eapply Hi; eauto.
+Qed.
+
+Lemma PatternMap_bind_cbit_domain_subset :
+  forall variable value map map' qbits cbits instrs,
+    PatternMap_domain_subset map qbits cbits instrs ->
+    PatternMap_bind_cbit variable value map = Some map' ->
+    PatternMap_domain_subset map' qbits (variable :: cbits) instrs.
+Proof.
+  intros variable value map map' qbits cbits instrs
+    [Hq [Hc Hi]] Hbind.
+  unfold PatternMap_domain_subset.
+  unfold PatternMap_bind_cbit in Hbind.
+  destruct (NatMap_bind_distinct variable value (pattern_cbit_map map))
+    as [cbit_map |] eqn:Hcbit; try discriminate.
+  inversion Hbind; subst; simpl.
+  repeat split.
+  - intros key old Hfind.
+    eapply Hq; eauto.
+  - intros key old Hfind.
+    destruct (Nat.eq_dec key variable) as [Heq | Hneq].
+    + subst. simpl. auto.
+    + right.
+      unfold NatMap_bind_distinct in Hcbit.
+      destruct (NatMap.find variable (pattern_cbit_map map)); try
+        (destruct (Nat.eqb n value); inversion Hcbit; subst; exact (Hc _ _ Hfind)).
+      destruct (NatMap_value_existsb value (pattern_cbit_map map));
+        try discriminate.
+      inversion Hcbit; subst.
+      rewrite NatMapFacts.add_neq_o in Hfind by lia.
+      eapply Hc; eauto.
+  - intros key instr Hfind.
+    eapply Hi; eauto.
+Qed.
+
+Lemma PatternMap_bind_instr_domain_subset :
+  forall variable instr map map' qbits cbits instrs,
+    PatternMap_domain_subset map qbits cbits instrs ->
+    PatternMap_bind_instr variable instr map = Some map' ->
+    PatternMap_domain_subset map' qbits cbits (variable :: instrs).
+Proof.
+  intros variable instr map map' qbits cbits instrs
+    [Hq [Hc Hi]] Hbind.
+  unfold PatternMap_domain_subset.
+  unfold PatternMap_bind_instr in Hbind.
+  destruct (NatMap.find variable (pattern_instr_map map))
+    as [old_instr |] eqn:Hfind.
+  - destruct (Instruction_eqb old_instr instr); try discriminate.
+    inversion Hbind; subst.
+    repeat split; eauto.
+    intros key found Hkey.
+    right.
+    eapply Hi; eauto.
+  - inversion Hbind; subst; simpl.
+    repeat split; eauto.
+    intros key found Hkey.
+    destruct (Nat.eq_dec key variable) as [Heq | Hneq].
+    + subst. auto.
+    + right.
+      rewrite NatMapFacts.add_neq_o in Hkey by lia.
+      eapply Hi; eauto.
+Qed.
+
+Lemma PatternMap_bind_qbit_distinct :
+  forall variable value map map',
+    PatternMap_distinct map ->
+    PatternMap_bind_qbit variable value map = Some map' ->
+    PatternMap_distinct map'.
+Proof.
+  intros variable value map map' [Hqbit_distinct Hcbit_distinct] Hbind.
+  unfold PatternMap_bind_qbit in Hbind.
+  destruct (NatMap_bind_distinct variable value (pattern_qbit_map map))
+    as [qbit_map |] eqn:Hqbit; try discriminate.
+  inversion Hbind; subst.
+  simpl.
+  split.
+  - eapply NatMap_bind_distinct_values_distinct
+      with (variable := variable) (value := value)
+           (map := pattern_qbit_map map); eauto.
+  - exact Hcbit_distinct.
+Qed.
+
+Lemma PatternMap_bind_cbit_distinct :
+  forall variable value map map',
+    PatternMap_distinct map ->
+    PatternMap_bind_cbit variable value map = Some map' ->
+    PatternMap_distinct map'.
+Proof.
+  intros variable value map map' [Hqbit_distinct Hcbit_distinct] Hbind.
+  unfold PatternMap_bind_cbit in Hbind.
+  destruct (NatMap_bind_distinct variable value (pattern_cbit_map map))
+    as [cbit_map |] eqn:Hcbit; try discriminate.
+  inversion Hbind; subst.
+  simpl.
+  split.
+  - exact Hqbit_distinct.
+  - eapply NatMap_bind_distinct_values_distinct
+      with (variable := variable) (value := value)
+           (map := pattern_cbit_map map); eauto.
+Qed.
+
+Lemma PatternMap_bind_instr_distinct :
+  forall variable instr map map',
+    PatternMap_distinct map ->
+    PatternMap_bind_instr variable instr map = Some map' ->
+    PatternMap_distinct map'.
+Proof.
+  intros variable instr map map' Hdistinct Hbind.
+  unfold PatternMap_bind_instr in Hbind.
+  destruct (NatMap.find variable (pattern_instr_map map)) as [old_instr |]
+    eqn:Hfind.
+  - destruct (Instruction_eqb old_instr instr); try discriminate.
+    inversion Hbind; subst.
+    exact Hdistinct.
+  - inversion Hbind; subst.
+    exact Hdistinct.
 Qed.
 
 Lemma PatternMap_bind_instr_find :
@@ -1865,6 +2325,190 @@ Proof.
     apply PatternMap_extends_refl.
 Qed.
 
+Lemma QbitPattern_match_distinct :
+  forall pattern value map map',
+    PatternMap_distinct map ->
+    QbitPattern_match pattern value map = Some map' ->
+    PatternMap_distinct map'.
+Proof.
+  intros pattern value map map' Hdistinct Hmatch.
+  destruct pattern; simpl in Hmatch.
+  - destruct (Nat.eqb n value); try discriminate.
+    inversion Hmatch; subst.
+    exact Hdistinct.
+  - eapply PatternMap_bind_qbit_distinct; eauto.
+Qed.
+
+Lemma CbitPattern_match_distinct :
+  forall pattern value map map',
+    PatternMap_distinct map ->
+    CbitPattern_match pattern value map = Some map' ->
+    PatternMap_distinct map'.
+Proof.
+  intros pattern value map map' Hdistinct Hmatch.
+  destruct pattern; simpl in Hmatch.
+  - destruct (Nat.eqb n value); try discriminate.
+    inversion Hmatch; subst.
+    exact Hdistinct.
+  - eapply PatternMap_bind_cbit_distinct; eauto.
+Qed.
+
+Lemma InstructionPattern_match_distinct :
+  forall pattern instr map map',
+    PatternMap_distinct map ->
+    InstructionPattern_match pattern instr map = Some map' ->
+    PatternMap_distinct map'.
+Proof.
+  induction pattern as [
+    | theta' phi' lambda' qbit_pattern
+    | control_pattern target_pattern
+    | qbit1_pattern qbit2_pattern
+    | qbit_pattern cbit_pattern
+    | qbit_pattern
+    | cbit_pattern expected_pattern body_patterns Hbody_patterns
+    | instr_variable
+    | exact_instr
+  ] using InstructionPattern_ind';
+  intros instr map map' Hdistinct Hmatch.
+  - destruct instr; simpl in Hmatch; try discriminate.
+    inversion Hmatch; subst.
+    exact Hdistinct.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (Angle_eqb theta theta');
+    destruct (Angle_eqb phi phi');
+    destruct (Angle_eqb lambda lambda'); try discriminate.
+    eapply QbitPattern_match_distinct
+      with (pattern := qbit_pattern) (value := qbit) (map := map);
+      eauto.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match control_pattern control map)
+      as [map_control |] eqn:Hcontrol; try discriminate.
+    eapply QbitPattern_match_distinct
+      with (pattern := target_pattern) (value := target)
+           (map := map_control); eauto.
+    eapply QbitPattern_match_distinct
+      with (pattern := control_pattern) (value := control) (map := map);
+      eauto.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match qbit1_pattern qbit1 map)
+      as [map_qbit1 |] eqn:Hqbit1; try discriminate.
+    eapply QbitPattern_match_distinct
+      with (pattern := qbit2_pattern) (value := qbit2)
+           (map := map_qbit1); eauto.
+    eapply QbitPattern_match_distinct
+      with (pattern := qbit1_pattern) (value := qbit1) (map := map);
+      eauto.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match qbit_pattern qbit map)
+      as [map_qbit |] eqn:Hqbit; try discriminate.
+    eapply CbitPattern_match_distinct
+      with (pattern := cbit_pattern) (value := cbit)
+           (map := map_qbit); eauto.
+    eapply QbitPattern_match_distinct
+      with (pattern := qbit_pattern) (value := qbit) (map := map);
+      eauto.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    eapply QbitPattern_match_distinct
+      with (pattern := qbit_pattern) (value := qbit) (map := map);
+      eauto.
+  - destruct instr as [
+      | theta phi lambda qbit
+      | control target
+      | qbit1 qbit2
+      | qbit cbit
+      | instrs
+      | cbit expected body
+      | qbit
+    ]; simpl in Hmatch; try discriminate.
+    destruct (Bool.eqb expected_pattern expected); try discriminate.
+    destruct (CbitPattern_match cbit_pattern cbit map)
+      as [map_cbit |] eqn:Hcbit; try discriminate.
+    assert (Hmap_cbit_distinct : PatternMap_distinct map_cbit).
+    {
+      eapply CbitPattern_match_distinct; eauto.
+    }
+    clear Hcbit.
+    revert map_cbit map' Hmap_cbit_distinct Hmatch Hbody_patterns.
+    generalize (InstructionPattern_body_view body) as body_instrs.
+    induction body_patterns as [| pattern patterns IHpatterns];
+    intros body_instrs map_body map' Hmap_body_distinct Hmatch Hforall;
+    destruct body_instrs as [| instr instrs];
+    simpl in Hmatch; try discriminate.
+    + inversion Hmatch; subst.
+      exact Hmap_body_distinct.
+    + inversion Hforall as [| ? ? Hhead_distinct Htail_distinct]; subst.
+      destruct (InstructionPattern_match pattern instr map_body)
+        as [map_head |] eqn:Hhead; try discriminate.
+      eapply IHpatterns
+        with (body_instrs := instrs) (map_cbit := map_head);
+        eauto.
+  - simpl in Hmatch.
+    eapply PatternMap_bind_instr_distinct; eauto.
+  - simpl in Hmatch.
+    destruct (Instruction_eqb exact_instr (InstructionPattern_canonicalize instr));
+    try discriminate.
+    inversion Hmatch; subst.
+    exact Hdistinct.
+Qed.
+
+Lemma InstructionPattern_match_list_distinct :
+  forall patterns instrs map map',
+    PatternMap_distinct map ->
+    InstructionPattern_match_list patterns instrs map = Some map' ->
+    PatternMap_distinct map'.
+Proof.
+  induction patterns as [| pattern patterns IH]; intros instrs map map' Hdistinct Hmatch.
+  - simpl in Hmatch.
+    inversion Hmatch; subst.
+    exact Hdistinct.
+  - destruct instrs as [| instr instrs]; simpl in Hmatch; try discriminate.
+    destruct (InstructionPattern_match pattern instr map)
+      as [map_head |] eqn:Hhead; try discriminate.
+    eapply IH with (instrs := instrs) (map := map_head); eauto.
+    eapply InstructionPattern_match_distinct
+      with (pattern := pattern) (instr := instr) (map := map); eauto.
+Qed.
+
 Lemma InstructionPattern_match_sound :
   forall pattern instr map map',
     InstructionPattern_match pattern instr map = Some map' ->
@@ -2143,10 +2787,13 @@ Lemma RewriteRule_apply_decompose :
       /\
       RewriteResult_consumed result = length raw_lhs
       /\
-      RewriteResult_replacement result = rhs.
+      RewriteResult_replacement result = rhs
+      /\
+      PatternMap_distinct map.
 Proof.
   intros rule instrs result Happly.
   unfold RewriteRule_apply in Happly.
+  destruct (RewriteRule_safeb rule) eqn:Hsafe; try discriminate.
   destruct
     (InstructionPattern_match_list (rule_lhs rule) instrs PatternMap_empty)
     as [map |] eqn:Hmatch; try discriminate.
@@ -2164,10 +2811,26 @@ Proof.
     (List.map InstructionPattern_canonicalize raw_lhs),
     rhs,
     suffix.
-  repeat split; try assumption.
-  simpl.
-  symmetry.
-  apply Hlength.
+  repeat split;
+    try assumption;
+    try reflexivity;
+    try (simpl; symmetry; exact Hlength);
+    try solve [
+      eapply InstructionPattern_match_list_distinct;
+      [apply PatternMap_empty_distinct | apply Hmatch]
+    ].
+Qed.
+
+Lemma RewriteRule_apply_safe :
+  forall rule instrs result,
+    RewriteRule_apply rule instrs = Some result ->
+    RewriteRule_safe rule.
+Proof.
+  intros rule instrs result Happly.
+  unfold RewriteRule_apply in Happly.
+  destruct (RewriteRule_safeb rule) eqn:Hsafe; try discriminate.
+  apply RewriteRule_safeb_sound.
+  exact Hsafe.
 Qed.
 
 Lemma Instruction_list_qbits_valid_app_inv :
@@ -2439,6 +3102,8 @@ Definition PatternRuleValid
   forall rule,
   transform_rule spec param = Some rule ->
   forall subst lhs rhs suffix,
+  RewriteRule_safe rule ->
+  PatternMap_distinct subst ->
   InstructionPattern_inst_list (rule_lhs rule) subst = Some lhs ->
   InstructionPattern_inst_list (rule_rhs rule) subst = Some rhs ->
   Instruction_list_qbits_valid (lhs ++ suffix) ->
@@ -2471,6 +3136,8 @@ Definition PatternRuleEquivValid
   forall rule,
   transform_rule spec param = Some rule ->
   forall subst lhs rhs,
+    RewriteRule_safe rule ->
+    PatternMap_distinct subst ->
     InstructionPattern_inst_list (rule_lhs rule) subst = Some lhs ->
     InstructionPattern_inst_list (rule_rhs rule) subst = Some rhs ->
     Instruction_list_qbits_valid lhs ->
@@ -2513,9 +3180,12 @@ Proof.
   unfold RewriteRuleValid.
   intros rule Hrule.
   intros instrs result Hvalid Happly.
+  pose proof (RewriteRule_apply_safe rule instrs result Happly)
+    as Hrule_safe.
   destruct (RewriteRule_apply_decompose rule instrs result Happly)
     as (subst & raw_lhs & lhs & rhs & suffix
-      & Hinstrs & Hlhs & Hlhs_eq & Hrhs & Hconsumed & Hreplacement).
+      & Hinstrs & Hlhs & Hlhs_eq & Hrhs & Hconsumed
+      & Hreplacement & Hsubst_distinct).
   subst instrs lhs.
   destruct (Instruction_list_qbits_valid_app_inv raw_lhs suffix Hvalid)
     as [Hraw_lhs_valid Hsuffix_valid].
@@ -2565,9 +3235,12 @@ Proof.
   intros spec param Hpattern.
   unfold RewriteRuleEquivValid.
   intros rule Hrule instrs result Hvalid Happly.
+  pose proof (RewriteRule_apply_safe rule instrs result Happly)
+    as Hrule_safe.
   destruct (RewriteRule_apply_decompose rule instrs result Happly)
     as (subst & raw_lhs & lhs & rhs & suffix
-      & Hinstrs & Hlhs & Hlhs_eq & Hrhs & Hconsumed & Hreplacement).
+      & Hinstrs & Hlhs & Hlhs_eq & Hrhs & Hconsumed
+      & Hreplacement & Hsubst_distinct).
   subst instrs lhs.
   destruct (Instruction_list_qbits_valid_app_inv raw_lhs suffix Hvalid)
     as [Hraw_lhs_valid Hsuffix_valid].
@@ -3150,6 +3823,8 @@ Lemma PatternRuleValid_id_from_equiv :
     (forall rule,
       transform_rule spec param = Some rule ->
       forall subst lhs rhs,
+        RewriteRule_safe rule ->
+        PatternMap_distinct subst ->
         InstructionPattern_inst_list (rule_lhs rule) subst = Some lhs ->
         InstructionPattern_inst_list (rule_rhs rule) subst = Some rhs ->
         Instruction_list_qbits_valid lhs ->
@@ -3161,11 +3836,11 @@ Proof.
   intros spec param Hpost Hrule.
   unfold PatternRuleValid.
   intros rule Hrule_find.
-  intros subst lhs rhs suffix Hlhs Hrhs Hvalid.
+  intros subst lhs rhs suffix Hrule_safe Hsubst_distinct Hlhs Hrhs Hvalid.
   assert (Hmap :
     List.map (transform_postprocess spec param) suffix = suffix).
   {
-    clear Hrule Hlhs Hrhs Hvalid.
+    clear Hrule Hlhs Hrhs Hvalid Hsubst_distinct Hrule_safe.
     induction suffix as [| instr suffix IHsuffix]; simpl.
     - reflexivity.
     - rewrite Hpost.
@@ -3182,6 +3857,25 @@ Proof.
 Qed.
 
 End PATTERN.
+
+Ltac solve_rewrite_rule_safe :=
+  unfold RewriteRule_safe, list_subset,
+    InstructionPattern_list_qbit_vars,
+    InstructionPattern_list_cbit_vars,
+    InstructionPattern_list_instr_vars;
+  simpl;
+  repeat split;
+  intros ? Hin;
+  simpl in Hin;
+  repeat
+    match type of Hin with
+    | False => contradiction
+    | _ \/ _ =>
+        destruct Hin as [Hin | Hin];
+        [subst; simpl; auto | simpl in Hin]
+    | _ =>
+        subst; simpl; auto
+    end.
 
 Section TRANSFORM_FUNCTIONS.
 
@@ -3375,7 +4069,7 @@ Proof.
   destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
   destruct (qbit <? nq) eqn:Hqbit; simpl.
-  - intros rule Hrule subst lhs rhs Hlhs Hrhs _.
+  - intros rule Hrule subst lhs rhs _ _ Hlhs Hrhs _.
     cbn [transform_rule] in Hrule.
     rewrite Hqbit in Hrule.
     injection Hrule as <-.
@@ -3401,7 +4095,7 @@ Proof.
   destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
   destruct ((qbit1 <? nq) && (qbit2 <? nq)) eqn:Hqbits; simpl.
-  - intros rule Hrule subst lhs rhs suffix Hlhs Hrhs Hvalid.
+  - intros rule Hrule subst lhs rhs suffix _ _ Hlhs Hrhs Hvalid.
     cbn [transform_rule] in Hrule.
     rewrite Hqbits in Hrule.
     injection Hrule as <-.
@@ -3432,7 +4126,7 @@ Proof.
   destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
   destruct ((qbit1 <? nq) && (qbit2 <? nq)) eqn:Hqbits; simpl.
-  - intros rule Hrule map lhs rhs Hlhs Hrhs _.
+  - intros rule Hrule map lhs rhs _ _ Hlhs Hrhs _.
     cbn [transform_rule] in Hrule.
     rewrite Hqbits in Hrule.
     injection Hrule as <-.
@@ -3469,7 +4163,7 @@ Proof.
   intros param.
   destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
-  intros rule Hrule map lhs rhs Hlhs Hrhs Hvalid.
+  intros rule Hrule map lhs rhs _ _ Hlhs Hrhs Hvalid.
   injection Hrule as <-.
   simpl in Hlhs, Hrhs.
   destruct (NatMap.find 0%nat (pattern_qbit_map map)) as [qbit1 |];
@@ -3501,7 +4195,7 @@ Proof.
   destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
   destruct (Instruction_qbits_validb nq instr) eqn:Hinstr; simpl.
-  - intros rule Hrule map lhs rhs Hlhs Hrhs _.
+  - intros rule Hrule map lhs rhs _ _ Hlhs Hrhs _.
     cbn [transform_rule] in Hrule.
     rewrite Hinstr in Hrule.
     injection Hrule as <-.
@@ -3542,7 +4236,7 @@ Proof.
   intros param.
   destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
-  intros rule Hrule subst lhs rhs Hlhs Hrhs _.
+  intros rule Hrule subst lhs rhs _ _ Hlhs Hrhs _.
   injection Hrule as <-.
   unfold Rule_Double_If in Hlhs, Hrhs.
   simpl in Hlhs, Hrhs.
@@ -3580,7 +4274,7 @@ Proof.
   intros param.
   destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
   all: try (intros rule Hrule; discriminate).
-  intros rule Hrule subst lhs rhs Hlhs Hrhs Hvalid.
+  intros rule Hrule subst lhs rhs _ _ Hlhs Hrhs Hvalid.
   injection Hrule as <-.
   unfold Rule_Double_Reset in Hlhs, Hrhs.
   simpl in Hlhs, Hrhs.
