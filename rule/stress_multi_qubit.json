@@ -1,0 +1,92 @@
+[
+    {
+        "name": "Disjoint_5q_X0_H1_CX23_T4_reverse",
+        "lhs": [
+            { "gate": "x", "q": 0 },
+            { "gate": "h", "q": 1 },
+            { "gate": "cx", "control": 2, "target": 3 },
+            { "gate": "t", "q": 4 }
+        ],
+        "rhs": [
+            { "gate": "t", "q": 4 },
+            { "gate": "cx", "control": 2, "target": 3 },
+            { "gate": "h", "q": 1 },
+            { "gate": "x", "q": 0 }
+        ]
+    },
+    {
+        "name": "Disjoint_5q_CX01_SWAP23_Z4_reverse",
+        "lhs": [
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "swap", "q1": 2, "q2": 3 },
+            { "gate": "z", "q": 4 }
+        ],
+        "rhs": [
+            { "gate": "z", "q": 4 },
+            { "gate": "swap", "q1": 2, "q2": 3 },
+            { "gate": "cx", "control": 0, "target": 1 }
+        ]
+    },
+    {
+        "name": "Conjugate_5q_SWAP04_CX01_to_CX41_with_tail",
+        "lhs": [
+            { "gate": "h", "q": 2 },
+            { "gate": "s", "q": 3 },
+            { "gate": "swap", "q1": 0, "q2": 4 },
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "swap", "q1": 0, "q2": 4 }
+        ],
+        "rhs": [
+            { "gate": "h", "q": 2 },
+            { "gate": "s", "q": 3 },
+            { "gate": "cx", "control": 4, "target": 1 }
+        ]
+    },
+    {
+        "name": "Hadamard_flip_5q_CX01_to_CX10_with_tail",
+        "lhs": [
+            { "gate": "h", "q": 0 },
+            { "gate": "h", "q": 1 },
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "h", "q": 0 },
+            { "gate": "h", "q": 1 },
+            { "gate": "cx", "control": 2, "target": 3 },
+            { "gate": "tdg", "q": 4 }
+        ],
+        "rhs": [
+            { "gate": "cx", "control": 1, "target": 0 },
+            { "gate": "cx", "control": 2, "target": 3 },
+            { "gate": "tdg", "q": 4 }
+        ]
+    },
+    {
+        "name": "Disjoint_6q_CX01_CX23_CX45_reverse",
+        "lhs": [
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "cx", "control": 2, "target": 3 },
+            { "gate": "cx", "control": 4, "target": 5 }
+        ],
+        "rhs": [
+            { "gate": "cx", "control": 4, "target": 5 },
+            { "gate": "cx", "control": 2, "target": 3 },
+            { "gate": "cx", "control": 0, "target": 1 }
+        ]
+    },
+    {
+        "name": "Expand_6q_SWAP01_with_independent_tail",
+        "lhs": [
+            { "gate": "swap", "q1": 0, "q2": 1 },
+            { "gate": "cx", "control": 2, "target": 3 },
+            { "gate": "h", "q": 4 },
+            { "gate": "t", "q": 5 }
+        ],
+        "rhs": [
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "cx", "control": 1, "target": 0 },
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "cx", "control": 2, "target": 3 },
+            { "gate": "h", "q": 4 },
+            { "gate": "t", "q": 5 }
+        ]
+    }
+]
