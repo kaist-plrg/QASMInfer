@@ -1,5 +1,5 @@
 val unoptimize_nop : 'a -> 'a
-val specs_of_rule_file : string -> (Extracted.transformSpec list, string) result
+val specs_of_rule_file : int -> string -> (Extracted.transformSpec list, string) result
 
 type applicable_rule = {
   name : string;

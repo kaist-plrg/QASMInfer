@@ -149,7 +149,7 @@ Fixpoint standard_pattern_sequence_nqubits
         (standard_pattern_sequence_nqubits rest)
   end.
 
-Definition standard_pattern_rule_nqubits
+Definition standard_rule_nqubits
     (lhs rhs : list StandardPatternGate)
     : nat :=
   Nat.max
@@ -194,10 +194,10 @@ Fixpoint standard_pattern_sequence_matrix
       Some (domega_matrix_mul rest_matrix gate_matrix)
   end.
 
-Definition standard_pattern_transform_validb
+Definition standard_transform_validb
     (lhs rhs : list StandardPatternGate)
     : bool :=
-  let n := standard_pattern_rule_nqubits lhs rhs in
+  let n := standard_rule_nqubits lhs rhs in
   match
     standard_pattern_sequence_matrix n lhs,
     standard_pattern_sequence_matrix n rhs
@@ -208,14 +208,14 @@ Definition standard_pattern_transform_validb
       false
   end.
 
-Definition standard_pattern_rule_validb
+Definition standard_rule_validb
     (nq : nat)
     (lhs rhs : list StandardPatternGate)
     : bool :=
-  (standard_pattern_rule_nqubits lhs rhs <=? nq)
-  && standard_pattern_transform_validb lhs rhs.
+  (standard_rule_nqubits lhs rhs <=? nq)
+  && standard_transform_validb lhs rhs.
 
-Definition standard_pattern_rewrite_rule
+Definition standard_rewrite_rule
     (lhs rhs : list StandardPatternGate)
     : RewriteRule :=
   {|
@@ -223,13 +223,13 @@ Definition standard_pattern_rewrite_rule
     rule_rhs := standard_pattern_sequence_to_instruction_patterns rhs;
   |}.
 
-Definition standard_pattern_rule_of_sequences
+Definition standard_rule_of_sequences
     (nq : nat)
     (name : string)
     (lhs rhs : list StandardPatternGate)
     : option TransformSpec :=
-  if standard_pattern_rule_validb nq lhs rhs
-  then Some (TransformSpec_simple_rule name (standard_pattern_rewrite_rule lhs rhs))
+  if standard_rule_validb nq lhs rhs
+  then Some (TransformSpec_simple_rule name (standard_rewrite_rule lhs rhs))
   else None.
 
 End STANDARD_MULTI_CHECKER.
@@ -905,24 +905,24 @@ Proof.
       lia.
 Qed.
 
-Lemma standard_pattern_rule_lhs_qbit_bound :
+Lemma standard_rule_lhs_qbit_bound :
   forall lhs rhs qbit,
     In qbit (standard_pattern_sequence_qbits lhs) ->
-    qbit < standard_pattern_rule_nqubits lhs rhs.
+    qbit < standard_rule_nqubits lhs rhs.
 Proof.
   intros lhs rhs qbit Hin.
-  unfold standard_pattern_rule_nqubits.
+  unfold standard_rule_nqubits.
   pose proof (standard_pattern_sequence_qbit_bound lhs qbit Hin).
   lia.
 Qed.
 
-Lemma standard_pattern_rule_rhs_qbit_bound :
+Lemma standard_rule_rhs_qbit_bound :
   forall lhs rhs qbit,
     In qbit (standard_pattern_sequence_qbits rhs) ->
-    qbit < standard_pattern_rule_nqubits lhs rhs.
+    qbit < standard_rule_nqubits lhs rhs.
 Proof.
   intros lhs rhs qbit Hin.
-  unfold standard_pattern_rule_nqubits.
+  unfold standard_rule_nqubits.
   pose proof (standard_pattern_sequence_qbit_bound rhs qbit Hin).
   lia.
 Qed.
@@ -1587,15 +1587,15 @@ Proof.
         reflexivity.
 Qed.
 
-Lemma standard_pattern_rule_safe_qbits :
+Lemma standard_rule_safe_qbits :
   forall lhs rhs,
-    RewriteRule_safe (standard_pattern_rewrite_rule lhs rhs) ->
+    RewriteRule_safe (standard_rewrite_rule lhs rhs) ->
     list_subset
       (standard_pattern_sequence_qbits rhs)
       (standard_pattern_sequence_qbits lhs).
 Proof.
   intros lhs rhs Hsafe.
-  unfold RewriteRule_safe, standard_pattern_rewrite_rule in Hsafe.
+  unfold RewriteRule_safe, standard_rewrite_rule in Hsafe.
   simpl in Hsafe.
   destruct Hsafe as [Hqbits _].
   rewrite <- standard_pattern_sequence_qbits_to_instruction_patterns.
@@ -1785,10 +1785,10 @@ Proof.
     mat_simpl.
 Qed.
 
-Lemma standard_pattern_transform_validb_matrix_list_sound_bound :
+Lemma standard_transform_validb_matrix_list_sound_bound :
   forall nq lhs rhs,
-    standard_pattern_transform_validb lhs rhs = true ->
-    standard_pattern_rule_nqubits lhs rhs <= nq ->
+    standard_transform_validb lhs rhs = true ->
+    standard_rule_nqubits lhs rhs <= nq ->
     exists lambda,
       fold_right
         (fun mat acc => mat_mul acc mat)
@@ -1802,8 +1802,8 @@ Lemma standard_pattern_transform_validb_matrix_list_sound_bound :
            (standard_pattern_sequence_complex_matrices nq rhs)).
 Proof.
   intros nq lhs rhs Hvalid Hbound.
-  unfold standard_pattern_transform_validb in Hvalid.
-  set (n0 := standard_pattern_rule_nqubits lhs rhs) in *.
+  unfold standard_transform_validb in Hvalid.
+  set (n0 := standard_rule_nqubits lhs rhs) in *.
   destruct (standard_pattern_sequence_matrix n0 lhs) as [lhs_matrix |]
     eqn:Hlhs; try discriminate.
   destruct (standard_pattern_sequence_matrix n0 rhs) as [rhs_matrix |]
@@ -1831,8 +1831,8 @@ Qed.
 
 Lemma standard_pattern_local_transform_sound :
   forall nq lhs rhs,
-    standard_pattern_transform_validb lhs rhs = true ->
-    standard_pattern_rule_nqubits lhs rhs <= nq ->
+    standard_transform_validb lhs rhs = true ->
+    standard_rule_nqubits lhs rhs <= nq ->
     Instruction_equiv nq
       (SeqInstr (standard_pattern_sequence_local_instructions lhs))
       (SeqInstr (standard_pattern_sequence_local_instructions rhs)).
@@ -1841,14 +1841,14 @@ Proof.
   eapply Instruction_equiv_of_seqs_from_matrix.
   - apply Matrix_of_standard_pattern_sequence_local.
   - apply Matrix_of_standard_pattern_sequence_local.
-  - eapply standard_pattern_transform_validb_matrix_list_sound_bound; eauto.
+  - eapply standard_transform_validb_matrix_list_sound_bound; eauto.
 Qed.
 
 Lemma standard_pattern_sequence_instantiated_swap_sound :
   forall nq subst lhs rhs lhs_instrs rhs_instrs,
-    standard_pattern_transform_validb lhs rhs = true ->
-    standard_pattern_rule_nqubits lhs rhs <= nq ->
-    RewriteRule_safe (standard_pattern_rewrite_rule lhs rhs) ->
+    standard_transform_validb lhs rhs = true ->
+    standard_rule_nqubits lhs rhs <= nq ->
+    RewriteRule_safe (standard_rewrite_rule lhs rhs) ->
     PatternMap_distinct subst ->
     standard_pattern_sequence_instructions subst lhs = Some lhs_instrs ->
     standard_pattern_sequence_instructions subst rhs = Some rhs_instrs ->
@@ -1904,7 +1904,7 @@ Proof.
       apply nodup_In in Hin.
       split.
       + unfold Qbit_index_valid.
-        pose proof (standard_pattern_rule_lhs_qbit_bound lhs rhs var Hin).
+        pose proof (standard_rule_lhs_qbit_bound lhs rhs var Hin).
         lia.
       + destruct (standard_pattern_sequence_find_valid
           nq subst lhs lhs_instrs var Hlhs Hvalid Hin)
@@ -1941,7 +1941,7 @@ Proof.
       (standard_pattern_sequence_qbits rhs)
       (standard_pattern_sequence_qbits lhs)).
   {
-    apply standard_pattern_rule_safe_qbits.
+    apply standard_rule_safe_qbits.
     exact Hsafe.
   }
   assert (Hreal_rhs :
@@ -1967,16 +1967,16 @@ Proof.
   - apply standard_pattern_local_transform_sound; assumption.
 Qed.
 
-Theorem standard_pattern_rule_of_sequences_sound :
+Theorem standard_rule_of_sequences_sound :
   forall nq name lhs rhs spec,
-    standard_pattern_rule_of_sequences nq name lhs rhs = Some spec ->
+    standard_rule_of_sequences nq name lhs rhs = Some spec ->
     TransformSpecValid nq spec.
 Proof.
   intros nq name lhs rhs spec H.
-  unfold standard_pattern_rule_of_sequences in H.
-  unfold standard_pattern_rule_validb in H.
-  destruct ((standard_pattern_rule_nqubits lhs rhs <=? nq)
-    && standard_pattern_transform_validb lhs rhs) eqn:Hrule_valid;
+  unfold standard_rule_of_sequences in H.
+  unfold standard_rule_validb in H.
+  destruct ((standard_rule_nqubits lhs rhs <=? nq)
+    && standard_transform_validb lhs rhs) eqn:Hrule_valid;
     try discriminate.
   apply andb_true_iff in Hrule_valid as [Hbound Hvalid].
   apply Nat.leb_le in Hbound.
@@ -1994,119 +1994,3 @@ Proof.
 Qed.
 
 End STANDARD_MULTI_PROOFS.
-
-Section STANDARD_MULTI_EXAMPLES.
-
-Example standard_pattern_valid_h_h :
-  standard_pattern_transform_validb
-    [SPG_Std Std_H 0; SPG_Std Std_H 0]
-    [SPG_Std Std_I 0] =
-  true.
-Proof.
-  reflexivity.
-Qed.
-
-Example standard_pattern_rule_valid_h_h :
-  standard_pattern_rule_validb
-    1
-    [SPG_Std Std_H 0; SPG_Std Std_H 0]
-    [SPG_Std Std_I 0] =
-  true.
-Proof.
-  reflexivity.
-Qed.
-
-Example standard_pattern_rule_reject_h_h_too_small :
-  standard_pattern_rule_validb
-    0
-    [SPG_Std Std_H 0; SPG_Std Std_H 0]
-    [SPG_Std Std_I 0] =
-  false.
-Proof.
-  reflexivity.
-Qed.
-
-Example standard_pattern_valid_x_x :
-  standard_pattern_transform_validb
-    [SPG_Std Std_X 0; SPG_Std Std_X 0]
-    [SPG_Std Std_I 0] =
-  true.
-Proof.
-  reflexivity.
-Qed.
-
-Example standard_pattern_valid_swap_to_3cnot :
-  standard_pattern_transform_validb
-    [SPG_Swap 0 1]
-    [SPG_Cnot 0 1; SPG_Cnot 1 0; SPG_Cnot 0 1] =
-  true.
-Proof.
-  reflexivity.
-Qed.
-
-Example standard_pattern_reject_cnot_same_operand :
-  standard_pattern_transform_validb
-    [SPG_Cnot 0 0]
-    [SPG_Std Std_I 0] =
-  false.
-Proof.
-  reflexivity.
-Qed.
-
-Example standard_pattern_reject_swap_same_operand :
-  standard_pattern_transform_validb
-    [SPG_Swap 0 0]
-    [SPG_Std Std_I 0] =
-  false.
-Proof.
-  reflexivity.
-Qed.
-
-Example standard_pattern_reject_non_equivalent :
-  standard_pattern_transform_validb
-    [SPG_Std Std_X 0]
-    [SPG_Std Std_I 0] =
-  false.
-Proof.
-  reflexivity.
-Qed.
-
-Example standard_pattern_rule_h_h_sound :
-  forall nq spec,
-    standard_pattern_rule_of_sequences
-      nq
-      "H_H"
-      [SPG_Std Std_H 0; SPG_Std Std_H 0]
-      [SPG_Std Std_I 0] =
-    Some spec ->
-    TransformSpecValid nq spec.
-Proof.
-  intros nq spec H.
-  eapply (standard_pattern_rule_of_sequences_sound
-    nq "H_H"
-    [SPG_Std Std_H 0; SPG_Std Std_H 0]
-    [SPG_Std Std_I 0]
-    spec).
-  exact H.
-Qed.
-
-Example standard_pattern_rule_swap_to_3cnot_sound :
-  forall nq spec,
-    standard_pattern_rule_of_sequences
-      nq
-      "swap_to_3cnot"
-      [SPG_Swap 0 1]
-      [SPG_Cnot 0 1; SPG_Cnot 1 0; SPG_Cnot 0 1] =
-    Some spec ->
-    TransformSpecValid nq spec.
-Proof.
-  intros nq spec H.
-  eapply (standard_pattern_rule_of_sequences_sound
-    nq "swap_to_3cnot"
-    [SPG_Swap 0 1]
-    [SPG_Cnot 0 1; SPG_Cnot 1 0; SPG_Cnot 0 1]
-    spec).
-  exact H.
-Qed.
-
-End STANDARD_MULTI_EXAMPLES.

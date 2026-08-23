@@ -1,22 +1,78 @@
 [
     {
         "name": "I_to_XX",
-        "lhs": ["id"],
-        "rhs": ["x", "x"]
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
     },
     {
         "name": "I_to_YY",
-        "lhs": ["id"],
-        "rhs": ["y", "y"]
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
     },
     {
         "name": "I_to_ZZ",
-        "lhs": ["id"],
-        "rhs": ["z", "z"]
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
     },
     {
         "name": "I_to_HH",
-        "lhs": ["id"],
-        "rhs": ["h", "h"]
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
     }
 ]
