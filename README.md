@@ -25,7 +25,7 @@ theories/
   extract/Extract.v              # extraction driver
   extract/extraction_header.txt  # header prepended to extracted OCaml
   rewrite/                       # rewrite specs and rewrite engine
-  domega/StandardValidMulti.v    # exact multi-qubit standard-gate validation
+  domega/StandardValid.v         # exact multi-qubit standard-gate validation
   ...                            # QASMInfer theories and implementation
 scripts/patch_extraction.sh      # prepends header to generated file
 src/lib/

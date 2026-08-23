@@ -44,15 +44,6 @@ Definition Rule_Insert_Cnot_Cnot (qbit1 qbit2: nat) : RewriteRule :=
        PCnot (NatExact qbit1) (NatExact qbit2)]
   |}.
 
-Definition Rule_Swap_To_3Cnot : RewriteRule :=
-  {|
-    rule_lhs := [PSwap (NatVar 0) (NatVar 1)];
-    rule_rhs :=
-      [PCnot (NatVar 0) (NatVar 1);
-       PCnot (NatVar 1) (NatVar 0);
-       PCnot (NatVar 0) (NatVar 1)]
-  |}.
-
 Definition Rule_Double_If (cond : bool) : RewriteRule :=
   {|
     rule_lhs :=
@@ -162,9 +153,6 @@ Definition TransformSpec_Insert_Cnot_Cnot : TransformSpec :=
     transform_param_kind := ParamKind_qbit2;
   |}.
 
-Definition TransformSpec_Swap_To_3Cnot : TransformSpec :=
-  TransformSpec_simple_rule "Swap_To_3Cnot" Rule_Swap_To_3Cnot.
-
 Definition TransformSpec_Insert_Contradictory_If
     (name : string)
     (outer_cond : bool)
@@ -195,7 +183,6 @@ Definition Transform_spec_list : list TransformSpec :=
     TransformSpec_Insert_I;
     TransformSpec_Insert_Swap;
     TransformSpec_Insert_Cnot_Cnot;
-    TransformSpec_Swap_To_3Cnot;
     TransformSpec_Insert_Contradictory_If_False;
     TransformSpec_Insert_Contradictory_If_True;
     TransformSpec_simple_rule "Double_If_True" Rule_Double_If_True;
@@ -292,38 +279,6 @@ Proof.
     cbn [transform_rule] in Hrule.
     rewrite Hqbits in Hrule.
     discriminate.
-Qed.
-
-Lemma TransformSpec_Swap_To_3Cnot_valid :
-  TransformSpecValid nq TransformSpec_Swap_To_3Cnot.
-Proof.
-  unfold
-    TransformSpecValid,
-    TransformSpec_Swap_To_3Cnot,
-    TransformSpec_simple_rule,
-    Transform_simple_rule.
-  simpl.
-  intros param.
-  destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
-  all: try (intros rule Hrule; discriminate).
-  intros rule Hrule map lhs rhs _ _ Hlhs Hrhs Hvalid.
-  injection Hrule as <-.
-  simpl in Hlhs, Hrhs.
-  destruct (NatMap.find 0%nat (pattern_qbit_map map)) as [qbit1 |];
-  try discriminate.
-  destruct (NatMap.find 1%nat (pattern_qbit_map map)) as [qbit2 |];
-  try discriminate.
-  inversion Hlhs; subst; clear Hlhs.
-  inversion Hrhs; subst; clear Hrhs.
-  inversion Hvalid as [| ? ? Hswap_valid Hnil_valid]; subst.
-  inversion Hswap_valid; subst.
-  symmetry.
-  transitivity qasm{ cx qbit1 qbit2; cx qbit2 qbit1; cx qbit1 qbit2 }.
-  - repeat rewrite Instruction_equiv_Seq_list_eq. reflexivity.
-  - transitivity qasm{ swap qbit1 qbit2 }.
-    + apply Transform_3cnot_swap; assumption.
-    + symmetry.
-      apply Instruction_equiv_Seq_singleton.
 Qed.
 
 Lemma TransformSpec_Insert_Contradictory_If_valid :
@@ -439,7 +394,6 @@ Proof.
   - apply TransformSpec_Insert_I_valid.
   - apply TransformSpec_Insert_Swap_valid.
   - apply TransformSpec_Insert_Cnot_Cnot_valid.
-  - apply TransformSpec_Swap_To_3Cnot_valid.
   - apply TransformSpec_Insert_Contradictory_If_False_valid.
   - apply TransformSpec_Insert_Contradictory_If_True_valid.
   - apply TransformSpec_Double_If_True_valid.

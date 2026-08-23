@@ -18,7 +18,7 @@ Require Import QASMInfer.transform.All.
 Require Import QASMInfer.rewrite.All.
 Require Import QASMInfer.domega.DOmega.
 Require Import QASMInfer.domega.DOmegaMatrix.
-Require Import QASMInfer.domega.StandardValidMulti.
+Require Import QASMInfer.domega.StandardValid.
 
 Set Extraction Output Directory ".".
 Extraction Language OCaml.
