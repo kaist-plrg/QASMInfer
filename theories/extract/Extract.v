@@ -12,10 +12,11 @@ Require Import Extraction.
 From Stdlib Require Import ExtrOcamlNativeString.
 From Stdlib Require Import ZArith Reals.
 From Stdlib Require ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZBigInt ExtrOcamlIntConv.
-Require Import QASMInfer.program.Program.
-Require Import QASMInfer.matrix.Complex.
-Require Import QASMInfer.transform.RewriteUnopt.
-Require Import QASMInfer.domega.StandardValid.
+Require Import QASMInfer.program.All.
+Require Import QASMInfer.matrix.All.
+Require Import QASMInfer.transform.All.
+Require Import QASMInfer.rewrite.All.
+Require Import QASMInfer.domega.All.
 
 Set Extraction Output Directory ".".
 Extraction Language OCaml.

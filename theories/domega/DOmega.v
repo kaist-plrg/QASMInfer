@@ -1,5 +1,5 @@
 Require Import QASMInfer.matrix.All.
-Require Import QASMInfer.program.Standard.
+Require Import QASMInfer.program.All.
 
 From Stdlib Require Import Bool.
 From Stdlib Require Import Lia.

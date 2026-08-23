@@ -3,6 +3,7 @@ Require Import QASMInfer.matrix.All.
 Require Import QASMInfer.operator.All.
 Require Import QASMInfer.program.All.
 Require Import QASMInfer.transform.All.
+Require Import QASMInfer.rewrite.All.
 
 From Stdlib Require Import Bool.
 From Stdlib Require Import List.
