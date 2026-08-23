@@ -1031,6 +1031,51 @@ Proof.
     mat_simpl.
 Qed.
 
+Lemma mat_ctrl_single_extend_right :
+  forall {n extra c t} (U : Matrix 1),
+    c < n ->
+    t < n ->
+    c <> t ->
+    mat_ctrl_single (n + extra) c t U =
+    mat_ctrl_single n c t U ⊗ @mat_eye extra.
+Proof.
+  intros n extra c t U Hc Ht Hneq.
+  repeat rewrite mat_ctrl_single_id; try lia.
+  repeat rewrite mat_single_break_left; try lia.
+  rewrite tprod_add_dist_r.
+  rewrite tprod_mul.
+  mat_simpl.
+Qed.
+
+Lemma mat_cnot_extend_right :
+  forall {n extra c t},
+    c < n ->
+    t < n ->
+    c <> t ->
+    @mat_cnot (n + extra) c t =
+    @mat_cnot n c t ⊗ @mat_eye extra.
+Proof.
+  intros n extra c t Hc Ht Hneq.
+  unfold mat_cnot.
+  apply mat_ctrl_single_extend_right; assumption.
+Qed.
+
+Lemma mat_swap_extend_right :
+  forall {n extra q1 q2},
+    q1 < n ->
+    q2 < n ->
+    q1 <> q2 ->
+    @mat_swap (n + extra) q1 q2 =
+    @mat_swap n q1 q2 ⊗ @mat_eye extra.
+Proof.
+  intros n extra q1 q2 Hq1 Hq2 Hneq.
+  rewrite <- (@mat_3cnot_swap (n + extra) q1 q2).
+  rewrite <- (@mat_3cnot_swap n q1 q2).
+  repeat rewrite mat_cnot_extend_right; try lia.
+  repeat rewrite tprod_mul.
+  mat_simpl.
+Qed.
+
 Lemma mat_swap_ctrl_commute:
   forall {n q1 q2} (c t: nat) (U: Matrix 1),
     q1 < n -> q2 < n ->

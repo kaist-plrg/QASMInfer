@@ -15,7 +15,7 @@
   matrix/Complex.vo
   rewrite/All.vo
   transform/Flatten.vo
-  domega/StandardValid.vo
+  domega/All.vo
   (source_tree .)
   (:patcher ../scripts/patch_extraction.sh)
   (:header_txt extract/extraction_header.txt))
