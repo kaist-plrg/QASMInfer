@@ -11,6 +11,7 @@ type argument_dp = id * int
 
 type uop_dp =
   | CX_dp of argument_dp * argument_dp
+  | Swap_dp of argument_dp * argument_dp
   | U_dp of exp list * argument_dp
   | Gate_dp of id * exp list * argument_dp list
 
@@ -202,6 +203,8 @@ let desugar_macro_uop (decl_head : gatedecl) (decl_body : gop list)
     (op : uop_dp) : uop_dp list =
   let this_id, _, _ = decl_head in
   match op with
+  | Gate_dp ("swap", [], [ arg1; arg2 ]) when this_id = "swap" ->
+      [ Swap_dp (arg1, arg2) ]
   | Gate_dp (gate_id, exp_list, arg_list) when gate_id = this_id ->
       instantiate_gate_decl decl_head decl_body exp_list arg_list
   | x -> [ x ]
@@ -247,6 +250,7 @@ type qc_ir =
       * angle
       * int
   | CnotIr of int * int
+  | SwapIr of int * int
   | MeasureIr of int * int
   | ResetIr of int
   | SeqIr of qc_ir list
@@ -417,6 +421,12 @@ let desugar_qasm_qop (assignment_q_rev : int QASMArgMap.t)
             assignment_q_rev,
           deref_or_fail arg2 "desugar_qasm_qop: CX: invalid argument"
             assignment_q_rev )
+  | Uop_dp (Swap_dp (arg1, arg2)) ->
+      SwapIr
+        ( deref_or_fail arg1 "desugar_qasm_qop: swap: invalid argument"
+            assignment_q_rev,
+          deref_or_fail arg2 "desugar_qasm_qop: swap: invalid argument"
+            assignment_q_rev )
   | Uop_dp (U_dp (exp_list, arg)) ->
       let theta, phi, lambda = eval_angle_list exp_list in
       RotateIr
@@ -474,6 +484,7 @@ let rec desugar_qcir_program (qc_ir_program : qc_ir) (acc : int) :
   | NopIr -> (NopInstr, acc)
   | RotateIr (t, p, l, q) -> (RotateInstr (t, p, l, q), acc)
   | CnotIr (a1, a2) -> (CnotInstr (a1, a2), acc)
+  | SwapIr (a1, a2) -> (SwapInstr (a1, a2), acc)
   | MeasureIr (q, c) -> (MeasureInstr (q, c), acc)
   | ResetIr q -> (ResetInstr q, acc)
   | SeqIr irs ->

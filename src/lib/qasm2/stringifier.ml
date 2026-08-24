@@ -164,6 +164,7 @@ let rec string_of_qc_ir = function
         (string_of_angle z)
         i
   | CnotIr (i, j) -> Printf.sprintf "CnotIr (%d, %d)" i j
+  | SwapIr (i, j) -> Printf.sprintf "SwapIr (%d, %d)" i j
   | MeasureIr (i, j) -> Printf.sprintf "MeasureIr (%d, %d)" i j
   | ResetIr i -> Printf.sprintf "ResetIr %d" i
   | SeqIr irs -> String.concat "\n" (List.map string_of_qc_ir irs)
@@ -206,6 +207,9 @@ let string_of_argument_dp (id, i) = Printf.sprintf "(%s, %d)" id i
 let string_of_uop_dp = function
   | CX_dp (a1, a2) ->
       Printf.sprintf "CX_dp (%s, %s)" (string_of_argument_dp a1)
+        (string_of_argument_dp a2)
+  | Swap_dp (a1, a2) ->
+      Printf.sprintf "Swap_dp (%s, %s)" (string_of_argument_dp a1)
         (string_of_argument_dp a2)
   | U_dp (exps, a) ->
       Printf.sprintf "U_dp (%s, %s)"

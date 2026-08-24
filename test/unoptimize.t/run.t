@@ -36,7 +36,9 @@ transform spec list.
   > OPENQASM 2.0;
   > include "qelib1.inc";
   > qreg q[2];
-  > swap q[0],q[1];
+  > cx q[0],q[1];
+  > cx q[1],q[0];
+  > cx q[0],q[1];
   > EOF
   $ qasminfer --rule-file valid-multi-rules.json --unoptimize-rules applicable-swap.qasm | grep -F 'Cnot3_file_to_Swap'
   Cnot3_file_to_Swap: occurrences=1 param=none

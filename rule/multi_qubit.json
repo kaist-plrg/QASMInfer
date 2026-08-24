@@ -158,5 +158,17 @@
         "rhs": [
             { "gate": "cx", "control": 1, "target": 0 }
         ]
+    },
+    {
+        "name": "CX01_Z1_to_Z0_Z1_CX01",
+        "lhs": [
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "z", "q": 1 }
+        ],
+        "rhs": [
+            { "gate": "z", "q": 0 },
+            { "gate": "z", "q": 1 },
+            { "gate": "cx", "control": 0, "target": 1 }
+        ]
     }
 ]

@@ -1993,4 +1993,20 @@ Proof.
   eapply standard_pattern_sequence_instantiated_swap_sound; eauto.
 Qed.
 
+Corollary standard_rule_of_sequences_result_equiv :
+  forall nq nc name lhs rhs spec param instr occurrence instr',
+    standard_rule_of_sequences nq name lhs rhs = Some spec ->
+    Instruction_qbits_validb nq instr = true ->
+    TransformSpec_apply spec param instr occurrence = Some instr' ->
+    Instruction_result_equiv nq nc instr instr'.
+Proof.
+  intros nq nc name lhs rhs spec param instr occurrence instr'
+    Hspec Hvalid Happly.
+  eapply TransformSpec_apply_result_equiv.
+  - eapply standard_rule_of_sequences_sound.
+    exact Hspec.
+  - exact Hvalid.
+  - exact Happly.
+Qed.
+
 End STANDARD_MULTI_PROOFS.
