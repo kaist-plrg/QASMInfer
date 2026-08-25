@@ -234,7 +234,8 @@ Definition standard_rule_of_sequences
 
 End STANDARD_MULTI_CHECKER.
 
-Section STANDARD_MULTI_PROOFS.
+(* Interpret pattern syntax as concrete OpenQASM instructions. *)
+Section STANDARD_MULTI_INSTRUCTION_INSTANTIATION.
 
 Definition standard_gate_instruction
     (gate : StandardGate)
@@ -253,11 +254,6 @@ Definition standard_gate_instruction
   | Std_SX => Gate_SX qbit
   | Std_SXdg => Gate_SXdg qbit
   end.
-
-Definition standard_gate_complex_matrix
-    (gate : StandardGate)
-    : Matrix 1 :=
-  complex_of_domega_matrix (standard_gate_domega_matrix gate).
 
 Definition standard_pattern_gate_local_instruction
     (gate : StandardPatternGate)
@@ -335,6 +331,16 @@ Proof.
     rewrite IH.
     reflexivity.
 Qed.
+
+End STANDARD_MULTI_INSTRUCTION_INSTANTIATION.
+
+(* Relate exact DOmega gate matrices to the executable matrix semantics. *)
+Section STANDARD_MULTI_GATE_MATRIX_SOUNDNESS.
+
+Definition standard_gate_complex_matrix
+    (gate : StandardGate)
+    : Matrix 1 :=
+  complex_of_domega_matrix (standard_gate_domega_matrix gate).
 
 Lemma Matrix_of_rotate_with_global_phase_multi :
   forall nq theta phi lambda qbit phase U,
@@ -588,50 +594,10 @@ Proof.
     apply standard_gate_complex_matrix_SXdg_gphase.
 Qed.
 
-Lemma swap_qbit_right :
-  forall qbit1 qbit2,
-    swap_qbit qbit1 qbit2 qbit2 = qbit1.
-Proof.
-  intros qbit1 qbit2.
-  unfold swap_qbit.
-  destruct (Nat.eq_dec qbit2 qbit1) as [Heq | Hneq].
-  - subst. reflexivity.
-  - destruct (Nat.eq_dec qbit2 qbit2) as [_ | Hcontra].
-    + reflexivity.
-    + contradiction.
-Qed.
+End STANDARD_MULTI_GATE_MATRIX_SOUNDNESS.
 
-Lemma swap_qbit_left :
-  forall qbit1 qbit2,
-    swap_qbit qbit1 qbit2 qbit1 = qbit2.
-Proof.
-  intros qbit1 qbit2.
-  unfold swap_qbit.
-  destruct (Nat.eq_dec qbit1 qbit1) as [_ | Hcontra].
-  - reflexivity.
-  - contradiction.
-Qed.
-
-Lemma standard_gate_instruction_swap_to_local :
-  forall nq gate local actual,
-    Qbit_index_valid nq local ->
-    Qbit_index_valid nq actual ->
-    Instruction_equiv nq
-      (standard_gate_instruction gate actual)
-      qasm{ swap local actual;
-            $(standard_gate_instruction gate local);
-            swap local actual }.
-Proof.
-  intros nq gate local actual Hlocal Hactual.
-  replace (standard_gate_instruction gate local) with
-    (swap_qbit_instr local actual (standard_gate_instruction gate actual)).
-  - rewrite Transform_swap_swap_insert.
-    reflexivity.
-    all: assumption.
-  - destruct gate; unfold swap_qbit_instr, change_qbit_instr,
-      standard_gate_instruction; simpl;
-      rewrite swap_qbit_right; reflexivity.
-Qed.
+(* Build and reason about swap-based qubit renamings on instructions. *)
+Section STANDARD_MULTI_SWAP_REALIZATION.
 
 Definition qbit_swap_pair := (nat * nat)%type.
 
@@ -808,6 +774,11 @@ Proof.
     + exact Hwrap2.
 Qed.
 
+End STANDARD_MULTI_SWAP_REALIZATION.
+
+(* Bookkeeping for pattern variables, concrete qubits, and generated swaps. *)
+Section STANDARD_MULTI_QBIT_BOOKKEEPING.
+
 Definition standard_pattern_gate_qbits
     (gate : StandardPatternGate)
     : list nat :=
@@ -837,14 +808,6 @@ Fixpoint qbit_pairs_of_vars
       let* pairs := qbit_pairs_of_vars subst rest in
       Some ((var, actual) :: pairs)
   end.
-
-Definition qbit_swaps_for_standard_sequence
-    (subst : PatternMap)
-    (gates : list StandardPatternGate)
-    : option (list qbit_swap_pair) :=
-  let vars := nodup Nat.eq_dec (standard_pattern_sequence_qbits gates) in
-  let* pairs := qbit_pairs_of_vars subst vars in
-  Some (qbit_swaps_for_pairs pairs).
 
 Lemma standard_pattern_gate_qbits_to_instruction_patterns :
   forall gate,
@@ -916,47 +879,8 @@ Proof.
   lia.
 Qed.
 
-Lemma standard_rule_rhs_qbit_bound :
-  forall lhs rhs qbit,
-    In qbit (standard_pattern_sequence_qbits rhs) ->
-    qbit < standard_rule_nqubits lhs rhs.
-Proof.
-  intros lhs rhs qbit Hin.
-  unfold standard_rule_nqubits.
-  pose proof (standard_pattern_sequence_qbit_bound rhs qbit Hin).
-  lia.
-Qed.
-
 Definition qbit_pair_avoids (qbit : nat) (pair : qbit_swap_pair) : Prop :=
   fst pair <> qbit /\ snd pair <> qbit.
-
-Lemma swap_qbit_eq_iff :
-  forall qbit1 qbit2 qbit result,
-    swap_qbit qbit1 qbit2 qbit = result ->
-    qbit = swap_qbit qbit1 qbit2 result.
-Proof.
-  intros qbit1 qbit2 qbit result H.
-  rewrite <- H.
-  rewrite swap_swap_qbit.
-  reflexivity.
-Qed.
-
-Lemma swap_qbit_neq :
-  forall qbit1 qbit2 qbit result,
-    qbit <> result ->
-    qbit1 <> result ->
-    qbit2 <> result ->
-    swap_qbit qbit1 qbit2 qbit <> result.
-Proof.
-  intros qbit1 qbit2 qbit result Hqbit Hqbit1 Hqbit2 Heq.
-  apply swap_qbit_eq_iff in Heq.
-  unfold swap_qbit in Heq.
-  destruct (Nat.eq_dec result qbit1) as [Hres1 | Hres1];
-    [subst; contradiction |].
-  destruct (Nat.eq_dec result qbit2) as [Hres2 | Hres2];
-    [subst; contradiction |].
-  contradiction.
-Qed.
 
 Lemma qbit_pair_swap_fst_avoids :
   forall qbit qbit1 qbit2 pair,
@@ -1031,26 +955,6 @@ Proof.
   apply qbit_apply_swaps_avoids.
   apply qbit_swaps_for_pairs_aux_avoids.
   exact Havoid.
-Qed.
-
-Lemma NoDup_map_swap_qbit :
-  forall qbit1 qbit2 qbits,
-    NoDup qbits ->
-    NoDup (map (swap_qbit qbit1 qbit2) qbits).
-Proof.
-  intros qbit1 qbit2 qbits Hnodup.
-  induction Hnodup as [| qbit qbits Hnotin Hnodup IH].
-  - constructor.
-  - simpl.
-    constructor.
-    + intros Hin.
-      apply in_map_iff in Hin as [qbit' [Heq Hin]].
-      apply Hnotin.
-      apply swap_qbit_eq_iff in Heq.
-      subst.
-      rewrite swap_swap_qbit in Hin.
-      exact Hin.
-    + exact IH.
 Qed.
 
 Lemma qbit_swaps_for_pairs_aux_valid :
@@ -1250,34 +1154,6 @@ Proof.
       eapply IH; [exact eq_refl | exact Hin | exact Hfind].
 Qed.
 
-Lemma qbit_pairs_of_vars_find_exists :
-  forall subst vars pairs var,
-    qbit_pairs_of_vars subst vars = Some pairs ->
-    In var vars ->
-    exists actual,
-      NatMap.find var (pattern_qbit_map subst) = Some actual /\
-      In (var, actual) pairs.
-Proof.
-  intros subst vars.
-  induction vars as [| head rest IH];
-    intros pairs var Hpairs Hin.
-  - contradiction.
-  - simpl in Hpairs.
-    destruct (NatMap.find head (pattern_qbit_map subst)) as [head_actual |]
-      eqn:Hhead; try discriminate.
-    destruct (qbit_pairs_of_vars subst rest) as [rest_pairs |]
-      eqn:Hrest; try discriminate.
-    inversion Hpairs; subst; clear Hpairs.
-    simpl in Hin.
-    destruct Hin as [Hin | Hin].
-    + subst.
-      exists head_actual.
-      split; [exact Hhead | simpl; left; reflexivity].
-    + destruct (IH rest_pairs var eq_refl Hin) as [actual [Hfind Hpair]].
-      exists actual.
-      split; [exact Hfind | simpl; right; exact Hpair].
-Qed.
-
 Lemma qbit_pairs_of_vars_pair_find :
   forall subst vars pairs var actual,
     qbit_pairs_of_vars subst vars = Some pairs ->
@@ -1386,6 +1262,11 @@ Proof.
         -- exact Hfind_rest.
       * exact eq_refl.
 Qed.
+
+End STANDARD_MULTI_QBIT_BOOKKEEPING.
+
+(* Show that generated swaps instantiate local pattern instructions. *)
+Section STANDARD_MULTI_INSTANTIATION_BY_SWAPS.
 
 Lemma standard_pattern_gate_instruction_change_swaps :
   forall subst swaps gate instr,
@@ -1620,6 +1501,11 @@ Proof.
     reflexivity.
 Qed.
 
+End STANDARD_MULTI_INSTANTIATION_BY_SWAPS.
+
+(* Lift checker matrix equality to local-pattern instruction equivalence. *)
+Section STANDARD_MULTI_MATRIX_SOUNDNESS.
+
 Definition standard_pattern_gate_complex_matrix
     (nq : nat)
     (gate : StandardPatternGate)
@@ -1844,6 +1730,11 @@ Proof.
   - eapply standard_transform_validb_matrix_list_sound_bound; eauto.
 Qed.
 
+End STANDARD_MULTI_MATRIX_SOUNDNESS.
+
+(* Combine swap instantiation and matrix soundness into TransformSpec validity. *)
+Section STANDARD_MULTI_RULE_SOUNDNESS.
+
 Lemma standard_pattern_sequence_instantiated_swap_sound :
   forall nq subst lhs rhs lhs_instrs rhs_instrs,
     standard_transform_validb lhs rhs = true ->
@@ -2009,4 +1900,4 @@ Proof.
   - exact Happly.
 Qed.
 
-End STANDARD_MULTI_PROOFS.
+End STANDARD_MULTI_RULE_SOUNDNESS.
