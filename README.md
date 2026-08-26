@@ -7,8 +7,8 @@ rewrite framework plus an OCaml CLI path for applying validated rewrite rules.
 
 ## Prereqs
 
-- `dune` (tested with 3.20.x)
-- `rocq`/`coq` (tested with Rocq 9.1.0)
+- `dune` 3.24 or newer
+- `rocq` (tested with Rocq 9.1.0)
 - `ocaml`
 - OCaml libraries: `yojson`, `zarith`
 

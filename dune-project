@@ -1,8 +1,8 @@
-(lang dune 3.20)
+(lang dune 3.24)
 (name qasminfer)
 
-; Coq/Rocq integration
-(using coq 0.8)
+; Rocq integration
+(using rocq 0.14)
 (using menhir 3.0)
 
 (package

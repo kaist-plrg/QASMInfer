@@ -1,6 +1,6 @@
 (include_subdirs qualified)
 
-(coq.theory
+(rocq.theory
  (name QASMInfer)
  (package qasminfer)
  (theories Stdlib)
@@ -10,6 +10,8 @@
  (alias extract)
  (targets extracted.ml)
  (deps
+  ; rocq repl loads transitive theory artifacts inside Dune's sandbox.
+  (glob_files_rec *.{vo,vos})
   extract/Extract.v
   program/Program.vo
   matrix/Complex.vo
@@ -23,5 +25,5 @@
   (chdir
    %{workspace_root}/_build/default/theories
    (progn
-    (run %{bin:coqtop} -q -Q . QASMInfer -batch -l extract/Extract)
+    (run %{bin:rocq} repl -q -Q . QASMInfer -batch -l extract/Extract)
     (run %{patcher} %{header_txt} extracted.ml)))))
