@@ -12,10 +12,13 @@ Require Import Extraction.
 From Stdlib Require Import ExtrOcamlNativeString.
 From Stdlib Require Import ZArith Reals.
 From Stdlib Require ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZBigInt ExtrOcamlIntConv.
-Require Import QASMInfer.program.Program.
-Require Import QASMInfer.matrix.Complex.
-Require Import QASMInfer.transform.RewriteUnopt.
-Require Import QASMInfer.transform.StandardValid.
+Require Import QASMInfer.program.All.
+Require Import QASMInfer.matrix.All.
+Require Import QASMInfer.transform.All.
+Require Import QASMInfer.rewrite.All.
+Require Import QASMInfer.domega.DOmega.
+Require Import QASMInfer.domega.DOmegaMatrix.
+Require Import QASMInfer.domega.StandardValid.
 
 Set Extraction Output Directory ".".
 Extraction Language OCaml.
@@ -88,8 +91,8 @@ Extraction "extracted.ml"
   TransformSpec_count
   TransformSpec_apply
   TransformSpec_simple_rule
-  StandardGate
-  standard_gate_name
+  StandardPatternGate
+  standard_rule_nqubits
   standard_rule_of_sequences
   Transform_spec_list.
 

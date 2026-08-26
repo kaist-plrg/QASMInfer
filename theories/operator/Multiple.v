@@ -3,6 +3,8 @@ Require Import QASMInfer.property.All.
 Require Import QASMInfer.operator.Single.
 Require Import QASMInfer.operator.Projection.
 
+From Stdlib Require Import List.
+
 Bind Scope Complex_scope with Complex.
 Open Scope Matrix_scope.
 
@@ -412,6 +414,30 @@ Proof.
       destruct (Nat.eq_dec tq q2) as [H4|H4]; try lia.
 Qed.
 
+Lemma swap_qbit_right :
+  forall qbit1 qbit2,
+    swap_qbit qbit1 qbit2 qbit2 = qbit1.
+Proof.
+  intros qbit1 qbit2.
+  unfold swap_qbit.
+  destruct (Nat.eq_dec qbit2 qbit1) as [Heq | Hneq].
+  - subst. reflexivity.
+  - destruct (Nat.eq_dec qbit2 qbit2) as [_ | Hcontra].
+    + reflexivity.
+    + contradiction.
+Qed.
+
+Lemma swap_qbit_left :
+  forall qbit1 qbit2,
+    swap_qbit qbit1 qbit2 qbit1 = qbit2.
+Proof.
+  intros qbit1 qbit2.
+  unfold swap_qbit.
+  destruct (Nat.eq_dec qbit1 qbit1) as [_ | Hcontra].
+  - reflexivity.
+  - contradiction.
+Qed.
+
 Lemma swap_qbit_symm:
   forall (qbit1 qbit2: nat),
     swap_qbit qbit1 qbit2 =
@@ -448,6 +474,54 @@ Proof.
   destruct (Nat.eq_dec target qbit1);
   destruct (Nat.eq_dec target qbit2);
   lia.
+Qed.
+
+Lemma swap_qbit_eq_iff :
+  forall qbit1 qbit2 qbit result,
+    swap_qbit qbit1 qbit2 qbit = result ->
+    qbit = swap_qbit qbit1 qbit2 result.
+Proof.
+  intros qbit1 qbit2 qbit result H.
+  rewrite <- H.
+  rewrite swap_swap_qbit.
+  reflexivity.
+Qed.
+
+Lemma swap_qbit_neq :
+  forall qbit1 qbit2 qbit result,
+    qbit <> result ->
+    qbit1 <> result ->
+    qbit2 <> result ->
+    swap_qbit qbit1 qbit2 qbit <> result.
+Proof.
+  intros qbit1 qbit2 qbit result Hqbit Hqbit1 Hqbit2 Heq.
+  apply swap_qbit_eq_iff in Heq.
+  unfold swap_qbit in Heq.
+  destruct (Nat.eq_dec result qbit1) as [Hres1 | Hres1];
+    [subst; contradiction |].
+  destruct (Nat.eq_dec result qbit2) as [Hres2 | Hres2];
+    [subst; contradiction |].
+  contradiction.
+Qed.
+
+Lemma NoDup_map_swap_qbit :
+  forall qbit1 qbit2 qbits,
+    NoDup qbits ->
+    NoDup (map (swap_qbit qbit1 qbit2) qbits).
+Proof.
+  intros qbit1 qbit2 qbits Hnodup.
+  induction Hnodup as [| qbit qbits Hnotin Hnodup IH].
+  - constructor.
+  - simpl.
+    constructor.
+    + intros Hin.
+      apply in_map_iff in Hin as [qbit' [Heq Hin]].
+      apply Hnotin.
+      apply swap_qbit_eq_iff in Heq.
+      subst.
+      rewrite swap_swap_qbit in Hin.
+      exact Hin.
+    + exact IH.
 Qed.
 
 Lemma mat_swap2_commute:
@@ -1029,6 +1103,51 @@ Proof.
   - repeat rewrite mat_ctrl_single_out_of_bounds; try lia.
     rewrite mat_swap_out_of_bounds; try lia.
     mat_simpl.
+Qed.
+
+Lemma mat_ctrl_single_extend_right :
+  forall {n extra c t} (U : Matrix 1),
+    c < n ->
+    t < n ->
+    c <> t ->
+    mat_ctrl_single (n + extra) c t U =
+    mat_ctrl_single n c t U ⊗ @mat_eye extra.
+Proof.
+  intros n extra c t U Hc Ht Hneq.
+  repeat rewrite mat_ctrl_single_id; try lia.
+  repeat rewrite mat_single_break_left; try lia.
+  rewrite tprod_add_dist_r.
+  rewrite tprod_mul.
+  mat_simpl.
+Qed.
+
+Lemma mat_cnot_extend_right :
+  forall {n extra c t},
+    c < n ->
+    t < n ->
+    c <> t ->
+    @mat_cnot (n + extra) c t =
+    @mat_cnot n c t ⊗ @mat_eye extra.
+Proof.
+  intros n extra c t Hc Ht Hneq.
+  unfold mat_cnot.
+  apply mat_ctrl_single_extend_right; assumption.
+Qed.
+
+Lemma mat_swap_extend_right :
+  forall {n extra q1 q2},
+    q1 < n ->
+    q2 < n ->
+    q1 <> q2 ->
+    @mat_swap (n + extra) q1 q2 =
+    @mat_swap n q1 q2 ⊗ @mat_eye extra.
+Proof.
+  intros n extra q1 q2 Hq1 Hq2 Hneq.
+  rewrite <- (@mat_3cnot_swap (n + extra) q1 q2).
+  rewrite <- (@mat_3cnot_swap n q1 q2).
+  repeat rewrite mat_cnot_extend_right; try lia.
+  repeat rewrite tprod_mul.
+  mat_simpl.
 Qed.
 
 Lemma mat_swap_ctrl_commute:

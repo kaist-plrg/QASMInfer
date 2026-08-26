@@ -394,20 +394,20 @@ let execute source verbose emit_json output_file =
   in
   write_result output_file result
 
-let specs_of_rule_file_option rule_file =
+let specs_of_rule_file_option nq rule_file =
   match rule_file with
   | None -> None
   | Some path -> (
-      match Unoptimize.specs_of_rule_file path with
+      match Unoptimize.specs_of_rule_file nq path with
       | Ok specs -> Some specs
       | Error message ->
           raise (Cli_error ("invalid rule file " ^ path ^ ": " ^ message)))
 
 let unoptimize source destination step verbose rule_file rule_name manual =
-  let specs = specs_of_rule_file_option rule_file in
   let nq, nc, instr, q_assignment, c_assignment =
     parse_and_desugar source
   in
+  let specs = specs_of_rule_file_option nq rule_file in
   let transformed =
     try Unoptimize.unoptimize ?specs ?rule_name ?manual instr step nq nc with
     | Failure message -> raise (Cli_error message)
@@ -421,8 +421,8 @@ let unoptimize source destination step verbose rule_file rule_name manual =
   write_result (Some destination) output
 
 let unoptimize_rules source verbose emit_json output_file rule_file =
-  let specs = specs_of_rule_file_option rule_file in
   let nq, nc, instr, _, _ = parse_and_desugar source in
+  let specs = specs_of_rule_file_option nq rule_file in
   log_instruction verbose instr;
   let rules =
     try Unoptimize.applicable_rules ?specs instr nq nc with

@@ -24,8 +24,8 @@ opam install dune rocq yojson zarith
 theories/
   extract/Extract.v              # extraction driver
   extract/extraction_header.txt  # header prepended to extracted OCaml
-  transform/Rewrite.v            # verified transformation specifications
-  transform/StandardValid.v      # exact standard-gate rewrite validation
+  rewrite/                       # rewrite specs and rewrite engine
+  domega/StandardValid.v         # exact multi-qubit standard-gate validation
   ...                            # QASMInfer theories and implementation
 scripts/patch_extraction.sh      # prepends header to generated file
 src/lib/
@@ -103,13 +103,28 @@ of `omega = exp(i pi / 4)`:
 
 ```json
 [
-  { "name": "I_to_XX", "lhs": ["id"], "rhs": ["x", "x"] }
+  {
+    "name": "I_to_XX",
+    "lhs": [{ "gate": "id", "q": 0 }],
+    "rhs": [{ "gate": "x", "q": 0 }, { "gate": "x", "q": 0 }]
+  },
+  {
+    "name": "Swap_to_3Cnot",
+    "lhs": [{ "gate": "swap", "q1": 0, "q2": 1 }],
+    "rhs": [
+      { "gate": "cx", "control": 0, "target": 1 },
+      { "gate": "cx", "control": 1, "target": 0 },
+      { "gate": "cx", "control": 0, "target": 1 }
+    ]
+  }
 ]
 ```
 
 Gate names are `id`, `x`, `y`, `z`, `h`, `s`, `sdg`, `t`, `tdg`, `sx`, and
-`sxdg`. Invalid rules, and duplicate rule names in the combined built-in and
-rule-file rule set, are rejected without writing the destination.
+`sxdg`, plus two-qubit `cx` and `swap`. Rules that reference qubit indices
+outside the source program are ignored; invalid in-bounds rules and duplicate
+rule names in the combined built-in and rule-file rule set are rejected without
+writing the destination.
 
 ### Output formats
 

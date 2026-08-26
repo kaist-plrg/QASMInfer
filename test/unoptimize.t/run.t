@@ -25,11 +25,23 @@ option before, between, and after the two positional paths.
 Rule files are validated before unoptimization and then added to the extracted
 transform spec list.
 
-  $ printf '[{"name":"I_to_XX_from_file","lhs":["id"],"rhs":["x","x"]}]\n' > valid-rules.json
+  $ printf '[{"name":"I_to_XX_from_file","lhs":[{"gate":"id","q":0}],"rhs":[{"gate":"x","q":0},{"gate":"x","q":0}]}]\n' > valid-rules.json
   $ qasminfer --rule-file valid-rules.json --step 0 --unoptimize qasm2.qasm qasm2.rules.qasm >rules.stdout 2>rules.stderr
   $ test ! -s rules.stdout
   $ test ! -s rules.stderr
   $ cmp qasm2.once.qasm qasm2.rules.qasm
+
+  $ printf '[{"name":"Cnot3_file_to_Swap","lhs":[{"gate":"cx","control":0,"target":1},{"gate":"cx","control":1,"target":0},{"gate":"cx","control":0,"target":1}],"rhs":[{"gate":"swap","q1":0,"q2":1}]}]\n' > valid-multi-rules.json
+  $ cat > applicable-swap.qasm <<'EOF'
+  > OPENQASM 2.0;
+  > include "qelib1.inc";
+  > qreg q[2];
+  > cx q[0],q[1];
+  > cx q[1],q[0];
+  > cx q[0],q[1];
+  > EOF
+  $ qasminfer --rule-file valid-multi-rules.json --unoptimize-rules applicable-swap.qasm | grep -F 'Cnot3_file_to_Swap'
+  Cnot3_file_to_Swap: occurrences=1 param=none
 
 The --unoptimize-rules command reports the applicable rule summaries without
 performing a rewrite.  Counts are lhs occurrences, and params are reported by
@@ -44,6 +56,7 @@ kind rather than by concrete witness values.
   Insert_If_FT: occurrences=12 param=cbit_instr
   Insert_If_TF: occurrences=12 param=cbit_instr
   Double_If_False: occurrences=1 param=none
+  Double_Reset: occurrences=1 param=none
   $ grep -F 'Swap_To_3Cnot' applicable-rules.stdout; test $? -ne 0
   $ qasminfer --unoptimize-rules qasm2.qasm --output applicable-rules.file >applicable-rules-file.stdout 2>applicable-rules-file.stderr
   $ test ! -s applicable-rules-file.stdout
@@ -58,6 +71,17 @@ kind rather than by concrete witness values.
   > EOF
   $ qasminfer --rule-file valid-rules.json --unoptimize-rules applicable-id.qasm | grep -F 'I_to_XX_from_file'
   I_to_XX_from_file: occurrences=1 param=none
+
+  $ printf '[{"name":"Too_wide_rule","lhs":[{"gate":"id","q":1}],"rhs":[{"gate":"x","q":1},{"gate":"x","q":1}]}]\n' > too-wide-rules.json
+  $ qasminfer --rule-file too-wide-rules.json --unoptimize-rules applicable-id.qasm >too-wide-rules.stdout 2>too-wide-rules.stderr
+  $ test ! -s too-wide-rules.stderr
+  $ grep -F 'Too_wide_rule' too-wide-rules.stdout; test $? -ne 0
+  $ qasminfer --rule-file too-wide-rules.json --rule Too_wide_rule --unoptimize applicable-id.qasm too-wide-output.qasm >too-wide-rule.stdout 2>too-wide-rule.stderr
+  [1]
+  $ test ! -e too-wide-output.qasm
+  $ test ! -s too-wide-rule.stdout
+  $ cat too-wide-rule.stderr
+  qasminfer: No transformation rule named 'Too_wide_rule'.
 
   $ qasminfer --json --unoptimize-rules qasm2.qasm >applicable-rules.json 2>applicable-rules-json.stderr
   $ test ! -s applicable-rules-json.stderr
@@ -96,17 +120,30 @@ kind rather than by concrete witness values.
         "name": "Double_If_False",
         "occurrences": 1,
         "param": "none"
+      },
+      {
+        "name": "Double_Reset",
+        "occurrences": 1,
+        "param": "none"
       }
     ]
   }
 
-  $ printf '[{"name":"bad_h_to_i","lhs":["h"],"rhs":["id"]}]\n' > invalid-rules.json
+  $ printf '[{"name":"bad_h_to_i","lhs":[{"gate":"h","q":0}],"rhs":[{"gate":"id","q":0}]}]\n' > invalid-rules.json
   $ qasminfer --rule-file invalid-rules.json --step 0 --unoptimize qasm2.qasm invalid-rule-output.qasm >invalid-rules.stdout 2>invalid-rules.stderr
   [1]
   $ test ! -e invalid-rule-output.qasm
   $ test ! -s invalid-rules.stdout
   $ cat invalid-rules.stderr
-  qasminfer: invalid rule file invalid-rules.json: rule #1 bad_h_to_i (h -> id) is not valid up to global omega phase
+  qasminfer: invalid rule file invalid-rules.json: rule #1 bad_h_to_i (h 0 -> id 0) is not valid up to global omega phase
+
+  $ printf '[{"name":"old_syntax","lhs":["id"],"rhs":["x","x"]}]\n' > old-syntax-rules.json
+  $ qasminfer --rule-file old-syntax-rules.json --step 0 --unoptimize qasm2.qasm old-syntax-output.qasm >old-syntax.stdout 2>old-syntax.stderr
+  [1]
+  $ test ! -e old-syntax-output.qasm
+  $ test ! -s old-syntax.stdout
+  $ cat old-syntax.stderr
+  qasminfer: invalid rule file old-syntax-rules.json: rule old_syntax field 'lhs' gate entry must be an object
 
 The --rule option restricts unoptimization to a named rule from the combined
 built-in and rule-file transform spec list, and it cannot be combined with
@@ -138,7 +175,7 @@ built-in and rule-file transform spec list, and it cannot be combined with
   $ cat missing-rule.stderr
   qasminfer: No transformation rule named 'Missing_rule'.
 
-  $ printf '[{"name":"dup","lhs":["id"],"rhs":["x","x"]},{"name":"dup","lhs":["id"],"rhs":["y","y"]}]\n' > duplicate-rules.json
+  $ printf '[{"name":"dup","lhs":[{"gate":"id","q":0}],"rhs":[{"gate":"x","q":0},{"gate":"x","q":0}]},{"name":"dup","lhs":[{"gate":"id","q":0}],"rhs":[{"gate":"y","q":0},{"gate":"y","q":0}]}]\n' > duplicate-rules.json
   $ qasminfer --rule-file duplicate-rules.json --rule Insert_I --unoptimize named-rule-target.qasm duplicate-rule-output.qasm >duplicate-rule.stdout 2>duplicate-rule.stderr
   [1]
   $ test ! -e duplicate-rule-output.qasm

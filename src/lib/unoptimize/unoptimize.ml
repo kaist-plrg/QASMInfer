@@ -1,5 +1,7 @@
 open Extracted
 
+module Json = Yojson.Safe.Util
+
 let unoptimize_nop instruction = instruction
 
 let gate_of_string = function
@@ -16,10 +18,26 @@ let gate_of_string = function
   | "sxdg" | "sx_dg" | "std_sxdg" -> Some Std_SXdg
   | _ -> None
 
-let string_of_gate = standard_gate_name
+let string_of_gate = function
+  | Std_I -> "id"
+  | Std_X -> "x"
+  | Std_Y -> "y"
+  | Std_Z -> "z"
+  | Std_H -> "h"
+  | Std_S -> "s"
+  | Std_Sdg -> "sdg"
+  | Std_T -> "t"
+  | Std_Tdg -> "tdg"
+  | Std_SX -> "sx"
+  | Std_SXdg -> "sxdg"
 
-let string_of_gate_list gates =
-  gates |> List.map string_of_gate |> String.concat " "
+let string_of_pattern_gate = function
+  | SPG_Std (gate, qbit) -> Printf.sprintf "%s %d" (string_of_gate gate) qbit
+  | SPG_Cnot (control, target) -> Printf.sprintf "cx %d %d" control target
+  | SPG_Swap (qbit1, qbit2) -> Printf.sprintf "swap %d %d" qbit1 qbit2
+
+let string_of_pattern_gate_list gates =
+  gates |> List.map string_of_pattern_gate |> String.concat "; "
 
 let result_bind result f =
   match result with
@@ -33,72 +51,151 @@ let rec result_map_list f = function
           result_bind (result_map_list f rest) (fun mapped_rest ->
               Ok (mapped :: mapped_rest)))
 
-let gate_list_field rule_name fields key =
-  match List.assoc_opt key fields with
-  | Some (`List values) ->
-      result_map_list
-        (function
-          | `String gate_name -> (
-              let normalized = String.lowercase_ascii gate_name in
-              match gate_of_string normalized with
-              | Some gate -> Ok gate
-              | None ->
-                  Error
-                    (Printf.sprintf
-                       "rule %s field '%s' contains unknown standard gate '%s'"
-                       rule_name key gate_name))
-          | _ ->
-              Error
-                (Printf.sprintf
-                   "rule %s field '%s' must contain only strings"
-                   rule_name key))
-        values
-  | Some _ ->
-      Error
-        (Printf.sprintf "rule %s field '%s' must be an array" rule_name key)
-  | None -> Error (Printf.sprintf "rule %s is missing field '%s'" rule_name key)
+let rec result_filter_map_list f = function
+  | [] -> Ok []
+  | value :: rest ->
+      result_bind (f value) (fun mapped ->
+          result_bind (result_filter_map_list f rest) (fun mapped_rest ->
+              match mapped with
+              | None -> Ok mapped_rest
+              | Some value -> Ok (value :: mapped_rest)))
 
-let rule_jsons_of_json = function
-  | `List rules -> Ok rules
-  | `Assoc fields -> (
-      match List.assoc_opt "rules" fields with
-      | Some (`List rules) -> Ok rules
-      | Some _ -> Error "field 'rules' must be an array"
-      | None -> Error "rule file must be an array or an object with a 'rules' array")
+let json_object error json =
+  try
+    ignore (Json.to_assoc json);
+    Ok ()
+  with Json.Type_error _ -> Error error
+
+let json_field json key =
+  match Json.member key json with
+  | `Null -> None
+  | value -> Some value
+
+let json_string error json =
+  try Ok (Json.to_string json) with Json.Type_error _ -> Error error
+
+let json_list error json =
+  try Ok (Json.to_list json) with Json.Type_error _ -> Error error
+
+let int_field rule_name gate_name json key =
+  match json_field json key with
+  | None ->
+      Error
+        (Printf.sprintf "rule %s gate '%s' is missing field '%s'" rule_name
+           gate_name key)
+  | Some value -> (
+      try
+        let value = Json.to_int value in
+        if value >= 0 then Ok value
+        else
+          Error
+            (Printf.sprintf
+               "rule %s gate '%s' field '%s' must be a non-negative integer"
+               rule_name gate_name key)
+      with Json.Type_error _ ->
+        Error
+          (Printf.sprintf "rule %s gate '%s' field '%s' must be an integer"
+             rule_name gate_name key))
+
+let pattern_gate_of_json rule_name key json =
+  result_bind
+    (json_object
+       (Printf.sprintf "rule %s field '%s' gate entry must be an object"
+          rule_name key)
+       json)
+    (fun () ->
+      match json_field json "gate" with
+      | None ->
+          Error
+            (Printf.sprintf "rule %s field '%s' gate entry is missing field 'gate'"
+               rule_name key)
+      | Some gate_json ->
+          let gate_name_error =
+            Printf.sprintf "rule %s field '%s' gate entry must name a string"
+              rule_name key
+          in
+          result_bind (json_string gate_name_error gate_json) (fun gate_name ->
+            let normalized = String.lowercase_ascii gate_name in
+            match normalized with
+            | "cx" | "cnot" ->
+                result_bind
+                  (int_field rule_name gate_name json "control")
+                  (fun control ->
+                    result_bind
+                      (int_field rule_name gate_name json "target")
+                      (fun target -> Ok (SPG_Cnot (control, target))))
+            | "swap" ->
+                result_bind (int_field rule_name gate_name json "q1")
+                  (fun qbit1 ->
+                    result_bind (int_field rule_name gate_name json "q2")
+                      (fun qbit2 -> Ok (SPG_Swap (qbit1, qbit2))))
+            | _ -> (
+                match gate_of_string normalized with
+                | Some gate ->
+                    result_bind (int_field rule_name gate_name json "q")
+                      (fun qbit -> Ok (SPG_Std (gate, qbit)))
+                | None ->
+                    Error
+                      (Printf.sprintf
+                         "rule %s field '%s' contains unknown gate '%s'"
+                         rule_name key gate_name))))
+
+let pattern_gate_list_field rule_name json key =
+  match json_field json key with
+  | None -> Error (Printf.sprintf "rule %s is missing field '%s'" rule_name key)
+  | Some value ->
+      result_bind
+        (json_list
+           (Printf.sprintf "rule %s field '%s' must be an array" rule_name key)
+           value)
+        (result_map_list (pattern_gate_of_json rule_name key))
+
+let rule_jsons_of_json json =
+  match json with
+  | `List _ -> Ok (Json.to_list json)
+  | `Assoc _ -> (
+      match json_field json "rules" with
+      | None ->
+          Error "rule file must be an array or an object with a 'rules' array"
+      | Some value -> json_list "field 'rules' must be an array" value)
   | _ -> Error "rule file must be an array of rule objects"
 
-let spec_of_rule_json index = function
-  | `Assoc fields ->
+let spec_of_rule_json nq index json =
+  result_bind
+    (json_object (Printf.sprintf "rule %d must be an object" (index + 1)) json)
+    (fun () ->
       let fallback_name = Printf.sprintf "rule_%d" (index + 1) in
       let name =
-        match List.assoc_opt "name" fields with
-        | Some (`String value) -> Ok value
-        | Some _ ->
-            Error
+        match json_field json "name" with
+        | None -> Ok fallback_name
+        | Some value ->
+            json_string
               (Printf.sprintf "rule %s field 'name' must be a string"
                  fallback_name)
-        | None -> Ok fallback_name
+              value
       in
       result_bind name (fun name ->
-          result_bind (gate_list_field name fields "lhs") (fun lhs ->
-              result_bind (gate_list_field name fields "rhs") (fun rhs ->
-                  match standard_rule_of_sequences lhs rhs with
-                  | Some rule -> Ok (transformSpec_simple_rule name rule)
-                  | None ->
+          result_bind (pattern_gate_list_field name json "lhs") (fun lhs ->
+              result_bind (pattern_gate_list_field name json "rhs") (fun rhs ->
+                  if standard_rule_nqubits lhs rhs > nq then Ok None
+                  else
+                    match standard_rule_of_sequences nq name lhs rhs with
+                    | Some spec -> Ok (Some spec)
+                    | None ->
                       Error
                         (Printf.sprintf
                            "rule #%d %s (%s -> %s) is not valid up to global omega phase"
-                           (index + 1) name (string_of_gate_list lhs)
-                           (string_of_gate_list rhs)))))
-  | _ -> Error (Printf.sprintf "rule %d must be an object" (index + 1))
+                           (index + 1) name (string_of_pattern_gate_list lhs)
+                           (string_of_pattern_gate_list rhs))))))
 
-let specs_of_rule_file path =
+let specs_of_rule_file nq path =
   try
     let json = Yojson.Safe.from_file path in
     result_bind (rule_jsons_of_json json) (fun rule_jsons ->
         match rule_jsons with
         | [] -> Error "rule file must contain at least one rule"
-        | _ -> result_map_list (fun (index, json) -> spec_of_rule_json index json)
+        | _ -> result_filter_map_list
+                 (fun (index, json) -> spec_of_rule_json nq index json)
                  (List.mapi (fun index json -> (index, json)) rule_jsons))
   with
   | Sys_error message -> Error message
