@@ -12,7 +12,6 @@
    ../../transform/Flatten.vo
    ../../domega/All.vo
    (source_tree ../..)
-   (:patcher ../../../scripts/patch_extraction.sh)
    (:header_txt ../../extract/extraction_header.txt))
   (action
    (progn
@@ -35,25 +34,29 @@
       (setenv
        QASMINFER_EXTRACTION_COMMAND
        "rocq repl -q -Q ../.. QASMInfer -batch -l ../../extract/Extract"
-       (run %{patcher} %{header_txt} extracted.ml))))))))
+       ; The rule is unsandboxed so the nested proof project can run the
+       ; repository-level patcher without making consumer Dune load this project.
+       (run
+        bash
+        ../../../../../scripts/patch_extraction.sh
+        %{header_txt}
+        extracted.ml))))))))
 
 (rule
  (alias extract)
  (deps
-  (:committed ../extracted.ml)
   (:generated stage/extracted.ml))
  (action
-  (diff %{committed} %{generated})))
+  (diff ../extracted.ml %{generated})))
 
 (rule
  (alias check-extraction)
  (deps
-  (:committed ../extracted.ml)
   (:generated stage/extracted.ml))
  (action
   (progn
    (bash
-    "if ! cmp -s %{committed} %{generated}; then
+    "if ! cmp -s ../extracted.ml %{generated}; then
        echo 'Committed theories/extracted.ml is stale; run dune build --root theories @extract --auto-promote and commit the result.' >&2
      fi")
-   (diff %{committed} %{generated}))))
+   (diff ../extracted.ml %{generated}))))
