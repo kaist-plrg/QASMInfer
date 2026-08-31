@@ -1,0 +1,3 @@
+/theories/extracted.ml text eol=lf
+/theories/extract/extraction_header.txt text eol=lf
+/scripts/patch_extraction.sh text eol=lf

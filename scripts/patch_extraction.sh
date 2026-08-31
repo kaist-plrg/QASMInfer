@@ -19,6 +19,90 @@ if [ ! -f "$target" ]; then
   exit 1
 fi
 
-tmp="$(mktemp "${TMPDIR:-/tmp}/extracted.XXXXXX")"
-cat "$header" "$target" > "$tmp"
-mv "$tmp" "$target"
+rocq_version="${QASMINFER_ROCQ_VERSION:-}"
+dune_rocq_language_version="${QASMINFER_DUNE_ROCQ_LANGUAGE_VERSION:-}"
+extraction_command="${QASMINFER_EXTRACTION_COMMAND:-}"
+
+if [ -z "$rocq_version" ] || [ -z "$dune_rocq_language_version" ] || [ -z "$extraction_command" ]; then
+  echo "missing extraction provenance environment" >&2
+  exit 1
+fi
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+  echo "extraction provenance requires a Git checkout" >&2
+  exit 1
+}
+
+extraction_inputs=(
+  .gitattributes
+  scripts/patch_extraction.sh
+  theories/dune
+  theories/dune-project
+  theories/extraction/dune
+  theories/extract/extraction_header.txt
+  ':(glob)theories/**/*.v'
+)
+
+if ! git -C "$repo_root" diff --quiet -- "${extraction_inputs[@]}" ||
+   ! git -C "$repo_root" diff --cached --quiet -- "${extraction_inputs[@]}"; then
+  echo "extraction inputs have uncommitted changes; commit them before regenerating" >&2
+  exit 1
+fi
+
+untracked_inputs="$(
+  git -C "$repo_root" ls-files --others --exclude-standard -- \
+    ':(glob)theories/**/*.v'
+)"
+if [ -n "$untracked_inputs" ]; then
+  echo "untracked Rocq sources must be committed before regenerating:" >&2
+  printf '%s\n' "$untracked_inputs" >&2
+  exit 1
+fi
+
+source_commit="$(
+  git -C "$repo_root" log --no-merges -1 --format=%H -- \
+    "${extraction_inputs[@]}"
+)"
+if [[ ! "$source_commit" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "could not determine the committed extraction-input revision" >&2
+  exit 1
+fi
+
+declared_dune_rocq_language_version="$(
+  sed -n 's/^[[:space:]]*(using rocq \([^)]*\))[[:space:]]*$/\1/p' \
+    "$repo_root/theories/dune-project"
+)"
+if [ "$declared_dune_rocq_language_version" != "$dune_rocq_language_version" ]; then
+  echo "Dune Rocq language version does not match dune-project" >&2
+  exit 1
+fi
+
+case "$rocq_version$dune_rocq_language_version$extraction_command" in
+  *'|'* | *'&'* | *'\'*)
+    echo "unsupported character in extraction provenance" >&2
+    exit 1
+    ;;
+esac
+
+rendered_header="$(mktemp "${TMPDIR:-/tmp}/extraction-header.XXXXXX")"
+patched_target="$(mktemp "${TMPDIR:-/tmp}/extracted.XXXXXX")"
+cleanup() {
+  rm -f "$rendered_header" "$patched_target"
+}
+trap cleanup EXIT
+
+sed \
+  -e "s|@SOURCE_COMMIT@|$source_commit|g" \
+  -e "s|@ROCQ_VERSION@|$rocq_version|g" \
+  -e "s|@DUNE_ROCQ_LANGUAGE_VERSION@|$dune_rocq_language_version|g" \
+  -e "s|@EXTRACTION_COMMAND@|$extraction_command|g" \
+  "$header" > "$rendered_header"
+
+if grep -Eq '@(SOURCE_COMMIT|ROCQ_VERSION|DUNE_ROCQ_LANGUAGE_VERSION|EXTRACTION_COMMAND)@' \
+  "$rendered_header"; then
+  echo "unexpanded extraction provenance placeholder" >&2
+  exit 1
+fi
+
+cat "$rendered_header" "$target" > "$patched_target"
+mv "$patched_target" "$target"

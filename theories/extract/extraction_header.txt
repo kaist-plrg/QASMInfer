@@ -1,3 +1,12 @@
+(*
+ * GENERATED — DO NOT EDIT
+ *
+ * Source commit: @SOURCE_COMMIT@
+ * Rocq version: @ROCQ_VERSION@
+ * Dune Rocq language version: @DUNE_ROCQ_LANGUAGE_VERSION@
+ * Extraction command: @EXTRACTION_COMMAND@
+ *)
+
 (* Lines auto-prepended immediately after extraction. *)
 [@@@warning "-27-33-39"] (* relax unused-variable/open warnings on generated code *)
 
