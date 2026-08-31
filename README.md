@@ -8,22 +8,27 @@ rewrite framework plus an OCaml CLI path for applying validated rewrite rules.
 ## Prereqs
 
 - `dune` 3.24 or newer
-- `rocq` (tested with Rocq 9.1.0)
 - `ocaml`
-- OCaml libraries: `yojson`, `zarith`
+- OCaml tools and libraries: `menhir`, `yojson`, `zarith`
 
-Suggested install via opam:
+The normal consumer build does not require Rocq. Suggested install via opam:
 
 ```bash
-opam install dune rocq yojson zarith
+opam install dune.3.24.2 menhir yojson zarith
 ```
+
+Building the proofs or regenerating the extraction additionally requires Rocq
+(tested with `rocq-core` 9.1.0 and `rocq-stdlib` 9.0.0).
 
 ## Layout
 
 ```
 theories/
+  dune-project                  # private Rocq-only Dune project
+  extracted.ml                  # committed, provenance-stamped extraction
   extract/Extract.v              # extraction driver
   extract/extraction_header.txt  # header prepended to extracted OCaml
+  extraction/                    # regeneration and provenance rules/scripts
   rewrite/                       # rewrite specs and rewrite engine
   domega/StandardValid.v         # exact multi-qubit standard-gate validation
   ...                            # QASMInfer theories and implementation
@@ -38,11 +43,15 @@ src/bin/                         # CLI execution and OpenQASM rewrite modes
 
 ## Build and run
 
-Build the Rocq development, extracted OCaml library, and CLI executable:
+Build the extracted OCaml library and CLI executable from the committed
+extraction:
 
 ```bash
 dune build
+dune build @install
 ```
+
+Neither command loads the private Rocq project under `theories/`.
 
 Run exact inference:
 
@@ -175,6 +184,49 @@ Example JSON:
   ]
 }
 ```
+
+## Committed extraction and proof checking
+
+`theories/extracted.ml` is committed so downstream users can build the OCaml
+library and `qasminfer` executable without installing Rocq. This also prevents
+different consumer machines from silently regenerating the executable with
+different prover versions. The generated header records the source revision,
+Rocq version, Dune Rocq language version, and exact extraction command.
+
+Proof and generator input changes must be committed before regeneration. Then
+regenerate and promote the new artifact with the explicit extraction alias:
+
+```bash
+QASMINFER_SOURCE_COMMIT="$(theories/extraction/source_commit.sh)" \
+  dune build --root theories @extract --auto-promote
+git add theories/extracted.ml
+git commit -m "build: refresh committed Rocq extraction"
+```
+
+The source commit is the latest first-parent commit whose tree establishes the
+current proof and extraction inputs, including merge commits and excluding
+`theories/extracted.ml`. Regeneration verifies that the selected commit's input
+tree matches the checkout. The input commit is made first and the generated
+artifact is committed second because a Git commit cannot contain its own hash;
+the artifact-only commit therefore does not create self-referential churn.
+
+Build the complete proof development and check the committed artifact with:
+
+```bash
+dune build --root theories @proofs
+QASMINFER_SOURCE_COMMIT="$(theories/extraction/source_commit.sh)" \
+  dune build --root theories @check-extraction
+```
+
+The check reruns `rocq repl`, applies the same sandbox-safe patching
+implementation exposed by `scripts/patch_extraction.sh`, and byte-compares the
+result with `theories/extracted.ml`. The public patching script remains a
+self-contained two-argument entry point. On a mismatch the check prints the
+regeneration command and fails. Do not edit the generated OCaml directly.
+
+**Trust argument:** the committed extraction is CI-verified to be
+byte-identical to the extraction of the checked proofs; Rocq's extraction
+mechanism remains part of the TCB.
 
 ## Publication
 

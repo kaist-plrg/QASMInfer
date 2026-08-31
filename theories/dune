@@ -2,28 +2,10 @@
 
 (rocq.theory
  (name QASMInfer)
- (package qasminfer)
  (theories Stdlib)
  (modules :standard))
 
-(rule
- (alias extract)
- (targets extracted.ml)
+(alias
+ (name proofs)
  (deps
-  ; rocq repl loads transitive theory artifacts inside Dune's sandbox.
-  (glob_files_rec *.{vo,vos})
-  extract/Extract.v
-  program/Program.vo
-  matrix/Complex.vo
-  rewrite/All.vo
-  transform/Flatten.vo
-  domega/All.vo
-  (source_tree .)
-  (:patcher ../scripts/patch_extraction.sh)
-  (:header_txt extract/extraction_header.txt))
- (action
-  (chdir
-   %{workspace_root}/_build/default/theories
-   (progn
-    (run %{bin:rocq} repl -q -Q . QASMInfer -batch -l extract/Extract)
-    (run %{patcher} %{header_txt} extracted.ml)))))
+  (glob_files_rec *.{vo,vos})))

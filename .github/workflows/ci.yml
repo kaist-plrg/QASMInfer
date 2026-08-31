@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  consumer-build:
+    name: Consumer build (no Rocq)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "5.4.0"
+          opam-pin: false
+
+      - name: Install consumer dependencies
+        run: opam install --yes dune.3.24.2 menhir yojson zarith
+
+      - name: Prove Rocq is absent
+        run: |
+          if opam list --installed --short | grep -Eq '^(coq|rocq)(-|$)'; then
+            echo '::error::consumer switch unexpectedly contains Rocq or Coq'
+            exit 1
+          fi
+          if command -v rocq >/dev/null || command -v coqc >/dev/null; then
+            echo '::error::consumer environment unexpectedly exposes Rocq or Coq'
+            exit 1
+          fi
+
+      - name: Clean build tree
+        run: opam exec -- dune clean
+
+      - name: Build install set
+        run: opam exec -- dune build @install
+
+      - name: Verify install executable
+        run: test -x _build/default/src/bin/main.exe
+
+      - name: Clean before default build
+        run: opam exec -- dune clean
+
+      - name: Build default target
+        run: opam exec -- dune build
+
+      - name: Verify default executable
+        run: test -x _build/default/src/bin/main.exe
+
+      - name: Run OCaml tests
+        run: opam exec -- dune runtest
+
+  proof-build:
+    name: Proof build and extraction check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "5.4.0"
+          opam-pin: false
+
+      - name: Install proof dependencies
+        run: >-
+          opam install --yes dune.3.24.2
+          rocq-core.9.1.0 rocq-stdlib.9.0.0
+
+      - name: Report Rocq version
+        run: opam exec -- rocq --version
+
+      - name: Build proofs
+        run: opam exec -- dune build --root theories @proofs
+
+      - name: Check committed extraction
+        run: |
+          source_commit="$(theories/extraction/source_commit.sh)"
+          QASMINFER_SOURCE_COMMIT="$source_commit" \
+            opam exec -- dune build --root theories @check-extraction
