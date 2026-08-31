@@ -197,18 +197,17 @@ Proof and generator input changes must be committed before regeneration. Then
 regenerate and promote the new artifact with the explicit extraction alias:
 
 ```bash
-QASMINFER_SOURCE_COMMIT="$(theories/extraction/source_commit.sh)" \
-  dune build --root theories @extract --auto-promote
+dune build --root theories @extract --auto-promote
 git add theories/extracted.ml
 git commit -m "build: refresh committed Rocq extraction"
 ```
 
-The source commit is the latest non-merge commit that touches the proof or
-extraction inputs, excluding `theories/extracted.ml`. The input commit is made
-first and the generated artifact is committed second because a Git commit
-cannot contain its own hash. During checking, Dune reuses the source hash in
-the committed header, so the artifact-only commit does not create
-self-referential churn.
+The source commit is the latest first-parent commit whose tree establishes the
+current proof and extraction inputs, including merge commits and excluding
+`theories/extracted.ml`. Regeneration verifies that the selected commit's input
+tree matches the checkout. The input commit is made first and the generated
+artifact is committed second because a Git commit cannot contain its own hash;
+the artifact-only commit therefore does not create self-referential churn.
 
 Build the complete proof development and check the committed artifact with:
 

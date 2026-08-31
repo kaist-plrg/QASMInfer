@@ -2,14 +2,11 @@
  stage
  (rule
   (target source-commit.txt)
-  (deps
-   (env_var QASMINFER_SOURCE_COMMIT)
-   (glob_files ../../extracted.ml)
-   (:source_commit_resolver ../resolve_source_commit.sh))
+  (deps (:source_commit ../source_commit.sh))
   (action
    (with-stdout-to
     source-commit.txt
-    (run %{source_commit_resolver} ../../extracted.ml))))
+    (run %{source_commit}))))
 
  (rule
   (target extraction-command.txt)
