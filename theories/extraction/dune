@@ -2,7 +2,9 @@
  stage
  (rule
   (target source-commit.txt)
-  (deps (:source_commit ../source_commit.sh))
+  (deps
+   (env_var QASMINFER_SOURCE_COMMIT)
+   (:source_commit ../require_source_commit.sh))
   (action
    (with-stdout-to
     source-commit.txt

@@ -197,7 +197,8 @@ Proof and generator input changes must be committed before regeneration. Then
 regenerate and promote the new artifact with the explicit extraction alias:
 
 ```bash
-dune build --root theories @extract --auto-promote
+QASMINFER_SOURCE_COMMIT="$(theories/extraction/source_commit.sh)" \
+  dune build --root theories @extract --auto-promote
 git add theories/extracted.ml
 git commit -m "build: refresh committed Rocq extraction"
 ```
@@ -213,7 +214,8 @@ Build the complete proof development and check the committed artifact with:
 
 ```bash
 dune build --root theories @proofs
-dune build --root theories @check-extraction
+QASMINFER_SOURCE_COMMIT="$(theories/extraction/source_commit.sh)" \
+  dune build --root theories @check-extraction
 ```
 
 The check reruns `rocq repl`, applies the same sandbox-safe patching

@@ -83,4 +83,7 @@ jobs:
         run: opam exec -- dune build --root theories @proofs
 
       - name: Check committed extraction
-        run: opam exec -- dune build --root theories @check-extraction
+        run: |
+          source_commit="$(theories/extraction/source_commit.sh)"
+          QASMINFER_SOURCE_COMMIT="$source_commit" \
+            opam exec -- dune build --root theories @check-extraction

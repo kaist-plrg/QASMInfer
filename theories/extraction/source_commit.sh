@@ -11,6 +11,7 @@ extraction_inputs=(
   theories/dune-project
   theories/extraction/dune
   theories/extraction/patch_extraction.sh
+  theories/extraction/require_source_commit.sh
   theories/extraction/run_extraction.sh
   theories/extraction/source_commit.sh
   theories/extract/extraction_header.txt
