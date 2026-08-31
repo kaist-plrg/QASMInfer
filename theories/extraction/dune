@@ -66,6 +66,6 @@
   (progn
    (bash
     "if ! cmp -s ../extracted.ml %{generated}; then
-       echo 'Committed theories/extracted.ml is stale; run dune build --root theories @extract --auto-promote and commit the result.' >&2
+       echo 'Committed theories/extracted.ml is stale; run QASMINFER_SOURCE_COMMIT=\"$(theories/extraction/source_commit.sh)\" dune build --root theories @extract --auto-promote and commit the result.' >&2
      fi")
    (diff ../extracted.ml %{generated}))))
