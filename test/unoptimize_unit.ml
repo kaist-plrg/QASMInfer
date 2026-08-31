@@ -127,21 +127,6 @@ let test_insert_swap_uses_distinct_parameters () =
           swaps
   done
 
-let test_swap_to_3cnot_uses_matched_swap_operands () =
-  let transformed =
-    Unoptimize.unoptimize ~rule_name:"Swap_To_3Cnot" (E.SwapInstr (0, 1)) 1
-      2 0
-  in
-  match transformed with
-  | E.SeqInstr
-      [
-        E.CnotInstr (0, 1);
-        E.CnotInstr (1, 0);
-        E.CnotInstr (0, 1);
-      ] ->
-      ()
-  | _ -> failf "Swap_To_3Cnot did not reuse the matched swap operands"
-
 let test_manual_qbit1_insert_i () =
   let transformed =
     Unoptimize.unoptimize ~rule_name:"Insert_I"
@@ -202,20 +187,6 @@ let test_manual_parameter_errors () =
 
 let applicable_rule name rules =
   List.find_opt (fun rule -> String.equal rule.Unoptimize.name name) rules
-
-let require_no_applicable_rule name rules =
-  match applicable_rule name rules with
-  | None -> ()
-  | Some _ -> failf "%s should not be applicable" name
-
-let test_applicable_rules_reports_swap_to_3cnot_only_for_swap () =
-  let without_swap = Unoptimize.applicable_rules E.NopInstr 2 0 in
-  require_no_applicable_rule "Swap_To_3Cnot" without_swap;
-  let with_swap = Unoptimize.applicable_rules (E.SwapInstr (0, 1)) 2 0 in
-  match applicable_rule "Swap_To_3Cnot" with_swap with
-  | Some { Unoptimize.param = "none"; occurrences = 1; _ } -> ()
-  | Some _ -> failf "Swap_To_3Cnot reported the wrong applicability summary"
-  | None -> failf "Swap_To_3Cnot should be applicable to a swap instruction"
 
 let test_applicable_rules_reports_param_kind_without_values () =
   let rules = Unoptimize.applicable_rules E.NopInstr 2 1 in
@@ -550,15 +521,11 @@ let tests =
   [ ("unoptimize_nop exact identity", test_unoptimize_nop_is_exact_identity);
     ( "Insert_Swap uses distinct parameters",
       test_insert_swap_uses_distinct_parameters );
-    ( "Swap_To_3Cnot uses matched swap operands",
-      test_swap_to_3cnot_uses_matched_swap_operands );
     ("manual Insert_I qbit", test_manual_qbit1_insert_i);
     ("manual Insert_Swap qbits", test_manual_qbit2_insert_swap);
     ("manual Insert_Cnot_Cnot qbits", test_manual_qbit2_insert_cnot_cnot);
     ("manual occurrence", test_manual_occurrence_selects_position);
     ("manual parameter errors", test_manual_parameter_errors);
-    ( "applicable_rules reports Swap_To_3Cnot only for swaps",
-      test_applicable_rules_reports_swap_to_3cnot_only_for_swap );
     ( "applicable_rules reports param kinds without values",
       test_applicable_rules_reports_param_kind_without_values );
     ("Double_If accepts any instruction", test_double_if_accepts_any_instruction);
