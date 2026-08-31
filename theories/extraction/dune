@@ -12,9 +12,18 @@
     (run %{source_commit_resolver} ../../extracted.ml))))
 
  (rule
+  (target extraction-command.txt)
+  (deps (:extractor ../run_extraction.sh))
+  (action
+   (with-stdout-to
+    extraction-command.txt
+    (run %{extractor} --print-command))))
+
+ (rule
   (target extracted.ml)
   (deps
    source-commit.txt
+   extraction-command.txt
    (glob_files_rec ../../*.{vo,vos})
    ../../extract/Extract.v
    ../../program/Program.vo
@@ -24,19 +33,11 @@
    ../../domega/All.vo
    (:dune_project ../../dune-project)
    (:header_txt ../../extract/extraction_header.txt)
-   (:patcher ../patch_extraction.sh))
+   (:patcher ../patch_extraction.sh)
+   (:extractor ../run_extraction.sh))
   (action
    (progn
-    (run
-     %{bin:rocq}
-     repl
-     -q
-     -Q
-     ../..
-     QASMInfer
-     -batch
-     -l
-    ../../extract/Extract)
+    (run %{extractor} --run %{bin:rocq})
     (setenv
      QASMINFER_SOURCE_COMMIT
      %{read:source-commit.txt}
@@ -44,15 +45,12 @@
       QASMINFER_ROCQ_VERSION
       %{rocq:version}
       (setenv
-       QASMINFER_DUNE_ROCQ_LANGUAGE_VERSION
-       0.14
+       QASMINFER_EXTRACTION_COMMAND
+       %{read:extraction-command.txt}
        (setenv
-        QASMINFER_EXTRACTION_COMMAND
-        "rocq repl -q -Q ../.. QASMInfer -batch -l ../../extract/Extract"
-        (setenv
-         QASMINFER_DUNE_PROJECT
-         %{dune_project}
-         (run %{patcher} %{header_txt} extracted.ml))))))))))
+        QASMINFER_DUNE_PROJECT
+        %{dune_project}
+        (run %{patcher} %{header_txt} extracted.ml)))))))))
 
 (rule
  (alias extract)

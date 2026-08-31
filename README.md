@@ -217,10 +217,11 @@ dune build --root theories @proofs
 dune build --root theories @check-extraction
 ```
 
-The check reruns `rocq repl`, applies the patching pipeline exposed by
-`scripts/patch_extraction.sh`, and byte-compares the result with
-`theories/extracted.ml`. On a mismatch it prints the regeneration command and
-fails. Do not edit the generated OCaml directly.
+The check reruns `rocq repl`, applies the same sandbox-safe patching
+implementation exposed by `scripts/patch_extraction.sh`, and byte-compares the
+result with `theories/extracted.ml`. The public patching script remains a
+self-contained two-argument entry point. On a mismatch the check prints the
+regeneration command and fails. Do not edit the generated OCaml directly.
 
 **Trust argument:** the committed extraction is CI-verified to be
 byte-identical to the extraction of the checked proofs; Rocq's extraction

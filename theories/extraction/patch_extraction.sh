@@ -21,25 +21,23 @@ fi
 
 source_commit="${QASMINFER_SOURCE_COMMIT:-}"
 rocq_version="${QASMINFER_ROCQ_VERSION:-}"
-dune_rocq_language_version="${QASMINFER_DUNE_ROCQ_LANGUAGE_VERSION:-}"
 extraction_command="${QASMINFER_EXTRACTION_COMMAND:-}"
 dune_project="${QASMINFER_DUNE_PROJECT:-}"
 
 if [[ ! "$source_commit" =~ ^[0-9a-f]{40}$ ]] ||
    [ -z "$rocq_version" ] ||
-   [ -z "$dune_rocq_language_version" ] ||
    [ -z "$extraction_command" ] ||
    [ ! -f "$dune_project" ]; then
   echo "missing or invalid extraction provenance environment" >&2
   exit 1
 fi
 
-declared_dune_rocq_language_version="$(
+dune_rocq_language_version="$(
   sed -n 's/^[[:space:]]*(using rocq \([^)]*\))[[:space:]]*$/\1/p' \
     "$dune_project"
 )"
-if [ "$declared_dune_rocq_language_version" != "$dune_rocq_language_version" ]; then
-  echo "Dune Rocq language version does not match dune-project" >&2
+if [[ ! "$dune_rocq_language_version" =~ ^[0-9]+\.[0-9]+$ ]]; then
+  echo "missing or invalid Dune Rocq language version in $dune_project" >&2
   exit 1
 fi
 

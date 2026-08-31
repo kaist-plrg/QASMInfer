@@ -1,5 +1,1 @@
-(rule
- (deps ../../../theories/extracted.ml)
- (target extracted.ml)
- (action
-  (copy ../../../theories/extracted.ml extracted.ml)))
+(copy_files ../../../theories/extracted.ml)

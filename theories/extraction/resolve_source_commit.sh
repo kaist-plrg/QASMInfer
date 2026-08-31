@@ -11,8 +11,10 @@ source_commit="${QASMINFER_SOURCE_COMMIT:-}"
 
 if [ -z "$source_commit" ] && [ -f "$committed_extraction" ]; then
   source_commit="$(
-    sed -n 's/^ \* Source commit: \([0-9a-f][0-9a-f]*\)$/\1/p' \
-      "$committed_extraction"
+    sed -n '/^ \* Source commit:/ {
+      s/^ \* Source commit: \([0-9a-f][0-9a-f]*\)$/\1/p
+      q
+    }' "$committed_extraction"
   )"
 fi
 
