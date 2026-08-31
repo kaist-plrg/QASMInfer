@@ -1,9 +1,20 @@
 (subdir
  stage
  (rule
+  (target source-commit.txt)
+  (deps
+   (env_var QASMINFER_SOURCE_COMMIT)
+   (glob_files ../../extracted.ml)
+   (:source_commit_resolver ../resolve_source_commit.sh))
+  (action
+   (with-stdout-to
+    source-commit.txt
+    (run %{source_commit_resolver} ../../extracted.ml))))
+
+ (rule
   (target extracted.ml)
   (deps
-   (sandbox none)
+   source-commit.txt
    (glob_files_rec ../../*.{vo,vos})
    ../../extract/Extract.v
    ../../program/Program.vo
@@ -11,8 +22,9 @@
    ../../rewrite/All.vo
    ../../transform/Flatten.vo
    ../../domega/All.vo
-   (source_tree ../..)
-   (:header_txt ../../extract/extraction_header.txt))
+   (:dune_project ../../dune-project)
+   (:header_txt ../../extract/extraction_header.txt)
+   (:patcher ../patch_extraction.sh))
   (action
    (progn
     (run
@@ -24,23 +36,23 @@
      QASMInfer
      -batch
      -l
-     ../../extract/Extract)
+    ../../extract/Extract)
     (setenv
-     QASMINFER_ROCQ_VERSION
-     %{rocq:version}
+     QASMINFER_SOURCE_COMMIT
+     %{read:source-commit.txt}
      (setenv
-      QASMINFER_DUNE_ROCQ_LANGUAGE_VERSION
-      0.14
+      QASMINFER_ROCQ_VERSION
+      %{rocq:version}
       (setenv
-       QASMINFER_EXTRACTION_COMMAND
-       "rocq repl -q -Q ../.. QASMInfer -batch -l ../../extract/Extract"
-       ; The rule is unsandboxed so the nested proof project can run the
-       ; repository-level patcher without making consumer Dune load this project.
-       (run
-        bash
-        ../../../../../scripts/patch_extraction.sh
-        %{header_txt}
-        extracted.ml))))))))
+       QASMINFER_DUNE_ROCQ_LANGUAGE_VERSION
+       0.14
+       (setenv
+        QASMINFER_EXTRACTION_COMMAND
+        "rocq repl -q -Q ../.. QASMInfer -batch -l ../../extract/Extract"
+        (setenv
+         QASMINFER_DUNE_PROJECT
+         %{dune_project}
+         (run %{patcher} %{header_txt} extracted.ml))))))))))
 
 (rule
  (alias extract)
