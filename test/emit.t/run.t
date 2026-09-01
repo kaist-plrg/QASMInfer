@@ -158,3 +158,57 @@ An unknown dialect is an argument-shape error.
   [2]
   $ head -n 1 emit-exec.stderr
   --emit can only be used with --unoptimize
+
+A rotation whose angle is a real value that happens to be exactly zero is
+emitted in the same canonical form as any other zero angle.  QASMCore holds the
+angle 0 two ways -- as an exact multiple of pi, and as a real -- and the reader
+folds a "0.0" literal to the exact form, so emitting the real form would make
+the second emission differ from the first.
+
+  $ cat > realzero.qasm <<'EOF'
+  > OPENQASM 2.0;
+  > qreg q[1];
+  > creg c[1];
+  > U(2.0-2.0,2.0-2.0,2.0-2.0) q[0];
+  > measure q[0] -> c[0];
+  > EOF
+
+  $ qasminfer --unoptimize --step 0 --emit oq3 realzero.qasm rz1.qasm
+  $ cat rz1.qasm
+  OPENQASM 3.0;
+  include "stdgates.inc";
+  qubit[1] q;
+  bit[1] c;
+  id q[0];
+  c[0] = measure q[0];
+  $ qasminfer --unoptimize --step 0 --emit oq3 rz1.qasm rz2.qasm
+  $ cmp rz1.qasm rz2.qasm
+
+The OpenQASM 2 path agrees, and is a fixed point too.
+
+  $ qasminfer --unoptimize --step 0 --emit oq2 realzero.qasm ro1.qasm
+  $ grep -F 'id q[0];' ro1.qasm
+  id q[0];
+  $ qasminfer --unoptimize --step 0 --emit oq2 ro1.qasm ro2.qasm
+  $ cmp ro1.qasm ro2.qasm
+
+A real angle that is not zero keeps its value.
+
+  $ cat > realnonzero.qasm <<'EOF'
+  > OPENQASM 2.0;
+  > qreg q[1];
+  > creg c[1];
+  > U(sin(0),0.5,0) q[0];
+  > measure q[0] -> c[0];
+  > EOF
+  $ qasminfer --unoptimize --step 0 --emit oq3 realnonzero.qasm rn1.qasm
+  $ grep -F 'U(' rn1.qasm
+  U(0,0.5,0) q[0];
+  $ qasminfer --unoptimize --step 0 --emit oq3 rn1.qasm rn2.qasm
+  $ cmp rn1.qasm rn2.qasm
+
+The rewritten program still executes identically.
+
+  $ qasminfer --json realzero.qasm > rz-before.json
+  $ qasminfer --json rz1.qasm > rz-after.json
+  $ cmp rz-before.json rz-after.json

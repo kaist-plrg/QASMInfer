@@ -143,8 +143,12 @@ emitted as the equivalent chain of per-bit guards rather than reconstructed as
 does not declare it.
 
 Whatever `qasminfer` writes, `qasminfer` reads back to the same QASMCore
-program; re-running `--unoptimize --step 0 --emit oq3` on its own output is a
-fixed point.
+program; re-running `--unoptimize --step 0` on its own output is a fixed point,
+in either dialect. Angles are written in canonical form for this to hold:
+QASMCore represents the angle zero both as an exact multiple of pi and as a real
+value, and since the reader folds a `0.0` literal to the exact form, the writer
+emits the exact form too. A real angle that is not zero keeps its value and
+round-trips through its shortest exact decimal form.
 
 The emitted OpenQASM 3 was also checked against an independent implementation:
 Qiskit 2.5.2 with `qiskit-qasm3-import` 0.6.0 parses it, reads `if (!c[0])` as

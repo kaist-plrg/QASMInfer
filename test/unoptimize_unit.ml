@@ -576,6 +576,41 @@ let test_qasm3_sugar_round_trips_every_leaf () =
   require_contains rendered "cx q[0],q[1];";
   require_contains rendered "reset q[1];"
 
+let real_angle value = E.RealAngle (E.RbaseSymbolsImpl.coq_Rabst value)
+
+(* QASMCore holds the angle zero two ways.  The reader folds a "0.0" literal to
+   the exact form, so the writer has to emit the exact form too, or its own
+   output would not read back to the program it wrote. *)
+let test_qasm3_sugar_canonicalises_a_real_zero_angle () =
+  let instruction =
+    E.SeqInstr
+      [
+        E.RotateInstr (real_angle 0.0, real_angle (-0.0), real_angle 0.0, 0);
+        E.RotateInstr (real_angle 0.5, real_angle 0.0, real_angle 0.0, 0);
+      ]
+  in
+  let q_assignment = singleton_map 0 ("q", 0) in
+  let c_assignment = IntMap.empty in
+  let program =
+    match Q3.sugar 1 0 q_assignment c_assignment instruction with
+    | Ok program -> program
+    | Error message -> failf "unexpected sugar error: %s" message
+  in
+  let rendered = Q3.string_of_program program in
+  require_contains rendered "id q[0];";
+  require_contains rendered "U(0.5,0,0) q[0];";
+  let _, _, reparsed, reparsed_q, reparsed_c =
+    rendered |> Q3.parse_string |> Q3.desugar |> Q2.inline_qelib |> Q2.desugar
+  in
+  let again =
+    match Q3.sugar 1 0 reparsed_q reparsed_c reparsed with
+    | Ok program -> Q3.string_of_program program
+    | Error message -> failf "unexpected re-emission error: %s" message
+  in
+  require (rendered = again)
+    (Printf.sprintf "a real zero angle must reach a fixed point at once:\n%s\n---\n%s"
+       rendered again)
+
 let test_qasm3_sugar_output_is_stable_under_reemission () =
   let instruction =
     E.IfInstr (0, true, E.IfInstr (0, true, E.ResetInstr 0))
@@ -729,6 +764,8 @@ let tests =
       test_qasm3_sugar_expresses_nested_conditional );
     ( "QASM3 sugar round trips every leaf",
       test_qasm3_sugar_round_trips_every_leaf );
+    ( "QASM3 canonicalises a real zero angle",
+      test_qasm3_sugar_canonicalises_a_real_zero_angle );
     ( "QASM3 emission is idempotent",
       test_qasm3_sugar_output_is_stable_under_reemission );
     ( "QASM3 block conditional guards its whole body",

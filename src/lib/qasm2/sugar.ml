@@ -221,6 +221,19 @@ let check_angle_eqb angles expected =
       && angle_eqb_mod_2 phi (PiAngle phi')
       && angle_eqb_mod_2 lambda (PiAngle lambda')
 
+(* QASMCore holds an angle two ways, and the two are not interchangeable
+   downstream: angle_eqb_mod_2 is false for every RealAngle, so a real-valued
+   zero is not recognised as a standard gate, while the reader folds a "0.0"
+   literal back to the exact angle 0 (Desugar.pi_multiple_of_exp).  Emitting the
+   exact form for a real zero closes that asymmetry, which is what makes
+   re-reading our own output give back the program we wrote.  Zero is the only
+   real literal the reader folds, so no other value is touched. *)
+let canonical_angle angle =
+  match angle with
+  | RealAngle value when RbaseSymbolsImpl.coq_Rrepr value = 0.0 ->
+      PiAngle (q_of_int 0)
+  | angle -> angle
+
 let sugar_standard_gate angles =
   let check = check_angle_eqb angles in
   if check (q_of_int 0, q_of_int 0, q_of_int 0) then Some "id"
@@ -238,6 +251,9 @@ let sugar_standard_gate angles =
 
 let qop_of_leaf q_assignment c_assignment = function
   | RotateInstr (theta, phi, lambda, qubit) -> (
+      let theta = canonical_angle theta
+      and phi = canonical_angle phi
+      and lambda = canonical_angle lambda in
       match sugar_standard_gate (theta, phi, lambda) with
       | Some id -> 
         let* argument = argument_of_index Quantum q_assignment qubit in

@@ -70,6 +70,9 @@ let qop_of_leaf layout instruction =
   let cbit index = S2.argument_of_index S2.Classical layout.S2.cbits index in
   match instruction with
   | RotateInstr (theta, phi, lambda, target) -> (
+      let theta = S2.canonical_angle theta
+      and phi = S2.canonical_angle phi
+      and lambda = S2.canonical_angle lambda in
       let* argument = qubit target in
       match S2.sugar_standard_gate (theta, phi, lambda) with
       | Some name when List.mem name stdgates_gate_names ->
