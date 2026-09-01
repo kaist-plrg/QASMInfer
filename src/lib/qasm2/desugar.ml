@@ -299,7 +299,9 @@ let assign_int_arg (assign_seq : (int * (id * int)) Seq.t) : QASMArg.t IntMap.t
 let deref_or_fail key msg map =
   match QASMArgMap.find_opt key map with
   | Some value -> value
-  | None -> failwith msg
+  | None ->
+      let name, index = key in
+      failwith (Printf.sprintf "%s: %s[%d] is out of range" msg name index)
 
 let unfold_if (creg_size_map : int IdMap.t)
     (assingment_c_rev : int QASMArgMap.t) (creg_id : id) (cmp : int) :
@@ -313,7 +315,7 @@ let unfold_if (creg_size_map : int IdMap.t)
   let reg_size = get_or_fail creg_id "invalid creg id" creg_size_map in
   let cbits =
     List.init reg_size (fun i ->
-        deref_or_fail (creg_id, i) "unfold_if: invalid argument"
+        deref_or_fail (creg_id, i) "conditional"
           assingment_c_rev)
   in
   List.combine cbits (to_binary cmp reg_size)
@@ -427,15 +429,15 @@ let desugar_qasm_qop (assignment_q_rev : int QASMArgMap.t)
   match qasm_qop with
   | Uop_dp (CX_dp (arg1, arg2)) ->
       CnotIr
-        ( deref_or_fail arg1 "desugar_qasm_qop: CX: invalid argument"
+        ( deref_or_fail arg1 "CX"
             assignment_q_rev,
-          deref_or_fail arg2 "desugar_qasm_qop: CX: invalid argument"
+          deref_or_fail arg2 "CX"
             assignment_q_rev )
   | Uop_dp (Swap_dp (arg1, arg2)) ->
       SwapIr
-        ( deref_or_fail arg1 "desugar_qasm_qop: swap: invalid argument"
+        ( deref_or_fail arg1 "swap"
             assignment_q_rev,
-          deref_or_fail arg2 "desugar_qasm_qop: swap: invalid argument"
+          deref_or_fail arg2 "swap"
             assignment_q_rev )
   | Uop_dp (U_dp (exp_list, arg)) ->
       let theta, phi, lambda = eval_angle_list exp_list in
@@ -443,17 +445,15 @@ let desugar_qasm_qop (assignment_q_rev : int QASMArgMap.t)
         ( theta,
           phi,
           lambda,
-          deref_or_fail arg "desugar_qasm_qop: U: invalid argument"
+          deref_or_fail arg "U"
             assignment_q_rev )
   | Meas_dp (qarg, carg) ->
       MeasureIr
-        ( deref_or_fail qarg "desugar_qasm_qop: invalid argument"
+        ( deref_or_fail qarg "measure"
             assignment_q_rev,
-          deref_or_fail carg "desugar_qasm_qop: invalid argument"
+          deref_or_fail carg "measure"
             assignment_c_rev )
-  | Reset_dp arg ->
-      ResetIr
-        (deref_or_fail arg "desugar_qasm_qop: invalid argument" assignment_q_rev)
+  | Reset_dp arg -> ResetIr (deref_or_fail arg "reset" assignment_q_rev)
   | Uop_dp (Gate_dp (gate_id, _, _)) ->
       failwith ("macro gate " ^ gate_id ^ " is not inlined")
 
@@ -490,7 +490,7 @@ let desugar_qasm_program (creg_size_map : int IdMap.t)
               unfold_if creg_size_map assignment_c_rev cid comp
           | CondBit (cid, index, value) ->
               [ ( deref_or_fail (cid, index)
-                    "desugar_qasm_program: invalid conditional bit"
+                    "conditional"
                     assignment_c_rev,
                   value ) ]
         in

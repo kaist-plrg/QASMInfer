@@ -12,6 +12,10 @@ type version = V2 | V3
    OpenQASM 3 can spell. *)
 type emit_mode = Emit_auto | Emit_oq2 | Emit_oq3
 
+(* Where the --instr payload comes from.  It is kept as text until SOURCE has
+   been read, because it is parsed against SOURCE's register layout. *)
+type instr_source = Instr_text of string | Instr_file of string
+
 let emit_mode_of_string = function
   | "auto" -> Some Emit_auto
   | "oq2" -> Some Emit_oq2
@@ -42,6 +46,7 @@ type command =
       rule_name : string option;
       manual : Unoptimize.manual_parameters option;
       emit : emit_mode;
+      instr_source : instr_source option;
     }
   | UnoptimizeRules of {
       source : string;
@@ -77,6 +82,8 @@ let parse_args argv =
   let cbits = ref None in
   let occurrence = ref None in
   let emit = ref None in
+  let instr_text = ref None in
+  let instr_file = ref None in
   let positionals = ref [] in
   let parse_int_list option_name raw =
     let parse_token token =
@@ -111,6 +118,13 @@ let parse_args argv =
     match !occurrence with
     | None -> occurrence := Some value
     | Some _ -> raise (Arg.Bad "--occurrence cannot be specified more than once")
+  in
+  let set_instr option_name target value =
+    if Option.is_some !target then
+      raise (Arg.Bad (option_name ^ " cannot be specified more than once"))
+    else if Option.is_some !instr_text || Option.is_some !instr_file then
+      raise (Arg.Bad "--instr and --instr-file cannot be combined")
+    else target := Some value
   in
   let set_emit raw =
     match emit_mode_of_string raw with
@@ -155,6 +169,12 @@ let parse_args argv =
       ( "--emit",
         Arg.String set_emit,
         "Choose the DESTINATION dialect: auto (default), oq2, or oq3" );
+      ( "--instr",
+        Arg.String (set_instr "--instr" instr_text),
+        "Fix the instruction a cbit_instr rule inserts, as QASM TEXT" );
+      ( "--instr-file",
+        Arg.String (set_instr "--instr-file" instr_file),
+        "Read the --instr payload from FILE" );
       ("--json", Arg.Set emit_json, "Emit result as JSON");
       ( "--output",
         Arg.String set_output_file,
@@ -172,8 +192,15 @@ let parse_args argv =
   in
   if Array.length argv <= 1 then
     raise (Arg.Bad (Arg.usage_string speclist usage_msg));
+  let instr_source =
+    match (!instr_text, !instr_file) with
+    | Some text, _ -> Some (Instr_text text)
+    | None, Some path -> Some (Instr_file path)
+    | None, None -> None
+  in
   let manual_options_used =
     Option.is_some !qbits || Option.is_some !cbits || Option.is_some !occurrence
+    || Option.is_some instr_source
   in
   let manual =
     if manual_options_used then
@@ -182,12 +209,17 @@ let parse_args argv =
           Unoptimize.qbits = !qbits;
           cbits = !cbits;
           occurrence = !occurrence;
+          instr = None;
         }
     else None
   in
   match (!unoptimize, !unoptimize_rules, positionals) with
   | true, true, _ ->
       usage_error "--unoptimize cannot be used with --unoptimize-rules"
+  | false, _, _ when Option.is_some !emit ->
+      usage_error "--emit can only be used with --unoptimize"
+  | false, _, _ when Option.is_some instr_source ->
+      usage_error "--instr and --instr-file can only be used with --unoptimize"
   | false, true, _ when manual_options_used ->
       usage_error
         "--qbits, --cbits, and --occurrence cannot be used with --unoptimize-rules"
@@ -197,6 +229,9 @@ let parse_args argv =
       usage_error "--output/-o cannot be used with --unoptimize"
   | true, false, _ when Option.is_some !rule_name && Option.is_some !step ->
       usage_error "--rule cannot be used with --step"
+  | true, false, _
+    when Option.is_some instr_source && Option.is_none !rule_name ->
+      usage_error "--instr and --instr-file require --rule"
   | true, false, _ when manual_options_used && Option.is_none !rule_name ->
       usage_error "--qbits, --cbits, and --occurrence require --rule"
   | true, false, [ source; destination ] ->
@@ -210,6 +245,7 @@ let parse_args argv =
           rule_name = !rule_name;
           manual;
           emit = Option.value !emit ~default:Emit_auto;
+          instr_source;
         }
   | true, false, _ ->
       usage_error
@@ -218,8 +254,6 @@ let parse_args argv =
       usage_error "--step cannot be used with --unoptimize-rules"
   | false, true, _ when Option.is_some !rule_name ->
       usage_error "--rule cannot be used with --unoptimize-rules"
-  | false, _, _ when Option.is_some !emit ->
-      usage_error "--emit can only be used with --unoptimize"
   | false, true, [ source ] ->
       UnoptimizeRules
         {
@@ -475,11 +509,59 @@ let render_program emit nq nc q_assignment c_assignment instruction =
       | Ok program -> Q2.string_of_program program
       | Error _ -> as_oq3 ())
 
-let unoptimize source destination step verbose rule_file rule_name manual emit =
+(* Parse an --instr payload against SOURCE's own register layout.
+
+   The payload names registers by the canonical names the sugar would print, so
+   for an OpenQASM 3 source using physical qubits it names the renamed register
+   ("qasm3_physical[0]"), not "$0".  The generated preamble is one line, so a
+   diagnostic's line number is the payload's own except on the first line, where
+   the column is shifted. *)
+let instruction_of_payload nq nc q_assignment c_assignment payload =
+  let declarations =
+    match Q3.sugar nq nc q_assignment c_assignment Extracted.NopInstr with
+    | Ok program -> program
+    | Error message -> cli_error "param" "--instr: %s" message
+  in
+  let preamble =
+    Q3.Ast.Include "stdgates.inc" :: declarations
+    |> Q3.string_of_program |> String.split_on_char '\n'
+    |> List.filter (fun line -> line <> "")
+    |> String.concat " "
+  in
+  let payload_nq, payload_nc, instruction, _, _ =
+    try
+      parse_and_desugar_string ~filename:"--instr" (preamble ^ " " ^ payload ^ "\n")
+    with Cli_error (_, detail) -> cli_error "param" "%s" detail
+  in
+  if payload_nq <> nq || payload_nc <> nc then
+    cli_error "param" "--instr: the payload must not declare registers";
+  instruction
+
+let payload_text = function
+  | Instr_text text -> text
+  | Instr_file path -> read_source path
+
+let unoptimize source destination step verbose rule_file rule_name manual emit
+    instr_source =
   let nq, nc, instr, q_assignment, c_assignment =
     parse_and_desugar source
   in
   let specs = specs_of_rule_file_option nq rule_file in
+  let manual =
+    match instr_source with
+    | None -> manual
+    | Some instr_source ->
+        let instruction =
+          instruction_of_payload nq nc q_assignment c_assignment
+            (payload_text instr_source)
+        in
+        let manual =
+          Option.value manual
+            ~default:
+              { Unoptimize.qbits = None; cbits = None; occurrence = None; instr = None }
+        in
+        Some { manual with Unoptimize.instr = Some instruction }
+  in
   let transformed =
     try Unoptimize.unoptimize ?specs ?rule_name ?manual instr step nq nc with
     | Unoptimize.Domain_error (error_class, detail) ->
@@ -527,10 +609,20 @@ let run_command = function
   | Execute { source; verbose; emit_json; output_file } ->
       execute source verbose emit_json output_file
   | Unoptimize
-      { source; destination; step; verbose; rule_file; rule_name; manual; emit }
-    ->
+      {
+        source;
+        destination;
+        step;
+        verbose;
+        rule_file;
+        rule_name;
+        manual;
+        emit;
+        instr_source;
+      } ->
       let step = Option.value step ~default:1 in
       unoptimize source destination step verbose rule_file rule_name manual emit
+        instr_source
   | UnoptimizeRules { source; verbose; emit_json; output_file; rule_file } ->
       unoptimize_rules source verbose emit_json output_file rule_file
 

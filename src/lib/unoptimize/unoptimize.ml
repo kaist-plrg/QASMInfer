@@ -299,6 +299,10 @@ type manual_parameters = {
   qbits : int list option;
   cbits : int list option;
   occurrence : int option;
+  (* The payload a cbit_instr rule inserts.  When absent it is drawn at
+     random, which is why an otherwise fully-addressed conditional insertion
+     was not reproducible. *)
+  instr : instruction option;
 }
 
 type applicable_rule = {
@@ -324,12 +328,16 @@ let representative_parameter nq nc = function
 
 let manual_requested = function
   | None -> false
-  | Some { qbits; cbits; occurrence } ->
+  | Some { qbits; cbits; occurrence; instr } ->
       Option.is_some qbits || Option.is_some cbits || Option.is_some occurrence
+      || Option.is_some instr
 
+(* Whether the caller pinned a parameter value, as opposed to only an
+   occurrence.  Pinned values are checked against the rule before use. *)
 let manual_numeric_requested = function
   | None -> false
-  | Some { qbits; cbits; _ } -> Option.is_some qbits || Option.is_some cbits
+  | Some { qbits; cbits; instr; _ } ->
+      Option.is_some qbits || Option.is_some cbits || Option.is_some instr
 
 let validate_manual_values manual =
   let check_values name = function
@@ -342,7 +350,7 @@ let validate_manual_values manual =
           values
   in
   Option.iter
-    (fun { qbits; cbits; occurrence } ->
+    (fun { qbits; cbits; occurrence; instr = _ } ->
       check_values "--qbits" qbits;
       check_values "--cbits" cbits;
       match occurrence with
@@ -384,20 +392,29 @@ let require_distinct_qbits spec qbit1 qbit2 =
     domain_error "param" "rule %s requires two distinct qubits"
       spec.transform_name
 
+let require_no_payload spec = function
+  | None -> ()
+  | Some _ ->
+      domain_error "param"
+        "rule %s takes no instruction payload; --instr applies to cbit_instr rules"
+        spec.transform_name
+
 let manual_parameter rng nq nc spec manual =
-  let qbits, cbits =
+  let qbits, cbits, payload =
     match manual with
-    | None -> (None, None)
-    | Some { qbits; cbits; _ } -> (qbits, cbits)
+    | None -> (None, None, None)
+    | Some { qbits; cbits; instr; _ } -> (qbits, cbits, instr)
   in
   let make_random () = random_parameter rng nq nc spec.transform_param_kind in
   match spec.transform_param_kind with
   | ParamKind_None ->
       require_arity "--qbits" 0 qbits;
       require_arity "--cbits" 0 cbits;
+      require_no_payload spec payload;
       Some Param_None
   | ParamKind_qbit1 -> (
       require_arity "--cbits" 0 cbits;
+      require_no_payload spec payload;
       match qbits with
       | Some [ qbit ] -> Some (Param_qbit1 qbit)
       | Some _ ->
@@ -406,6 +423,7 @@ let manual_parameter rng nq nc spec manual =
       | None -> make_random ())
   | ParamKind_qbit2 -> (
       require_arity "--cbits" 0 cbits;
+      require_no_payload spec payload;
       match qbits with
       | Some [ qbit1; qbit2 ] ->
           require_distinct_qbits spec qbit1 qbit2;
@@ -416,16 +434,26 @@ let manual_parameter rng nq nc spec manual =
       | None -> make_random ())
   | ParamKind_cbit_instr -> (
       require_arity "--qbits" 0 qbits;
+      let instruction () =
+        match payload with
+        | Some payload -> payload
+        | None -> random_instruction rng nq nc 2
+      in
       match cbits with
       | Some [ cbit ] ->
           if cbit >= nc then
             domain_error "param" "Manual cbit %d is out of range for %d cbit(s)."
               cbit nc;
-          Some (Param_cbit_instr (cbit, random_instruction rng nq nc 2))
+          Some (Param_cbit_instr (cbit, instruction ()))
       | Some _ ->
           require_arity "--cbits" 1 cbits;
           None
-      | None -> make_random ())
+      | None -> (
+          match payload with
+          | None -> make_random ()
+          | Some _ when nc <= 0 -> None
+          | Some _ ->
+              Some (Param_cbit_instr (Random.State.int rng nc, instruction ()))))
 
 let validate_manual_parameter spec param =
   match spec.transform_rule param with

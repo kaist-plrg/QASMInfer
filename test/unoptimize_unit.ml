@@ -41,8 +41,8 @@ let pi_angle numerator denominator =
       qden = Big_int_Z.big_int_of_int denominator;
     }
 
-let manual ?qbits ?cbits ?occurrence () =
-  { Unoptimize.qbits; cbits; occurrence }
+let manual ?qbits ?cbits ?occurrence ?instr () =
+  { Unoptimize.qbits; cbits; occurrence; instr }
 
 let expect_failure_contains fragment f =
   try

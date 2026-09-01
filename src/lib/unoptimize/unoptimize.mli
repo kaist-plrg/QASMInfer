@@ -16,6 +16,9 @@ type manual_parameters = {
   qbits : int list option;
   cbits : int list option;
   occurrence : int option;
+  (** Payload inserted by a rule with a [cbit_instr] parameter.  [None] keeps
+      the historical behaviour of drawing one at random. *)
+  instr : Extracted.instruction option;
 }
 
 val applicable_rules :
