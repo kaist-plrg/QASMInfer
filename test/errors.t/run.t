@@ -75,7 +75,7 @@ Rule-file problems are reported under their own class.
   [1]
   $ test ! -s rf-missing.stdout
   $ cat rf-missing.stderr
-  qasminfer: rule-file: no-such-rules.json: no-such-rules.json: No such file or directory
+  qasminfer: rule-file: no-such-rules.json: No such file or directory
 
   $ printf '[{"name":"bad","lhs":[{"gate":"h","q":0}],"rhs":[{"gate":"id","q":0}]}]\n' > bad-rules.json
   $ qasminfer --rule-file bad-rules.json --unoptimize-rules ok.qasm >rf-invalid.stdout 2>rf-invalid.stderr

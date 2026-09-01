@@ -523,6 +523,10 @@ let specs_of_rule_file_option nq rule_file =
   | Some path -> (
       match Unoptimize.specs_of_rule_file nq path with
       | Ok specs -> Some specs
+      (* specs_of_rule_file surfaces Sys_error messages verbatim, and those
+         already name the file. *)
+      | Error message when String.starts_with ~prefix:(path ^ ":") message ->
+          cli_error "rule-file" "%s" message
       | Error message -> cli_error "rule-file" "%s: %s" path message)
 
 (* Render the transformed program in the requested dialect.  OpenQASM 3 can
