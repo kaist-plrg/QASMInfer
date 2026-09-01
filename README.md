@@ -264,6 +264,25 @@ outside the source program are ignored; invalid in-bounds rules and duplicate
 rule names in the combined built-in and rule-file rule set are rejected without
 writing the destination.
 
+A rule's qubit indices are pattern *variables*, not fixed positions: `I_to_XX`
+above rewrites an `id` on **any** qubit, and `Swap_to_3Cnot` rewrites a `swap`
+on any ordered pair. Two consequences follow.
+
+- **The left-hand side must bind every qubit the right-hand side rewrites.**
+  A rule whose `rhs` names a qubit index absent from its `lhs` can never fire,
+  so it is rejected when the file is loaded. In particular an empty `lhs` binds
+  nothing and cannot carry a non-empty `rhs`; to insert at an empty site, apply
+  the built-in `Insert_I` first and then a rule with `lhs: [{"gate": "id", ...}]`.
+- **The rule's width is not capped.** Only per-gate arity is: the grammar has no
+  three-qubit gate. Multi-qubit gates outside the grammar are still expressible
+  as rules, because the front ends macro-expand them before anything reaches the
+  checker. `cz` is `h;cx;h`, `cy` is `sdg;cx;s`, and `ccx` and `cswap` expand
+  into the same alphabet, so `cz;cz -> id;id` and friends are ordinary rule-file
+  entries today.
+
+Validity is checked up to a global phase drawn from the eight 8th roots of
+unity; a rule whose two sides differ by any other phase is rejected.
+
 ### Output formats
 
 Execution output:

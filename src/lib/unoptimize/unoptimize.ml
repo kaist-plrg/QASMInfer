@@ -158,6 +158,34 @@ let pattern_gate_list_field rule_name json key =
            value)
         (result_map_list (pattern_gate_of_json rule_name key))
 
+let pattern_gate_qbits = function
+  | SPG_Std (_, qbit) -> [ qbit ]
+  | SPG_Cnot (control, target) -> [ control; target ]
+  | SPG_Swap (qbit1, qbit2) -> [ qbit1; qbit2 ]
+
+(* Every qubit index in a rule-file rule becomes a pattern *variable*:
+   standard_pattern_gate_to_instruction_pattern emits NatVar for each of them
+   (theories/domega/StandardValid.v).  RewriteRule_safeb
+   (theories/rewrite/RewriteFunction.v) then requires the right-hand side's
+   variables to be bound by the left-hand side.  A rule that breaks this passes
+   the DOmega validity check and is then silently inert -- it never appears in
+   --unoptimize-rules and --rule reports it as inapplicable -- so reject it when
+   the file is loaded instead.  An empty lhs is the extreme case: it binds
+   nothing, so it can only carry an empty rhs. *)
+let check_rhs_qbits_bound index rule_name lhs rhs =
+  let bound = List.concat_map pattern_gate_qbits lhs in
+  let unbound =
+    List.concat_map pattern_gate_qbits rhs
+    |> List.find_opt (fun qbit -> not (List.mem qbit bound))
+  in
+  match unbound with
+  | None -> Ok ()
+  | Some qbit ->
+      Error
+        (Printf.sprintf
+           "rule #%d %s rewrites qubit %d, which its lhs does not bind" index
+           rule_name qbit)
+
 let rule_jsons_of_json json =
   match json with
   | `List _ -> Ok (Json.to_list json)
@@ -185,6 +213,8 @@ let spec_of_rule_json nq index json =
       result_bind name (fun name ->
           result_bind (pattern_gate_list_field name json "lhs") (fun lhs ->
               result_bind (pattern_gate_list_field name json "rhs") (fun rhs ->
+                result_bind (check_rhs_qbits_bound (index + 1) name lhs rhs)
+                  (fun () ->
                   if standard_rule_nqubits lhs rhs > nq then Ok None
                   else
                     match standard_rule_of_sequences nq name lhs rhs with
@@ -194,7 +224,7 @@ let spec_of_rule_json nq index json =
                         (Printf.sprintf
                            "rule #%d %s (%s -> %s) is not valid up to global omega phase"
                            (index + 1) name (string_of_pattern_gate_list lhs)
-                           (string_of_pattern_gate_list rhs))))))
+                           (string_of_pattern_gate_list rhs)))))))
 
 let specs_of_rule_file nq path =
   try

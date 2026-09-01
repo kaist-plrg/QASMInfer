@@ -153,3 +153,40 @@ With --json, a domain error is also reported as a structured object on stdout.
   }
   $ cat json-error.stderr
   qasminfer: rule-file: bad-rules.json: rule #1 bad (h 0 -> id 0) is not valid up to global omega phase
+
+A rule-file rule whose right-hand side names a qubit its left-hand side does not
+bind can never fire: the checker turns every JSON qubit index into a pattern
+variable, and RewriteRule_safeb requires the right-hand side's variables to be
+bound by the left-hand side.  Such a rule used to load, validate, and then sit
+silently inert.
+
+  $ printf '[{"name":"unbound","lhs":[{"gate":"id","q":0}],"rhs":[{"gate":"h","q":1},{"gate":"cx","control":0,"target":1},{"gate":"h","q":1},{"gate":"h","q":1},{"gate":"cx","control":0,"target":1},{"gate":"h","q":1}]}]\n' > unbound-rules.json
+  $ qasminfer --rule-file unbound-rules.json --unoptimize-rules ok.qasm >unbound.stdout 2>unbound.stderr
+  [1]
+  $ test ! -s unbound.stdout
+  $ cat unbound.stderr
+  qasminfer: rule-file: unbound-rules.json: rule #1 unbound rewrites qubit 1, which its lhs does not bind
+
+An empty lhs is the same failure in its most extreme form: nothing is bound, so
+nothing can be rewritten.
+
+  $ printf '[{"name":"empty","lhs":[],"rhs":[{"gate":"x","q":0},{"gate":"x","q":0}]}]\n' > empty-lhs-rules.json
+  $ qasminfer --rule-file empty-lhs-rules.json --unoptimize-rules ok.qasm >empty-lhs.stdout 2>empty-lhs.stderr
+  [1]
+  $ test ! -s empty-lhs.stdout
+  $ cat empty-lhs.stderr
+  qasminfer: rule-file: empty-lhs-rules.json: rule #1 empty rewrites qubit 0, which its lhs does not bind
+
+A rule whose lhs binds every qubit its rhs rewrites is accepted, including one
+that is wider than any built-in.
+
+  $ printf '[{"name":"II_to_CZCZ","lhs":[{"gate":"id","q":0},{"gate":"id","q":1}],"rhs":[{"gate":"h","q":1},{"gate":"cx","control":0,"target":1},{"gate":"h","q":1},{"gate":"h","q":1},{"gate":"cx","control":0,"target":1},{"gate":"h","q":1}]}]\n' > czcz-rules.json
+  $ cat > two-ids.qasm <<'EOF'
+  > OPENQASM 2.0;
+  > include "qelib1.inc";
+  > qreg q[2];
+  > id q[0];
+  > id q[1];
+  > EOF
+  $ qasminfer --rule-file czcz-rules.json --unoptimize-rules two-ids.qasm | grep -F II_to_CZCZ
+  II_to_CZCZ: occurrences=1 param=none
