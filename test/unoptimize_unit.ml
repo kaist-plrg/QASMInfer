@@ -48,7 +48,9 @@ let expect_failure_contains fragment f =
   try
     let _ = f () in
     failf "expected failure containing %S" fragment
-  with Failure message -> require_contains message fragment
+  with
+  | Unoptimize.Domain_error (_, detail) -> require_contains detail fragment
+  | Failure message -> require_contains message fragment
 
 let test_unoptimize_nop_is_exact_identity () =
 let instruction =
@@ -126,6 +128,38 @@ let test_insert_swap_uses_distinct_parameters () =
                  qbit1 qbit2))
           swaps
   done
+
+let expect_domain_error ~error_class ~detail thunk =
+  match thunk () with
+  | exception Unoptimize.Domain_error (actual_class, actual_detail) ->
+      require (actual_class = error_class)
+        (Printf.sprintf "expected error class %S but got %S" error_class
+           actual_class);
+      require (actual_detail = detail)
+        (Printf.sprintf "expected detail %S but got %S" detail actual_detail)
+  | exception exn ->
+      failf "expected Domain_error but got %s" (Printexc.to_string exn)
+  | _ -> failf "expected Domain_error (%s) but the call succeeded" error_class
+
+let test_qbit2_rules_reject_equal_operands () =
+  List.iter
+    (fun rule_name ->
+      expect_domain_error ~error_class:"param"
+        ~detail:("rule " ^ rule_name ^ " requires two distinct qubits")
+        (fun () ->
+          Unoptimize.unoptimize ~rule_name
+            ~manual:(manual ~qbits:[ 1; 1 ] ~occurrence:0 ())
+            E.NopInstr 1 2 0))
+    [ "Insert_Swap"; "Insert_Cnot_Cnot" ]
+
+let test_qbit2_rules_accept_distinct_operands () =
+  List.iter
+    (fun rule_name ->
+      ignore
+        (Unoptimize.unoptimize ~rule_name
+           ~manual:(manual ~qbits:[ 1; 0 ] ~occurrence:0 ())
+           E.NopInstr 1 2 0))
+    [ "Insert_Swap"; "Insert_Cnot_Cnot" ]
 
 let test_manual_qbit1_insert_i () =
   let transformed =
@@ -521,6 +555,10 @@ let tests =
   [ ("unoptimize_nop exact identity", test_unoptimize_nop_is_exact_identity);
     ( "Insert_Swap uses distinct parameters",
       test_insert_swap_uses_distinct_parameters );
+    ( "qbit2 rules reject equal operands",
+      test_qbit2_rules_reject_equal_operands );
+    ( "qbit2 rules accept distinct operands",
+      test_qbit2_rules_accept_distinct_operands );
     ("manual Insert_I qbit", test_manual_qbit1_insert_i);
     ("manual Insert_Swap qbits", test_manual_qbit2_insert_swap);
     ("manual Insert_Cnot_Cnot qbits", test_manual_qbit2_insert_cnot_cnot);

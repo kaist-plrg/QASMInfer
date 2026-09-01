@@ -81,7 +81,7 @@ kind rather than by concrete witness values.
   $ test ! -e too-wide-output.qasm
   $ test ! -s too-wide-rule.stdout
   $ cat too-wide-rule.stderr
-  qasminfer: No transformation rule named 'Too_wide_rule'.
+  qasminfer: rule: No transformation rule named 'Too_wide_rule'.
 
   $ qasminfer --json --unoptimize-rules qasm2.qasm >applicable-rules.json 2>applicable-rules-json.stderr
   $ test ! -s applicable-rules-json.stderr
@@ -135,7 +135,7 @@ kind rather than by concrete witness values.
   $ test ! -e invalid-rule-output.qasm
   $ test ! -s invalid-rules.stdout
   $ cat invalid-rules.stderr
-  qasminfer: invalid rule file invalid-rules.json: rule #1 bad_h_to_i (h 0 -> id 0) is not valid up to global omega phase
+  qasminfer: rule-file: invalid-rules.json: rule #1 bad_h_to_i (h 0 -> id 0) is not valid up to global omega phase
 
   $ printf '[{"name":"old_syntax","lhs":["id"],"rhs":["x","x"]}]\n' > old-syntax-rules.json
   $ qasminfer --rule-file old-syntax-rules.json --step 0 --unoptimize qasm2.qasm old-syntax-output.qasm >old-syntax.stdout 2>old-syntax.stderr
@@ -143,7 +143,7 @@ kind rather than by concrete witness values.
   $ test ! -e old-syntax-output.qasm
   $ test ! -s old-syntax.stdout
   $ cat old-syntax.stderr
-  qasminfer: invalid rule file old-syntax-rules.json: rule old_syntax field 'lhs' gate entry must be an object
+  qasminfer: rule-file: old-syntax-rules.json: rule old_syntax field 'lhs' gate entry must be an object
 
 The --rule option restricts unoptimization to a named rule from the combined
 built-in and rule-file transform spec list, and it cannot be combined with
@@ -166,14 +166,14 @@ built-in and rule-file transform spec list, and it cannot be combined with
   $ test ! -e no-match-rule-output.qasm
   $ test ! -s no-match-rule.stdout
   $ cat no-match-rule.stderr
-  qasminfer: Transformation rule 'I_to_XX_from_file' is not applicable to the current instruction.
+  qasminfer: rule: Transformation rule 'I_to_XX_from_file' is not applicable to the current instruction.
 
   $ qasminfer --rule Missing_rule --unoptimize qasm2.qasm missing-rule-output.qasm >missing-rule.stdout 2>missing-rule.stderr
   [1]
   $ test ! -e missing-rule-output.qasm
   $ test ! -s missing-rule.stdout
   $ cat missing-rule.stderr
-  qasminfer: No transformation rule named 'Missing_rule'.
+  qasminfer: rule: No transformation rule named 'Missing_rule'.
 
   $ printf '[{"name":"dup","lhs":[{"gate":"id","q":0}],"rhs":[{"gate":"x","q":0},{"gate":"x","q":0}]},{"name":"dup","lhs":[{"gate":"id","q":0}],"rhs":[{"gate":"y","q":0},{"gate":"y","q":0}]}]\n' > duplicate-rules.json
   $ qasminfer --rule-file duplicate-rules.json --rule Insert_I --unoptimize named-rule-target.qasm duplicate-rule-output.qasm >duplicate-rule.stdout 2>duplicate-rule.stderr
@@ -181,7 +181,7 @@ built-in and rule-file transform spec list, and it cannot be combined with
   $ test ! -e duplicate-rule-output.qasm
   $ test ! -s duplicate-rule.stdout
   $ cat duplicate-rule.stderr
-  qasminfer: Duplicate transformation rule name 'dup'.
+  qasminfer: rule: Duplicate transformation rule name 'dup'.
 
   $ qasminfer --rule Insert_I --step 1 --unoptimize qasm2.qasm rule-step-conflict.qasm >rule-step-conflict.stdout 2>rule-step-conflict.stderr
   [2]
@@ -221,19 +221,44 @@ named unoptimization parameter.  They are accepted only with --unoptimize
   $ grep -F 'CX q[0],q[1];' manual-cnot.qasm | wc -l | tr -d ' '
   2
 
+Rules that take two qubits refuse equal operands.  The transforms themselves
+carry no distinctness hypothesis, but OpenQASM forbids naming one qubit twice in
+a single gate, so an accepted "swap q[0],q[0];" would be unreadable downstream.
+
+  $ qasminfer --rule Insert_Swap --qbits 0,0 --occurrence 0 --unoptimize manual-target.qasm manual-equal-swap.qasm >manual-equal-swap.stdout 2>manual-equal-swap.stderr
+  [1]
+  $ test ! -e manual-equal-swap.qasm
+  $ test ! -s manual-equal-swap.stdout
+  $ cat manual-equal-swap.stderr
+  qasminfer: param: rule Insert_Swap requires two distinct qubits
+
+  $ qasminfer --rule Insert_Cnot_Cnot --qbits 1,1 --occurrence 0 --unoptimize manual-target.qasm manual-equal-cnot.qasm >manual-equal-cnot.stdout 2>manual-equal-cnot.stderr
+  [1]
+  $ test ! -e manual-equal-cnot.qasm
+  $ test ! -s manual-equal-cnot.stdout
+  $ cat manual-equal-cnot.stderr
+  qasminfer: param: rule Insert_Cnot_Cnot requires two distinct qubits
+
+Distinct operands are unaffected.
+
+  $ qasminfer --rule Insert_Swap --qbits 1,0 --occurrence 0 --unoptimize manual-target.qasm manual-swap-reversed.qasm >manual-swap-reversed.stdout 2>manual-swap-reversed.stderr
+  $ test ! -s manual-swap-reversed.stderr
+  $ grep -F 'swap q[1],q[0];' manual-swap-reversed.qasm
+  swap q[1],q[0];
+
   $ qasminfer --rule Insert_I --qbits 0 --occurrence 99 --unoptimize manual-target.qasm manual-occurrence-fail.qasm >manual-occurrence-fail.stdout 2>manual-occurrence-fail.stderr
   [1]
   $ test ! -e manual-occurrence-fail.qasm
   $ test ! -s manual-occurrence-fail.stdout
   $ cat manual-occurrence-fail.stderr
-  qasminfer: Occurrence 99 is out of range for rule 'Insert_I' with 2 occurrence(s).
+  qasminfer: occurrence: Occurrence 99 is out of range for rule 'Insert_I' with 2 occurrence(s).
 
   $ qasminfer --rule Insert_I --qbits 0,1 --unoptimize manual-target.qasm manual-arity-fail.qasm >manual-arity-fail.stdout 2>manual-arity-fail.stderr
   [1]
   $ test ! -e manual-arity-fail.qasm
   $ test ! -s manual-arity-fail.stdout
   $ cat manual-arity-fail.stderr
-  qasminfer: --qbits expects 1 value(s), but got 2.
+  qasminfer: param: --qbits expects 1 value(s), but got 2.
 
   $ qasminfer --rule Insert_I --qbits -1 --unoptimize manual-target.qasm manual-negative-fail.qasm >manual-negative-fail.stdout 2>manual-negative-fail.stderr
   [2]
@@ -381,14 +406,14 @@ overwriting a destination.
   sentinel
   $ test ! -s lexical-qasm2.stdout
   $ cat lexical-qasm2.stderr
-  qasminfer: lexical_error_qasm2.qasm:3:1: Unexpected char: @
+  qasminfer: parse: lexical_error_qasm2.qasm:3:1: Unexpected char: @
 
   $ qasminfer --unoptimize lexical_error_qasm3.qasm lexical-created.qasm >lexical-qasm3.stdout 2>lexical-qasm3.stderr
   [1]
   $ test ! -e lexical-created.qasm
   $ test ! -s lexical-qasm3.stdout
   $ cat lexical-qasm3.stderr
-  qasminfer: lexical_error_qasm3.qasm:3:1: Unexpected char: @
+  qasminfer: parse: lexical_error_qasm3.qasm:3:1: Unexpected char: @
 
 The pre-existing execution interface retains its exact text and JSON output,
 file redirection, and verbose stream separation.

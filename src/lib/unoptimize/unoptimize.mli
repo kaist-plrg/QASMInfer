@@ -1,3 +1,8 @@
+(** [Domain_error (error_class, detail)] reports a failure that is the user's to
+    fix rather than a bug.  [error_class] is part of the CLI contract: it is
+    printed as the middle field of "qasminfer: <class>: <detail>". *)
+exception Domain_error of string * string
+
 val unoptimize_nop : 'a -> 'a
 val specs_of_rule_file : int -> string -> (Extracted.transformSpec list, string) result
 

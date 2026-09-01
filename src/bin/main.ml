@@ -6,7 +6,13 @@ module IntMap = Map.Make(Int)
 
 type version = V2 | V3
 
-exception Cli_error of string
+(* A failure the user can act on.  The first field is the error class, which is
+   part of the CLI contract; see the "Exit codes and error classes" section of
+   the README. *)
+exception Cli_error of string * string
+
+let cli_error error_class format =
+  Printf.ksprintf (fun detail -> raise (Cli_error (error_class, detail))) format
 
 type command =
   | Execute of {
@@ -324,12 +330,16 @@ let json_of_applicable_rules source nq nc rules =
 
 let write_result output_file output =
   match output_file with
-  | None -> output_string stdout output
-  | Some path ->
-      let channel = open_out path in
-      Fun.protect
-        ~finally:(fun () -> close_out channel)
-        (fun () -> output_string channel output)
+  | None -> (
+      try output_string stdout output with
+      | Sys_error message -> cli_error "io" "<stdout>: %s" message)
+  | Some path -> (
+      try
+        let channel = open_out path in
+        Fun.protect
+          ~finally:(fun () -> close_out channel)
+          (fun () -> output_string channel output)
+      with Sys_error message -> cli_error "io" "%s" message)
 
 let log_line line =
   output_string stderr line;
@@ -357,21 +367,31 @@ let check_qasm_version source =
   else
     failwith ("Invalid QASM file format: " ^ first_meaningful_line)
 
-let parse_and_desugar file_path =
-  let source = In_channel.with_open_bin file_path In_channel.input_all in
+let read_source file_path =
+  try In_channel.with_open_bin file_path In_channel.input_all with
+  | Sys_error message -> cli_error "io" "%s" message
+
+let parse_and_desugar_string ~filename source =
+  let version =
+    try check_qasm_version source with
+    | Failure message -> cli_error "parse" "%s" message
+  in
   let ast =
-    match check_qasm_version source with
-    | V2 -> Q2.parse_string_result ~filename:file_path source
-    | V3 ->
-        Q3.parse_string_result ~filename:file_path source |> Result.map Q3.desugar
+    match version with
+    | V2 -> Q2.parse_string_result ~filename source
+    | V3 -> Q3.parse_string_result ~filename source |> Result.map Q3.desugar
   in
   let ast =
     match ast with
     | Ok program -> program
-    | Error message -> raise (Cli_error message)
+    | Error message -> cli_error "parse" "%s" message
   in
   let ast = Q2.inline_qelib ast in
-  Q2.desugar ast
+  try Q2.desugar ast with
+  | Failure message -> cli_error "parse" "%s: %s" filename message
+
+let parse_and_desugar file_path =
+  parse_and_desugar_string ~filename:file_path (read_source file_path)
 
 let log_instruction verbose instruction =
   if verbose then (
@@ -400,8 +420,7 @@ let specs_of_rule_file_option nq rule_file =
   | Some path -> (
       match Unoptimize.specs_of_rule_file nq path with
       | Ok specs -> Some specs
-      | Error message ->
-          raise (Cli_error ("invalid rule file " ^ path ^ ": " ^ message)))
+      | Error message -> cli_error "rule-file" "%s: %s" path message)
 
 let unoptimize source destination step verbose rule_file rule_name manual =
   let nq, nc, instr, q_assignment, c_assignment =
@@ -410,13 +429,15 @@ let unoptimize source destination step verbose rule_file rule_name manual =
   let specs = specs_of_rule_file_option nq rule_file in
   let transformed =
     try Unoptimize.unoptimize ?specs ?rule_name ?manual instr step nq nc with
-    | Failure message -> raise (Cli_error message)
+    | Unoptimize.Domain_error (error_class, detail) ->
+        raise (Cli_error (error_class, detail))
   in
   log_instruction verbose transformed;
   let output =
     match Q2.sugar nq nc q_assignment c_assignment transformed with
     | Ok program -> Q2.string_of_program program
-    | Error message -> failwith ("cannot sugar OpenQASMCore: " ^ message)
+    | Error message ->
+        cli_error "emit" "cannot express the program in OpenQASM 2: %s" message
   in
   write_result (Some destination) output
 
@@ -426,7 +447,8 @@ let unoptimize_rules source verbose emit_json output_file rule_file =
   log_instruction verbose instr;
   let rules =
     try Unoptimize.applicable_rules ?specs instr nq nc with
-    | Failure message -> raise (Cli_error message)
+    | Unoptimize.Domain_error (error_class, detail) ->
+        raise (Cli_error (error_class, detail))
   in
   let output =
     if emit_json then json_of_applicable_rules source nq nc rules
@@ -439,29 +461,54 @@ let output_message channel message =
   if message = "" || message.[String.length message - 1] <> '\n' then
     output_char channel '\n'
 
+let json_of_error error_class detail =
+  Printf.sprintf
+    "{\n  \"error\": {\n    \"class\": \"%s\",\n    \"message\": \"%s\"\n  }\n}\n"
+    (json_escape error_class) (json_escape detail)
+
+(* Every domain failure prints exactly one stderr line, and, when the caller
+   asked for JSON, the same failure as a structured object on stdout. *)
+let report_domain_error emit_json error_class detail =
+  if emit_json then output_string stdout (json_of_error error_class detail);
+  output_message stderr (Printf.sprintf "qasminfer: %s: %s" error_class detail);
+  1
+
+let run_command = function
+  | Execute { source; verbose; emit_json; output_file } ->
+      execute source verbose emit_json output_file
+  | Unoptimize { source; destination; step; verbose; rule_file; rule_name; manual } ->
+      let step = Option.value step ~default:1 in
+      unoptimize source destination step verbose rule_file rule_name manual
+  | UnoptimizeRules { source; verbose; emit_json; output_file; rule_file } ->
+      unoptimize_rules source verbose emit_json output_file rule_file
+
+let emits_json = function
+  | Execute { emit_json; _ } | UnoptimizeRules { emit_json; _ } -> emit_json
+  | Unoptimize _ -> false
+
 let main argv =
   let no_arguments = Array.length argv <= 1 in
-  try
-    match parse_args argv with
-    | Execute { source; verbose; emit_json; output_file } ->
-        execute source verbose emit_json output_file;
-        0
-    | Unoptimize { source; destination; step; verbose; rule_file; rule_name; manual } ->
-        let step = Option.value step ~default:1 in
-        unoptimize source destination step verbose rule_file rule_name manual;
-        0
-    | UnoptimizeRules { source; verbose; emit_json; output_file; rule_file } ->
-        unoptimize_rules source verbose emit_json output_file rule_file;
-        0
-  with
-  | Arg.Help message ->
+  match parse_args argv with
+  | exception Arg.Help message ->
       output_message stdout message;
       0
-  | Cli_error message ->
-      output_message stderr ("qasminfer: " ^ message);
-      1
-  | Arg.Bad message ->
+  | exception Arg.Bad message ->
       output_message stderr message;
+      (* A bare "qasminfer" keeps its legacy exit status; every other
+         argument-shape error exits 2. *)
       if no_arguments then 1 else 2
+  | command -> (
+      let emit_json = emits_json command in
+      let fail = report_domain_error emit_json in
+      match run_command command with
+      | () -> 0
+      | exception Cli_error (error_class, detail) -> fail error_class detail
+      | exception Unoptimize.Domain_error (error_class, detail) ->
+          fail error_class detail
+      | exception Sys_error message -> fail "io" message
+      | exception Failure message -> fail "internal" message
+      | exception Stack_overflow -> fail "internal" "stack overflow"
+      | exception Out_of_memory -> fail "internal" "out of memory"
+      | exception exn -> fail "internal" (Printexc.to_string exn))
 
 let () = exit (main Sys.argv)
