@@ -17,8 +17,11 @@ The normal consumer build does not require Rocq. Suggested install via opam:
 opam install dune.3.24.2 menhir yojson zarith
 ```
 
-Building the proofs or regenerating the extraction additionally requires Rocq
-(tested with `rocq-core` 9.1.0 and `rocq-stdlib` 9.0.0).
+Building the proofs or regenerating the extraction uses a separate proof
+toolchain with Dune 3.23.1, `rocq-core` 9.1.0, and `rocq-stdlib` 9.0.0. Rocq
+9.1.0 requires Dune earlier than 3.24, so do not install it in the consumer
+switch above; use a dedicated proof switch instead. The private proof project
+therefore uses Dune's Rocq language version 0.13.
 
 ## Layout
 
