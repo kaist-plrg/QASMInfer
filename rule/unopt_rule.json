@@ -190,6 +190,2266 @@
         ]
     },
     {
+        "name": "I_to_XX_class0_2",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "I_to_YY_class0_2",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "I_to_ZZ_class0_2",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "I_to_HH_class0_2",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "I_to_SSdg_class0_2",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "I_to_SdgS_class0_2",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "I_to_TTdg_class0_2",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "I_to_TdgT_class0_2",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "I_to_SxSxdg_class0_2",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "I_to_SxdgSx_class0_2",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XX_to_YY",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XX_to_ZZ",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XX_to_HH",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XX_to_SSdg",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XX_to_SdgS",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XX_to_TTdg",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XX_to_TdgT",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XX_to_SxSxdg",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XX_to_SxdgSx",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YY_to_XX",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YY_to_ZZ",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YY_to_HH",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YY_to_SSdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YY_to_SdgS",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YY_to_TTdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YY_to_TdgT",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YY_to_SxSxdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YY_to_SxdgSx",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZZ_to_XX",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZZ_to_YY",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZZ_to_HH",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZZ_to_SSdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZZ_to_SdgS",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZZ_to_TTdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZZ_to_TdgT",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZZ_to_SxSxdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZZ_to_SxdgSx",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HH_to_XX",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HH_to_YY",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HH_to_ZZ",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HH_to_SSdg",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HH_to_SdgS",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HH_to_TTdg",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HH_to_TdgT",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HH_to_SxSxdg",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HH_to_SxdgSx",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSdg_to_XX",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSdg_to_YY",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSdg_to_ZZ",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSdg_to_HH",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSdg_to_SdgS",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSdg_to_TTdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSdg_to_TdgT",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSdg_to_SxSxdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSdg_to_SxdgSx",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgS_to_XX",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgS_to_YY",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgS_to_ZZ",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgS_to_HH",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgS_to_SSdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgS_to_TTdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgS_to_TdgT",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgS_to_SxSxdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgS_to_SxdgSx",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TTdg_to_XX",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TTdg_to_YY",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TTdg_to_ZZ",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TTdg_to_HH",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TTdg_to_SSdg",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TTdg_to_SdgS",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TTdg_to_TdgT",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TTdg_to_SxSxdg",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TTdg_to_SxdgSx",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgT_to_XX",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgT_to_YY",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgT_to_ZZ",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgT_to_HH",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgT_to_SSdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgT_to_SdgS",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgT_to_TTdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgT_to_SxSxdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgT_to_SxdgSx",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSxdg_to_XX",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSxdg_to_YY",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSxdg_to_ZZ",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSxdg_to_HH",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSxdg_to_SSdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSxdg_to_SdgS",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSxdg_to_TTdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSxdg_to_TdgT",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSxdg_to_SxdgSx",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSx_to_XX",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSx_to_YY",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSx_to_ZZ",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSx_to_HH",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSx_to_SSdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSx_to_SdgS",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSx_to_TTdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSx_to_TdgT",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSx_to_SxSxdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "X_to_YZ",
         "lhs": [
             {
@@ -266,6 +2526,282 @@
         ]
     },
     {
+        "name": "YZ_to_ZY",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YZ_to_SxSx",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YZ_to_SxdgSxdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZY_to_YZ",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZY_to_SxSx",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZY_to_SxdgSxdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSx_to_YZ",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSx_to_ZY",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSx_to_SxdgSxdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSxdg_to_YZ",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSxdg_to_ZY",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSxdg_to_SxSx",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "Y_to_XZ",
         "lhs": [
             {
@@ -299,6 +2835,52 @@
             },
             {
                 "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XZ_to_ZX",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZX_to_XZ",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "z",
                 "q": 0
             }
         ]
@@ -380,6 +2962,282 @@
         ]
     },
     {
+        "name": "XY_to_YX",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XY_to_SS",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XY_to_SdgSdg",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YX_to_XY",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YX_to_SS",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YX_to_SdgSdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SS_to_XY",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SS_to_YX",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SS_to_SdgSdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgSdg_to_XY",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgSdg_to_YX",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgSdg_to_SS",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "S_to_ZSdg",
         "lhs": [
             {
@@ -432,6 +3290,144 @@
             },
             {
                 "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZSdg_to_SdgZ",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZSdg_to_TT",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgZ_to_ZSdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgZ_to_TT",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TT_to_ZSdg",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TT_to_SdgZ",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
                 "q": 0
             }
         ]
@@ -494,6 +3490,144 @@
         ]
     },
     {
+        "name": "ZS_to_SZ",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZS_to_TdgTdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SZ_to_ZS",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SZ_to_TdgTdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgTdg_to_ZS",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgTdg_to_SZ",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "T_to_STdg",
         "lhs": [
             {
@@ -527,6 +3661,52 @@
             },
             {
                 "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "STdg_to_TdgS",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgS_to_STdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
                 "q": 0
             }
         ]
@@ -570,6 +3750,52 @@
         ]
     },
     {
+        "name": "SdgT_to_TSdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TSdg_to_SdgT",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "Sx_to_XSxdg",
         "lhs": [
             {
@@ -603,6 +3829,52 @@
             },
             {
                 "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XSxdg_to_SxdgX",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgX_to_XSxdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
                 "q": 0
             }
         ]
@@ -646,6 +3918,52 @@
         ]
     },
     {
+        "name": "XSx_to_SxX",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxX_to_XSx",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "XH_to_HZ",
         "lhs": [
             {
@@ -664,6 +3982,29 @@
             },
             {
                 "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HZ_to_XH",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
                 "q": 0
             }
         ]
@@ -746,6 +4087,294 @@
             },
             {
                 "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YSdg_to_XS",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YSdg_to_SY",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YSdg_to_SdgX",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YSdg_to_HSSxdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SY_to_XS",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SY_to_YSdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SY_to_SdgX",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SY_to_HSSxdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgX_to_XS",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgX_to_YSdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgX_to_SY",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgX_to_HSSxdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
                 "q": 0
             }
         ],
@@ -861,6 +4490,294 @@
         ]
     },
     {
+        "name": "YS_to_XSdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YS_to_SX",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YS_to_SdgY",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YS_to_HSdgSx",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SX_to_XSdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SX_to_YS",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SX_to_SdgY",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SX_to_HSdgSx",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgY_to_XSdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgY_to_YS",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgY_to_SX",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgY_to_HSdgSx",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "XT_to_TdgX",
         "lhs": [
             {
@@ -884,6 +4801,29 @@
         ]
     },
     {
+        "name": "TdgX_to_XT",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "XTdg_to_TX",
         "lhs": [
             {
@@ -902,6 +4842,29 @@
             },
             {
                 "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TX_to_XTdg",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
                 "q": 0
             }
         ]
@@ -1038,6 +5001,509 @@
         ]
     },
     {
+        "name": "HY_to_YH",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HY_to_SSxdgS",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HY_to_SdgSxSdg",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HY_to_SxSdgSx",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HY_to_SxdgSSxdg",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSxdgS_to_SdgSxSdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSxdgS_to_SxSdgSx",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSxdgS_to_SxdgSSxdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgSxSdg_to_SSxdgS",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgSxSdg_to_SxSdgSx",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgSxSdg_to_SxdgSSxdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSdgSx_to_SSxdgS",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSdgSx_to_SdgSxSdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxSdgSx_to_SxdgSSxdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSSxdg_to_SSxdgS",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSSxdg_to_SdgSxSdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSSxdg_to_SxSdgSx",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "YT_to_TdgY",
         "lhs": [
             {
@@ -1061,6 +5527,29 @@
         ]
     },
     {
+        "name": "TdgY_to_YT",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "YTdg_to_TY",
         "lhs": [
             {
@@ -1079,6 +5568,29 @@
             },
             {
                 "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TY_to_YTdg",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
                 "q": 0
             }
         ]
@@ -1161,6 +5673,294 @@
             },
             {
                 "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZSxdg_to_YSx",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZSxdg_to_SxZ",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZSxdg_to_SxdgY",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZSxdg_to_HSxdgS",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxZ_to_YSx",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxZ_to_ZSxdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxZ_to_SxdgY",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxZ_to_HSxdgS",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgY_to_YSx",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgY_to_ZSxdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgY_to_SxZ",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgY_to_HSxdgS",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
                 "q": 0
             }
         ],
@@ -1276,6 +6076,294 @@
         ]
     },
     {
+        "name": "ZSx_to_YSxdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZSx_to_SxY",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZSx_to_SxdgZ",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZSx_to_HSxSdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxY_to_YSxdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxY_to_ZSx",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxY_to_SxdgZ",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxY_to_HSxSdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgZ_to_YSxdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgZ_to_ZSx",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgZ_to_SxY",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgZ_to_HSxSdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "ZH_to_HX",
         "lhs": [
             {
@@ -1294,6 +6382,29 @@
             },
             {
                 "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HX_to_ZH",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
                 "q": 0
             }
         ]
@@ -1368,6 +6479,213 @@
         ]
     },
     {
+        "name": "SdgTdg_to_ZT",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgTdg_to_TZ",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgTdg_to_TdgSdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TZ_to_ZT",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TZ_to_SdgTdg",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TZ_to_TdgSdg",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgSdg_to_ZT",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgSdg_to_SdgTdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgSdg_to_TZ",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "ZTdg_to_ST",
         "lhs": [
             {
@@ -1432,6 +6750,213 @@
             },
             {
                 "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ST_to_ZTdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ST_to_TS",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ST_to_TdgZ",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TS_to_ZTdg",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TS_to_ST",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TS_to_TdgZ",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgZ_to_ZTdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgZ_to_ST",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgZ_to_TS",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "s",
                 "q": 0
             }
         ]
@@ -1510,6 +7035,152 @@
         ]
     },
     {
+        "name": "SdgSxdg_to_HS",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgSxdg_to_SxH",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgSxdg_to_XHSdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxH_to_HS",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxH_to_SdgSxdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxH_to_XHSdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "HSdg_to_SSx",
         "lhs": [
             {
@@ -1564,6 +7235,152 @@
             },
             {
                 "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSx_to_HSdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSx_to_SxdgH",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSx_to_XHS",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgH_to_HSdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgH_to_SSx",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgH_to_XHS",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
                 "q": 0
             }
         ],
@@ -1683,6 +7500,268 @@
         ]
     },
     {
+        "name": "SH_to_HSx",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SH_to_SxdgSdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SH_to_YSxdgS",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SH_to_ZHSxdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSdg_to_HSx",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSdg_to_SH",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSdg_to_YSxdgS",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgSdg_to_ZHSxdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YSxdgS_to_ZHSxdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZHSxdg_to_YSxdgS",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "HSxdg_to_SdgH",
         "lhs": [
             {
@@ -1783,6 +7862,268 @@
         ]
     },
     {
+        "name": "SdgH_to_HSxdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgH_to_SxS",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgH_to_YSxSdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgH_to_ZHSx",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxS_to_HSxdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxS_to_SdgH",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxS_to_YSxSdg",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxS_to_ZHSx",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YSxSdg_to_ZHSx",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZHSx_to_YSxSdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "SSxdg_to_XSdgSx",
         "lhs": [
             {
@@ -1859,6 +8200,192 @@
             },
             {
                 "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XSdgSx_to_YHSdg",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XSdgSx_to_ZHS",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YHSdg_to_XSdgSx",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YHSdg_to_ZHS",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZHS_to_XSdgSx",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZHS_to_YHSdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
                 "q": 0
             }
         ]
@@ -1945,6 +8472,192 @@
         ]
     },
     {
+        "name": "XSSxdg_to_YHS",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XSSxdg_to_ZHSdg",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YHS_to_XSSxdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YHS_to_ZHSdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZHSdg_to_XSSxdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZHSdg_to_YHS",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "TH_to_TdgHSx",
         "lhs": [
             {
@@ -2021,6 +8734,68 @@
             },
             {
                 "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XTdgSxdg_to_TdgHSdg",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgHSdg_to_XTdgSxdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
                 "q": 0
             }
         ]
@@ -2161,6 +8936,68 @@
         ]
     },
     {
+        "name": "XTSx_to_THS",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "THS_to_XTSx",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "SxSdg_to_XHSx",
         "lhs": [
             {
@@ -2210,6 +9047,68 @@
             },
             {
                 "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "XHSx_to_YHSxdg",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YHSxdg_to_XHSx",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
                 "q": 0
             }
         ]
@@ -2296,6 +9195,68 @@
         ]
     },
     {
+        "name": "XHSxdg_to_YHSx",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YHSx_to_XHSxdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "SxdgTdg_to_HSxT",
         "lhs": [
             {
@@ -2354,6 +9315,37 @@
         ]
     },
     {
+        "name": "TSxSdg_to_XTH",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "XTdgH_to_TdgSxdgS",
         "lhs": [
             {
@@ -2380,6 +9372,37 @@
             },
             {
                 "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgSxdgS_to_XTdgH",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
                 "q": 0
             }
         ]
@@ -2416,6 +9439,37 @@
         ]
     },
     {
+        "name": "SdgSxTdg_to_YHT",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "YHTdg_to_SSxdgT",
         "lhs": [
             {
@@ -2442,6 +9496,37 @@
             },
             {
                 "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SSxdgT_to_YHTdg",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
                 "q": 0
             }
         ]
@@ -2478,6 +9563,37 @@
         ]
     },
     {
+        "name": "TSxdgS_to_YTH",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "YTSx_to_ZTdgSxdg",
         "lhs": [
             {
@@ -2504,6 +9620,37 @@
             },
             {
                 "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZTdgSxdg_to_YTSx",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
                 "q": 0
             }
         ]
@@ -2571,6 +9718,130 @@
         ]
     },
     {
+        "name": "ZTdgSx_to_YTSxdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZTdgSx_to_THSdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "THSdg_to_YTSxdg",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "THSdg_to_ZTdgSx",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "YTdgH_to_TdgSxSdg",
         "lhs": [
             {
@@ -2597,6 +9868,37 @@
             },
             {
                 "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgSxSdg_to_YTdgH",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
                 "q": 0
             }
         ]
@@ -2664,6 +9966,130 @@
         ]
     },
     {
+        "name": "ZTSxdg_to_YTdgSx",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZTSxdg_to_TdgHS",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgHS_to_YTdgSx",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgHS_to_ZTSxdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "YTdgSxdg_to_ZTSx",
         "lhs": [
             {
@@ -2690,6 +10116,37 @@
             },
             {
                 "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZTSx_to_YTdgSxdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
                 "q": 0
             }
         ]
@@ -2726,6 +10183,37 @@
         ]
     },
     {
+        "name": "HSxdgT_to_YSxTdg",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "YSxdgT_to_HSxTdg",
         "lhs": [
             {
@@ -2752,6 +10240,37 @@
             },
             {
                 "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "HSxTdg_to_YSxdgT",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
                 "q": 0
             }
         ]
@@ -2788,6 +10307,37 @@
         ]
     },
     {
+        "name": "SSxdgTdg_to_ZHT",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "ZHTdg_to_SdgSxT",
         "lhs": [
             {
@@ -2814,6 +10364,37 @@
             },
             {
                 "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SdgSxT_to_ZHTdg",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
                 "q": 0
             }
         ]
@@ -2850,6 +10431,37 @@
         ]
     },
     {
+        "name": "TdgHSxdg_to_ZTH",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "ZTdgH_to_THSx",
         "lhs": [
             {
@@ -2876,6 +10488,37 @@
             },
             {
                 "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "THSx_to_ZTdgH",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
                 "q": 0
             }
         ]
@@ -3052,6 +10695,37 @@
         ]
     },
     {
+        "name": "TdgSxdgTdg_to_THT",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "THTdg_to_YTSxdgT",
         "lhs": [
             {
@@ -3113,6 +10787,37 @@
             },
             {
                 "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgHTdg_to_TSxT",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
                 "q": 0
             }
         ]
@@ -3359,6 +11064,37 @@
         ]
     },
     {
+        "name": "SxdgTdgSxdg_to_SxTSx",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "SxTSxdg_to_SxdgTdgSx",
         "lhs": [
             {
@@ -3385,6 +11121,37 @@
             },
             {
                 "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgTdgSx_to_SxTSxdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
                 "q": 0
             }
         ]
@@ -3421,6 +11188,37 @@
         ]
     },
     {
+        "name": "SxdgTSxdg_to_SxTdgSx",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "SxTdgSxdg_to_SxdgTSx",
         "lhs": [
             {
@@ -3447,6 +11245,37 @@
             },
             {
                 "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgTSx_to_SxTdgSxdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
                 "q": 0
             }
         ]
@@ -3491,6 +11320,45 @@
         ]
     },
     {
+        "name": "YHTdgSxdg_to_XHTSx",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "XHTSxdg_to_YHTdgSx",
         "lhs": [
             {
@@ -3525,6 +11393,45 @@
             },
             {
                 "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YHTdgSx_to_XHTSxdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
                 "q": 0
             }
         ]
@@ -3569,6 +11476,45 @@
         ]
     },
     {
+        "name": "YHTSxdg_to_XHTdgSx",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "XHTdgSxdg_to_YHTSx",
         "lhs": [
             {
@@ -3603,6 +11549,45 @@
             },
             {
                 "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YHTSx_to_XHTdgSxdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
                 "q": 0
             }
         ]
@@ -3647,6 +11632,45 @@
         ]
     },
     {
+        "name": "YTdgSxT_to_XTHTdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "XTdgHT_to_YTSxdgTdg",
         "lhs": [
             {
@@ -3686,6 +11710,45 @@
         ]
     },
     {
+        "name": "YTSxdgTdg_to_XTdgHT",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "YTSxTdg_to_ZTHT",
         "lhs": [
             {
@@ -3720,6 +11783,45 @@
             },
             {
                 "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZTHT_to_YTSxTdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
                 "q": 0
             }
         ]
@@ -4065,6 +12167,45 @@
         ]
     },
     {
+        "name": "TdgSxTSxdg_to_THTSx",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "THTSxdg_to_TdgSxTSx",
         "lhs": [
             {
@@ -4099,6 +12240,45 @@
             },
             {
                 "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgSxTSx_to_THTSxdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
                 "q": 0
             }
         ]
@@ -4267,6 +12447,45 @@
             },
             {
                 "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "SxdgTHT_to_SxTSxTdg",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
                 "q": 0
             }
         ]
@@ -4620,6 +12839,53 @@
         ]
     },
     {
+        "name": "YHTHT_to_XHTSxTdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "XHTSxdgT_to_ZHTHTdg",
         "lhs": [
             {
@@ -4662,6 +12928,53 @@
             },
             {
                 "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "ZHTHTdg_to_XHTSxdgT",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
                 "q": 0
             }
         ]
@@ -4714,6 +13027,53 @@
         ]
     },
     {
+        "name": "ZHTdgHT_to_XHTdgSxTdg",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "XTHTdgSx_to_YTHTSxdg",
         "lhs": [
             {
@@ -4756,6 +13116,53 @@
             },
             {
                 "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YTHTSxdg_to_XTHTdgSx",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
                 "q": 0
             }
         ]
@@ -4808,6 +13215,53 @@
         ]
     },
     {
+        "name": "YTHTSx_to_XTHTdgSxdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "XTdgHTSx_to_YTSxTSxdg",
         "lhs": [
             {
@@ -4850,6 +13304,53 @@
             },
             {
                 "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "YTSxTSxdg_to_XTdgHTSx",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
                 "q": 0
             }
         ]
@@ -4902,6 +13403,53 @@
         ]
     },
     {
+        "name": "YTSxTSx_to_XTdgHTSxdg",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "THTHTdg_to_TdgSxTdgSxdgT",
         "lhs": [
             {
@@ -4944,6 +13492,53 @@
             },
             {
                 "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgSxTdgSxdgT_to_THTHTdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
                 "q": 0
             }
         ]
@@ -4996,6 +13591,53 @@
         ]
     },
     {
+        "name": "TdgSxTHTdg_to_THTdgSxdgT",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "TSxTHTdg_to_TdgHTSxT",
         "lhs": [
             {
@@ -5038,6 +13680,53 @@
             },
             {
                 "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgHTSxT_to_TSxTHTdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
                 "q": 0
             }
         ]
@@ -5090,6 +13779,53 @@
         ]
     },
     {
+        "name": "TdgHTHT_to_TSxTSxdgTdg",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
         "name": "TSxdgTdgHT_to_TdgHTSxTdg",
         "lhs": [
             {
@@ -5132,6 +13868,53 @@
             },
             {
                 "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "TdgHTSxTdg_to_TSxdgTdgHT",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
                 "q": 0
             }
         ]
