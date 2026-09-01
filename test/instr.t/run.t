@@ -101,7 +101,7 @@ A payload may not introduce registers.
   [1]
   $ test ! -e decl.qasm
   $ cat decl.stderr
-  qasminfer: param: --instr: the payload must not declare registers
+  qasminfer: param: --instr: the payload must not introduce registers
 
 Rules that take no instruction payload reject --instr.
 

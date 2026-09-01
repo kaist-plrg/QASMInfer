@@ -142,8 +142,8 @@ A destination that cannot be written is an io error, not a crash.
   [1]
   $ test ! -e locked/out.qasm
   $ test ! -s io-write.stdout
-  $ grep -c '^qasminfer: io: locked/out.qasm: ' io-write.stderr
-  1
+  $ cat io-write.stderr
+  qasminfer: io: locked/out.qasm: Permission denied
   $ chmod u+w locked
 
 With --json, a domain error is also reported as a structured object on stdout.
@@ -340,3 +340,49 @@ stream that just failed.
   [1]
   $ cat closed-domain.stderr
   qasminfer: io: no-such.qasm: No such file or directory
+
+A payload may not introduce registers, by any route: a declaration, a
+zero-width declaration, a declaration that shadows an existing register, or a
+physical qubit, which declares one implicitly.
+
+  $ qasminfer --unoptimize --rule Insert_If_FT --cbits 0 --occurrence 0 --instr 'qubit[0] z; x q[0];' ok.qasm zero.qasm >zero.stdout 2>zero.stderr
+  [1]
+  $ test ! -e zero.qasm
+  $ cat zero.stderr
+  qasminfer: param: --instr: the payload must not introduce registers
+
+  $ qasminfer --unoptimize --rule Insert_If_FT --cbits 0 --occurrence 0 --instr 'qubit[2] q; x q[0];' ok.qasm shadow.qasm >shadow.stdout 2>shadow.stderr
+  [1]
+  $ test ! -e shadow.qasm
+  $ cat shadow.stderr
+  qasminfer: param: --instr: the payload must not introduce registers
+
+  $ qasminfer --unoptimize --rule Insert_If_FT --cbits 0 --occurrence 0 --instr 'x $0;' ok.qasm physical.qasm >physical.stdout 2>physical.stderr
+  [1]
+  $ test ! -e physical.qasm
+  $ cat physical.stderr
+  qasminfer: param: --instr: the payload must not introduce registers
+
+The destination appears whole or not at all, and no scratch file is left behind.
+
+  $ qasminfer --step 0 --unoptimize ok.qasm atomic.qasm
+  $ head -n 1 atomic.qasm
+  OPENQASM 2.0;
+  $ ls atomic.qasm* | sort
+  atomic.qasm
+
+  $ printf 'sentinel\n' > kept.qasm
+  $ qasminfer --unoptimize --rule No_Such_Rule ok.qasm kept.qasm >kept.stdout 2>kept.stderr
+  [1]
+  $ cat kept.qasm
+  sentinel
+  $ ls kept.qasm* | sort
+  kept.qasm
+
+Rewriting a file in place still works.
+
+  $ cp ok.qasm inplace.qasm
+  $ qasminfer --step 0 --unoptimize inplace.qasm inplace.qasm
+  $ cmp atomic.qasm inplace.qasm
+  $ ls inplace.qasm* | sort
+  inplace.qasm

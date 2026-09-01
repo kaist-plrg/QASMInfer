@@ -422,18 +422,50 @@ let json_of_applicable_rules source nq nc rules =
       "{\n  \"source\": \"%s\",\n  \"qubits\": %d,\n  \"clbits\": %d,\n  \"rules\": [\n%s\n  ]\n}\n"
       (json_escape source) nq nc rules_json
 
+(* Write through a scratch file in the same directory and rename it into place,
+   so a destination either appears whole or not at all.  Writing directly would
+   truncate an existing destination the moment the file is opened, and a write
+   that failed part way -- a full disk, say -- would leave a half-written program
+   for the next tool in the pipeline to read.  Flushing here also keeps such a
+   failure a Sys_error we can classify, rather than one surfacing out of close
+   wrapped as Fun.Finally_raised. *)
+let write_atomically path output =
+  let scratch = path ^ ".qasminfer.tmp" in
+  let discard () = try Sys.remove scratch with Sys_error _ -> () in
+  (* The scratch file is an implementation detail; a diagnostic names the
+     destination the caller asked for. *)
+  let about_destination message =
+    let prefix = scratch ^ ": " in
+    if String.starts_with ~prefix message then
+      String.sub message (String.length prefix)
+        (String.length message - String.length prefix)
+    else message
+  in
+  (try
+     let channel = open_out_bin scratch in
+     Fun.protect
+       ~finally:(fun () -> close_out_noerr channel)
+       (fun () ->
+         output_string channel output;
+         flush channel)
+   with
+  | Sys_error message ->
+      discard ();
+      io_error path (about_destination message)
+  | exn ->
+      discard ();
+      raise exn);
+  try Sys.rename scratch path with
+  | Sys_error message ->
+      discard ();
+      io_error path (about_destination message)
+
 let write_result output_file output =
   match output_file with
   | None -> (
       try output_string stdout output with
       | Sys_error message -> cli_error "io" "<stdout>: %s" message)
-  | Some path -> (
-      try
-        let channel = open_out path in
-        Fun.protect
-          ~finally:(fun () -> close_out channel)
-          (fun () -> output_string channel output)
-      with Sys_error message -> io_error path message)
+  | Some path -> write_atomically path output
 
 let log_line line =
   output_string stderr line;
@@ -484,7 +516,7 @@ let read_source file_path =
   try In_channel.with_open_bin file_path In_channel.input_all with
   | Sys_error message -> io_error file_path message
 
-let parse_and_desugar_string ~filename source =
+let parse_to_qasm2_ast ~filename source =
   let version =
     try check_qasm_version source with
     | Failure message -> cli_error "parse" "%s" message
@@ -494,15 +526,18 @@ let parse_and_desugar_string ~filename source =
     | V2 -> Q2.parse_string_result ~filename source
     | V3 -> Q3.parse_string_result ~filename source |> Result.map Q3.desugar
   in
-  let ast =
-    match ast with
-    | Ok program -> program
-    | Error message -> cli_error "parse" "%s" message
-  in
+  match ast with
+  | Ok program -> program
+  | Error message -> cli_error "parse" "%s" message
+
+let desugar_qasm2_ast ~filename ast =
   let ast = Q2.inline_qelib ast in
   try Q2.desugar ast with
   | Failure message | Invalid_argument message ->
       cli_error "parse" "%s: %s" filename message
+
+let parse_and_desugar_string ~filename source =
+  desugar_qasm2_ast ~filename (parse_to_qasm2_ast ~filename source)
 
 let parse_and_desugar file_path =
   parse_and_desugar_string ~filename:file_path (read_source file_path)
@@ -604,14 +639,25 @@ let instruction_of_payload option_name nq nc q_assignment c_assignment payload =
     |> List.filter (fun line -> line <> "")
     |> String.concat " "
   in
-  let payload_nq, payload_nc, instruction, _, _ =
-    try
-      parse_and_desugar_string ~filename:option_name
-        (preamble ^ " " ^ payload ^ "\n")
+  let ast =
+    try parse_to_qasm2_ast ~filename:option_name (preamble ^ " " ^ payload ^ "\n")
     with Cli_error (_, detail) -> cli_error "param" "%s" detail
   in
-  if payload_nq <> nq || payload_nc <> nc then
-    cli_error "param" "%s: the payload must not declare registers" option_name;
+  (* Count declarations rather than qubits: a zero-width register, or one
+     shadowing a register the preamble already declared, leaves the counts
+     unchanged while still changing the layout the payload is written against.
+     A physical qubit counts too -- the OpenQASM 3 front end turns "$0" into a
+     declaration. *)
+  let declared =
+    List.length (List.filter (function Qasm2.Ast.Decl _ -> true | _ -> false) ast)
+  in
+  let payload_nq, payload_nc, instruction, _, _ =
+    try desugar_qasm2_ast ~filename:option_name ast
+    with Cli_error (_, detail) -> cli_error "param" "%s" detail
+  in
+  if declared <> List.length declarations || payload_nq <> nq || payload_nc <> nc
+  then
+    cli_error "param" "%s: the payload must not introduce registers" option_name;
   check_payload_gates option_name instruction;
   instruction
 
