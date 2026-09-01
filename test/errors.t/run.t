@@ -223,6 +223,16 @@ control characters or newlines into the error stream.
   $ cat notqasm.stderr
   qasminfer: parse: Unsupported QASM version: not a qasm file at all, and this first line runs on for quit...
 
+  $ printf 'not\346a\377qasm\n' > highbytes.qasm
+  $ qasminfer --step 0 --unoptimize highbytes.qasm highbytes.out.qasm >highbytes.stdout 2>highbytes.stderr
+  [1]
+  $ test ! -e highbytes.out.qasm
+  $ cat highbytes.stderr
+  qasminfer: parse: Unsupported QASM version: not?a?qasm
+  $ LC_ALL=C grep -c '[^ -~]' highbytes.stderr
+  0
+  [1]
+
   $ printf 'OPENQASM \001\002\r\n bad\n' > control.qasm
   $ qasminfer --step 0 --unoptimize control.qasm control.out.qasm >control.stdout 2>control.stderr
   [1]

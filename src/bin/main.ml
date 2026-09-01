@@ -432,15 +432,17 @@ let log_line line =
   output_char stderr '\n'
 
 (* Quoting a line of the source back to the user must not let the source dictate
-   the shape of a diagnostic: a domain error is one printable line, so bound the
-   quotation and replace anything non-printable. *)
+   the shape of a diagnostic.  A domain error is one printable line, so bound the
+   quotation and reduce it to printable ASCII: a binary file would otherwise put
+   raw bytes on stderr, and a caller decoding that stream as UTF-8 would fail on
+   them rather than read the diagnostic. *)
 let quote_source_line line =
   let limit = 60 in
   let visible =
     String.map
       (fun character ->
         let code = Char.code character in
-        if code < 0x20 || code = 0x7f then '?' else character)
+        if code < 0x20 || code >= 0x7f then '?' else character)
       line
   in
   if String.length visible <= limit then visible
