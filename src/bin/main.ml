@@ -290,7 +290,7 @@ let parse_args argv =
   | false, false, _ when manual_options_used ->
       usage_error "--qbits, --cbits, and --occurrence can only be used with --unoptimize --rule"
   | false, false, _ when Option.is_some !step ->
-      usage_error "--step cannot "
+      usage_error "--step can only be used with --unoptimize"
   | false, false, _ when Option.is_some !rule_file ->
       usage_error "--rule-file can only be used with --unoptimize or --unoptimize-rules"
   | false, false, _ when Option.is_some !rule_name ->

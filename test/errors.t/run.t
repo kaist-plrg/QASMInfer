@@ -26,6 +26,12 @@ Argument-shape errors keep exit 2.
   $ head -n 1 shape-flag.stderr
   qasminfer: unknown option '--not-an-option'.
 
+  $ qasminfer --step 1 ok.qasm >shape-step.stdout 2>shape-step.stderr
+  [2]
+  $ test ! -s shape-step.stdout
+  $ head -n 1 shape-step.stderr
+  --step can only be used with --unoptimize
+
   $ qasminfer --rule Insert_I --qbits nope --unoptimize ok.qasm shape-value.qasm >shape-value.stdout 2>shape-value.stderr
   [2]
   $ test ! -e shape-value.qasm
