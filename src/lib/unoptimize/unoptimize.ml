@@ -581,9 +581,15 @@ let unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc =
   in
   loop 0 instr
 
-let unoptimize ?specs ?rule_name ?manual instr step nq nc =
+let unoptimize ?specs ?rule_name ?manual ?seed instr step nq nc =
+  (* An explicit seed makes the random rewrite path reproducible.  A fully
+     addressed rewrite (--rule with every parameter and an occurrence) does not
+     consult the generator for anything that affects the result, so it is
+     reproducible with or without one. *)
   let rng =
-    Random.State.make_self_init ()
+    match seed with
+    | Some seed -> Random.State.make [| seed |]
+    | None -> Random.State.make_self_init ()
   in
   if instruction_qbits_validb nq instr
   then unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc

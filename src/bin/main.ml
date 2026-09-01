@@ -47,6 +47,7 @@ type command =
       manual : Unoptimize.manual_parameters option;
       emit : emit_mode;
       instr_source : instr_source option;
+      seed : int option;
     }
   | UnoptimizeRules of {
       source : string;
@@ -63,9 +64,11 @@ type result_entry = {
 
 let usage_msg =
   "usage: qasminfer [--verbose] [--json] [--output FILE] SOURCE\n\
-   \       qasminfer --unoptimize [--verbose] [--step N] [--emit DIALECT]\n\
-   \                 [--rule NAME [--qbits Q[,Q] | --cbits C] [--instr TEXT]\n\
-   \                 [--occurrence K]] [--rule-file FILE] SOURCE DESTINATION\n\
+   \       qasminfer --unoptimize [--verbose] [--step N] [--seed N]\n\
+   \                 [--emit auto|oq2|oq3] [--rule-file FILE]\n\
+   \                 [--rule NAME [--qbits Q[,Q]] [--cbits C]\n\
+   \                 [--instr TEXT | --instr-file FILE] [--occurrence K]]\n\
+   \                 SOURCE DESTINATION\n\
    \       qasminfer --unoptimize-rules [--verbose] [--json] [--output FILE]\n\
    \                 [--rule-file FILE] SOURCE"
 
@@ -82,6 +85,7 @@ let parse_args argv =
   let cbits = ref None in
   let occurrence = ref None in
   let emit = ref None in
+  let seed = ref None in
   let instr_text = ref None in
   let instr_file = ref None in
   let positionals = ref [] in
@@ -169,6 +173,13 @@ let parse_args argv =
       ( "--emit",
         Arg.String set_emit,
         "Choose the DESTINATION dialect: auto (default), oq2, or oq3" );
+      ( "--seed",
+        Arg.Int
+          (fun value ->
+            if Option.is_some !seed then
+              raise (Arg.Bad "--seed cannot be specified more than once");
+            seed := Some value),
+        "Seed the generator that picks random rewrites" );
       ( "--instr",
         Arg.String (set_instr "--instr" instr_text),
         "Fix the instruction a cbit_instr rule inserts, as QASM TEXT" );
@@ -218,6 +229,8 @@ let parse_args argv =
       usage_error "--unoptimize cannot be used with --unoptimize-rules"
   | false, _, _ when Option.is_some !emit ->
       usage_error "--emit can only be used with --unoptimize"
+  | false, _, _ when Option.is_some !seed ->
+      usage_error "--seed can only be used with --unoptimize"
   | false, _, _ when Option.is_some instr_source ->
       usage_error "--instr and --instr-file can only be used with --unoptimize"
   | false, true, _ when manual_options_used ->
@@ -246,6 +259,7 @@ let parse_args argv =
           manual;
           emit = Option.value !emit ~default:Emit_auto;
           instr_source;
+          seed = !seed;
         }
   | true, false, _ ->
       usage_error
@@ -542,7 +556,7 @@ let payload_text = function
   | Instr_file path -> read_source path
 
 let unoptimize source destination step verbose rule_file rule_name manual emit
-    instr_source =
+    instr_source seed =
   let nq, nc, instr, q_assignment, c_assignment =
     parse_and_desugar source
   in
@@ -563,7 +577,7 @@ let unoptimize source destination step verbose rule_file rule_name manual emit
         Some { manual with Unoptimize.instr = Some instruction }
   in
   let transformed =
-    try Unoptimize.unoptimize ?specs ?rule_name ?manual instr step nq nc with
+    try Unoptimize.unoptimize ?specs ?rule_name ?manual ?seed instr step nq nc with
     | Unoptimize.Domain_error (error_class, detail) ->
         raise (Cli_error (error_class, detail))
   in
@@ -619,10 +633,11 @@ let run_command = function
         manual;
         emit;
         instr_source;
+        seed;
       } ->
       let step = Option.value step ~default:1 in
       unoptimize source destination step verbose rule_file rule_name manual emit
-        instr_source
+        instr_source seed
   | UnoptimizeRules { source; verbose; emit_json; output_file; rule_file } ->
       unoptimize_rules source verbose emit_json output_file rule_file
 

@@ -40,7 +40,7 @@ src/lib/
   extracted/                     # extracted QASMInfer
   unoptimize/                    # OCaml rule loading and rewrite driver
   qasm2/                         # OpenQASM 2 parser/desugar/stringifier
-  qasm3/                         # OpenQASM 3 parser/desugar (partial)
+  qasm3/                         # OpenQASM 3 parser/desugar/sugar (partial)
 src/bin/                         # CLI execution and OpenQASM rewrite modes
 ```
 
@@ -77,34 +77,160 @@ dune exec qasminfer -- --unoptimize input.qasm output.qasm
 
 The rewrite path parses OpenQASM 2 or the supported OpenQASM 3 subset, lowers
 the program to OpenQASMCore, applies extracted transformation specifications,
-and emits canonical OpenQASM 2. This is a normalized rewrite, not a
-text-preserving one: comments, barriers, includes, gate declarations, call
+and emits canonical OpenQASM 2 or OpenQASM 3. This is a normalized rewrite, not
+a text-preserving one: comments, barriers, includes, gate declarations, call
 names, expression spelling, and parallel syntax may be lost or expanded.
 
 ### CLI options
 
 - `--unoptimize SOURCE DESTINATION`, `--unopt SOURCE DESTINATION`: apply
-  unoptimization and write canonical OpenQASM 2.
+  unoptimization and write the result.
 - `--unoptimize-rules SOURCE`: print the currently applicable unoptimization
   rules without rewriting.
 - `--rule NAME`: restrict unoptimization to one built-in or loaded rule. This
   applies exactly one rewrite and cannot be combined with `--step`.
 - `--step N`: apply up to `N` random unoptimization rewrites.
+- `--seed N`: seed the generator that picks random rewrites, making `--step`
+  reproducible.
 - `--rule-file FILE`: append JSON-defined standard-gate rewrite rules after the
   built-in rules.
+- `--emit auto|oq2|oq3`: choose the destination dialect. See
+  [Destination dialect](#destination-dialect).
 - `--qbits 0`, `--qbits 0,1`: manually choose qbit parameters for
   `--unoptimize --rule NAME`.
 - `--cbits 0`: manually choose cbit parameters for
   `--unoptimize --rule NAME`.
+- `--instr TEXT`, `--instr-file FILE`: fix the instruction a `cbit_instr` rule
+  inserts. See [Addressing a rewrite](#addressing-a-rewrite).
 - `--occurrence N`: manually choose the matched occurrence for
-  `--unoptimize --rule NAME`.
+  `--unoptimize --rule NAME`. See
+  [Occurrence semantics](#occurrence-semantics).
 - `--verbose`, `-v`: print the OpenQASMCore program to stderr.
 - `--json`: emit JSON in execution mode or `--unoptimize-rules` mode.
 - `--output FILE`, `-o FILE`: write execution or `--unoptimize-rules` output to
   a file.
 
 Execution-only `--json` and `--output`/`-o` cannot be combined with
-`--unoptimize`. Manual parameter options require `--unoptimize --rule NAME`.
+`--unoptimize`. `--emit`, `--seed`, `--instr`, and `--instr-file` require
+`--unoptimize`; the manual parameter options additionally require `--rule NAME`.
+
+### Destination dialect
+
+Two built-in rule families produce a *nested* single-bit guard:
+`Insert_If_FT` and `Insert_If_TF` insert `if(c==false) if(c==true) INSTR` (resp.
+reversed) at an empty site, and `Double_If_True` and `Double_If_False` duplicate
+an existing guard. OpenQASM 2 has neither nested conditionals nor single-bit
+guards, so these programs cannot be written in it at all.
+
+`--emit` selects how that is handled:
+
+- `auto` (default): write OpenQASM 2 whenever the program can be expressed in
+  it, and OpenQASM 3 otherwise. Every program that OpenQASM 2 could express
+  before is byte-identical under `auto`.
+- `oq2`: always write OpenQASM 2, and fail with an `emit` error rather than
+  approximate an inexpressible program.
+- `oq3`: always write OpenQASM 3.
+
+OpenQASM 3 output declares `include "stdgates.inc";`, uses `qubit[n]` and
+`bit[n]` declarations, writes measurement as `c[i] = measure q[j];`, and writes
+a single-bit guard as `if (c[i]) { ... }` or `if (!c[i]) { ... }`. Because
+QASMCore only ever guards one classical bit, a whole-register comparison is
+emitted as the equivalent chain of per-bit guards rather than reconstructed as
+`c == n`. `sxdg` is emitted as a literal `U` rotation, since `stdgates.inc`
+does not declare it.
+
+Whatever `qasminfer` writes, `qasminfer` reads back to the same QASMCore
+program; re-running `--unoptimize --step 0 --emit oq3` on its own output is a
+fixed point.
+
+### Occurrence semantics
+
+`--occurrence K` selects which matched site a rule rewrites. `K` is a 0-based
+ordinal over the sites of the *lowered QASMCore program*, not over lines of the
+source. Two orderings exist, chosen per rule by its transform strategy:
+
+- **`TransformDeep`** (every built-in except `Insert_Swap`). Sites are the
+  positions *before* each instruction, visited in preorder: a position is
+  counted, then the subtree of the instruction at that position (an `IfInstr`
+  body, or a nested sequence), then the following siblings. There is no site
+  after the last instruction of a sequence.
+- **`TransformTopLevel`** (`Insert_Swap` only). Only the positions of the
+  outermost sequence are sites; the rewrite never descends into an `IfInstr`
+  body or a nested sequence.
+
+For example, `Insert_I` on
+
+```qasm
+h q[0];
+if(c==1) x q[0];
+t q[0];
+```
+
+reports four sites, which `--occurrence 0` through `3` place before `h`, before
+the `if`, before `x` *inside* the guard, and before `t`. Occurrence 2 is the
+guard's body: the subtree of the instruction at position 1 comes before that
+instruction's siblings. There is no occurrence 4.
+
+`--unoptimize-rules` reports, for each applicable rule, the site count for a
+single *representative* parameter -- `qbit1` counted at qubit 0, `qbit2` at
+qubits (0, 1), `cbit_instr` at bit 0 with a `nop` payload, and `none` with no
+parameter. It is not a sum over all admissible parameters, and a rule whose
+representative parameter does not exist (for instance a `qbit2` rule on a
+one-qubit program) is omitted from the listing entirely.
+
+### Addressing a rewrite
+
+`--rule NAME` plus its parameters and `--occurrence` pin a rewrite completely,
+so repeated runs of the same command agree byte for byte:
+
+```bash
+qasminfer --unoptimize --rule Insert_Swap --qbits 0,1 --occurrence 0 in.qasm out.qasm
+qasminfer --unoptimize --rule Insert_If_FT --cbits 0 --occurrence 0 \
+  --instr 'x q[0];' in.qasm out.qasm
+```
+
+Rules taking two qubits require them to be **distinct**. The underlying Rocq
+transforms do not: `Transform_swap_insert` and `Transform_cnot_cnot` assume only
+that each index is in range, and the matrix model is total at equal indices
+(`mat_swap q q` and `mat_cnot q q` are both the identity). OpenQASM is the part
+that objects -- neither dialect allows naming one qubit twice in a gate -- so
+`--qbits 0,0` is refused rather than producing `swap q[0],q[0];`.
+
+`--instr` fixes the payload that `Insert_If_FT` and `Insert_If_TF` insert;
+without it the payload is drawn at random and the run is not reproducible. The
+payload is parsed against the source program's own register layout, so it
+accepts either dialect's statement syntax, may contain several statements, and
+may itself be conditional. It names registers by the canonical names the
+destination would use -- for an OpenQASM 3 source using physical qubits, that is
+the renamed register (`qasm3_physical[0]`), not `$0`. A payload that declares
+registers or references an out-of-range index is rejected.
+
+### Exit codes and error classes
+
+| exit | meaning |
+| --- | --- |
+| 0 | success |
+| 1 | domain error: one stderr line, `qasminfer: <class>: <detail>` |
+| 2 | argument-shape error: usage text on stderr |
+
+The error classes are stable:
+
+| class | raised by |
+| --- | --- |
+| `io` | `SOURCE` cannot be read, `DESTINATION` cannot be written |
+| `parse` | lexical or syntax error, unsupported or missing QASM version |
+| `rule-file` | `--rule-file` is unreadable, malformed, or holds an invalid rule |
+| `rule` | unknown rule name, duplicate rule name, rule not applicable |
+| `param` | bad `--qbits`/`--cbits`/`--instr` value for the selected rule |
+| `occurrence` | `--occurrence` out of range for the selected rule |
+| `emit` | the program cannot be expressed in the requested dialect |
+| `internal` | an unexpected failure; please report it |
+
+A failing invocation never creates or truncates `DESTINATION`. With `--json`,
+a domain error is additionally written to stdout as
+`{"error": {"class": ..., "message": ...}}`. The one exception to the table is
+a bare `qasminfer` with no arguments, which keeps its legacy exit status of 1
+and prints usage.
 
 ### Rule files
 
@@ -149,7 +275,7 @@ Execution output:
 11 : 0.0000000000000000e+00   # probability for creg being [11]
 ```
 
-Unoptimization writes canonical OpenQASM 2 to the destination file. For example,
+Unoptimization writes canonical OpenQASM to the destination file. For example,
 running:
 
 ```bash
@@ -163,6 +289,26 @@ OPENQASM 2.0;
 include "qelib1.inc";
 qreg q[2];
 swap q[0],q[1];
+h q[0];
+```
+
+A rule that produces a nested guard falls back to OpenQASM 3:
+
+```bash
+dune exec qasminfer -- --unoptimize --rule Insert_If_FT --cbits 0 \
+  --occurrence 0 --instr 'x q[0];' input.qasm output.qasm
+```
+
+```qasm
+OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+bit[1] c;
+if (!c[0]) {
+  if (c[0]) {
+    x q[0];
+  }
+}
 h q[0];
 ```
 

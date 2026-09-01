@@ -135,3 +135,20 @@ Without --instr the payload is still random, so the old behaviour is intact.
   $ qasminfer --unoptimize --rule Insert_If_FT --cbits 0 --occurrence 0 target.qasm random.qasm
   $ head -n 1 random.qasm
   OPENQASM 3.0;
+
+--seed makes the random path reproducible without addressing every parameter.
+
+  $ for run in 1 2 3; do
+  >   qasminfer --unoptimize --step 3 --seed 20260901 target.qasm "seeded$run.qasm"
+  > done
+  $ cmp seeded1.qasm seeded2.qasm
+  $ cmp seeded2.qasm seeded3.qasm
+
+  $ qasminfer --unoptimize --step 3 --seed 1 target.qasm seed-a.qasm
+  $ qasminfer --unoptimize --step 3 --seed 2 target.qasm seed-b.qasm
+  $ if cmp -s seed-a.qasm seed-b.qasm; then echo "different seeds must not agree"; fi
+
+  $ qasminfer --seed 1 --unoptimize-rules target.qasm >seed-rules.stdout 2>seed-rules.stderr
+  [2]
+  $ head -n 1 seed-rules.stderr
+  --seed can only be used with --unoptimize

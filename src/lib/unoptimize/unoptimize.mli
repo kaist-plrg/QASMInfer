@@ -32,6 +32,7 @@ val unoptimize :
   ?specs:Extracted.transformSpec list ->
   ?rule_name:string ->
   ?manual:manual_parameters ->
+  ?seed:int ->
   Extracted.instruction ->
   int ->
   int ->
