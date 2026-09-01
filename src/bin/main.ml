@@ -164,7 +164,11 @@ let parse_args argv =
       ("-v", Arg.Set verbose, "Short for --verbose");
       ("--step", Arg.Int (fun n -> step := Some n), "Set step number of unoptimization");
       ( "--rule",
-        Arg.String (fun name -> rule_name := Some name),
+        Arg.String
+          (fun name ->
+            if Option.is_some !rule_name then
+              raise (Arg.Bad "--rule cannot be specified more than once");
+            rule_name := Some name),
         "Apply only the transform rule named NAME once" );
       ( "--qbits",
         Arg.String (set_int_list "--qbits" qbits),
@@ -176,7 +180,11 @@ let parse_args argv =
         Arg.Int set_occurrence,
         "Set rewrite occurrence for --unoptimize --rule" );
       ( "--rule-file",
-        Arg.String (fun path -> rule_file := Some path),
+        Arg.String
+          (fun path ->
+            if Option.is_some !rule_file then
+              raise (Arg.Bad "--rule-file cannot be specified more than once");
+            rule_file := Some path),
         "Read standard-gate rewrite rules from JSON FILE" );
       ( "--emit",
         Arg.String set_emit,
@@ -493,7 +501,8 @@ let parse_and_desugar_string ~filename source =
   in
   let ast = Q2.inline_qelib ast in
   try Q2.desugar ast with
-  | Failure message -> cli_error "parse" "%s: %s" filename message
+  | Failure message | Invalid_argument message ->
+      cli_error "parse" "%s: %s" filename message
 
 let parse_and_desugar file_path =
   parse_and_desugar_string ~filename:file_path (read_source file_path)
@@ -561,11 +570,33 @@ let render_program emit nq nc q_assignment c_assignment instruction =
    ("qasm3_physical[0]"), not "$0".  The generated preamble is one line, so a
    diagnostic's line number is the payload's own except on the first line, where
    the column is shifted. *)
-let instruction_of_payload nq nc q_assignment c_assignment payload =
+(* The --qbits path refuses a two-qubit gate that names one qubit twice; a
+   payload is another way of asking this tool to emit one, so it is held to the
+   same rule.  A degenerate gate already present in SOURCE is still passed
+   through: that is the user's own program, not something asked for here. *)
+let check_payload_gates option_name instruction =
+  let rec check = function
+    | SwapInstr (qbit1, qbit2) when qbit1 = qbit2 ->
+        cli_error "param"
+          "%s: swap names qubit %d twice, which OpenQASM does not allow"
+          option_name qbit1
+    | CnotInstr (qbit1, qbit2) when qbit1 = qbit2 ->
+        cli_error "param"
+          "%s: cx names qubit %d twice, which OpenQASM does not allow"
+          option_name qbit1
+    | SeqInstr instructions -> List.iter check instructions
+    | IfInstr (_, _, body) -> check body
+    | NopInstr | RotateInstr _ | CnotInstr _ | SwapInstr _ | MeasureInstr _
+    | ResetInstr _ ->
+        ()
+  in
+  check instruction
+
+let instruction_of_payload option_name nq nc q_assignment c_assignment payload =
   let declarations =
     match Q3.sugar nq nc q_assignment c_assignment Extracted.NopInstr with
     | Ok program -> program
-    | Error message -> cli_error "param" "--instr: %s" message
+    | Error message -> cli_error "param" "%s: %s" option_name message
   in
   let preamble =
     Q3.Ast.Include "stdgates.inc" :: declarations
@@ -575,16 +606,18 @@ let instruction_of_payload nq nc q_assignment c_assignment payload =
   in
   let payload_nq, payload_nc, instruction, _, _ =
     try
-      parse_and_desugar_string ~filename:"--instr" (preamble ^ " " ^ payload ^ "\n")
+      parse_and_desugar_string ~filename:option_name
+        (preamble ^ " " ^ payload ^ "\n")
     with Cli_error (_, detail) -> cli_error "param" "%s" detail
   in
   if payload_nq <> nq || payload_nc <> nc then
-    cli_error "param" "--instr: the payload must not declare registers";
+    cli_error "param" "%s: the payload must not declare registers" option_name;
+  check_payload_gates option_name instruction;
   instruction
 
-let payload_text = function
-  | Instr_text text -> text
-  | Instr_file path -> read_source path
+let payload_source = function
+  | Instr_text text -> ("--instr", text)
+  | Instr_file path -> ("--instr-file", read_source path)
 
 let unoptimize source destination step verbose rule_file rule_name manual emit
     instr_source seed =
@@ -596,9 +629,10 @@ let unoptimize source destination step verbose rule_file rule_name manual emit
     match instr_source with
     | None -> manual
     | Some instr_source ->
+        let option_name, payload = payload_source instr_source in
         let instruction =
-          instruction_of_payload nq nc q_assignment c_assignment
-            (payload_text instr_source)
+          instruction_of_payload option_name nq nc q_assignment c_assignment
+            payload
         in
         let manual =
           Option.value manual
@@ -645,19 +679,71 @@ let json_of_error error_class detail =
 
 (* Every domain failure prints exactly one stderr line, and, when the caller
    asked for JSON, the same failure as a structured object on stdout. *)
-let one_line detail =
+let is_valid_utf8 text =
+  let length = String.length text in
+  let byte index = Char.code text.[index] in
+  let continuation index count =
+    index + count < length
+    &&
+    let rec check offset =
+      offset > count
+      || (byte (index + offset) land 0xc0 = 0x80 && check (offset + 1))
+    in
+    check 1
+  in
+  let rec scan index =
+    if index >= length then true
+    else
+      let first = byte index in
+      if first < 0x80 then scan (index + 1)
+      else if first >= 0xc2 && first <= 0xdf && continuation index 1 then
+        scan (index + 2)
+      else if
+        first >= 0xe0 && first <= 0xef
+        && continuation index 2
+        && not (first = 0xe0 && byte (index + 1) < 0xa0)
+        && not (first = 0xed && byte (index + 1) >= 0xa0)
+      then scan (index + 3)
+      else if
+        first >= 0xf0 && first <= 0xf4
+        && continuation index 3
+        && not (first = 0xf0 && byte (index + 1) < 0x90)
+        && not (first = 0xf4 && byte (index + 1) >= 0x90)
+      then scan (index + 4)
+      else false
+  in
+  scan 0
+
+(* A diagnostic has to survive two consumers: it is one line on stderr and a
+   JSON string on stdout.  So it carries no control characters, and it decodes
+   as UTF-8.  Text that is already valid UTF-8 keeps its characters -- a
+   non-ASCII path stays readable -- while text that is not, such as raw bytes
+   echoed out of a binary source, has the offending bytes replaced. *)
+let printable_detail detail =
+  let ascii_only = not (is_valid_utf8 detail) in
   String.map
     (fun character ->
       let code = Char.code character in
-      if code < 0x20 || code = 0x7f then ' ' else character)
+      if code < 0x20 || code = 0x7f then ' '
+      else if code >= 0x80 && ascii_only then '?'
+      else character)
     detail
 
+(* Report on stderr first: it is the stream that always carries the diagnostic,
+   and the JSON copy goes to the very channel whose failure may be what we are
+   reporting.  Each write is drained here, so a stream that cannot be written
+   loses its copy of the message instead of raising after main has returned. *)
 let report_domain_error emit_json error_class detail =
-  (* The JSON object keeps the detail verbatim, escaped; the stderr line is
-     flattened so the one-line contract holds whatever the detail contains. *)
-  if emit_json then output_string stdout (json_of_error error_class detail);
-  output_message stderr
-    (Printf.sprintf "qasminfer: %s: %s" error_class (one_line detail));
+  let detail = printable_detail detail in
+  (try
+     output_message stderr (Printf.sprintf "qasminfer: %s: %s" error_class detail);
+     flush stderr
+   with Sys_error _ -> close_out_noerr stderr);
+  if emit_json then (
+    try
+      output_string stdout (json_of_error error_class detail);
+      flush stdout
+    with Sys_error _ -> close_out_noerr stdout);
   1
 
 let run_command = function
@@ -682,6 +768,20 @@ let run_command = function
   | UnoptimizeRules { source; verbose; emit_json; output_file; rule_file } ->
       unoptimize_rules source verbose emit_json output_file rule_file
 
+(* Draining the buffers is part of the work.  A write that only fails once the
+   buffer reaches the file descriptor -- a closed or full stdout -- would
+   otherwise escape after main has returned, as a Fatal error with the wrong
+   exit code.  On failure the channel is closed without a second flush attempt,
+   so the runtime's own exit-time flush cannot raise again. *)
+let drain_output () =
+  match flush stdout with
+  | () -> ()
+  | exception Sys_error message ->
+      close_out_noerr stdout;
+      cli_error "io" "<stdout>: %s" message
+
+let drain_diagnostics () = try flush stderr with Sys_error _ -> close_out_noerr stderr
+
 let emits_json = function
   | Execute { emit_json; _ } | UnoptimizeRules { emit_json; _ } -> emit_json
   | Unoptimize _ -> false
@@ -700,8 +800,13 @@ let main argv =
   | command -> (
       let emit_json = emits_json command in
       let fail = report_domain_error emit_json in
-      match run_command command with
-      | () -> 0
+      match
+        run_command command;
+        drain_output ()
+      with
+      | () ->
+          drain_diagnostics ();
+          0
       | exception Cli_error (error_class, detail) -> fail error_class detail
       | exception Unoptimize.Domain_error (error_class, detail) ->
           fail error_class detail

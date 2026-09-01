@@ -154,9 +154,19 @@ let rec desugar_parallel_program (qasm_program : program)
 (* 2. desugar gate subroutines (macros) *)
 (****************************************)
 
-let create_param_map (params : id list) (args : 'a list) : 'a IdMap.t =
-  List.combine params args
-  |> List.fold_left (fun acc (k, v) -> IdMap.add k v acc) IdMap.empty
+(* Calling a gate with the wrong number of parameters or arguments is a
+   malformed program, so say which gate and what it expected rather than letting
+   List.combine raise Invalid_argument. *)
+let create_param_map (kind : string) (gate_name : id) (params : id list)
+    (args : 'a list) : 'a IdMap.t =
+  let expected = List.length params and actual = List.length args in
+  if expected <> actual then
+    failwith
+      (Printf.sprintf "gate %s expects %d %s but got %d" gate_name expected kind
+         actual)
+  else
+    List.combine params args
+    |> List.fold_left (fun acc (k, v) -> IdMap.add k v acc) IdMap.empty
 
 let instantiate_arg (arg_map : argument_dp IdMap.t) (arg : argument) :
     argument_dp =
@@ -191,9 +201,9 @@ let instantiate_gop (exp_map : exp IdMap.t) (arg_map : argument_dp IdMap.t)
 
 let instantiate_gate_decl (decl_head : gatedecl) (decl_body : gop list)
     (exp_list : exp list) (arg_list : argument_dp list) : uop_dp list =
-  let _, exp_params, arg_params = decl_head in
-  let exp_map = create_param_map exp_params exp_list in
-  let arg_map = create_param_map arg_params arg_list in
+  let gate_name, exp_params, arg_params = decl_head in
+  let exp_map = create_param_map "parameter(s)" gate_name exp_params exp_list in
+  let arg_map = create_param_map "argument(s)" gate_name arg_params arg_list in
   decl_body |> List.filter_map (instantiate_gop exp_map arg_map)
 
 let extract_gate_decl_rev (qasm : program) : (gatedecl * gop list) list =

@@ -241,3 +241,102 @@ control characters or newlines into the error stream.
   qasminfer: parse: Unsupported QASM version: OPENQASM ???
   $ wc -l < control.stderr | tr -d ' '
   1
+
+An --instr payload cannot smuggle in a degenerate two-qubit gate.  The --qbits
+path already refuses equal operands; the payload is another way the caller asks
+this tool to emit a gate, so it is held to the same rule.  (A degenerate gate
+already present in SOURCE is still passed through: that is the user's own
+program, not something asked for on the command line.)
+
+  $ qasminfer --unoptimize --rule Insert_If_FT --cbits 0 --occurrence 0 --instr 'swap q[0],q[0];' ok.qasm degen-swap.qasm >degen-swap.stdout 2>degen-swap.stderr
+  [1]
+  $ test ! -e degen-swap.qasm
+  $ test ! -s degen-swap.stdout
+  $ cat degen-swap.stderr
+  qasminfer: param: --instr: swap names qubit 0 twice, which OpenQASM does not allow
+
+  $ qasminfer --unoptimize --rule Insert_If_FT --cbits 0 --occurrence 0 --instr 'cx q[1],q[1];' ok.qasm degen-cx.qasm >degen-cx.stdout 2>degen-cx.stderr
+  [1]
+  $ test ! -e degen-cx.qasm
+  $ cat degen-cx.stderr
+  qasminfer: param: --instr: cx names qubit 1 twice, which OpenQASM does not allow
+
+Calling a gate with the wrong number of arguments is a malformed program, not an
+internal failure, and the diagnostic says which gate and what it expected.
+
+  $ printf 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[2];\ncx q[0];\n' > arity.qasm
+  $ qasminfer --step 0 --unoptimize arity.qasm arity.out.qasm >arity.stdout 2>arity.stderr
+  [1]
+  $ test ! -e arity.out.qasm
+  $ cat arity.stderr
+  qasminfer: parse: arity.qasm: gate cx expects 2 argument(s) but got 1
+
+  $ printf 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[1];\nrz(1,2) q[0];\n' > arity2.qasm
+  $ qasminfer --step 0 --unoptimize arity2.qasm arity2.out.qasm >arity2.stdout 2>arity2.stderr
+  [1]
+  $ cat arity2.stderr
+  qasminfer: parse: arity2.qasm: gate rz expects 1 parameter(s) but got 2
+
+  $ qasminfer --unoptimize --rule Insert_If_FT --cbits 0 --occurrence 0 --instr 'cx q[0];' ok.qasm arity3.qasm >arity3.stdout 2>arity3.stderr
+  [1]
+  $ test ! -e arity3.qasm
+  $ cat arity3.stderr
+  qasminfer: param: --instr: gate cx expects 2 argument(s) but got 1
+
+A --instr-file diagnostic names --instr-file, not --instr.
+
+  $ printf 'x q[9];\n' > bad-payload.txt
+  $ qasminfer --unoptimize --rule Insert_If_FT --cbits 0 --occurrence 0 --instr-file bad-payload.txt ok.qasm from-file.qasm >from-file.stdout 2>from-file.stderr
+  [1]
+  $ test ! -e from-file.qasm
+  $ cat from-file.stderr
+  qasminfer: param: --instr-file: U: q[9] is out of range
+
+Both streams stay decodable as UTF-8, whatever bytes the source contains.
+
+  $ printf 'OPENQASM 2.0;\nqreg q[1];\n\351\n' > highbyte.qasm
+  $ qasminfer --json --unoptimize-rules highbyte.qasm >hb.stdout 2>hb.stderr
+  [1]
+  $ cat hb.stderr
+  qasminfer: parse: highbyte.qasm:3:1: Unexpected char: ?
+  $ cat hb.stdout
+  {
+    "error": {
+      "class": "parse",
+      "message": "highbyte.qasm:3:1: Unexpected char: ?"
+    }
+  }
+
+Selecting a rule twice is an argument error, not a silent last-one-wins.
+
+  $ qasminfer --unoptimize --rule Insert_Swap --rule Insert_I ok.qasm dup-rule.qasm >dup-rule.stdout 2>dup-rule.stderr
+  [2]
+  $ test ! -e dup-rule.qasm
+  $ head -n 1 dup-rule.stderr
+  qasminfer: --rule cannot be specified more than once.
+
+  $ qasminfer --rule-file id-rules.json --rule-file dup-rules.json --unoptimize-rules ok.qasm >dup-rf.stdout 2>dup-rf.stderr
+  [2]
+  $ head -n 1 dup-rf.stderr
+  qasminfer: --rule-file cannot be specified more than once.
+
+A closed output stream is an io error like any other, not a crash after the
+work is already done.
+
+  $ qasminfer ok.qasm >&- 2>closed.stderr
+  [1]
+  $ cat closed.stderr
+  qasminfer: io: <stdout>: Bad file descriptor
+
+The same holds when --json would have put a second copy of the diagnostic on the
+stream that just failed.
+
+  $ qasminfer --json ok.qasm >&- 2>closed-json.stderr
+  [1]
+  $ cat closed-json.stderr
+  qasminfer: io: <stdout>: Bad file descriptor
+
+  $ qasminfer --json --unoptimize-rules no-such.qasm >&- 2>closed-domain.stderr
+  [1]
+  $ cat closed-domain.stderr
+  qasminfer: io: no-such.qasm: No such file or directory

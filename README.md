@@ -113,6 +113,9 @@ names, expression spelling, and parallel syntax may be lost or expanded.
 Execution-only `--json` and `--output`/`-o` cannot be combined with
 `--unoptimize`. `--emit`, `--seed`, `--instr`, and `--instr-file` require
 `--unoptimize`; the manual parameter options additionally require `--rule NAME`.
+No option that takes a value may be given twice: repeating one is an argument
+error rather than a silent last-one-wins, so a generated command line cannot
+address a rewrite differently from how it reads.
 
 ### Destination dialect
 
@@ -196,7 +199,11 @@ qasminfer --unoptimize --rule Insert_If_FT --cbits 0 --occurrence 0 \
   --instr 'x q[0];' in.qasm out.qasm
 ```
 
-Rules taking two qubits require them to be **distinct**. The underlying Rocq
+Rules taking two qubits require them to be **distinct**, and so does an
+`--instr` payload: both are ways of asking this tool to emit a gate. A
+degenerate gate already present in the source program is still passed through
+unchanged, since that is the user's own program rather than something requested
+on the command line. The underlying Rocq
 transforms do not: `Transform_swap_insert` and `Transform_cnot_cnot` assume only
 that each index is in range, and the matrix model is total at equal indices
 (`mat_swap q q` and `mat_cnot q q` are both the identity). OpenQASM is the part
