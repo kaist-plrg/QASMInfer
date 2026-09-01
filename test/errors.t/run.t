@@ -190,3 +190,38 @@ that is wider than any built-in.
   > EOF
   $ qasminfer --rule-file czcz-rules.json --unoptimize-rules two-ids.qasm | grep -F II_to_CZCZ
   II_to_CZCZ: occurrences=1 param=none
+
+Every io diagnostic names the path, even when the underlying system error does
+not (opening a directory reports only "Is a directory" on some platforms).
+
+  $ mkdir -p adir
+  $ qasminfer --step 0 --unoptimize adir dir-source.qasm >dir-source.stdout 2>dir-source.stderr
+  [1]
+  $ test ! -e dir-source.qasm
+  $ grep -c '^qasminfer: io: adir: ' dir-source.stderr
+  1
+
+  $ qasminfer --step 0 --unoptimize ok.qasm adir >dir-dest.stdout 2>dir-dest.stderr
+  [1]
+  $ grep -c '^qasminfer: io: adir: ' dir-dest.stderr
+  1
+
+A diagnostic that quotes the source stays one printable line: the quoted text is
+bounded and non-printable bytes are replaced, so a binary file cannot smuggle
+control characters or newlines into the error stream.
+
+  $ printf 'not a qasm file at all, and this first line runs on for quite a while\n' > notqasm.qasm
+  $ qasminfer --step 0 --unoptimize notqasm.qasm notqasm.out.qasm >notqasm.stdout 2>notqasm.stderr
+  [1]
+  $ test ! -e notqasm.out.qasm
+  $ cat notqasm.stderr
+  qasminfer: parse: Unsupported QASM version: not a qasm file at all, and this first line runs on for quit...
+
+  $ printf 'OPENQASM \001\002\r\n bad\n' > control.qasm
+  $ qasminfer --step 0 --unoptimize control.qasm control.out.qasm >control.stdout 2>control.stderr
+  [1]
+  $ test ! -e control.out.qasm
+  $ cat control.stderr
+  qasminfer: parse: Unsupported QASM version: OPENQASM ???
+  $ wc -l < control.stderr | tr -d ' '
+  1

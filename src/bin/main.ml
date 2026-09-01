@@ -30,6 +30,14 @@ exception Cli_error of string * string
 let cli_error error_class format =
   Printf.ksprintf (fun detail -> raise (Cli_error (error_class, detail))) format
 
+(* System error messages usually carry the path, but not always: reading a
+   directory reports a bare "Is a directory" on some platforms.  Make every io
+   diagnostic name the file exactly once. *)
+let io_error file_path message =
+  if String.starts_with ~prefix:(file_path ^ ":") message then
+    cli_error "io" "%s" message
+  else cli_error "io" "%s: %s" file_path message
+
 type command =
   | Execute of {
       source : string;
@@ -417,11 +425,26 @@ let write_result output_file output =
         Fun.protect
           ~finally:(fun () -> close_out channel)
           (fun () -> output_string channel output)
-      with Sys_error message -> cli_error "io" "%s" message)
+      with Sys_error message -> io_error path message)
 
 let log_line line =
   output_string stderr line;
   output_char stderr '\n'
+
+(* Quoting a line of the source back to the user must not let the source dictate
+   the shape of a diagnostic: a domain error is one printable line, so bound the
+   quotation and replace anything non-printable. *)
+let quote_source_line line =
+  let limit = 60 in
+  let visible =
+    String.map
+      (fun character ->
+        let code = Char.code character in
+        if code < 0x20 || code = 0x7f then '?' else character)
+      line
+  in
+  if String.length visible <= limit then visible
+  else String.sub visible 0 limit ^ "..."
 
 let check_qasm_version source =
   let rec find_version_line = function
@@ -441,13 +464,15 @@ let check_qasm_version source =
     if prefix = "OPENQASM 2" then V2
     else if prefix = "OPENQASM 3" then V3
     else
-      failwith ("Unsupported QASM version: " ^ first_meaningful_line)
+      failwith
+        ("Unsupported QASM version: " ^ quote_source_line first_meaningful_line)
   else
-    failwith ("Invalid QASM file format: " ^ first_meaningful_line)
+    failwith
+      ("Invalid QASM file format: " ^ quote_source_line first_meaningful_line)
 
 let read_source file_path =
   try In_channel.with_open_bin file_path In_channel.input_all with
-  | Sys_error message -> cli_error "io" "%s" message
+  | Sys_error message -> io_error file_path message
 
 let parse_and_desugar_string ~filename source =
   let version =
@@ -614,9 +639,19 @@ let json_of_error error_class detail =
 
 (* Every domain failure prints exactly one stderr line, and, when the caller
    asked for JSON, the same failure as a structured object on stdout. *)
+let one_line detail =
+  String.map
+    (fun character ->
+      let code = Char.code character in
+      if code < 0x20 || code = 0x7f then ' ' else character)
+    detail
+
 let report_domain_error emit_json error_class detail =
+  (* The JSON object keeps the detail verbatim, escaped; the stderr line is
+     flattened so the one-line contract holds whatever the detail contains. *)
   if emit_json then output_string stdout (json_of_error error_class detail);
-  output_message stderr (Printf.sprintf "qasminfer: %s: %s" error_class detail);
+  output_message stderr
+    (Printf.sprintf "qasminfer: %s: %s" error_class (one_line detail));
   1
 
 let run_command = function
