@@ -353,6 +353,12 @@ Example JSON:
 }
 ```
 
+## Rule catalog backlog
+
+[docs/rule-catalog-backlog.md](docs/rule-catalog-backlog.md) records the
+feasibility and design answers for the proposed catalog extensions: extending
+the DOmega checker alphabet, parametric rotation pairs, and empty-lhs entries.
+
 ## Committed extraction and proof checking
 
 `theories/extracted.ml` is committed so downstream users can build the OCaml
