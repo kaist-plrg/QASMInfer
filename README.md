@@ -143,6 +143,13 @@ Whatever `qasminfer` writes, `qasminfer` reads back to the same QASMCore
 program; re-running `--unoptimize --step 0 --emit oq3` on its own output is a
 fixed point.
 
+The emitted OpenQASM 3 was also checked against an independent implementation:
+Qiskit 2.5.2 with `qiskit-qasm3-import` 0.6.0 parses it, reads `if (!c[0])` as
+the condition `(c[0], False)` on the expected clbit, and Aer 0.17.2 reproduces
+`qasminfer`'s own execution distribution from the emitted file to within
+sampling error. Qiskit is not a build or test dependency; this was a one-off
+cross-check.
+
 ### Occurrence semantics
 
 `--occurrence K` selects which matched site a rule rewrites. `K` is a 0-based
