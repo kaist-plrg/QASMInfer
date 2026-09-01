@@ -361,15 +361,21 @@ let require_arity option_name expected = function
 
 (* Rules taking a [qbit2] parameter must be given two distinct qubits.
 
-   This is a surface-syntax restriction, not a proof-side one: the Rocq
-   transforms behind Insert_Swap and Insert_Cnot_Cnot
-   (theories/transform/Transform.v, Transform_swap_insert and
-   Transform_cnot_cnot) assume only [Qbit_index_valid] of each index and carry
-   no distinctness hypothesis.  OpenQASM 2 and OpenQASM 3, however, both forbid
-   naming the same qubit twice in one gate, so "swap q[0],q[0];" and
-   "CX q[0],q[0];" are rejected by mainstream parsers (Qiskit 2.3.0 raises
-   QASM2ParseError).  Emitting them would produce a DESTINATION nobody can read
-   back, so the equal-operand case is refused here instead.
+   This is a surface-syntax restriction, not a proof-side one.  The Rocq
+   transforms behind Insert_Swap and Insert_Cnot_Cnot -- Transform_swap_insert
+   and Transform_cnot_cnot in theories/transform/Transform.v -- assume only
+   [Qbit_index_valid] of each index and carry no distinctness hypothesis, and
+   the matrix model is total at equal indices: mat_swap q q and mat_cnot q q
+   both reduce to mat_eye (theories/operator/Multiple.v, mat_swap_eq and
+   mat_ctrl_single_eq), and mat_cnot_Hermitian / mat_cnot_unitary hold with no
+   hypotheses at all.  A degenerate two-qubit gate is therefore a well-defined
+   identity in the semantics, just a useless one.
+
+   OpenQASM is the part that objects: both dialects forbid naming the same
+   qubit twice in one gate, so "swap q[0],q[0];" and "CX q[0],q[0];" are
+   rejected by mainstream parsers (Qiskit 2.3.0 raises QASM2ParseError).
+   Emitting them would produce a DESTINATION nobody can read back, so the
+   equal-operand case is refused here instead.
 
    The automatic path never reaches this: [random_qbit2] draws an ordered
    distinct pair by construction. *)

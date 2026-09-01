@@ -21,8 +21,7 @@ let rec extract_physical_idx = function
   | [] -> []
   | Qop qop :: rest ->
       extract_physical_idx_qop qop @ extract_physical_idx rest
-  | If (_, _, qops) :: rest ->
-      List.concat_map extract_physical_idx_qop qops @ extract_physical_idx rest
+  | If (_, body) :: rest -> extract_physical_idx body @ extract_physical_idx rest
   | _ :: rest -> extract_physical_idx rest
 
 let desugar_physical_qubits prog =
@@ -88,15 +87,22 @@ let desugar3_decl = function
   | QReg (id, i) -> Ast2.QReg (id, i)
   | CReg (id, i) -> Ast2.CReg (id, i)
 
-let desugar3_statement = function
+let desugar3_cond = function
+  | CondReg (id, value) -> Ast2.CondReg (id, value)
+  | CondBit (id, index, value) -> Ast2.CondBit (id, index, value)
+
+let rec desugar3_statement = function
   | Include dep -> [ Ast2.Include dep ]
   | Decl decl -> [ Ast2.Decl (desugar3_decl decl) ]
   | GateDecl (gdecl, gop_list) ->
       [ Ast2.GateDecl (gdecl, List.map desugar3_gop gop_list) ]
   | OpaqueDecl gdecl -> [ Ast2.OpaqueDecl gdecl ]
   | Qop qop -> [ Ast2.Qop (desugar3_qop qop) ]
-  | If (id, i, qops) ->
-      List.map (fun qop -> Ast2.If (id, i, desugar3_qop qop)) qops
+  | If (cond, body) ->
+      (* A conditional guards its whole body.  Splitting it into one guard per
+         statement would change the meaning whenever the body writes to the
+         register it is guarded on. *)
+      [ Ast2.IfBlock (desugar3_cond cond, List.concat_map desugar3_statement body) ]
   | Barrier args -> [ Ast2.Barrier args ]
 
 let desugar3_program prog =

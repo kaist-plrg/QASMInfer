@@ -43,6 +43,10 @@ rule token =
   | "if"        { IF }
   | "barrier"   { BARRIER }
 
+  | "true"      { TRUE }
+  | "false"     { FALSE }
+  | '!'         { EXCLAM }
+
   | "qreg"      { QREG }
   | "creg"      { CREG }
   | "qubit"     { QUBIT }

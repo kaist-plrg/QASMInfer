@@ -6,6 +6,18 @@ module IntMap = Map.Make(Int)
 
 type version = V2 | V3
 
+(* Which OpenQASM dialect --unoptimize writes.  [Emit_auto] keeps OpenQASM 2
+   whenever the transformed program fits in it, so existing outputs stay
+   byte-identical, and falls back to OpenQASM 3 for the nested conditionals only
+   OpenQASM 3 can spell. *)
+type emit_mode = Emit_auto | Emit_oq2 | Emit_oq3
+
+let emit_mode_of_string = function
+  | "auto" -> Some Emit_auto
+  | "oq2" -> Some Emit_oq2
+  | "oq3" -> Some Emit_oq3
+  | _ -> None
+
 (* A failure the user can act on.  The first field is the error class, which is
    part of the CLI contract; see the "Exit codes and error classes" section of
    the README. *)
@@ -29,6 +41,7 @@ type command =
       rule_file : string option;
       rule_name : string option;
       manual : Unoptimize.manual_parameters option;
+      emit : emit_mode;
     }
   | UnoptimizeRules of {
       source : string;
@@ -44,9 +57,12 @@ type result_entry = {
 }
 
 let usage_msg =
-  "usage: qasminfer [OPTIONS] SOURCE\n\
-   \       qasminfer --unoptimize [--verbose] SOURCE DESTINATION\n\
-   \       qasminfer --unoptimize-rules [--json] SOURCE"
+  "usage: qasminfer [--verbose] [--json] [--output FILE] SOURCE\n\
+   \       qasminfer --unoptimize [--verbose] [--step N] [--emit DIALECT]\n\
+   \                 [--rule NAME [--qbits Q[,Q] | --cbits C] [--instr TEXT]\n\
+   \                 [--occurrence K]] [--rule-file FILE] SOURCE DESTINATION\n\
+   \       qasminfer --unoptimize-rules [--verbose] [--json] [--output FILE]\n\
+   \                 [--rule-file FILE] SOURCE"
 
 let parse_args argv =
   let verbose = ref false in
@@ -60,6 +76,7 @@ let parse_args argv =
   let qbits = ref None in
   let cbits = ref None in
   let occurrence = ref None in
+  let emit = ref None in
   let positionals = ref [] in
   let parse_int_list option_name raw =
     let parse_token token =
@@ -95,6 +112,13 @@ let parse_args argv =
     | None -> occurrence := Some value
     | Some _ -> raise (Arg.Bad "--occurrence cannot be specified more than once")
   in
+  let set_emit raw =
+    match emit_mode_of_string raw with
+    | None -> raise (Arg.Bad "--emit expects auto, oq2, or oq3")
+    | Some _ when Option.is_some !emit ->
+        raise (Arg.Bad "--emit cannot be specified more than once")
+    | Some mode -> emit := Some mode
+  in
   let set_output_file path =
     match !output_file with
     | None -> output_file := Some path
@@ -128,6 +152,9 @@ let parse_args argv =
       ( "--rule-file",
         Arg.String (fun path -> rule_file := Some path),
         "Read standard-gate rewrite rules from JSON FILE" );
+      ( "--emit",
+        Arg.String set_emit,
+        "Choose the DESTINATION dialect: auto (default), oq2, or oq3" );
       ("--json", Arg.Set emit_json, "Emit result as JSON");
       ( "--output",
         Arg.String set_output_file,
@@ -182,6 +209,7 @@ let parse_args argv =
           rule_file = !rule_file;
           rule_name = !rule_name;
           manual;
+          emit = Option.value !emit ~default:Emit_auto;
         }
   | true, false, _ ->
       usage_error
@@ -190,6 +218,8 @@ let parse_args argv =
       usage_error "--step cannot be used with --unoptimize-rules"
   | false, true, _ when Option.is_some !rule_name ->
       usage_error "--rule cannot be used with --unoptimize-rules"
+  | false, _, _ when Option.is_some !emit ->
+      usage_error "--emit can only be used with --unoptimize"
   | false, true, [ source ] ->
       UnoptimizeRules
         {
@@ -422,7 +452,30 @@ let specs_of_rule_file_option nq rule_file =
       | Ok specs -> Some specs
       | Error message -> cli_error "rule-file" "%s: %s" path message)
 
-let unoptimize source destination step verbose rule_file rule_name manual =
+(* Render the transformed program in the requested dialect.  OpenQASM 3 can
+   express every QASMCore instruction, so it is always available as the
+   fallback; OpenQASM 2 cannot spell nested or single-bit guards. *)
+let render_program emit nq nc q_assignment c_assignment instruction =
+  let as_oq2 () = Q2.sugar nq nc q_assignment c_assignment instruction in
+  let as_oq3 () =
+    match Q3.sugar nq nc q_assignment c_assignment instruction with
+    | Ok program -> Q3.string_of_program program
+    | Error message ->
+        cli_error "emit" "cannot express the program in OpenQASM 3: %s" message
+  in
+  match emit with
+  | Emit_oq3 -> as_oq3 ()
+  | Emit_oq2 -> (
+      match as_oq2 () with
+      | Ok program -> Q2.string_of_program program
+      | Error message ->
+          cli_error "emit" "cannot express the program in OpenQASM 2: %s" message)
+  | Emit_auto -> (
+      match as_oq2 () with
+      | Ok program -> Q2.string_of_program program
+      | Error _ -> as_oq3 ())
+
+let unoptimize source destination step verbose rule_file rule_name manual emit =
   let nq, nc, instr, q_assignment, c_assignment =
     parse_and_desugar source
   in
@@ -434,10 +487,7 @@ let unoptimize source destination step verbose rule_file rule_name manual =
   in
   log_instruction verbose transformed;
   let output =
-    match Q2.sugar nq nc q_assignment c_assignment transformed with
-    | Ok program -> Q2.string_of_program program
-    | Error message ->
-        cli_error "emit" "cannot express the program in OpenQASM 2: %s" message
+    render_program emit nq nc q_assignment c_assignment transformed
   in
   write_result (Some destination) output
 
@@ -476,9 +526,11 @@ let report_domain_error emit_json error_class detail =
 let run_command = function
   | Execute { source; verbose; emit_json; output_file } ->
       execute source verbose emit_json output_file
-  | Unoptimize { source; destination; step; verbose; rule_file; rule_name; manual } ->
+  | Unoptimize
+      { source; destination; step; verbose; rule_file; rule_name; manual; emit }
+    ->
       let step = Option.value step ~default:1 in
-      unoptimize source destination step verbose rule_file rule_name manual
+      unoptimize source destination step verbose rule_file rule_name manual emit
   | UnoptimizeRules { source; verbose; emit_json; output_file; rule_file } ->
       unoptimize_rules source verbose emit_json output_file rule_file
 

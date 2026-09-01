@@ -16,6 +16,8 @@
 %token LBRACKET "[" RBRACKET "]"
 %token OPAQUE BARRIER
 %token IF
+%token EXCLAM "!"
+%token TRUE FALSE
 %token QREG CREG QUBIT BIT PHYSICAL
 %token GATE
 %token MEASURE RESET
@@ -47,9 +49,33 @@ statement:
   | OPAQUE name = ID qargs = idlist ";"                         { OpaqueDecl(name, [], qargs) }
   | OPAQUE name = ID "(" params = idlist ")" qargs = idlist ";" { OpaqueDecl(name, params, qargs) }
   | q = qop                                                     { Qop(q) }
-  | IF "(" creg = ID "==" n = NINT ")" q = qop                  { If(creg, n, [q]) }
-  | IF "(" creg = ID "==" n = NINT ")" "{" ql = qoplist "}"     { If(creg, n, ql) }
+  | s = ifstatement                                             { s }
   | BARRIER qargs = anylist ";"                                 { Barrier(qargs) }
+
+(* Conditionals nest, so the guarded body is a statement list.  QASMCore guards
+   a single classical bit, which is what the "c[i]" and "!c[i]" forms express;
+   the whole-register comparison is kept for OpenQASM 2 compatibility. *)
+ifstatement:
+  | IF "(" c = ifcond ")" body = ifbody                         { If(c, body) }
+
+ifcond:
+  | creg = ID "==" n = NINT                        { CondReg(creg, n) }
+  | creg = ID "[" i = NINT "]"                     { CondBit(creg, i, true) }
+  | "!" creg = ID "[" i = NINT "]"                 { CondBit(creg, i, false) }
+  | creg = ID "[" i = NINT "]" "==" b = boollit    { CondBit(creg, i, b) }
+
+boollit:
+  | TRUE      { true }
+  | FALSE     { false }
+  | n = NINT  { n <> 0 }
+
+ifbody:
+  | s = ifbodystatement            { [s] }
+  | "{" sl = ifbodystatement* "}"  { sl }
+
+ifbodystatement:
+  | q = qop         { Qop(q) }
+  | s = ifstatement { s }
 
 decl:
   | QREG name = ID "[" size = NINT "]" ";" { QReg(name, size) }
@@ -72,8 +98,6 @@ qop:
   | MEASURE qarg = argument "->" carg = argument ";"  { Meas(qarg, carg) }
   | carg = argument "=" MEASURE qarg = argument ";"   { Meas(qarg, carg) }
   | RESET qarg = argument ";"                         { Reset(qarg) }
-
-qoplist: body = qop* { body }
 
 uop:
   | CX q1 = argument "," q2 = argument ";"                  { CX(q1, q2) }

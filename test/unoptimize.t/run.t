@@ -385,7 +385,7 @@ No-argument invocation retains its legacy exit status and displays usage.
   [1]
   $ test ! -s no-arguments.stdout
   $ head -n 1 no-arguments.stderr
-  usage: qasminfer [OPTIONS] SOURCE
+  usage: qasminfer [--verbose] [--json] [--output FILE] SOURCE
 
 A conversion failure leaves an existing destination untouched.
 

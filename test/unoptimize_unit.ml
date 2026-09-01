@@ -476,6 +476,152 @@ if (flag==1) reset $2;
 
 let singleton_map index argument = IntMap.add index argument IntMap.empty
 
+(* Sequence nesting is not observable: QASMCore treats SeqInstr as associative
+   with NopInstr as its unit, and both front ends bracket differently.  Compare
+   instructions modulo that. *)
+let rec normalize_instruction instruction =
+  match instruction with
+  | E.SeqInstr instructions -> (
+      let flattened =
+        List.concat_map
+          (fun instruction ->
+            match normalize_instruction instruction with
+            | E.SeqInstr instructions -> instructions
+            | E.NopInstr -> []
+            | instruction -> [ instruction ])
+          instructions
+      in
+      match flattened with
+      | [] -> E.NopInstr
+      | [ instruction ] -> instruction
+      | instructions -> E.SeqInstr instructions)
+  | E.IfInstr (cbit, condition, body) ->
+      E.IfInstr (cbit, condition, normalize_instruction body)
+  | instruction -> instruction
+
+let qasm3_round_trip ~context nq nc q_assignment c_assignment instruction =
+  let program =
+    match Q3.sugar nq nc q_assignment c_assignment instruction with
+    | Ok program -> program
+    | Error message -> failf "%s: unexpected OpenQASM 3 sugar error: %s" context message
+  in
+  let rendered = Q3.string_of_program program in
+  let reparsed_nq, reparsed_nc, reparsed, _, _ =
+    rendered |> Q3.parse_string |> Q3.desugar |> Q2.inline_qelib |> Q2.desugar
+  in
+  require (reparsed_nq = nq)
+    (Printf.sprintf "%s: expected %d qubit(s) after reparse but got %d" context nq
+       reparsed_nq);
+  require (reparsed_nc = nc)
+    (Printf.sprintf "%s: expected %d cbit(s) after reparse but got %d" context nc
+       reparsed_nc);
+  require
+    (normalize_instruction reparsed = normalize_instruction instruction)
+    (Printf.sprintf "%s: reparsing\n%s\nyielded %s instead of %s" context rendered
+       (Q2.string_of_instruction (normalize_instruction reparsed))
+       (Q2.string_of_instruction (normalize_instruction instruction)));
+  rendered
+
+let test_qasm3_sugar_expresses_nested_conditional () =
+  let body = E.RotateInstr (pi_angle 1 1, pi_angle 0 1, pi_angle 1 1, 0) in
+  let instruction = E.IfInstr (0, false, E.IfInstr (0, true, body)) in
+  let q_assignment = singleton_map 0 ("q", 0) in
+  let c_assignment = singleton_map 0 ("c", 0) in
+  Q2.sugar 1 1 q_assignment c_assignment instruction
+  |> expect_error "condition does not cover a whole classical register";
+  let rendered =
+    qasm3_round_trip ~context:"nested conditional" 1 1 q_assignment c_assignment
+      instruction
+  in
+  require_contains rendered "OPENQASM 3.0;";
+  require_contains rendered "qubit[1] q;";
+  require_contains rendered "bit[1] c;";
+  require_contains rendered "if (!c[0]) {";
+  require_contains rendered "if (c[0]) {"
+
+let test_qasm3_sugar_round_trips_every_leaf () =
+  let q_assignment =
+    IntMap.empty |> IntMap.add 0 ("q", 0) |> IntMap.add 1 ("q", 1)
+  in
+  let c_assignment =
+    IntMap.empty |> IntMap.add 0 ("c", 0) |> IntMap.add 1 ("c", 1)
+  in
+  let instruction =
+    E.SeqInstr
+      [
+        E.RotateInstr (pi_angle 1 1, pi_angle 0 1, pi_angle 1 1, 0);
+        E.RotateInstr (pi_angle 1 2, pi_angle (-1) 2, pi_angle 1 2, 1);
+        E.RotateInstr (pi_angle 1 2, pi_angle 1 2, pi_angle (-1) 2, 0);
+        E.RotateInstr (pi_angle 1 3, pi_angle 1 5, pi_angle 1 7, 1);
+        E.CnotInstr (0, 1);
+        E.SwapInstr (1, 0);
+        E.ResetInstr 1;
+        E.MeasureInstr (0, 1);
+        E.IfInstr (1, true, E.SeqInstr [ E.ResetInstr 0; E.MeasureInstr (1, 0) ]);
+        E.IfInstr
+          ( 0,
+            false,
+            E.SeqInstr
+              [ E.ResetInstr 1; E.IfInstr (1, false, E.CnotInstr (1, 0)); E.ResetInstr 0 ]
+          );
+      ]
+  in
+  let rendered =
+    qasm3_round_trip ~context:"every leaf" 2 2 q_assignment c_assignment
+      instruction
+  in
+  require_contains rendered "include \"stdgates.inc\";";
+  require_contains rendered "c[1] = measure q[0];";
+  require_contains rendered "swap q[1],q[0];";
+  require_contains rendered "cx q[0],q[1];";
+  require_contains rendered "reset q[1];"
+
+let test_qasm3_sugar_output_is_stable_under_reemission () =
+  let instruction =
+    E.IfInstr (0, true, E.IfInstr (0, true, E.ResetInstr 0))
+  in
+  let q_assignment = singleton_map 0 ("q", 0) in
+  let c_assignment = singleton_map 0 ("c", 0) in
+  let once =
+    qasm3_round_trip ~context:"stability" 1 1 q_assignment c_assignment
+      instruction
+  in
+  let nq, nc, reparsed, reparsed_q, reparsed_c =
+    once |> Q3.parse_string |> Q3.desugar |> Q2.inline_qelib |> Q2.desugar
+  in
+  let twice =
+    match Q3.sugar nq nc reparsed_q reparsed_c reparsed with
+    | Ok program -> Q3.string_of_program program
+    | Error message -> failf "unexpected re-emission error: %s" message
+  in
+  require (once = twice)
+    (Printf.sprintf "OpenQASM 3 emission is not idempotent:\n%s\n---\n%s" once
+       twice)
+
+let test_qasm3_parses_conditional_written_as_a_block () =
+  let source =
+    {|
+OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+bit[2] c;
+if (c == 2) {
+  x q[0];
+  reset q[0];
+}
+|}
+  in
+  let _, _, instruction, _, _ =
+    source |> Q3.parse_string |> Q3.desugar |> Q2.inline_qelib |> Q2.desugar
+  in
+  match normalize_instruction instruction with
+  | E.IfInstr (0, false, E.IfInstr (1, true, E.SeqInstr [ _; E.ResetInstr 0 ])) ->
+      ()
+  | other ->
+      failf "an OpenQASM 3 block conditional must guard its whole body: %s"
+        (Q2.string_of_instruction other)
+
+
 let test_sugar_reports_missing_quantum_mapping () =
   Q2.sugar 1 0 IntMap.empty IntMap.empty
     (E.RotateInstr (pi_angle 0 1, pi_angle 0 1, pi_angle 0 1, 0))
@@ -579,6 +725,14 @@ let tests =
       test_qasm3_physical_qubit_rename_avoids_classical_collision );
     ( "QASM3 conditional physical qubit",
       test_qasm3_conditional_physical_qubit_round_trip );
+    ( "QASM3 sugar expresses nested conditionals",
+      test_qasm3_sugar_expresses_nested_conditional );
+    ( "QASM3 sugar round trips every leaf",
+      test_qasm3_sugar_round_trips_every_leaf );
+    ( "QASM3 emission is idempotent",
+      test_qasm3_sugar_output_is_stable_under_reemission );
+    ( "QASM3 block conditional guards its whole body",
+      test_qasm3_parses_conditional_written_as_a_block );
     ("missing quantum map", test_sugar_reports_missing_quantum_mapping);
     ("missing classical map", test_sugar_reports_missing_classical_mapping);
     ( "reserved quantum register name",

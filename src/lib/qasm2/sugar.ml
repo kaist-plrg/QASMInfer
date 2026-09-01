@@ -500,11 +500,21 @@ let qop_uses_qelib = function
   | Uop (Gate (name, _, _)) -> List.mem name qelib_gate_names
   | Uop (U _ | CX _) | Meas _ | Reset _ -> false
 
-let statement_uses_qelib = function
+let rec statement_uses_qelib = function
   | Qop qop | If (_, _, qop) -> qop_uses_qelib qop
+  | IfBlock (_, body) -> List.exists statement_uses_qelib body
   | Include _ | Decl _ | GateDecl _ | OpaqueDecl _ | Barrier _ -> false
 
-let sugar nq nc q_assignment c_assignment instruction =
+(* The register structure recovered from a pair of QASMCore bit assignments.
+   Shared with Qasm3.Sugar, which needs the same reconstruction. *)
+type layout = {
+  qregs : register list;
+  cregs : register list;
+  qbits : (string * int) array;
+  cbits : (string * int) array;
+}
+
+let layout_of_assignments nq nc q_assignment c_assignment =
   let* q_entries = collect_assignments Quantum nq q_assignment in
   let* c_entries = collect_assignments Classical nc c_assignment in
   let* () = validate_names Quantum q_entries in
@@ -513,8 +523,18 @@ let sugar nq nc q_assignment c_assignment instruction =
   let* qregs = group_registers Quantum q_entries in
   let* cregs = group_registers Classical c_entries in
   let* () = ensure_disjoint_register_names qregs cregs in
-  let q_assignment = array_of_entries nq q_entries in
-  let c_assignment = array_of_entries nc c_entries in
+  Ok
+    {
+      qregs;
+      cregs;
+      qbits = array_of_entries nq q_entries;
+      cbits = array_of_entries nc c_entries;
+    }
+
+let sugar nq nc q_assignment c_assignment instruction =
+  let* { qregs; cregs; qbits = q_assignment; cbits = c_assignment } =
+    layout_of_assignments nq nc q_assignment c_assignment
+  in
   let* statements =
     statements_of_instruction qregs cregs q_assignment c_assignment instruction
   in

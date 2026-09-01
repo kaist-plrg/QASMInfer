@@ -20,7 +20,11 @@ type qop_dp =
   | Meas_dp of argument_dp * argument_dp
   | Reset_dp of argument_dp
 
-type statement_dp = Qop_dp of qop_dp | IfList_dp of id * int * qop_dp list
+type statement_dp =
+  | Qop_dp of qop_dp
+  | IfList_dp of id * int * qop_dp list
+  | IfBlock_dp of cond * statement_dp list
+
 type program_dp = statement_dp list
 
 module IdMap = Map.Make (struct
@@ -136,6 +140,9 @@ let rec desugar_parallel_program (qasm_program : program)
   | If (cid, i, qop) :: tail ->
       IfList_dp (cid, i, desugar_parallel_qop qop qreg_size creg_size)
       :: desugar_parallel_program tail qreg_size creg_size
+  | IfBlock (cond, body) :: tail ->
+      IfBlock_dp (cond, desugar_parallel_program body qreg_size creg_size)
+      :: desugar_parallel_program tail qreg_size creg_size
   | Decl _ :: t
   | GateDecl _ :: t
   | Include _ :: t
@@ -230,6 +237,9 @@ let rec desugar_macro_program (qasm_dp : program_dp)
         |> fun x -> List.append x (inline decl_head decl_body tail)
     | IfList_dp (cid, i, qop_list) :: tail ->
         IfList_dp (cid, i, desugar_macro_qop_list decl_head decl_body qop_list)
+        :: inline decl_head decl_body tail
+    | IfBlock_dp (cond, body) :: tail ->
+        IfBlock_dp (cond, inline decl_head decl_body body)
         :: inline decl_head decl_body tail
     | x :: tail -> x :: inline decl_head decl_body tail
   in
@@ -463,7 +473,7 @@ let desugar_qasm_qop_list (assignment_q_rev : int QASMArgMap.t)
 let desugar_qasm_program (creg_size_map : int IdMap.t)
     (assignment_q_rev : int QASMArgMap.t) (assignment_c_rev : int QASMArgMap.t)
     (qasm_dm : program_dp) : qc_ir =
-  let desugar_statement = function
+  let rec desugar_statement = function
     | Qop_dp op -> desugar_qasm_qop assignment_q_rev assignment_c_rev op
     | IfList_dp (cid, comp, qop_list) ->
         let cond_list = unfold_if creg_size_map assignment_c_rev cid comp in
@@ -471,6 +481,20 @@ let desugar_qasm_program (creg_size_map : int IdMap.t)
           desugar_qasm_qop_list assignment_q_rev assignment_c_rev qop_list
         in
         desugar_qasm_if cond_list qop_ir
+    | IfBlock_dp (cond, body) ->
+        (* A guarded block guards its body as a whole, so the body becomes one
+           sequence under the guard rather than one guard per statement. *)
+        let cond_list =
+          match cond with
+          | CondReg (cid, comp) ->
+              unfold_if creg_size_map assignment_c_rev cid comp
+          | CondBit (cid, index, value) ->
+              [ ( deref_or_fail (cid, index)
+                    "desugar_qasm_program: invalid conditional bit"
+                    assignment_c_rev,
+                  value ) ]
+        in
+        desugar_qasm_if cond_list (SeqIr (List.map desugar_statement body))
   in
   SeqIr (List.map desugar_statement qasm_dm)
 
