@@ -1,0 +1,5139 @@
+[
+    {
+        "name": "Q1C_I_to_X0_X0",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_I_to_Y0_Y0",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_I_to_Z0_Z0",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_I_to_H0_H0",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_I_to_S0_SDG0",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_I_to_SDG0_S0",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_I_to_T0_TDG0",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_I_to_TDG0_T0",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_I_to_SX0_SXDG0",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_I_to_SXDG0_SX0",
+        "lhs": [
+            {
+                "gate": "id",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_to_Y0_Z0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_to_Z0_Y0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_to_SX0_SX0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_to_SXDG0_SXDG0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_to_X0_Z0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_to_Z0_X0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_to_X0_Y0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_to_Y0_X0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_to_S0_S0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_to_SDG0_SDG0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_S0_to_Z0_SDG0",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_S0_to_SDG0_Z0",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_S0_to_T0_T0",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SDG0_to_Z0_S0",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SDG0_to_S0_Z0",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SDG0_to_TDG0_TDG0",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_to_S0_TDG0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_to_TDG0_S0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_TDG0_to_SDG0_T0",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_TDG0_to_T0_SDG0",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_to_X0_SXDG0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_to_SXDG0_X0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SXDG0_to_X0_SX0",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SXDG0_to_SX0_X0",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_H0_to_H0_Z0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_S0_to_Y0_SDG0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_S0_to_S0_Y0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_S0_to_SDG0_X0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_S0_to_H0_S0_SXDG0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_SDG0_to_Y0_S0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_SDG0_to_S0_X0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_SDG0_to_SDG0_Y0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_SDG0_to_H0_SDG0_SX0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_T0_to_TDG0_X0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_TDG0_to_T0_X0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_H0_to_H0_Y0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_H0_to_S0_SXDG0_S0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_H0_to_SDG0_SX0_SDG0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_H0_to_SX0_SDG0_SX0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_H0_to_SXDG0_S0_SXDG0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_T0_to_TDG0_Y0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_TDG0_to_T0_Y0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_SX0_to_Z0_SXDG0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_SX0_to_SX0_Z0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_SX0_to_SXDG0_Y0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_SX0_to_H0_SXDG0_S0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_SXDG0_to_Z0_SX0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_SXDG0_to_SX0_Y0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "y",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_SXDG0_to_SXDG0_Z0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_SXDG0_to_H0_SX0_SDG0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_H0_to_H0_X0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "x",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_T0_to_SDG0_TDG0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_T0_to_T0_Z0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_T0_to_TDG0_SDG0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_TDG0_to_S0_T0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_TDG0_to_T0_S0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_TDG0_to_TDG0_Z0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "z",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_S0_to_SDG0_SXDG0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_S0_to_SX0_H0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_S0_to_X0_H0_SDG0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_SDG0_to_S0_SX0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_SDG0_to_SXDG0_H0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_SDG0_to_X0_H0_S0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_SX0_to_S0_H0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_SX0_to_SXDG0_SDG0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_SX0_to_Y0_SXDG0_S0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_SX0_to_Z0_H0_SXDG0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_SXDG0_to_SDG0_H0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_SXDG0_to_SX0_S0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_SXDG0_to_Y0_SX0_SDG0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_SXDG0_to_Z0_H0_SX0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_S0_SXDG0_to_X0_SDG0_SX0",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_S0_SXDG0_to_Y0_H0_SDG0",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_S0_SXDG0_to_Z0_H0_S0",
+        "lhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SDG0_SX0_to_X0_S0_SXDG0",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SDG0_SX0_to_Y0_H0_S0",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SDG0_SX0_to_Z0_H0_SDG0",
+        "lhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_H0_to_TDG0_H0_SX0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_SX0_to_X0_TDG0_SXDG0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_SX0_to_TDG0_H0_SDG0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_SXDG0_to_X0_TDG0_SX0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_TDG0_H0_to_T0_H0_SXDG0",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_TDG0_SX0_to_X0_T0_SXDG0",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_TDG0_SXDG0_to_X0_T0_SX0",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_TDG0_SXDG0_to_T0_H0_S0",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_SDG0_to_X0_H0_SX0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_SDG0_to_Y0_H0_SXDG0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_T0_to_H0_SXDG0_TDG0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SXDG0_S0_to_X0_H0_SXDG0",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SXDG0_S0_to_Y0_H0_SX0",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SXDG0_TDG0_to_H0_SX0_T0",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_T0_H0_to_T0_SX0_SDG0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_TDG0_H0_to_TDG0_SXDG0_S0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_H0_T0_to_SDG0_SX0_TDG0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_H0_TDG0_to_S0_SXDG0_T0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_T0_H0_to_T0_SXDG0_S0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_T0_SX0_to_Z0_TDG0_SXDG0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_T0_SXDG0_to_Z0_TDG0_SX0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_T0_SXDG0_to_T0_H0_SDG0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_TDG0_H0_to_TDG0_SX0_SDG0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "sdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_TDG0_SX0_to_Z0_T0_SXDG0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_TDG0_SX0_to_TDG0_H0_S0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "s",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_TDG0_SXDG0_to_Z0_T0_SX0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_SX0_TDG0_to_H0_SXDG0_T0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_SXDG0_T0_to_H0_SX0_TDG0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_H0_T0_to_S0_SXDG0_TDG0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "s",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_H0_TDG0_to_SDG0_SX0_T0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_T0_H0_to_TDG0_H0_SXDG0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Z0_TDG0_H0_to_T0_H0_SX0",
+        "lhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_T0_SX0_to_Z0_H0_TDG0_SXDG0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_T0_SXDG0_to_Z0_H0_TDG0_SX0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_TDG0_SX0_to_Z0_H0_T0_SXDG0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_TDG0_SXDG0_to_Z0_H0_T0_SX0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_H0_T0_to_TDG0_SXDG0_TDG0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_H0_TDG0_to_Y0_T0_SXDG0_T0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_SX0_T0_to_TDG0_H0_TDG0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_SX0_TDG0_to_X0_T0_H0_T0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_SXDG0_T0_to_Y0_T0_H0_TDG0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_SXDG0_TDG0_to_Z0_TDG0_H0_T0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_TDG0_H0_T0_to_Y0_TDG0_SX0_TDG0",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_TDG0_SX0_T0_to_Z0_T0_H0_TDG0",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_TDG0_SX0_TDG0_to_Y0_TDG0_H0_T0",
+        "lhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_T0_SX0_to_SXDG0_TDG0_SXDG0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_T0_SXDG0_to_SXDG0_TDG0_SX0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_TDG0_SX0_to_SXDG0_T0_SXDG0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_TDG0_SXDG0_to_SXDG0_T0_SX0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_H0_T0_SX0_to_Y0_H0_TDG0_SXDG0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_H0_T0_SXDG0_to_Y0_H0_TDG0_SX0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_H0_TDG0_SX0_to_Y0_H0_T0_SXDG0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_H0_TDG0_SXDG0_to_Y0_H0_T0_SX0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_T0_H0_TDG0_to_Y0_TDG0_SX0_T0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_TDG0_H0_T0_to_Y0_T0_SXDG0_TDG0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_Y0_T0_SX0_TDG0_to_Z0_T0_H0_T0",
+        "lhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_T0_H0_TDG0_to_X0_H0_TDG0_SX0_T0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_T0_SX0_TDG0_to_Z0_H0_T0_H0_T0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_T0_SXDG0_T0_to_Y0_H0_T0_H0_TDG0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_T0_SXDG0_TDG0_to_X0_H0_TDG0_H0_T0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_TDG0_H0_T0_to_X0_H0_T0_SXDG0_TDG0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_TDG0_SX0_T0_to_X0_H0_T0_H0_TDG0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_H0_TDG0_SX0_TDG0_to_Y0_H0_TDG0_H0_T0",
+        "lhs": [
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_H0_T0_SX0_to_TDG0_SX0_T0_SXDG0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_H0_T0_SXDG0_to_TDG0_SX0_T0_SX0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_H0_TDG0_SX0_to_Y0_T0_SX0_TDG0_SXDG0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_H0_TDG0_SXDG0_to_Y0_T0_SX0_TDG0_SX0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_T0_H0_TDG0_to_Y0_SX0_TDG0_SX0_T0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_T0_SX0_TDG0_to_SXDG0_T0_H0_T0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_T0_SXDG0_T0_to_Y0_SXDG0_T0_H0_TDG0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_T0_SXDG0_TDG0_to_Y0_SX0_TDG0_H0_T0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_TDG0_H0_T0_to_Y0_SX0_T0_SXDG0_TDG0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_TDG0_SX0_T0_to_Y0_SX0_T0_H0_TDG0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SX0_TDG0_SX0_TDG0_to_Y0_SXDG0_TDG0_H0_T0",
+        "lhs": [
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SXDG0_T0_H0_TDG0_to_Y0_SX0_T0_SXDG0_T0",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_SXDG0_TDG0_H0_T0_to_Y0_SX0_TDG0_SX0_TDG0",
+        "lhs": [
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_H0_T0_SX0_TDG0_to_Y0_H0_T0_H0_T0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_H0_T0_SXDG0_T0_to_Z0_H0_T0_H0_TDG0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_H0_TDG0_SX0_TDG0_to_Z0_H0_TDG0_H0_T0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "z",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_T0_H0_TDG0_SX0_to_Y0_T0_H0_T0_SXDG0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_T0_H0_TDG0_SXDG0_to_Y0_T0_H0_T0_SX0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_TDG0_H0_T0_SX0_to_Y0_T0_SX0_T0_SXDG0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_X0_TDG0_H0_T0_SXDG0_to_Y0_T0_SX0_T0_SX0",
+        "lhs": [
+            {
+                "gate": "x",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "y",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_H0_T0_H0_TDG0_to_TDG0_SX0_TDG0_SXDG0_T0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_H0_TDG0_SXDG0_T0_to_TDG0_SX0_T0_H0_TDG0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_SX0_T0_H0_TDG0_to_TDG0_H0_T0_SX0_T0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_SX0_T0_SXDG0_TDG0_to_TDG0_H0_T0_H0_T0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ]
+    },
+    {
+        "name": "Q1C_T0_SXDG0_TDG0_H0_T0_to_TDG0_H0_T0_SX0_TDG0",
+        "lhs": [
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sxdg",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            }
+        ],
+        "rhs": [
+            {
+                "gate": "tdg",
+                "q": 0
+            },
+            {
+                "gate": "h",
+                "q": 0
+            },
+            {
+                "gate": "t",
+                "q": 0
+            },
+            {
+                "gate": "sx",
+                "q": 0
+            },
+            {
+                "gate": "tdg",
+                "q": 0
+            }
+        ]
+    }
+]
