@@ -1,7 +1,7 @@
 (*
  * GENERATED — DO NOT EDIT
  *
- * Source commit: 1f7abf61b9e2212edce46540d7c9b2178e7f5b8b
+ * Source commit: 3313b416719ed20f18d69a53ce3ae4b175a37d4e
  * Rocq version: 9.1.0
  * Dune Rocq language version: 0.13
  * Extraction command: rocq repl -q -Q ../.. QASMInfer -batch -l ../../extract/Extract
@@ -1877,6 +1877,162 @@ let mat_not2 =
 let mat_cnot n qc qt =
   mat_ctrl_single n qc qt mat_not2
 
+(** val gate_X_matrix : matrix **)
+
+let gate_X_matrix =
+  Rec_mat (0, (Bas_mat (nTC 0)), (Bas_mat (nTC (Stdlib.Int.succ 0))),
+    (Bas_mat (nTC (Stdlib.Int.succ 0))), (Bas_mat (nTC 0)))
+
+(** val gate_H_matrix : matrix **)
+
+let gate_H_matrix =
+  mat_scale (Stdlib.Int.succ 0)
+    (rTC
+      (RinvImpl.coq_Rinv
+        (Stdlib.sqrt
+          (Big_int_Z.float_of_big_int (Big_int_Z.mult_int_big_int 2
+            Big_int_Z.unit_big_int)))))
+    (Rec_mat (0, (Bas_mat (nTC (Stdlib.Int.succ 0))), (Bas_mat
+    (nTC (Stdlib.Int.succ 0))), (Bas_mat (nTC (Stdlib.Int.succ 0))), (Bas_mat
+    (rTC
+      (Big_int_Z.float_of_big_int (Big_int_Z.minus_big_int
+        Big_int_Z.unit_big_int))))))
+
+(** val phase_gate_matrix_multi : RbaseSymbolsImpl.coq_R -> matrix **)
+
+let phase_gate_matrix_multi lambda =
+  Rec_mat (0, (Bas_mat {re=1.0; im=0.0}), (Bas_mat {re=0.0; im=0.0}),
+    (Bas_mat {re=0.0; im=0.0}), (Bas_mat (com_iexp lambda)))
+
+type qelibSingle =
+| QH
+| QX
+| QS
+| QSdg
+| QT
+| QTdg
+
+type qelibOp =
+| QSingle of qelibSingle * int
+| QCnot of int * int
+
+(** val qelib_single_matrix : qelibSingle -> matrix **)
+
+let qelib_single_matrix = function
+| QH -> gate_H_matrix
+| QX -> gate_X_matrix
+| QS -> phase_gate_matrix_multi (2. *. Stdlib.atan 1.)
+| QSdg ->
+  phase_gate_matrix_multi (RbaseSymbolsImpl.coq_Ropp (2. *. Stdlib.atan 1.))
+| QT ->
+  phase_gate_matrix_multi
+    (rdiv (4. *. Stdlib.atan 1.)
+      (Big_int_Z.float_of_big_int (Big_int_Z.mult_int_big_int 2
+        (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))))
+| QTdg ->
+  phase_gate_matrix_multi
+    (rdiv (RbaseSymbolsImpl.coq_Ropp (4. *. Stdlib.atan 1.))
+      (Big_int_Z.float_of_big_int (Big_int_Z.mult_int_big_int 2
+        (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))))
+
+(** val qelib_op_matrix : int -> qelibOp -> matrix **)
+
+let qelib_op_matrix n = function
+| QSingle (g, q0) -> mat_single n q0 (qelib_single_matrix g)
+| QCnot (c, t0) -> mat_cnot n c t0
+
+(** val qelib_body_matrix : int -> qelibOp list -> matrix **)
+
+let qelib_body_matrix n body =
+  fold_right (fun op acc -> mat_mul n acc (qelib_op_matrix n op)) (mat_eye n)
+    body
+
+(** val qelib_body_cz : int -> int -> qelibOp list **)
+
+let qelib_body_cz a b =
+  (QSingle (QH, b)) :: ((QCnot (a, b)) :: ((QSingle (QH, b)) :: []))
+
+(** val mat_cz : int -> int -> int -> matrix **)
+
+let mat_cz n a b =
+  qelib_body_matrix n (qelib_body_cz a b)
+
+(** val qelib_body_cy : int -> int -> qelibOp list **)
+
+let qelib_body_cy a b =
+  (QSingle (QSdg, b)) :: ((QCnot (a, b)) :: ((QSingle (QS, b)) :: []))
+
+(** val mat_cy : int -> int -> int -> matrix **)
+
+let mat_cy n a b =
+  qelib_body_matrix n (qelib_body_cy a b)
+
+(** val qelib_body_ch : int -> int -> qelibOp list **)
+
+let qelib_body_ch a b =
+  (QSingle (QH, b)) :: ((QSingle (QSdg, b)) :: ((QCnot (a, b)) :: ((QSingle
+    (QH, b)) :: ((QSingle (QT, b)) :: ((QCnot (a, b)) :: ((QSingle (QT,
+    b)) :: ((QSingle (QH, b)) :: ((QSingle (QS, b)) :: ((QSingle (QX,
+    b)) :: ((QSingle (QS, a)) :: []))))))))))
+
+(** val mat_ch : int -> int -> int -> matrix **)
+
+let mat_ch n a b =
+  qelib_body_matrix n (qelib_body_ch a b)
+
+(** val qelib_body_csx : int -> int -> qelibOp list **)
+
+let qelib_body_csx a b =
+  (QSingle (QH, b)) :: ((QSingle (QT, a)) :: ((QCnot (a, b)) :: ((QSingle
+    (QTdg, b)) :: ((QCnot (a, b)) :: ((QSingle (QT, b)) :: ((QSingle (QH,
+    b)) :: []))))))
+
+(** val mat_csx : int -> int -> int -> matrix **)
+
+let mat_csx n a b =
+  qelib_body_matrix n (qelib_body_csx a b)
+
+(** val qelib_body_ccx : int -> int -> int -> qelibOp list **)
+
+let qelib_body_ccx a b c =
+  (QSingle (QH, c)) :: ((QCnot (b, c)) :: ((QSingle (QTdg, c)) :: ((QCnot (a,
+    c)) :: ((QSingle (QT, c)) :: ((QCnot (b, c)) :: ((QSingle (QTdg,
+    c)) :: ((QCnot (a, c)) :: ((QSingle (QT, b)) :: ((QSingle (QT,
+    c)) :: ((QSingle (QH, c)) :: ((QCnot (a, b)) :: ((QSingle (QT,
+    a)) :: ((QSingle (QTdg, b)) :: ((QCnot (a, b)) :: []))))))))))))))
+
+(** val mat_ccx : int -> int -> int -> int -> matrix **)
+
+let mat_ccx n a b c =
+  qelib_body_matrix n (qelib_body_ccx a b c)
+
+(** val qelib_body_cswap : int -> int -> int -> qelibOp list **)
+
+let qelib_body_cswap a b c =
+  (QCnot (c, b)) :: ((QSingle (QH, c)) :: ((QCnot (b, c)) :: ((QSingle (QTdg,
+    c)) :: ((QCnot (a, c)) :: ((QSingle (QT, c)) :: ((QCnot (b,
+    c)) :: ((QSingle (QTdg, c)) :: ((QCnot (a, c)) :: ((QSingle (QT,
+    b)) :: ((QSingle (QT, c)) :: ((QSingle (QH, c)) :: ((QCnot (a,
+    b)) :: ((QSingle (QT, a)) :: ((QSingle (QTdg, b)) :: ((QCnot (a,
+    b)) :: ((QCnot (c, b)) :: []))))))))))))))))
+
+(** val mat_cswap : int -> int -> int -> int -> matrix **)
+
+let mat_cswap n a b c =
+  qelib_body_matrix n (qelib_body_cswap a b c)
+
+(** val qelib_body_rccx : int -> int -> int -> qelibOp list **)
+
+let qelib_body_rccx a b c =
+  (QSingle (QH, c)) :: ((QSingle (QT, c)) :: ((QCnot (b, c)) :: ((QSingle
+    (QTdg, c)) :: ((QCnot (a, c)) :: ((QSingle (QT, c)) :: ((QCnot (b,
+    c)) :: ((QSingle (QTdg, c)) :: ((QSingle (QH, c)) :: []))))))))
+
+(** val mat_rccx : int -> int -> int -> int -> matrix **)
+
+let mat_rccx n a b c =
+  qelib_body_matrix n (qelib_body_rccx a b c)
+
 (** val den_init : int -> matrix **)
 
 let rec den_init n =
@@ -2031,6 +2187,13 @@ type instruction =
 | SeqInstr of instruction list
 | IfInstr of int * bool * instruction
 | ResetInstr of int
+| CzInstr of int * int
+| CyInstr of int * int
+| ChInstr of int * int
+| CsxInstr of int * int
+| ToffoliInstr of int * int * int
+| CswapInstr of int * int * int
+| RccxInstr of int * int * int
 
 type cState = Big_int_Z.big_int
 
@@ -2203,6 +2366,59 @@ let execute_swap_instr_branch nq q1 q2 branch0 =
 let execute_swap_instr nq q1 q2 ps =
   PositiveMap.map (execute_swap_instr_branch nq q1 q2) ps
 
+(** val execute_matrix_instr_branch : int -> matrix -> branch -> branch **)
+
+let execute_matrix_instr_branch nq u branch0 =
+  { b_qstate = (den_uop nq u branch0.b_qstate); b_prob = branch0.b_prob }
+
+(** val execute_matrix_instr :
+    int -> matrix -> programState -> programState **)
+
+let execute_matrix_instr nq u ps =
+  PositiveMap.map (execute_matrix_instr_branch nq u) ps
+
+(** val execute_cz_instr :
+    int -> int -> int -> programState -> programState **)
+
+let execute_cz_instr nq a b =
+  execute_matrix_instr nq (mat_cz nq a b)
+
+(** val execute_cy_instr :
+    int -> int -> int -> programState -> programState **)
+
+let execute_cy_instr nq a b =
+  execute_matrix_instr nq (mat_cy nq a b)
+
+(** val execute_ch_instr :
+    int -> int -> int -> programState -> programState **)
+
+let execute_ch_instr nq a b =
+  execute_matrix_instr nq (mat_ch nq a b)
+
+(** val execute_csx_instr :
+    int -> int -> int -> programState -> programState **)
+
+let execute_csx_instr nq a b =
+  execute_matrix_instr nq (mat_csx nq a b)
+
+(** val execute_ccx_instr :
+    int -> int -> int -> int -> programState -> programState **)
+
+let execute_ccx_instr nq a b c =
+  execute_matrix_instr nq (mat_ccx nq a b c)
+
+(** val execute_cswap_instr :
+    int -> int -> int -> int -> programState -> programState **)
+
+let execute_cswap_instr nq a b c =
+  execute_matrix_instr nq (mat_cswap nq a b c)
+
+(** val execute_rccx_instr :
+    int -> int -> int -> int -> programState -> programState **)
+
+let execute_rccx_instr nq a b c =
+  execute_matrix_instr nq (mat_rccx nq a b c)
+
 (** val execute_measure_instr_branch :
     int -> int -> int -> cState -> branch -> programState **)
 
@@ -2269,6 +2485,13 @@ let rec execute_suppl nq instr ps =
         else ps_single))
       ps PositiveMap.empty
   | ResetInstr target -> execute_reset_instr nq target ps
+  | CzInstr (a, b) -> execute_cz_instr nq a b ps
+  | CyInstr (a, b) -> execute_cy_instr nq a b ps
+  | ChInstr (a, b) -> execute_ch_instr nq a b ps
+  | CsxInstr (a, b) -> execute_csx_instr nq a b ps
+  | ToffoliInstr (a, b, c) -> execute_ccx_instr nq a b c ps
+  | CswapInstr (a, b, c) -> execute_cswap_instr nq a b c ps
+  | RccxInstr (a, b, c) -> execute_rccx_instr nq a b c ps
 
 (** val execute : int -> int -> instruction -> programState **)
 
@@ -2309,6 +2532,14 @@ let rec change_qbit_instr chan_fn = function
 | IfInstr (cbit, cond, instr0) ->
   IfInstr (cbit, cond, (change_qbit_instr chan_fn instr0))
 | ResetInstr qbit -> ResetInstr (chan_fn qbit)
+| CzInstr (a, b) -> CzInstr ((chan_fn a), (chan_fn b))
+| CyInstr (a, b) -> CyInstr ((chan_fn a), (chan_fn b))
+| ChInstr (a, b) -> ChInstr ((chan_fn a), (chan_fn b))
+| CsxInstr (a, b) -> CsxInstr ((chan_fn a), (chan_fn b))
+| ToffoliInstr (a, b, c) ->
+  ToffoliInstr ((chan_fn a), (chan_fn b), (chan_fn c))
+| CswapInstr (a, b, c) -> CswapInstr ((chan_fn a), (chan_fn b), (chan_fn c))
+| RccxInstr (a, b, c) -> RccxInstr ((chan_fn a), (chan_fn b), (chan_fn c))
 
 (** val swap_qbit_instr : int -> int -> instruction -> instruction **)
 
@@ -3156,6 +3387,35 @@ let rec instruction_eqb instr1 instr2 =
     (match instr2 with
      | ResetInstr qbit2 -> (=) qbit1 qbit2
      | _ -> false)
+  | CzInstr (a, b) ->
+    (match instr2 with
+     | CzInstr (a', b') -> (&&) ((=) a a') ((=) b b')
+     | _ -> false)
+  | CyInstr (a, b) ->
+    (match instr2 with
+     | CyInstr (a', b') -> (&&) ((=) a a') ((=) b b')
+     | _ -> false)
+  | ChInstr (a, b) ->
+    (match instr2 with
+     | ChInstr (a', b') -> (&&) ((=) a a') ((=) b b')
+     | _ -> false)
+  | CsxInstr (a, b) ->
+    (match instr2 with
+     | CsxInstr (a', b') -> (&&) ((=) a a') ((=) b b')
+     | _ -> false)
+  | ToffoliInstr (a, b, c) ->
+    (match instr2 with
+     | ToffoliInstr (a', b', c') ->
+       (&&) ((&&) ((=) a a') ((=) b b')) ((=) c c')
+     | _ -> false)
+  | CswapInstr (a, b, c) ->
+    (match instr2 with
+     | CswapInstr (a', b', c') -> (&&) ((&&) ((=) a a') ((=) b b')) ((=) c c')
+     | _ -> false)
+  | RccxInstr (a, b, c) ->
+    (match instr2 with
+     | RccxInstr (a', b', c') -> (&&) ((&&) ((=) a a') ((=) b b')) ((=) c c')
+     | _ -> false)
 
 type patternMap = { pattern_qbit_map : int NatMap.t;
                     pattern_cbit_map : int NatMap.t;
@@ -3293,6 +3553,13 @@ type instructionPattern =
 | PIf of natPattern * bool * instructionPattern list
 | PInstrVar of int
 | PInstrExact of instruction
+| PCz of natPattern * natPattern
+| PCy of natPattern * natPattern
+| PCh of natPattern * natPattern
+| PCsx of natPattern * natPattern
+| PToffoli of natPattern * natPattern * natPattern
+| PCswap of natPattern * natPattern * natPattern
+| PRccx of natPattern * natPattern * natPattern
 
 (** val instructionPattern_match :
     instructionPattern -> instruction -> patternMap -> patternMap option **)
@@ -3366,6 +3633,64 @@ let rec instructionPattern_match pattern instr map0 =
     if instruction_eqb expected_instr (instructionPattern_canonicalize instr)
     then Some map0
     else None
+  | PCz (a_pattern, b_pattern) ->
+    (match instr with
+     | CzInstr (a, b) ->
+       (match qbitPattern_match a_pattern a map0 with
+        | Some map1 -> qbitPattern_match b_pattern b map1
+        | None -> None)
+     | _ -> None)
+  | PCy (a_pattern, b_pattern) ->
+    (match instr with
+     | CyInstr (a, b) ->
+       (match qbitPattern_match a_pattern a map0 with
+        | Some map1 -> qbitPattern_match b_pattern b map1
+        | None -> None)
+     | _ -> None)
+  | PCh (a_pattern, b_pattern) ->
+    (match instr with
+     | ChInstr (a, b) ->
+       (match qbitPattern_match a_pattern a map0 with
+        | Some map1 -> qbitPattern_match b_pattern b map1
+        | None -> None)
+     | _ -> None)
+  | PCsx (a_pattern, b_pattern) ->
+    (match instr with
+     | CsxInstr (a, b) ->
+       (match qbitPattern_match a_pattern a map0 with
+        | Some map1 -> qbitPattern_match b_pattern b map1
+        | None -> None)
+     | _ -> None)
+  | PToffoli (a_pattern, b_pattern, c_pattern) ->
+    (match instr with
+     | ToffoliInstr (a, b, c) ->
+       (match qbitPattern_match a_pattern a map0 with
+        | Some map1 ->
+          (match qbitPattern_match b_pattern b map1 with
+           | Some map3 -> qbitPattern_match c_pattern c map3
+           | None -> None)
+        | None -> None)
+     | _ -> None)
+  | PCswap (a_pattern, b_pattern, c_pattern) ->
+    (match instr with
+     | CswapInstr (a, b, c) ->
+       (match qbitPattern_match a_pattern a map0 with
+        | Some map1 ->
+          (match qbitPattern_match b_pattern b map1 with
+           | Some map3 -> qbitPattern_match c_pattern c map3
+           | None -> None)
+        | None -> None)
+     | _ -> None)
+  | PRccx (a_pattern, b_pattern, c_pattern) ->
+    (match instr with
+     | RccxInstr (a, b, c) ->
+       (match qbitPattern_match a_pattern a map0 with
+        | Some map1 ->
+          (match qbitPattern_match b_pattern b map1 with
+           | Some map3 -> qbitPattern_match c_pattern c map3
+           | None -> None)
+        | None -> None)
+     | _ -> None)
 
 (** val instructionPattern_match_list :
     instructionPattern list -> instruction list -> patternMap -> patternMap
@@ -3434,6 +3759,64 @@ let rec instructionPattern_inst pattern map0 =
      | None -> None)
   | PInstrVar variable -> NatMap.find variable map0.pattern_instr_map
   | PInstrExact instr -> Some instr
+  | PCz (a_pattern, b_pattern) ->
+    (match qbitPattern_inst a_pattern map0 with
+     | Some a ->
+       (match qbitPattern_inst b_pattern map0 with
+        | Some b -> Some (CzInstr (a, b))
+        | None -> None)
+     | None -> None)
+  | PCy (a_pattern, b_pattern) ->
+    (match qbitPattern_inst a_pattern map0 with
+     | Some a ->
+       (match qbitPattern_inst b_pattern map0 with
+        | Some b -> Some (CyInstr (a, b))
+        | None -> None)
+     | None -> None)
+  | PCh (a_pattern, b_pattern) ->
+    (match qbitPattern_inst a_pattern map0 with
+     | Some a ->
+       (match qbitPattern_inst b_pattern map0 with
+        | Some b -> Some (ChInstr (a, b))
+        | None -> None)
+     | None -> None)
+  | PCsx (a_pattern, b_pattern) ->
+    (match qbitPattern_inst a_pattern map0 with
+     | Some a ->
+       (match qbitPattern_inst b_pattern map0 with
+        | Some b -> Some (CsxInstr (a, b))
+        | None -> None)
+     | None -> None)
+  | PToffoli (a_pattern, b_pattern, c_pattern) ->
+    (match qbitPattern_inst a_pattern map0 with
+     | Some a ->
+       (match qbitPattern_inst b_pattern map0 with
+        | Some b ->
+          (match qbitPattern_inst c_pattern map0 with
+           | Some c -> Some (ToffoliInstr (a, b, c))
+           | None -> None)
+        | None -> None)
+     | None -> None)
+  | PCswap (a_pattern, b_pattern, c_pattern) ->
+    (match qbitPattern_inst a_pattern map0 with
+     | Some a ->
+       (match qbitPattern_inst b_pattern map0 with
+        | Some b ->
+          (match qbitPattern_inst c_pattern map0 with
+           | Some c -> Some (CswapInstr (a, b, c))
+           | None -> None)
+        | None -> None)
+     | None -> None)
+  | PRccx (a_pattern, b_pattern, c_pattern) ->
+    (match qbitPattern_inst a_pattern map0 with
+     | Some a ->
+       (match qbitPattern_inst b_pattern map0 with
+        | Some b ->
+          (match qbitPattern_inst c_pattern map0 with
+           | Some c -> Some (RccxInstr (a, b, c))
+           | None -> None)
+        | None -> None)
+     | None -> None)
 
 (** val instructionPattern_inst_list :
     instructionPattern list -> patternMap -> instruction list option **)
@@ -3468,6 +3851,16 @@ let rec instructionPattern_qbit_vars = function
 | PMeasure (qbit, _) -> natPattern_vars qbit
 | PReset qbit -> natPattern_vars qbit
 | PIf (_, _, body) -> concat (map instructionPattern_qbit_vars body)
+| PCz (a, b) -> app (natPattern_vars a) (natPattern_vars b)
+| PCy (a, b) -> app (natPattern_vars a) (natPattern_vars b)
+| PCh (a, b) -> app (natPattern_vars a) (natPattern_vars b)
+| PCsx (a, b) -> app (natPattern_vars a) (natPattern_vars b)
+| PToffoli (a, b, c) ->
+  app (natPattern_vars a) (app (natPattern_vars b) (natPattern_vars c))
+| PCswap (a, b, c) ->
+  app (natPattern_vars a) (app (natPattern_vars b) (natPattern_vars c))
+| PRccx (a, b, c) ->
+  app (natPattern_vars a) (app (natPattern_vars b) (natPattern_vars c))
 | _ -> []
 
 (** val instructionPattern_cbit_vars : instructionPattern -> int list **)
@@ -3730,6 +4123,104 @@ let rewriteRule_apply_top_level_result rule postprocesses instr occurrence =
           occurrence')))
           occurrence)
      | None -> (instr, (RewriteContinue occurrence)))
+  | CzInstr (_, _) ->
+    (match rewriteRule_apply rule (instr :: []) with
+     | Some result ->
+       ((fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          ((instruction_list_simp
+             (app result.rewriteResult_replacement
+               (map postprocesses
+                 (skipn result.rewriteResult_consumed (instr :: []))))),
+          RewriteDone))
+          (fun occurrence' -> (instr, (RewriteContinue
+          occurrence')))
+          occurrence)
+     | None -> (instr, (RewriteContinue occurrence)))
+  | CyInstr (_, _) ->
+    (match rewriteRule_apply rule (instr :: []) with
+     | Some result ->
+       ((fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          ((instruction_list_simp
+             (app result.rewriteResult_replacement
+               (map postprocesses
+                 (skipn result.rewriteResult_consumed (instr :: []))))),
+          RewriteDone))
+          (fun occurrence' -> (instr, (RewriteContinue
+          occurrence')))
+          occurrence)
+     | None -> (instr, (RewriteContinue occurrence)))
+  | ChInstr (_, _) ->
+    (match rewriteRule_apply rule (instr :: []) with
+     | Some result ->
+       ((fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          ((instruction_list_simp
+             (app result.rewriteResult_replacement
+               (map postprocesses
+                 (skipn result.rewriteResult_consumed (instr :: []))))),
+          RewriteDone))
+          (fun occurrence' -> (instr, (RewriteContinue
+          occurrence')))
+          occurrence)
+     | None -> (instr, (RewriteContinue occurrence)))
+  | CsxInstr (_, _) ->
+    (match rewriteRule_apply rule (instr :: []) with
+     | Some result ->
+       ((fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          ((instruction_list_simp
+             (app result.rewriteResult_replacement
+               (map postprocesses
+                 (skipn result.rewriteResult_consumed (instr :: []))))),
+          RewriteDone))
+          (fun occurrence' -> (instr, (RewriteContinue
+          occurrence')))
+          occurrence)
+     | None -> (instr, (RewriteContinue occurrence)))
+  | ToffoliInstr (_, _, _) ->
+    (match rewriteRule_apply rule (instr :: []) with
+     | Some result ->
+       ((fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          ((instruction_list_simp
+             (app result.rewriteResult_replacement
+               (map postprocesses
+                 (skipn result.rewriteResult_consumed (instr :: []))))),
+          RewriteDone))
+          (fun occurrence' -> (instr, (RewriteContinue
+          occurrence')))
+          occurrence)
+     | None -> (instr, (RewriteContinue occurrence)))
+  | CswapInstr (_, _, _) ->
+    (match rewriteRule_apply rule (instr :: []) with
+     | Some result ->
+       ((fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          ((instruction_list_simp
+             (app result.rewriteResult_replacement
+               (map postprocesses
+                 (skipn result.rewriteResult_consumed (instr :: []))))),
+          RewriteDone))
+          (fun occurrence' -> (instr, (RewriteContinue
+          occurrence')))
+          occurrence)
+     | None -> (instr, (RewriteContinue occurrence)))
+  | RccxInstr (_, _, _) ->
+    (match rewriteRule_apply rule (instr :: []) with
+     | Some result ->
+       ((fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          ((instruction_list_simp
+             (app result.rewriteResult_replacement
+               (map postprocesses
+                 (skipn result.rewriteResult_consumed (instr :: []))))),
+          RewriteDone))
+          (fun occurrence' -> (instr, (RewriteContinue
+          occurrence')))
+          occurrence)
+     | None -> (instr, (RewriteContinue occurrence)))
 
 (** val rewriteRule_apply_deep_list_result :
     rewriteRule -> (instruction -> int -> instruction * rewriteStatus) ->
@@ -3853,6 +4344,32 @@ let rec instruction_qbits_validb nq = function
   in list_validb instrs
 | IfInstr (_, _, body) -> instruction_qbits_validb nq body
 | ResetInstr qbit -> Nat.ltb qbit nq
+| CzInstr (a, b) -> (&&) ((&&) (Nat.ltb a nq) (Nat.ltb b nq)) (negb ((=) a b))
+| CyInstr (a, b) -> (&&) ((&&) (Nat.ltb a nq) (Nat.ltb b nq)) (negb ((=) a b))
+| ChInstr (a, b) -> (&&) ((&&) (Nat.ltb a nq) (Nat.ltb b nq)) (negb ((=) a b))
+| CsxInstr (a, b) ->
+  (&&) ((&&) (Nat.ltb a nq) (Nat.ltb b nq)) (negb ((=) a b))
+| ToffoliInstr (a, b, c) ->
+  (&&)
+    ((&&)
+      ((&&) ((&&) ((&&) (Nat.ltb a nq) (Nat.ltb b nq)) (Nat.ltb c nq))
+        (negb ((=) a b)))
+      (negb ((=) a c)))
+    (negb ((=) b c))
+| CswapInstr (a, b, c) ->
+  (&&)
+    ((&&)
+      ((&&) ((&&) ((&&) (Nat.ltb a nq) (Nat.ltb b nq)) (Nat.ltb c nq))
+        (negb ((=) a b)))
+      (negb ((=) a c)))
+    (negb ((=) b c))
+| RccxInstr (a, b, c) ->
+  (&&)
+    ((&&)
+      ((&&) ((&&) ((&&) (Nat.ltb a nq) (Nat.ltb b nq)) (Nat.ltb c nq))
+        (negb ((=) a b)))
+      (negb ((=) a c)))
+    (negb ((=) b c))
 
 type transformParameter =
 | Param_None
@@ -4452,6 +4969,13 @@ type standardPatternGate =
 | SPG_Std of standardGate * int
 | SPG_Cnot of int * int
 | SPG_Swap of int * int
+| SPG_Cz of int * int
+| SPG_Cy of int * int
+| SPG_Ch of int * int
+| SPG_Csx of int * int
+| SPG_Toffoli of int * int * int
+| SPG_Cswap of int * int * int
+| SPG_Rccx of int * int * int
 
 (** val standard_gate_pattern :
     standardGate -> natPattern -> instructionPattern **)
@@ -4477,6 +5001,13 @@ let standard_pattern_gate_to_instruction_pattern = function
 | SPG_Std (gate0, qbit) -> standard_gate_pattern gate0 (NatVar qbit)
 | SPG_Cnot (control, target) -> PCnot ((NatVar control), (NatVar target))
 | SPG_Swap (qbit1, qbit2) -> PSwap ((NatVar qbit1), (NatVar qbit2))
+| SPG_Cz (a, b) -> PCz ((NatVar a), (NatVar b))
+| SPG_Cy (a, b) -> PCy ((NatVar a), (NatVar b))
+| SPG_Ch (a, b) -> PCh ((NatVar a), (NatVar b))
+| SPG_Csx (a, b) -> PCsx ((NatVar a), (NatVar b))
+| SPG_Toffoli (a, b, c) -> PToffoli ((NatVar a), (NatVar b), (NatVar c))
+| SPG_Cswap (a, b, c) -> PCswap ((NatVar a), (NatVar b), (NatVar c))
+| SPG_Rccx (a, b, c) -> PRccx ((NatVar a), (NatVar b), (NatVar c))
 
 (** val standard_pattern_sequence_to_instruction_patterns :
     standardPatternGate list -> instructionPattern list **)
@@ -4513,12 +5044,10552 @@ let standard_gate_domega_matrix = function
   domega_matrix2 domega_half_one_minus_i domega_half_one_plus_i
     domega_half_one_plus_i domega_half_one_minus_i
 
+(** val qelib_single_standard : qelibSingle -> standardGate **)
+
+let qelib_single_standard = function
+| QH -> Std_H
+| QX -> Std_X
+| QS -> Std_S
+| QSdg -> Std_Sdg
+| QT -> Std_T
+| QTdg -> Std_Tdg
+
+(** val qelib_op_domega_matrix : int -> qelibOp -> dOmegaMatrix **)
+
+let qelib_op_domega_matrix n = function
+| QSingle (g, q0) ->
+  domega_matrix_single n q0
+    (standard_gate_domega_matrix (qelib_single_standard g))
+| QCnot (c, t0) -> domega_matrix_cnot n c t0
+
+(** val qelib_body_domega_matrix : int -> qelibOp list -> dOmegaMatrix **)
+
+let qelib_body_domega_matrix n body =
+  fold_right (fun op acc ->
+    domega_matrix_mul n acc (qelib_op_domega_matrix n op))
+    (domega_matrix_eye n) body
+
+(** val domega_cz_2_01 : dOmegaMatrix **)
+
+let domega_cz_2_01 =
+  Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))
+
+(** val domega_cz_2_10 : dOmegaMatrix **)
+
+let domega_cz_2_10 =
+  Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))
+
+(** val domega_cz_3_01 : dOmegaMatrix **)
+
+let domega_cz_3_01 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_cz_3_02 : dOmegaMatrix **)
+
+let domega_cz_3_02 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat
+    (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_cz_3_10 : dOmegaMatrix **)
+
+let domega_cz_3_10 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_cz_3_12 : dOmegaMatrix **)
+
+let domega_cz_3_12 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_cz_3_20 : dOmegaMatrix **)
+
+let domega_cz_3_20 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat
+    (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_cz_3_21 : dOmegaMatrix **)
+
+let domega_cz_3_21 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_matrix_cz : int -> int -> int -> dOmegaMatrix **)
+
+let domega_matrix_cz n a b =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> qelib_body_domega_matrix 0 (qelib_body_cz a b))
+    (fun n0 ->
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ ->
+      qelib_body_domega_matrix (Stdlib.Int.succ 0) (qelib_body_cz a b))
+      (fun n1 ->
+      (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+              (qelib_body_cz a b))
+            (fun n2 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ -> domega_cz_2_01)
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+                (qelib_body_cz a b))
+              n2)
+            b)
+          (fun n2 ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ -> domega_cz_2_10)
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+                (qelib_body_cz a b))
+              b)
+            (fun _ ->
+            qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+              (qelib_body_cz a b))
+            n2)
+          a)
+        (fun n2 ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                (Stdlib.Int.succ 0))) (qelib_body_cz a b))
+              (fun n3 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ -> domega_cz_3_01)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ -> domega_cz_3_02)
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_cz a b))
+                  n4)
+                n3)
+              b)
+            (fun n3 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ -> domega_cz_3_10)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_cz a b))
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ -> domega_cz_3_12)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_cz a b))
+                    n5)
+                  n4)
+                b)
+              (fun n4 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ -> domega_cz_3_20)
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ -> domega_cz_3_21)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_cz a b))
+                    n5)
+                  b)
+                (fun _ ->
+                qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                  (Stdlib.Int.succ 0))) (qelib_body_cz a b))
+                n4)
+              n3)
+            a)
+          (fun n3 ->
+          qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+            (Stdlib.Int.succ (Stdlib.Int.succ n3)))) (qelib_body_cz a b))
+          n2)
+        n1)
+      n0)
+    n
+
+(** val domega_cy_2_01 : dOmegaMatrix **)
+
+let domega_cy_2_01 =
+  Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = 0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = 0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.unit_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat
+    (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.unit_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))
+
+(** val domega_cy_2_10 : dOmegaMatrix **)
+
+let domega_cy_2_10 =
+  Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = 0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = 0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat
+    (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.unit_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))
+
+(** val domega_cy_3_01 : dOmegaMatrix **)
+
+let domega_cy_3_01 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.unit_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.unit_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.unit_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.unit_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))))
+
+(** val domega_cy_3_02 : dOmegaMatrix **)
+
+let domega_cy_3_02 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.unit_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.unit_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.unit_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.unit_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))))
+
+(** val domega_cy_3_10 : dOmegaMatrix **)
+
+let domega_cy_3_10 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.unit_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.unit_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.unit_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.unit_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))))
+
+(** val domega_cy_3_12 : dOmegaMatrix **)
+
+let domega_cy_3_12 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.unit_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.unit_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.unit_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.unit_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))))
+
+(** val domega_cy_3_20 : dOmegaMatrix **)
+
+let domega_cy_3_20 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.unit_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.unit_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.unit_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.unit_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))))
+
+(** val domega_cy_3_21 : dOmegaMatrix **)
+
+let domega_cy_3_21 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.unit_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.unit_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.unit_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    0 }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = 0 }))))))
+
+(** val domega_matrix_cy : int -> int -> int -> dOmegaMatrix **)
+
+let domega_matrix_cy n a b =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> qelib_body_domega_matrix 0 (qelib_body_cy a b))
+    (fun n0 ->
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ ->
+      qelib_body_domega_matrix (Stdlib.Int.succ 0) (qelib_body_cy a b))
+      (fun n1 ->
+      (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+              (qelib_body_cy a b))
+            (fun n2 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ -> domega_cy_2_01)
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+                (qelib_body_cy a b))
+              n2)
+            b)
+          (fun n2 ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ -> domega_cy_2_10)
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+                (qelib_body_cy a b))
+              b)
+            (fun _ ->
+            qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+              (qelib_body_cy a b))
+            n2)
+          a)
+        (fun n2 ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                (Stdlib.Int.succ 0))) (qelib_body_cy a b))
+              (fun n3 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ -> domega_cy_3_01)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ -> domega_cy_3_02)
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_cy a b))
+                  n4)
+                n3)
+              b)
+            (fun n3 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ -> domega_cy_3_10)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_cy a b))
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ -> domega_cy_3_12)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_cy a b))
+                    n5)
+                  n4)
+                b)
+              (fun n4 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ -> domega_cy_3_20)
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ -> domega_cy_3_21)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_cy a b))
+                    n5)
+                  b)
+                (fun _ ->
+                qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                  (Stdlib.Int.succ 0))) (qelib_body_cy a b))
+                n4)
+              n3)
+            a)
+          (fun n3 ->
+          qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+            (Stdlib.Int.succ (Stdlib.Int.succ n3)))) (qelib_body_cy a b))
+          n2)
+        n1)
+      n0)
+    n
+
+(** val domega_ch_2_01 : dOmegaMatrix **)
+
+let domega_ch_2_01 =
+  Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))
+
+(** val domega_ch_2_10 : dOmegaMatrix **)
+
+let domega_ch_2_10 =
+  Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))
+
+(** val domega_ch_3_01 : dOmegaMatrix **)
+
+let domega_ch_3_01 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))))),
+    (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))))),
+    (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))))
+
+(** val domega_ch_3_02 : dOmegaMatrix **)
+
+let domega_ch_3_02 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))))),
+    (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))))),
+    (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))))
+
+(** val domega_ch_3_10 : dOmegaMatrix **)
+
+let domega_ch_3_10 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))))
+
+(** val domega_ch_3_12 : dOmegaMatrix **)
+
+let domega_ch_3_12 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))))),
+    (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))))
+
+(** val domega_ch_3_20 : dOmegaMatrix **)
+
+let domega_ch_3_20 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))))),
+    (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))))
+
+(** val domega_ch_3_21 : dOmegaMatrix **)
+
+let domega_ch_3_21 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int;
+    domega_d3 = Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ
+    (Stdlib.Int.succ (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }))))),
+    (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0),
+    (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int;
+    domega_d1 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ (Stdlib.Int.succ 0))) }),
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    (Stdlib.Int.succ 0))) }))))))
+
+(** val domega_matrix_ch : int -> int -> int -> dOmegaMatrix **)
+
+let domega_matrix_ch n a b =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> qelib_body_domega_matrix 0 (qelib_body_ch a b))
+    (fun n0 ->
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ ->
+      qelib_body_domega_matrix (Stdlib.Int.succ 0) (qelib_body_ch a b))
+      (fun n1 ->
+      (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+              (qelib_body_ch a b))
+            (fun n2 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ -> domega_ch_2_01)
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+                (qelib_body_ch a b))
+              n2)
+            b)
+          (fun n2 ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ -> domega_ch_2_10)
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+                (qelib_body_ch a b))
+              b)
+            (fun _ ->
+            qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+              (qelib_body_ch a b))
+            n2)
+          a)
+        (fun n2 ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                (Stdlib.Int.succ 0))) (qelib_body_ch a b))
+              (fun n3 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ -> domega_ch_3_01)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ -> domega_ch_3_02)
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_ch a b))
+                  n4)
+                n3)
+              b)
+            (fun n3 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ -> domega_ch_3_10)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_ch a b))
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ -> domega_ch_3_12)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_ch a b))
+                    n5)
+                  n4)
+                b)
+              (fun n4 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ -> domega_ch_3_20)
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ -> domega_ch_3_21)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_ch a b))
+                    n5)
+                  b)
+                (fun _ ->
+                qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                  (Stdlib.Int.succ 0))) (qelib_body_ch a b))
+                n4)
+              n3)
+            a)
+          (fun n3 ->
+          qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+            (Stdlib.Int.succ (Stdlib.Int.succ n3)))) (qelib_body_ch a b))
+          n2)
+        n1)
+      n0)
+    n
+
+(** val domega_csx_2_01 : dOmegaMatrix **)
+
+let domega_csx_2_01 =
+  Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))
+
+(** val domega_csx_2_10 : dOmegaMatrix **)
+
+let domega_csx_2_10 =
+  Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat
+    { domega_d0 = (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))
+
+(** val domega_csx_3_01 : dOmegaMatrix **)
+
+let domega_csx_3_01 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_csx_3_02 : dOmegaMatrix **)
+
+let domega_csx_3_02 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_csx_3_10 : dOmegaMatrix **)
+
+let domega_csx_3_10 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_csx_3_12 : dOmegaMatrix **)
+
+let domega_csx_3_12 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_csx_3_20 : dOmegaMatrix **)
+
+let domega_csx_3_20 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_csx_3_21 : dOmegaMatrix **)
+
+let domega_csx_3_21 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_matrix_csx : int -> int -> int -> dOmegaMatrix **)
+
+let domega_matrix_csx n a b =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> qelib_body_domega_matrix 0 (qelib_body_csx a b))
+    (fun n0 ->
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ ->
+      qelib_body_domega_matrix (Stdlib.Int.succ 0) (qelib_body_csx a b))
+      (fun n1 ->
+      (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+              (qelib_body_csx a b))
+            (fun n2 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ -> domega_csx_2_01)
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+                (qelib_body_csx a b))
+              n2)
+            b)
+          (fun n2 ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ -> domega_csx_2_10)
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+                (qelib_body_csx a b))
+              b)
+            (fun _ ->
+            qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+              (qelib_body_csx a b))
+            n2)
+          a)
+        (fun n2 ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                (Stdlib.Int.succ 0))) (qelib_body_csx a b))
+              (fun n3 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ -> domega_csx_3_01)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ -> domega_csx_3_02)
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_csx a b))
+                  n4)
+                n3)
+              b)
+            (fun n3 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ -> domega_csx_3_10)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_csx a b))
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ -> domega_csx_3_12)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_csx a b))
+                    n5)
+                  n4)
+                b)
+              (fun n4 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ -> domega_csx_3_20)
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ -> domega_csx_3_21)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_csx a b))
+                    n5)
+                  b)
+                (fun _ ->
+                qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                  (Stdlib.Int.succ 0))) (qelib_body_csx a b))
+                n4)
+              n3)
+            a)
+          (fun n3 ->
+          qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+            (Stdlib.Int.succ (Stdlib.Int.succ n3)))) (qelib_body_csx a b))
+          n2)
+        n1)
+      n0)
+    n
+
+(** val domega_ccx_3_012 : dOmegaMatrix **)
+
+let domega_ccx_3_012 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_ccx_3_021 : dOmegaMatrix **)
+
+let domega_ccx_3_021 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_ccx_3_102 : dOmegaMatrix **)
+
+let domega_ccx_3_102 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_ccx_3_120 : dOmegaMatrix **)
+
+let domega_ccx_3_120 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_ccx_3_201 : dOmegaMatrix **)
+
+let domega_ccx_3_201 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_ccx_3_210 : dOmegaMatrix **)
+
+let domega_ccx_3_210 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_matrix_ccx : int -> int -> int -> int -> dOmegaMatrix **)
+
+let domega_matrix_ccx n a b c =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> qelib_body_domega_matrix 0 (qelib_body_ccx a b c))
+    (fun n0 ->
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ ->
+      qelib_body_domega_matrix (Stdlib.Int.succ 0) (qelib_body_ccx a b c))
+      (fun n1 ->
+      (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ ->
+        qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+          (qelib_body_ccx a b c))
+        (fun n2 ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                (Stdlib.Int.succ 0))) (qelib_body_ccx a b c))
+              (fun n3 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_ccx a b c))
+                  (fun n4 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_ccx a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_ccx_3_012)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_ccx a b c))
+                      n5)
+                    n4)
+                  c)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_ccx a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_ccx_3_021)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_ccx a b c))
+                      n5)
+                    c)
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_ccx a b c))
+                  n4)
+                n3)
+              b)
+            (fun n3 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_ccx a b c))
+                  (fun n4 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_ccx a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_ccx_3_102)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_ccx a b c))
+                      n5)
+                    n4)
+                  c)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_ccx a b c))
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_ccx_3_120)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_ccx a b c))
+                      c)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_ccx a b c))
+                    n5)
+                  n4)
+                b)
+              (fun n4 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_ccx a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_ccx_3_201)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_ccx a b c))
+                      n5)
+                    c)
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_ccx_3_210)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_ccx a b c))
+                      c)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_ccx a b c))
+                    n5)
+                  b)
+                (fun _ ->
+                qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                  (Stdlib.Int.succ 0))) (qelib_body_ccx a b c))
+                n4)
+              n3)
+            a)
+          (fun n3 ->
+          qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+            (Stdlib.Int.succ (Stdlib.Int.succ n3)))) (qelib_body_ccx a b c))
+          n2)
+        n1)
+      n0)
+    n
+
+(** val domega_cswap_3_012 : dOmegaMatrix **)
+
+let domega_cswap_3_012 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_cswap_3_021 : dOmegaMatrix **)
+
+let domega_cswap_3_021 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_cswap_3_102 : dOmegaMatrix **)
+
+let domega_cswap_3_102 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_cswap_3_120 : dOmegaMatrix **)
+
+let domega_cswap_3_120 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_cswap_3_201 : dOmegaMatrix **)
+
+let domega_cswap_3_201 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_cswap_3_210 : dOmegaMatrix **)
+
+let domega_cswap_3_210 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_matrix_cswap : int -> int -> int -> int -> dOmegaMatrix **)
+
+let domega_matrix_cswap n a b c =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> qelib_body_domega_matrix 0 (qelib_body_cswap a b c))
+    (fun n0 ->
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ ->
+      qelib_body_domega_matrix (Stdlib.Int.succ 0) (qelib_body_cswap a b c))
+      (fun n1 ->
+      (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ ->
+        qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+          (qelib_body_cswap a b c))
+        (fun n2 ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                (Stdlib.Int.succ 0))) (qelib_body_cswap a b c))
+              (fun n3 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_cswap a b c))
+                  (fun n4 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_cswap a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_cswap_3_012)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_cswap a b c))
+                      n5)
+                    n4)
+                  c)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_cswap a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_cswap_3_021)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_cswap a b c))
+                      n5)
+                    c)
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_cswap a b c))
+                  n4)
+                n3)
+              b)
+            (fun n3 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_cswap a b c))
+                  (fun n4 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_cswap a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_cswap_3_102)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_cswap a b c))
+                      n5)
+                    n4)
+                  c)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_cswap a b c))
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_cswap_3_120)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_cswap a b c))
+                      c)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_cswap a b c))
+                    n5)
+                  n4)
+                b)
+              (fun n4 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_cswap a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_cswap_3_201)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_cswap a b c))
+                      n5)
+                    c)
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_cswap_3_210)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_cswap a b c))
+                      c)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_cswap a b c))
+                    n5)
+                  b)
+                (fun _ ->
+                qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                  (Stdlib.Int.succ 0))) (qelib_body_cswap a b c))
+                n4)
+              n3)
+            a)
+          (fun n3 ->
+          qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+            (Stdlib.Int.succ (Stdlib.Int.succ n3)))) (qelib_body_cswap a b c))
+          n2)
+        n1)
+      n0)
+    n
+
+(** val domega_rccx_3_012 : dOmegaMatrix **)
+
+let domega_rccx_3_012 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat
+    (0, (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_rccx_3_021 : dOmegaMatrix **)
+
+let domega_rccx_3_021 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_rccx_3_102 : dOmegaMatrix **)
+
+let domega_rccx_3_102 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_rccx_3_120 : dOmegaMatrix **)
+
+let domega_rccx_3_120 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat
+    { domega_d0 = Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_rccx_3_201 : dOmegaMatrix **)
+
+let domega_rccx_3_201 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d1 = Big_int_Z.zero_big_int;
+    domega_d2 = Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int;
+    domega_k = (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.minus_big_int
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int))); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_rccx_3_210 : dOmegaMatrix **)
+
+let domega_rccx_3_210 =
+  Domega_rec_mat ((Stdlib.Int.succ (Stdlib.Int.succ 0)), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int)); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))))), (Domega_rec_mat ((Stdlib.Int.succ 0), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))), (Domega_rec_mat
+    ((Stdlib.Int.succ 0), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.minus_big_int (Big_int_Z.mult_int_big_int 2
+    (Big_int_Z.mult_int_big_int 2 Big_int_Z.unit_big_int))); domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))), (Domega_rec_mat (0,
+    (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }), (Domega_bas_mat { domega_d0 = Big_int_Z.zero_big_int; domega_d1 =
+    Big_int_Z.zero_big_int; domega_d2 = Big_int_Z.zero_big_int; domega_d3 =
+    Big_int_Z.zero_big_int; domega_k = (Stdlib.Int.succ (Stdlib.Int.succ
+    0)) }))), (Domega_rec_mat (0, (Domega_bas_mat { domega_d0 =
+    (Big_int_Z.mult_int_big_int 2 (Big_int_Z.mult_int_big_int 2
+    Big_int_Z.unit_big_int)); domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }), (Domega_bas_mat { domega_d0 =
+    Big_int_Z.zero_big_int; domega_d1 = Big_int_Z.zero_big_int; domega_d2 =
+    Big_int_Z.zero_big_int; domega_d3 = Big_int_Z.zero_big_int; domega_k =
+    (Stdlib.Int.succ (Stdlib.Int.succ 0)) }))))))
+
+(** val domega_matrix_rccx : int -> int -> int -> int -> dOmegaMatrix **)
+
+let domega_matrix_rccx n a b c =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> qelib_body_domega_matrix 0 (qelib_body_rccx a b c))
+    (fun n0 ->
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ ->
+      qelib_body_domega_matrix (Stdlib.Int.succ 0) (qelib_body_rccx a b c))
+      (fun n1 ->
+      (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ ->
+        qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ 0))
+          (qelib_body_rccx a b c))
+        (fun n2 ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                (Stdlib.Int.succ 0))) (qelib_body_rccx a b c))
+              (fun n3 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_rccx a b c))
+                  (fun n4 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_rccx a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_rccx_3_012)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_rccx a b c))
+                      n5)
+                    n4)
+                  c)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_rccx a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_rccx_3_021)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_rccx a b c))
+                      n5)
+                    c)
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_rccx a b c))
+                  n4)
+                n3)
+              b)
+            (fun n3 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_rccx a b c))
+                  (fun n4 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_rccx a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_rccx_3_102)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_rccx a b c))
+                      n5)
+                    n4)
+                  c)
+                (fun n4 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                    (Stdlib.Int.succ 0))) (qelib_body_rccx a b c))
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_rccx_3_120)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_rccx a b c))
+                      c)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_rccx a b c))
+                    n5)
+                  n4)
+                b)
+              (fun n4 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_rccx a b c))
+                    (fun n5 ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_rccx_3_201)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_rccx a b c))
+                      n5)
+                    c)
+                  (fun n5 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ ->
+                    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                      (fun _ -> domega_rccx_3_210)
+                      (fun _ ->
+                      qelib_body_domega_matrix (Stdlib.Int.succ
+                        (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                        (qelib_body_rccx a b c))
+                      c)
+                    (fun _ ->
+                    qelib_body_domega_matrix (Stdlib.Int.succ
+                      (Stdlib.Int.succ (Stdlib.Int.succ 0)))
+                      (qelib_body_rccx a b c))
+                    n5)
+                  b)
+                (fun _ ->
+                qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+                  (Stdlib.Int.succ 0))) (qelib_body_rccx a b c))
+                n4)
+              n3)
+            a)
+          (fun n3 ->
+          qelib_body_domega_matrix (Stdlib.Int.succ (Stdlib.Int.succ
+            (Stdlib.Int.succ (Stdlib.Int.succ n3)))) (qelib_body_rccx a b c))
+          n2)
+        n1)
+      n0)
+    n
+
 (** val standard_pattern_gate_nqubits : standardPatternGate -> int **)
 
 let standard_pattern_gate_nqubits = function
 | SPG_Std (_, qbit) -> Stdlib.Int.succ qbit
 | SPG_Cnot (control, target) -> Stdlib.Int.succ (Nat.max control target)
 | SPG_Swap (qbit1, qbit2) -> Stdlib.Int.succ (Nat.max qbit1 qbit2)
+| SPG_Cz (a, b) -> Stdlib.Int.succ (Nat.max a b)
+| SPG_Cy (a, b) -> Stdlib.Int.succ (Nat.max a b)
+| SPG_Ch (a, b) -> Stdlib.Int.succ (Nat.max a b)
+| SPG_Csx (a, b) -> Stdlib.Int.succ (Nat.max a b)
+| SPG_Toffoli (a, b, c) -> Stdlib.Int.succ (Nat.max a (Nat.max b c))
+| SPG_Cswap (a, b, c) -> Stdlib.Int.succ (Nat.max a (Nat.max b c))
+| SPG_Rccx (a, b, c) -> Stdlib.Int.succ (Nat.max a (Nat.max b c))
 
 (** val standard_pattern_sequence_nqubits :
     standardPatternGate list -> int **)
@@ -4562,6 +15633,43 @@ let standard_pattern_gate_matrix n = function
   if (||) ((=) qbit1 qbit2) (negb (qbit_pair_in_bounds n qbit1 qbit2))
   then None
   else Some (domega_matrix_swap n qbit1 qbit2)
+| SPG_Cz (a, b) ->
+  if (||) ((=) a b) (negb ((&&) (qbit_in_bounds n a) (qbit_in_bounds n b)))
+  then None
+  else Some (domega_matrix_cz n a b)
+| SPG_Cy (a, b) ->
+  if (||) ((=) a b) (negb ((&&) (qbit_in_bounds n a) (qbit_in_bounds n b)))
+  then None
+  else Some (domega_matrix_cy n a b)
+| SPG_Ch (a, b) ->
+  if (||) ((=) a b) (negb ((&&) (qbit_in_bounds n a) (qbit_in_bounds n b)))
+  then None
+  else Some (domega_matrix_ch n a b)
+| SPG_Csx (a, b) ->
+  if (||) ((=) a b) (negb ((&&) (qbit_in_bounds n a) (qbit_in_bounds n b)))
+  then None
+  else Some (domega_matrix_csx n a b)
+| SPG_Toffoli (a, b, c) ->
+  if (||) ((||) ((||) ((=) a b) ((=) a c)) ((=) b c))
+       (negb
+         ((&&) ((&&) (qbit_in_bounds n a) (qbit_in_bounds n b))
+           (qbit_in_bounds n c)))
+  then None
+  else Some (domega_matrix_ccx n a b c)
+| SPG_Cswap (a, b, c) ->
+  if (||) ((||) ((||) ((=) a b) ((=) a c)) ((=) b c))
+       (negb
+         ((&&) ((&&) (qbit_in_bounds n a) (qbit_in_bounds n b))
+           (qbit_in_bounds n c)))
+  then None
+  else Some (domega_matrix_cswap n a b c)
+| SPG_Rccx (a, b, c) ->
+  if (||) ((||) ((||) ((=) a b) ((=) a c)) ((=) b c))
+       (negb
+         ((&&) ((&&) (qbit_in_bounds n a) (qbit_in_bounds n b))
+           (qbit_in_bounds n c)))
+  then None
+  else Some (domega_matrix_rccx n a b c)
 
 (** val standard_pattern_sequence_matrix :
     int -> standardPatternGate list -> dOmegaMatrix option **)
