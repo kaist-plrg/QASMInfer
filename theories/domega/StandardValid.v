@@ -152,26 +152,310 @@ Definition qelib_body_domega_matrix (n : nat) (body : list QelibOp) : DOmegaMatr
   fold_right (fun op acc => domega_matrix_mul acc (qelib_op_domega_matrix n op))
     domega_matrix_eye body.
 
+(* Closed body products are kernel-reduced once.  The fallback keeps arbitrary
+   register widths and total out-of-range semantics. *)
+Definition domega_cz_2_01 : DOmegaMatrix 2 :=
+  Eval vm_compute in qelib_body_domega_matrix 2 (qelib_body_cz 0 1).
+Definition domega_cz_2_10 : DOmegaMatrix 2 :=
+  Eval vm_compute in qelib_body_domega_matrix 2 (qelib_body_cz 1 0).
+Definition domega_cz_3_01 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cz 0 1).
+Definition domega_cz_3_02 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cz 0 2).
+Definition domega_cz_3_10 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cz 1 0).
+Definition domega_cz_3_12 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cz 1 2).
+Definition domega_cz_3_20 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cz 2 0).
+Definition domega_cz_3_21 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cz 2 1).
+
 Definition domega_matrix_cz {n : nat} (a b : nat) : DOmegaMatrix n :=
-  qelib_body_domega_matrix n (qelib_body_cz a b).
+  match n as width return DOmegaMatrix width with
+  | 2 => match a, b with
+      | 0, 1 => domega_cz_2_01
+      | 1, 0 => domega_cz_2_10
+      | _, _ => qelib_body_domega_matrix 2 (qelib_body_cz a b)
+      end
+  | 3 => match a, b with
+      | 0, 1 => domega_cz_3_01
+      | 0, 2 => domega_cz_3_02
+      | 1, 0 => domega_cz_3_10
+      | 1, 2 => domega_cz_3_12
+      | 2, 0 => domega_cz_3_20
+      | 2, 1 => domega_cz_3_21
+      | _, _ => qelib_body_domega_matrix 3 (qelib_body_cz a b)
+      end
+  | width => qelib_body_domega_matrix width (qelib_body_cz a b)
+  end.
+
+Lemma domega_matrix_cz_qelib_body : forall n a b,
+  @domega_matrix_cz n a b = qelib_body_domega_matrix n (qelib_body_cz a b).
+Proof.
+  intros [|[|[|[|n]]]] a b; try reflexivity;
+    destruct a as [|[|[|a]]];
+    destruct b as [|[|[|b]]];
+    reflexivity.
+Qed.
+
+(* Closed body products are kernel-reduced once.  The fallback keeps arbitrary
+   register widths and total out-of-range semantics. *)
+Definition domega_cy_2_01 : DOmegaMatrix 2 :=
+  Eval vm_compute in qelib_body_domega_matrix 2 (qelib_body_cy 0 1).
+Definition domega_cy_2_10 : DOmegaMatrix 2 :=
+  Eval vm_compute in qelib_body_domega_matrix 2 (qelib_body_cy 1 0).
+Definition domega_cy_3_01 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cy 0 1).
+Definition domega_cy_3_02 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cy 0 2).
+Definition domega_cy_3_10 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cy 1 0).
+Definition domega_cy_3_12 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cy 1 2).
+Definition domega_cy_3_20 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cy 2 0).
+Definition domega_cy_3_21 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cy 2 1).
 
 Definition domega_matrix_cy {n : nat} (a b : nat) : DOmegaMatrix n :=
-  qelib_body_domega_matrix n (qelib_body_cy a b).
+  match n as width return DOmegaMatrix width with
+  | 2 => match a, b with
+      | 0, 1 => domega_cy_2_01
+      | 1, 0 => domega_cy_2_10
+      | _, _ => qelib_body_domega_matrix 2 (qelib_body_cy a b)
+      end
+  | 3 => match a, b with
+      | 0, 1 => domega_cy_3_01
+      | 0, 2 => domega_cy_3_02
+      | 1, 0 => domega_cy_3_10
+      | 1, 2 => domega_cy_3_12
+      | 2, 0 => domega_cy_3_20
+      | 2, 1 => domega_cy_3_21
+      | _, _ => qelib_body_domega_matrix 3 (qelib_body_cy a b)
+      end
+  | width => qelib_body_domega_matrix width (qelib_body_cy a b)
+  end.
+
+Lemma domega_matrix_cy_qelib_body : forall n a b,
+  @domega_matrix_cy n a b = qelib_body_domega_matrix n (qelib_body_cy a b).
+Proof.
+  intros [|[|[|[|n]]]] a b; try reflexivity;
+    destruct a as [|[|[|a]]];
+    destruct b as [|[|[|b]]];
+    reflexivity.
+Qed.
+
+(* Closed body products are kernel-reduced once.  The fallback keeps arbitrary
+   register widths and total out-of-range semantics. *)
+Definition domega_ch_2_01 : DOmegaMatrix 2 :=
+  Eval vm_compute in qelib_body_domega_matrix 2 (qelib_body_ch 0 1).
+Definition domega_ch_2_10 : DOmegaMatrix 2 :=
+  Eval vm_compute in qelib_body_domega_matrix 2 (qelib_body_ch 1 0).
+Definition domega_ch_3_01 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ch 0 1).
+Definition domega_ch_3_02 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ch 0 2).
+Definition domega_ch_3_10 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ch 1 0).
+Definition domega_ch_3_12 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ch 1 2).
+Definition domega_ch_3_20 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ch 2 0).
+Definition domega_ch_3_21 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ch 2 1).
 
 Definition domega_matrix_ch {n : nat} (a b : nat) : DOmegaMatrix n :=
-  qelib_body_domega_matrix n (qelib_body_ch a b).
+  match n as width return DOmegaMatrix width with
+  | 2 => match a, b with
+      | 0, 1 => domega_ch_2_01
+      | 1, 0 => domega_ch_2_10
+      | _, _ => qelib_body_domega_matrix 2 (qelib_body_ch a b)
+      end
+  | 3 => match a, b with
+      | 0, 1 => domega_ch_3_01
+      | 0, 2 => domega_ch_3_02
+      | 1, 0 => domega_ch_3_10
+      | 1, 2 => domega_ch_3_12
+      | 2, 0 => domega_ch_3_20
+      | 2, 1 => domega_ch_3_21
+      | _, _ => qelib_body_domega_matrix 3 (qelib_body_ch a b)
+      end
+  | width => qelib_body_domega_matrix width (qelib_body_ch a b)
+  end.
+
+Lemma domega_matrix_ch_qelib_body : forall n a b,
+  @domega_matrix_ch n a b = qelib_body_domega_matrix n (qelib_body_ch a b).
+Proof.
+  intros [|[|[|[|n]]]] a b; try reflexivity;
+    destruct a as [|[|[|a]]];
+    destruct b as [|[|[|b]]];
+    reflexivity.
+Qed.
+
+(* Closed body products are kernel-reduced once.  The fallback keeps arbitrary
+   register widths and total out-of-range semantics. *)
+Definition domega_csx_2_01 : DOmegaMatrix 2 :=
+  Eval vm_compute in qelib_body_domega_matrix 2 (qelib_body_csx 0 1).
+Definition domega_csx_2_10 : DOmegaMatrix 2 :=
+  Eval vm_compute in qelib_body_domega_matrix 2 (qelib_body_csx 1 0).
+Definition domega_csx_3_01 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_csx 0 1).
+Definition domega_csx_3_02 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_csx 0 2).
+Definition domega_csx_3_10 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_csx 1 0).
+Definition domega_csx_3_12 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_csx 1 2).
+Definition domega_csx_3_20 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_csx 2 0).
+Definition domega_csx_3_21 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_csx 2 1).
 
 Definition domega_matrix_csx {n : nat} (a b : nat) : DOmegaMatrix n :=
-  qelib_body_domega_matrix n (qelib_body_csx a b).
+  match n as width return DOmegaMatrix width with
+  | 2 => match a, b with
+      | 0, 1 => domega_csx_2_01
+      | 1, 0 => domega_csx_2_10
+      | _, _ => qelib_body_domega_matrix 2 (qelib_body_csx a b)
+      end
+  | 3 => match a, b with
+      | 0, 1 => domega_csx_3_01
+      | 0, 2 => domega_csx_3_02
+      | 1, 0 => domega_csx_3_10
+      | 1, 2 => domega_csx_3_12
+      | 2, 0 => domega_csx_3_20
+      | 2, 1 => domega_csx_3_21
+      | _, _ => qelib_body_domega_matrix 3 (qelib_body_csx a b)
+      end
+  | width => qelib_body_domega_matrix width (qelib_body_csx a b)
+  end.
+
+Lemma domega_matrix_csx_qelib_body : forall n a b,
+  @domega_matrix_csx n a b = qelib_body_domega_matrix n (qelib_body_csx a b).
+Proof.
+  intros [|[|[|[|n]]]] a b; try reflexivity;
+    destruct a as [|[|[|a]]];
+    destruct b as [|[|[|b]]];
+    reflexivity.
+Qed.
+
+(* Closed body products are kernel-reduced once.  The fallback keeps arbitrary
+   register widths and total out-of-range semantics. *)
+Definition domega_ccx_3_012 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ccx 0 1 2).
+Definition domega_ccx_3_021 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ccx 0 2 1).
+Definition domega_ccx_3_102 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ccx 1 0 2).
+Definition domega_ccx_3_120 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ccx 1 2 0).
+Definition domega_ccx_3_201 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ccx 2 0 1).
+Definition domega_ccx_3_210 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_ccx 2 1 0).
 
 Definition domega_matrix_ccx {n : nat} (a b c : nat) : DOmegaMatrix n :=
-  qelib_body_domega_matrix n (qelib_body_ccx a b c).
+  match n as width return DOmegaMatrix width with
+  | 3 => match a, b, c with
+      | 0, 1, 2 => domega_ccx_3_012
+      | 0, 2, 1 => domega_ccx_3_021
+      | 1, 0, 2 => domega_ccx_3_102
+      | 1, 2, 0 => domega_ccx_3_120
+      | 2, 0, 1 => domega_ccx_3_201
+      | 2, 1, 0 => domega_ccx_3_210
+      | _, _, _ => qelib_body_domega_matrix 3 (qelib_body_ccx a b c)
+      end
+  | width => qelib_body_domega_matrix width (qelib_body_ccx a b c)
+  end.
+
+Lemma domega_matrix_ccx_qelib_body : forall n a b c,
+  @domega_matrix_ccx n a b c = qelib_body_domega_matrix n (qelib_body_ccx a b c).
+Proof.
+  intros [|[|[|[|n]]]] a b c; try reflexivity;
+    destruct a as [|[|[|a]]];
+    destruct b as [|[|[|b]]];
+    destruct c as [|[|[|c]]];
+    reflexivity.
+Qed.
+
+(* Closed body products are kernel-reduced once.  The fallback keeps arbitrary
+   register widths and total out-of-range semantics. *)
+Definition domega_cswap_3_012 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cswap 0 1 2).
+Definition domega_cswap_3_021 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cswap 0 2 1).
+Definition domega_cswap_3_102 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cswap 1 0 2).
+Definition domega_cswap_3_120 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cswap 1 2 0).
+Definition domega_cswap_3_201 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cswap 2 0 1).
+Definition domega_cswap_3_210 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_cswap 2 1 0).
 
 Definition domega_matrix_cswap {n : nat} (a b c : nat) : DOmegaMatrix n :=
-  qelib_body_domega_matrix n (qelib_body_cswap a b c).
+  match n as width return DOmegaMatrix width with
+  | 3 => match a, b, c with
+      | 0, 1, 2 => domega_cswap_3_012
+      | 0, 2, 1 => domega_cswap_3_021
+      | 1, 0, 2 => domega_cswap_3_102
+      | 1, 2, 0 => domega_cswap_3_120
+      | 2, 0, 1 => domega_cswap_3_201
+      | 2, 1, 0 => domega_cswap_3_210
+      | _, _, _ => qelib_body_domega_matrix 3 (qelib_body_cswap a b c)
+      end
+  | width => qelib_body_domega_matrix width (qelib_body_cswap a b c)
+  end.
+
+Lemma domega_matrix_cswap_qelib_body : forall n a b c,
+  @domega_matrix_cswap n a b c = qelib_body_domega_matrix n (qelib_body_cswap a b c).
+Proof.
+  intros [|[|[|[|n]]]] a b c; try reflexivity;
+    destruct a as [|[|[|a]]];
+    destruct b as [|[|[|b]]];
+    destruct c as [|[|[|c]]];
+    reflexivity.
+Qed.
+
+(* Closed body products are kernel-reduced once.  The fallback keeps arbitrary
+   register widths and total out-of-range semantics. *)
+Definition domega_rccx_3_012 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_rccx 0 1 2).
+Definition domega_rccx_3_021 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_rccx 0 2 1).
+Definition domega_rccx_3_102 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_rccx 1 0 2).
+Definition domega_rccx_3_120 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_rccx 1 2 0).
+Definition domega_rccx_3_201 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_rccx 2 0 1).
+Definition domega_rccx_3_210 : DOmegaMatrix 3 :=
+  Eval vm_compute in qelib_body_domega_matrix 3 (qelib_body_rccx 2 1 0).
 
 Definition domega_matrix_rccx {n : nat} (a b c : nat) : DOmegaMatrix n :=
-  qelib_body_domega_matrix n (qelib_body_rccx a b c).
+  match n as width return DOmegaMatrix width with
+  | 3 => match a, b, c with
+      | 0, 1, 2 => domega_rccx_3_012
+      | 0, 2, 1 => domega_rccx_3_021
+      | 1, 0, 2 => domega_rccx_3_102
+      | 1, 2, 0 => domega_rccx_3_120
+      | 2, 0, 1 => domega_rccx_3_201
+      | 2, 1, 0 => domega_rccx_3_210
+      | _, _, _ => qelib_body_domega_matrix 3 (qelib_body_rccx a b c)
+      end
+  | width => qelib_body_domega_matrix width (qelib_body_rccx a b c)
+  end.
+
+Lemma domega_matrix_rccx_qelib_body : forall n a b c,
+  @domega_matrix_rccx n a b c = qelib_body_domega_matrix n (qelib_body_rccx a b c).
+Proof.
+  intros [|[|[|[|n]]]] a b c; try reflexivity;
+    destruct a as [|[|[|a]]];
+    destruct b as [|[|[|b]]];
+    destruct c as [|[|[|c]]];
+    reflexivity.
+Qed.
 
 End STANDARD_MULTI_DOMEGA_MATRICES.
 
@@ -696,31 +980,38 @@ Qed.
 
 Lemma complex_of_domega_matrix_cz : forall n a b,
   complex_of_domega_matrix (@domega_matrix_cz n a b) = mat_cz a b.
-Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+Proof. intros. rewrite domega_matrix_cz_qelib_body.
+  apply complex_of_qelib_body_domega_matrix. Qed.
 
 Lemma complex_of_domega_matrix_cy : forall n a b,
   complex_of_domega_matrix (@domega_matrix_cy n a b) = mat_cy a b.
-Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+Proof. intros. rewrite domega_matrix_cy_qelib_body.
+  apply complex_of_qelib_body_domega_matrix. Qed.
 
 Lemma complex_of_domega_matrix_ch : forall n a b,
   complex_of_domega_matrix (@domega_matrix_ch n a b) = mat_ch a b.
-Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+Proof. intros. rewrite domega_matrix_ch_qelib_body.
+  apply complex_of_qelib_body_domega_matrix. Qed.
 
 Lemma complex_of_domega_matrix_csx : forall n a b,
   complex_of_domega_matrix (@domega_matrix_csx n a b) = mat_csx a b.
-Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+Proof. intros. rewrite domega_matrix_csx_qelib_body.
+  apply complex_of_qelib_body_domega_matrix. Qed.
 
 Lemma complex_of_domega_matrix_ccx : forall n a b c,
   complex_of_domega_matrix (@domega_matrix_ccx n a b c) = mat_ccx a b c.
-Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+Proof. intros. rewrite domega_matrix_ccx_qelib_body.
+  apply complex_of_qelib_body_domega_matrix. Qed.
 
 Lemma complex_of_domega_matrix_cswap : forall n a b c,
   complex_of_domega_matrix (@domega_matrix_cswap n a b c) = mat_cswap a b c.
-Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+Proof. intros. rewrite domega_matrix_cswap_qelib_body.
+  apply complex_of_qelib_body_domega_matrix. Qed.
 
 Lemma complex_of_domega_matrix_rccx : forall n a b c,
   complex_of_domega_matrix (@domega_matrix_rccx n a b c) = mat_rccx a b c.
-Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+Proof. intros. rewrite domega_matrix_rccx_qelib_body.
+  apply complex_of_qelib_body_domega_matrix. Qed.
 
 End STANDARD_MULTI_GATE_MATRIX_SOUNDNESS.
 
