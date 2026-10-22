@@ -3,7 +3,8 @@
 (rocq.theory
  (name QASMInfer)
  (theories Stdlib)
- (modules :standard))
+ ; The driver writes extracted.ml and is run only in extraction/stage.
+ (modules :standard \ extract.Extract))
 
 (alias
  (name proofs)
