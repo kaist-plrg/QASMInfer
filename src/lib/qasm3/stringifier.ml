@@ -80,6 +80,9 @@ let string_of_uop = function
       in
       Printf.sprintf "%s%s %s;" id parameters (string_of_argument_list arguments)
 
+  | Native (name, args) ->
+      Printf.sprintf "%s %s;" name (String.concat "," (List.map string_of_argument args))
+
 let string_of_qop = function
   | Uop uop -> string_of_uop uop
   (* OpenQASM 3 spells measurement as an assignment. *)

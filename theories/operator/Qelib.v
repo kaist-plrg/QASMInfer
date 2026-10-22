@@ -335,4 +335,3 @@ Proof.
   rewrite <- (@tprod_eye_eye n extra) at 1.
   repeat rewrite tprod_mul. repeat rewrite mat_mul_eye_l. reflexivity.
 Qed.
-

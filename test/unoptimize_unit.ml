@@ -83,7 +83,14 @@ let rec swaps_of_instruction = function
   | E.RotateInstr _
   | E.CnotInstr _
   | E.MeasureInstr _
-  | E.ResetInstr _ ->
+  | E.ResetInstr _
+  | E.CzInstr _
+  | E.CyInstr _
+  | E.ChInstr _
+  | E.CsxInstr _
+  | E.ToffoliInstr _
+  | E.CswapInstr _
+  | E.RccxInstr _ ->
       []
 
 let rec cnots_of_instruction = function
@@ -94,7 +101,14 @@ let rec cnots_of_instruction = function
   | E.RotateInstr _
   | E.SwapInstr _
   | E.MeasureInstr _
-  | E.ResetInstr _ ->
+  | E.ResetInstr _
+  | E.CzInstr _
+  | E.CyInstr _
+  | E.ChInstr _
+  | E.CsxInstr _
+  | E.ToffoliInstr _
+  | E.CswapInstr _
+  | E.RccxInstr _ ->
       []
 
 let rec identity_rotate_targets = function
@@ -108,7 +122,14 @@ let rec identity_rotate_targets = function
   | E.CnotInstr _
   | E.SwapInstr _
   | E.MeasureInstr _
-  | E.ResetInstr _ ->
+  | E.ResetInstr _
+  | E.CzInstr _
+  | E.CyInstr _
+  | E.ChInstr _
+  | E.CsxInstr _
+  | E.ToffoliInstr _
+  | E.CswapInstr _
+  | E.RccxInstr _ ->
       []
 
 let test_insert_swap_uses_distinct_parameters () =
@@ -253,7 +274,14 @@ let rec contradictory_if_cbits outer_cond = function
   | E.CnotInstr _
   | E.SwapInstr _
   | E.MeasureInstr _
-  | E.ResetInstr _ ->
+  | E.ResetInstr _
+  | E.CzInstr _
+  | E.CyInstr _
+  | E.ChInstr _
+  | E.CsxInstr _
+  | E.ToffoliInstr _
+  | E.CswapInstr _
+  | E.RccxInstr _ ->
       []
 
 let test_manual_cbit_insert_if () =

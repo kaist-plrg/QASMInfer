@@ -12,6 +12,7 @@ type argument_dp = id * int
 type uop_dp =
   | CX_dp of argument_dp * argument_dp
   | Swap_dp of argument_dp * argument_dp
+  | Native_dp of id * argument_dp list
   | U_dp of exp list * argument_dp
   | Gate_dp of id * exp list * argument_dp list
 
@@ -107,6 +108,9 @@ let desugar_parallel_uop (operation : uop) (qreg_size : int IdMap.t) :
       | Some s -> List.init s (fun i -> U_dp (exp_list, (qid, i)))
       | None -> failwith "desugar_parallel_uop: invalid id")
   | U (exp_list, (qid, Some i)) -> [ U_dp (exp_list, (qid, i)) ]
+  | Native (name, args) ->
+      desugar_parallel_arg_list args qreg_size
+      |> List.map (fun args -> Native_dp (name, args))
   | Gate (gid, exp_list, arg_list) ->
       desugar_parallel_arg_list arg_list qreg_size
       |> List.map (fun arg_list_instantiated ->
@@ -197,6 +201,8 @@ let instantiate_gop (exp_map : exp IdMap.t) (arg_map : argument_dp IdMap.t)
            ( id,
              List.map (instantiate_exp exp_map) exp_list,
              List.map (instantiate_arg arg_map) arg_list ))
+  | GUop (Native (name, args)) ->
+      Some (Native_dp (name, List.map (instantiate_arg arg_map) args))
   | GBarrier _ -> None
 
 let instantiate_gate_decl (decl_head : gatedecl) (decl_body : gop list)
@@ -263,6 +269,7 @@ let rec desugar_macro_program (qasm_dp : program_dp)
 (**********************************)
 
 type qc_ir =
+  | NativeIr of instruction
   | NopIr
   | RotateIr of
       angle
@@ -443,6 +450,9 @@ let desugar_qasm_qop (assignment_q_rev : int QASMArgMap.t)
             assignment_q_rev,
           deref_or_fail arg2 "CX"
             assignment_q_rev )
+  | Uop_dp (Native_dp (name, args)) ->
+      NativeIr (Native.instruction name
+        (List.map (fun arg -> deref_or_fail arg name assignment_q_rev) args))
   | Uop_dp (Swap_dp (arg1, arg2)) ->
       SwapIr
         ( deref_or_fail arg1 "swap"
@@ -515,6 +525,7 @@ let desugar_qasm_program (creg_size_map : int IdMap.t)
 let rec desugar_qcir_program (qc_ir_program : qc_ir) (acc : int) :
     instruction * int =
   match qc_ir_program with
+  | NativeIr instruction -> (instruction, acc)
   | NopIr -> (NopInstr, acc)
   | RotateIr (t, p, l, q) -> (RotateInstr (t, p, l, q), acc)
   | CnotIr (a1, a2) -> (CnotInstr (a1, a2), acc)

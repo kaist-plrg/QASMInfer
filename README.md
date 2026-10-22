@@ -80,6 +80,8 @@ the program to OpenQASMCore, applies extracted transformation specifications,
 and emits canonical OpenQASM 2 or OpenQASM 3. This is a normalized rewrite, not
 a text-preserving one: comments, barriers, includes, gate declarations, call
 names, expression spelling, and parallel syntax may be lost or expanded.
+The parameter-free qelib1 gates `cz`, `cy`, `ch`, `csx`, `ccx`, `cswap`, and
+`rccx` are native instructions and retain their names, including at `--step 0`.
 
 ### CLI options
 
@@ -96,7 +98,7 @@ names, expression spelling, and parallel syntax may be lost or expanded.
   built-in rules.
 - `--emit auto|oq2|oq3`: choose the destination dialect. See
   [Destination dialect](#destination-dialect).
-- `--qbits 0`, `--qbits 0,1`: manually choose qbit parameters for
+- `--qbits 0`, `--qbits 0,1`, `--qbits 0,1,2`: manually choose qbit parameters for
   `--unoptimize --rule NAME`.
 - `--cbits 0`: manually choose cbit parameters for
   `--unoptimize --rule NAME`.
@@ -140,7 +142,11 @@ a single-bit guard as `if (c[i]) { ... }` or `if (!c[i]) { ... }`. Because
 QASMCore only ever guards one classical bit, a whole-register comparison is
 emitted as the equivalent chain of per-bit guards rather than reconstructed as
 `c == n`. `sxdg` is emitted as a literal `U` rotation, since `stdgates.inc`
-does not declare it.
+does not declare it. `cz`, `cy`, `ch`, `ccx`, and `cswap` use their
+`stdgates.inc` names. `csx` and `rccx` retain their names with local declarations
+containing their qelib1 bodies, emitted only when needed (including in guards).
+The reader recognizes precisely those canonical local declarations. Other user
+declarations remain macros, even if their names coincide with native gates.
 
 Whatever `qasminfer` writes, `qasminfer` reads back to the same QASMCore
 program; re-running `--unoptimize --step 0` on its own output is a fixed point,
@@ -205,9 +211,9 @@ qasminfer --unoptimize --rule Insert_If_FT --cbits 0 --occurrence 0 \
 
 Rules taking two qubits require them to be **distinct**, and so does an
 `--instr` payload: both are ways of asking this tool to emit a gate. A
-degenerate gate already present in the source program is still passed through
-unchanged, since that is the user's own program rather than something requested
-on the command line. The underlying Rocq
+degenerate legacy `cx` or `swap` already present in the source program is still
+passed through unchanged. Native v2 composites require distinct operands in
+source programs too. The underlying Rocq
 transforms do not: `Transform_swap_insert` and `Transform_cnot_cnot` assume only
 that each index is in range, and the matrix model is total at equal indices
 (`mat_swap q q` and `mat_cnot q q` are both the identity). OpenQASM is the part
@@ -276,8 +282,17 @@ of `omega = exp(i pi / 4)`:
 ]
 ```
 
-Gate names are `id`, `x`, `y`, `z`, `h`, `s`, `sdg`, `t`, `tdg`, `sx`, and
-`sxdg`, plus two-qubit `cx` and `swap`. Rules that reference qubit indices
+Vocabulary v2 has 20 gate names. Wire fields follow qelib1 operand roles:
+
+| Gates | JSON wire fields, in operand order |
+| --- | --- |
+| `id x y z h s sdg t tdg sx sxdg` | `q` |
+| `cx cz cy ch csx` | `control`, `target` |
+| `swap` | `q1`, `q2` |
+| `ccx rccx` | `control1`, `control2`, `target` |
+| `cswap` | `control`, `q1`, `q2` |
+
+Composite operands must be distinct and in range. Rules that reference qubit indices
 outside the source program are ignored; invalid in-bounds rules and duplicate
 rule names in the combined built-in and rule-file rule set are rejected without
 writing the destination.
@@ -291,12 +306,22 @@ on any ordered pair. Two consequences follow.
   so it is rejected when the file is loaded. In particular an empty `lhs` binds
   nothing and cannot carry a non-empty `rhs`; to insert at an empty site, apply
   the built-in `Insert_I` first and then a rule with `lhs: [{"gate": "id", ...}]`.
-- **The rule's width is not capped.** Only per-gate arity is: the grammar has no
-  three-qubit gate. Multi-qubit gates outside the grammar are still expressible
-  as rules, because the front ends macro-expand them before anything reaches the
-  checker. `cz` is `h;cx;h`, `cy` is `sdg;cx;s`, and `ccx` and `cswap` expand
-  into the same alphabet, so `cz;cz -> id;id` and friends are ordinary rule-file
-  entries today.
+- **The rule's width is not capped.** Individual native gates act on at most
+  three qubits. Parametric gates and `rc3x`, `c3x`, `c3sqrtx`, `c4x` still expand
+  on input and are not rule-file gate names.
+
+For a loaded rule, `--qbits` supplies actual qubits in ascending order of the
+rule's distinct variable numbers. For example, `--qbits 2,0,1` maps variables
+0, 1, 2 to actual wires 2, 0, 1. Values must be distinct and in range;
+`--occurrence` then selects among matches with that assignment, in the usual
+traversal order. With no `--qbits`, all injective matches remain eligible.
+The selected occurrence is applied by the original extracted, validated rule.
+
+Each native composite matrix is the product of its canonical qelib1 body.
+`Execute_<gate>_qelib_body` in `theories/program/Standard.v` proves exact equality
+of state transformers with the old expanded reading; the corresponding DOmega
+agreement lemmas compose the existing primitive proofs. `rccx` retains its
+relative phase, and `csx` is not treated as self-inverse.
 
 Validity is checked up to a global phase drawn from the eight 8th roots of
 unity; a rule whose two sides differ by any other phase is rejected.
@@ -370,6 +395,19 @@ Example JSON:
   ]
 }
 ```
+
+The optional integration probe exercises named gate emission in both dialects,
+all three-wire role permutations, v1 comparisons and catalog admission timing:
+
+```bash
+python scripts/check_vocabulary_v2.py
+python scripts/check_vocabulary_v2.py --v1 /path/to/v1/qasminfer \
+  --corpus /path/to/program.qasm --catalog /path/to/named-rules.json
+```
+
+The implementation and measured acceptance results, including a discrepancy in
+the explorer's plain-format exporter, are recorded in
+[docs/qasminfer-vocabulary-v2.md](docs/qasminfer-vocabulary-v2.md#8-implementation-and-validation).
 
 ## Rule catalog backlog
 

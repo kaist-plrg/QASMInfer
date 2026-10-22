@@ -285,6 +285,37 @@ let qop_of_leaf q_assignment c_assignment = function
                 [],
                 [ (fst qubit1, Some (snd qubit1));
                   (fst qubit2, Some (snd qubit2)) ] )))
+  | CzInstr (a, b) ->
+      let* a = argument_of_index Quantum q_assignment a in
+      let* b = argument_of_index Quantum q_assignment b in
+      Ok (Uop (Gate ("cz", [], [ (fst a, Some (snd a)); (fst b, Some (snd b)) ])))
+  | CyInstr (a, b) ->
+      let* a = argument_of_index Quantum q_assignment a in
+      let* b = argument_of_index Quantum q_assignment b in
+      Ok (Uop (Gate ("cy", [], [ (fst a, Some (snd a)); (fst b, Some (snd b)) ])))
+  | ChInstr (a, b) ->
+      let* a = argument_of_index Quantum q_assignment a in
+      let* b = argument_of_index Quantum q_assignment b in
+      Ok (Uop (Gate ("ch", [], [ (fst a, Some (snd a)); (fst b, Some (snd b)) ])))
+  | CsxInstr (a, b) ->
+      let* a = argument_of_index Quantum q_assignment a in
+      let* b = argument_of_index Quantum q_assignment b in
+      Ok (Uop (Gate ("csx", [], [ (fst a, Some (snd a)); (fst b, Some (snd b)) ])))
+  | ToffoliInstr (a, b, c) ->
+      let* a = argument_of_index Quantum q_assignment a in
+      let* b = argument_of_index Quantum q_assignment b in
+      let* c = argument_of_index Quantum q_assignment c in
+      Ok (Uop (Gate ("ccx", [], [ (fst a, Some (snd a)); (fst b, Some (snd b)); (fst c, Some (snd c)) ])))
+  | CswapInstr (a, b, c) ->
+      let* a = argument_of_index Quantum q_assignment a in
+      let* b = argument_of_index Quantum q_assignment b in
+      let* c = argument_of_index Quantum q_assignment c in
+      Ok (Uop (Gate ("cswap", [], [ (fst a, Some (snd a)); (fst b, Some (snd b)); (fst c, Some (snd c)) ])))
+  | RccxInstr (a, b, c) ->
+      let* a = argument_of_index Quantum q_assignment a in
+      let* b = argument_of_index Quantum q_assignment b in
+      let* c = argument_of_index Quantum q_assignment c in
+      Ok (Uop (Gate ("rccx", [], [ (fst a, Some (snd a)); (fst b, Some (snd b)); (fst c, Some (snd c)) ])))
   | MeasureInstr (qubit, cbit) ->
       let* qubit = argument_of_index Quantum q_assignment qubit in
       let* cbit = argument_of_index Classical c_assignment cbit in
@@ -510,11 +541,11 @@ let statements_of_instruction qregs cregs q_assignment c_assignment instruction
   Result.map List.rev (collect [] instruction)
 
 let qelib_gate_names =
-  [ "id"; "x"; "y"; "z"; "h"; "s"; "sdg"; "t"; "tdg"; "sx"; "sxdg"; "swap" ]
+  [ "id"; "x"; "y"; "z"; "h"; "s"; "sdg"; "t"; "tdg"; "sx"; "sxdg"; "swap" ] @ Native.names
 
 let qop_uses_qelib = function
   | Uop (Gate (name, _, _)) -> List.mem name qelib_gate_names
-  | Uop (U _ | CX _) | Meas _ | Reset _ -> false
+  | Uop (U _ | CX _ | Native _) | Meas _ | Reset _ -> false
 
 let rec statement_uses_qelib = function
   | Qop qop | If (_, _, qop) -> qop_uses_qelib qop

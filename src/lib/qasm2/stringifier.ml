@@ -80,6 +80,9 @@ let string_of_uop = function
       Printf.sprintf "%s%s %s;" id parameters
         (string_of_argument_list arguments)
 
+  | Native (name, args) ->
+      Printf.sprintf "%s %s;" name (String.concat "," (List.map string_of_argument args))
+
 let string_of_qop = function
   | Uop uop -> string_of_uop uop
   | Meas (qubit, cbit) ->
@@ -147,6 +150,13 @@ let rec string_of_instruction = function
         (string_of_angle z)
         i
   | CnotInstr (i, j) -> Printf.sprintf "CnotInstr (%d, %d)" i j
+  | CzInstr (a, b) -> Printf.sprintf "CzInstr (%d, %d)" a b
+  | CyInstr (a, b) -> Printf.sprintf "CyInstr (%d, %d)" a b
+  | ChInstr (a, b) -> Printf.sprintf "ChInstr (%d, %d)" a b
+  | CsxInstr (a, b) -> Printf.sprintf "CsxInstr (%d, %d)" a b
+  | ToffoliInstr (a, b, c) -> Printf.sprintf "ToffoliInstr (%d, %d, %d)" a b c
+  | CswapInstr (a, b, c) -> Printf.sprintf "CswapInstr (%d, %d, %d)" a b c
+  | RccxInstr (a, b, c) -> Printf.sprintf "RccxInstr (%d, %d, %d)" a b c
   | SwapInstr (i, j) -> Printf.sprintf "SwapInstr (%d, %d)" i j
   | MeasureInstr (i, j) -> Printf.sprintf "MeasureInstr (%d, %d)" i j
   | SeqInstr instrs ->
@@ -165,6 +175,7 @@ let rec string_of_instruction = function
 (*******************************)
 
 let rec string_of_qc_ir = function
+  | NativeIr instruction -> string_of_instruction instruction
   | NopIr -> "NopIr"
   | RotateIr (x, y, z, i) ->
       Printf.sprintf "RotateIr (%s, %s, %s, %d)"
@@ -224,6 +235,9 @@ let string_of_uop_dp = function
       Printf.sprintf "U_dp (%s, %s)"
         (String.concat ", " (List.map string_of_exp exps))
         (string_of_argument_dp a)
+  | Native_dp (name, args) ->
+      Printf.sprintf "Native_dp (%s, [%s])" name
+        (String.concat ", " (List.map string_of_argument_dp args))
   | Gate_dp (id, exps, args) ->
       Printf.sprintf "Gate_dp (%s, [%s], [%s])" id
         (String.concat ", " (List.map string_of_exp exps))
