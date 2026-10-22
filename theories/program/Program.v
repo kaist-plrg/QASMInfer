@@ -73,7 +73,14 @@ Inductive Instruction : Type :=
 | MeasureInstr: nat -> nat -> Instruction  (* MeasureInstr q c: *)
 | SeqInstr: list Instruction -> Instruction
 | IfInstr: nat -> bool -> Instruction -> Instruction  (* if cbit == 0 (false) or cbit == 1 (true) *)
-| ResetInstr: nat -> Instruction.  (* reset qbit to 0 *)
+| ResetInstr: nat -> Instruction  (* reset qbit to 0 *)
+| CzInstr: nat -> nat -> Instruction
+| CyInstr: nat -> nat -> Instruction
+| ChInstr: nat -> nat -> Instruction
+| CsxInstr: nat -> nat -> Instruction
+| ToffoliInstr: nat -> nat -> nat -> Instruction
+| CswapInstr: nat -> nat -> nat -> Instruction
+| RccxInstr: nat -> nat -> nat -> Instruction.
 
 Lemma Instruction_ind' :
   forall (P : Instruction -> Prop),
@@ -85,9 +92,16 @@ Lemma Instruction_ind' :
     (forall is, Forall P is -> P (SeqInstr is)) ->
     (forall cbit cond subinstr, P subinstr -> P (IfInstr cbit cond subinstr)) ->
     (forall target, P (ResetInstr target)) ->
+    (forall a b, P (CzInstr a b)) ->
+    (forall a b, P (CyInstr a b)) ->
+    (forall a b, P (ChInstr a b)) ->
+    (forall a b, P (CsxInstr a b)) ->
+    (forall a b c, P (ToffoliInstr a b c)) ->
+    (forall a b c, P (CswapInstr a b c)) ->
+    (forall a b c, P (RccxInstr a b c)) ->
     forall instr, P instr.
 Proof.
-  intros P Hnop Hrot Hcnot Hswap Hmeas Hseq Hif Hreset.
+  intros P Hnop Hrot Hcnot Hswap Hmeas Hseq Hif Hreset Hcz Hcy Hch Hcsx Hccx Hcswap Hrccx.
 
   fix IH 1.
   intro instr.
@@ -107,6 +121,13 @@ Proof.
   - (* IfInstr *)
     exact (Hif n b instr (IH instr)).
   - exact (Hreset n).
+  - apply Hcz.
+  - apply Hcy.
+  - apply Hch.
+  - apply Hcsx.
+  - apply Hccx.
+  - apply Hcswap.
+  - apply Hrccx.
 Qed.
 
 (* ============================================================================================== *)
@@ -844,6 +865,48 @@ Definition Execute_swap_instr (q1 q2: nat) (ps: ProgramState): ProgramState :=
   PositiveMap.map (Execute_swap_instr_branch q1 q2) ps.
 
 
+(* Named qelib1 gates execute a single, canonical body-product matrix. *)
+Definition Execute_matrix_instr_branch (U : Matrix nq) (branch : Branch) : Branch :=
+  {| B_qstate := den_uop U (B_qstate branch); B_prob := B_prob branch |}.
+
+Definition Execute_matrix_instr (U : Matrix nq) (ps : ProgramState) : ProgramState :=
+  PositiveMap.map (Execute_matrix_instr_branch U) ps.
+
+Definition Execute_cz_instr_branch (a b : nat) :=
+  Execute_matrix_instr_branch (mat_cz a b).
+Definition Execute_cz_instr (a b : nat) :=
+  Execute_matrix_instr (mat_cz a b).
+
+Definition Execute_cy_instr_branch (a b : nat) :=
+  Execute_matrix_instr_branch (mat_cy a b).
+Definition Execute_cy_instr (a b : nat) :=
+  Execute_matrix_instr (mat_cy a b).
+
+Definition Execute_ch_instr_branch (a b : nat) :=
+  Execute_matrix_instr_branch (mat_ch a b).
+Definition Execute_ch_instr (a b : nat) :=
+  Execute_matrix_instr (mat_ch a b).
+
+Definition Execute_csx_instr_branch (a b : nat) :=
+  Execute_matrix_instr_branch (mat_csx a b).
+Definition Execute_csx_instr (a b : nat) :=
+  Execute_matrix_instr (mat_csx a b).
+
+Definition Execute_ccx_instr_branch (a b c : nat) :=
+  Execute_matrix_instr_branch (mat_ccx a b c).
+Definition Execute_ccx_instr (a b c : nat) :=
+  Execute_matrix_instr (mat_ccx a b c).
+
+Definition Execute_cswap_instr_branch (a b c : nat) :=
+  Execute_matrix_instr_branch (mat_cswap a b c).
+Definition Execute_cswap_instr (a b c : nat) :=
+  Execute_matrix_instr (mat_cswap a b c).
+
+Definition Execute_rccx_instr_branch (a b c : nat) :=
+  Execute_matrix_instr_branch (mat_rccx a b c).
+Definition Execute_rccx_instr (a b c : nat) :=
+  Execute_matrix_instr (mat_rccx a b c).
+
 Definition Execute_measure_instr_branch (qbit cbit: nat) (cstate: CState) (branch: Branch): ProgramState :=
   let prob0 := com_real (den_prob_0 qbit (B_qstate branch)) in
   let prob1 := com_real (den_prob_1 qbit (B_qstate branch)) in
@@ -902,6 +965,13 @@ Fixpoint Execute_suppl (instr: Instruction) (ps: ProgramState): ProgramState :=
       )
       ps (PositiveMap.empty Branch)
     | ResetInstr target                   => Execute_reset_instr target ps
+    | CzInstr a b => Execute_cz_instr a b ps
+    | CyInstr a b => Execute_cy_instr a b ps
+    | ChInstr a b => Execute_ch_instr a b ps
+    | CsxInstr a b => Execute_csx_instr a b ps
+    | ToffoliInstr a b c => Execute_ccx_instr a b c ps
+    | CswapInstr a b c => Execute_cswap_instr a b c ps
+    | RccxInstr a b c => Execute_rccx_instr a b c ps
     end.
 
 Definition Execute_if_instr_branch (cbit: nat) (cond: bool) (subinstr: Instruction) (k: PositiveMap.key) (b: Branch) :=
@@ -986,6 +1056,42 @@ Proof.
   - apply H.
   - apply Execute_swap_instr_branch_valid.
 Qed.
+
+Lemma Execute_matrix_instr_valid : forall U ps,
+  mat_unitary U -> ProgramState_valid ps ->
+  ProgramState_valid (Execute_matrix_instr U ps).
+Proof.
+  intros U ps HU Hps. apply ProgramState_map_valid; [exact Hps |].
+  intros b [Hb Hp]. split; simpl; [apply den_valid_uop |]; assumption.
+Qed.
+
+Lemma Execute_cz_instr_valid : forall a b ps,
+  ProgramState_valid ps -> ProgramState_valid (Execute_cz_instr a b ps).
+Proof. intros. apply Execute_matrix_instr_valid; auto using mat_cz_unitary. Qed.
+
+Lemma Execute_cy_instr_valid : forall a b ps,
+  ProgramState_valid ps -> ProgramState_valid (Execute_cy_instr a b ps).
+Proof. intros. apply Execute_matrix_instr_valid; auto using mat_cy_unitary. Qed.
+
+Lemma Execute_ch_instr_valid : forall a b ps,
+  ProgramState_valid ps -> ProgramState_valid (Execute_ch_instr a b ps).
+Proof. intros. apply Execute_matrix_instr_valid; auto using mat_ch_unitary. Qed.
+
+Lemma Execute_csx_instr_valid : forall a b ps,
+  ProgramState_valid ps -> ProgramState_valid (Execute_csx_instr a b ps).
+Proof. intros. apply Execute_matrix_instr_valid; auto using mat_csx_unitary. Qed.
+
+Lemma Execute_ccx_instr_valid : forall a b c ps,
+  ProgramState_valid ps -> ProgramState_valid (Execute_ccx_instr a b c ps).
+Proof. intros. apply Execute_matrix_instr_valid; auto using mat_ccx_unitary. Qed.
+
+Lemma Execute_cswap_instr_valid : forall a b c ps,
+  ProgramState_valid ps -> ProgramState_valid (Execute_cswap_instr a b c ps).
+Proof. intros. apply Execute_matrix_instr_valid; auto using mat_cswap_unitary. Qed.
+
+Lemma Execute_rccx_instr_valid : forall a b c ps,
+  ProgramState_valid ps -> ProgramState_valid (Execute_rccx_instr a b c ps).
+Proof. intros. apply Execute_matrix_instr_valid; auto using mat_rccx_unitary. Qed.
 
 Lemma Execute_measure_instr_branch_valid:
   forall (qbit cbit: nat) (cstate: CState) (branch: Branch),
@@ -1283,6 +1389,14 @@ Arguments Execute_rotate_instr _ _ _ _ : simpl never.
 Arguments Execute_cnot_instr _ _ _ : simpl never.
 Arguments Execute_swap_instr _ _ _ : simpl never.
 Arguments Execute_measure_instr _ _ _ : simpl never.
+Arguments Execute_cz_instr _ _ _ : simpl never.
+Arguments Execute_cy_instr _ _ _ : simpl never.
+Arguments Execute_ch_instr _ _ _ : simpl never.
+Arguments Execute_csx_instr _ _ _ : simpl never.
+Arguments Execute_ccx_instr _ _ _ _ : simpl never.
+Arguments Execute_cswap_instr _ _ _ _ : simpl never.
+Arguments Execute_rccx_instr _ _ _ _ : simpl never.
+
 
 
 Lemma Execute_suppl_valid:
@@ -1318,6 +1432,13 @@ Proof.
       all: apply PFacts.empty_mapsto_iff in Hmaps_acc.
       all: contradiction.
   - apply Execute_reset_instr_valid; apply H.
+  - apply Execute_cz_instr_valid; apply H.
+  - apply Execute_cy_instr_valid; apply H.
+  - apply Execute_ch_instr_valid; apply H.
+  - apply Execute_csx_instr_valid; apply H.
+  - apply Execute_ccx_instr_valid; apply H.
+  - apply Execute_cswap_instr_valid; apply H.
+  - apply Execute_rccx_instr_valid; apply H.
 Qed.
 
 Corollary Execute_if_instr_branch_valid:
@@ -1342,7 +1463,7 @@ Lemma Execute_suppl_prob_valid:
 Proof.
   induction instr using Instruction_ind'.
   all: intros; simpl;
-  try (apply ProgramState_map_prob_preserve; intros b; reflexivity).
+  try (apply ProgramState_map_prob_preserve; intros branch; reflexivity).
   - reflexivity.
   - apply Execute_measure_instr_prob_preserve. apply H.
   - generalize dependent ps.
@@ -1553,3 +1674,31 @@ Notation "i ; j" :=
 Notation "'seq[' is ']'" :=
   (SeqInstr is)
   (in custom qasm at level 0, is constr at level 0).
+
+Notation "'cz' a b" :=
+  (CzInstr a b)
+  (in custom qasm at level 0, a constr at level 0, b constr at level 0).
+
+Notation "'cy' a b" :=
+  (CyInstr a b)
+  (in custom qasm at level 0, a constr at level 0, b constr at level 0).
+
+Notation "'ch' a b" :=
+  (ChInstr a b)
+  (in custom qasm at level 0, a constr at level 0, b constr at level 0).
+
+Notation "'csx' a b" :=
+  (CsxInstr a b)
+  (in custom qasm at level 0, a constr at level 0, b constr at level 0).
+
+Notation "'ccx' a b c" :=
+  (ToffoliInstr a b c)
+  (in custom qasm at level 0, a constr at level 0, b constr at level 0, c constr at level 0).
+
+Notation "'cswap' a b c" :=
+  (CswapInstr a b c)
+  (in custom qasm at level 0, a constr at level 0, b constr at level 0, c constr at level 0).
+
+Notation "'rccx' a b c" :=
+  (RccxInstr a b c)
+  (in custom qasm at level 0, a constr at level 0, b constr at level 0, c constr at level 0).

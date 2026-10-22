@@ -36,6 +36,13 @@ Fixpoint change_qbit_instr (chan_fn: nat -> nat) (instr: Instruction): Instructi
   | IfInstr cbit cond instr =>
     IfInstr cbit cond (change_qbit_instr chan_fn instr)
   | ResetInstr qbit => ResetInstr (chan_fn qbit)
+  | CzInstr a b => CzInstr (chan_fn a) (chan_fn b)
+  | CyInstr a b => CyInstr (chan_fn a) (chan_fn b)
+  | ChInstr a b => ChInstr (chan_fn a) (chan_fn b)
+  | CsxInstr a b => CsxInstr (chan_fn a) (chan_fn b)
+  | ToffoliInstr a b c => ToffoliInstr (chan_fn a) (chan_fn b) (chan_fn c)
+  | CswapInstr a b c => CswapInstr (chan_fn a) (chan_fn b) (chan_fn c)
+  | RccxInstr a b c => RccxInstr (chan_fn a) (chan_fn b) (chan_fn c)
   end.
 
 Definition swap_qbit_instr (qbit1 qbit2: nat) :=
@@ -693,6 +700,118 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma Commute_swap_cz : forall qbit1 qbit2 a b,
+  Qbit_index_valid qbit1 -> Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+    (SeqInstr [SwapInstr qbit1 qbit2; CzInstr (swap_qbit qbit1 qbit2 a) (swap_qbit qbit1 qbit2 b)])
+    (SeqInstr [CzInstr a b; SwapInstr qbit1 qbit2]).
+Proof.
+  intros. eapply Instruction_equiv_of_seqs_from_matrix.
+  - eapply cons_mat; [apply Matrix_of_swap |].
+    eapply cons_mat; [apply Matrix_of_cz | apply nil_mat].
+  - eapply cons_mat; [apply Matrix_of_cz |].
+    eapply cons_mat; [apply Matrix_of_swap | apply nil_mat].
+  - exists 0%R. cbn [fold_right]. unfold gphase.
+    rewrite com_iexp_0, mat_scale_1, !mat_mul_eye_l.
+    apply mat_swap_cz_commute; assumption.
+Qed.
+
+Lemma Commute_swap_cy : forall qbit1 qbit2 a b,
+  Qbit_index_valid qbit1 -> Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+    (SeqInstr [SwapInstr qbit1 qbit2; CyInstr (swap_qbit qbit1 qbit2 a) (swap_qbit qbit1 qbit2 b)])
+    (SeqInstr [CyInstr a b; SwapInstr qbit1 qbit2]).
+Proof.
+  intros. eapply Instruction_equiv_of_seqs_from_matrix.
+  - eapply cons_mat; [apply Matrix_of_swap |].
+    eapply cons_mat; [apply Matrix_of_cy | apply nil_mat].
+  - eapply cons_mat; [apply Matrix_of_cy |].
+    eapply cons_mat; [apply Matrix_of_swap | apply nil_mat].
+  - exists 0%R. cbn [fold_right]. unfold gphase.
+    rewrite com_iexp_0, mat_scale_1, !mat_mul_eye_l.
+    apply mat_swap_cy_commute; assumption.
+Qed.
+
+Lemma Commute_swap_ch : forall qbit1 qbit2 a b,
+  Qbit_index_valid qbit1 -> Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+    (SeqInstr [SwapInstr qbit1 qbit2; ChInstr (swap_qbit qbit1 qbit2 a) (swap_qbit qbit1 qbit2 b)])
+    (SeqInstr [ChInstr a b; SwapInstr qbit1 qbit2]).
+Proof.
+  intros. eapply Instruction_equiv_of_seqs_from_matrix.
+  - eapply cons_mat; [apply Matrix_of_swap |].
+    eapply cons_mat; [apply Matrix_of_ch | apply nil_mat].
+  - eapply cons_mat; [apply Matrix_of_ch |].
+    eapply cons_mat; [apply Matrix_of_swap | apply nil_mat].
+  - exists 0%R. cbn [fold_right]. unfold gphase.
+    rewrite com_iexp_0, mat_scale_1, !mat_mul_eye_l.
+    apply mat_swap_ch_commute; assumption.
+Qed.
+
+Lemma Commute_swap_csx : forall qbit1 qbit2 a b,
+  Qbit_index_valid qbit1 -> Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+    (SeqInstr [SwapInstr qbit1 qbit2; CsxInstr (swap_qbit qbit1 qbit2 a) (swap_qbit qbit1 qbit2 b)])
+    (SeqInstr [CsxInstr a b; SwapInstr qbit1 qbit2]).
+Proof.
+  intros. eapply Instruction_equiv_of_seqs_from_matrix.
+  - eapply cons_mat; [apply Matrix_of_swap |].
+    eapply cons_mat; [apply Matrix_of_csx | apply nil_mat].
+  - eapply cons_mat; [apply Matrix_of_csx |].
+    eapply cons_mat; [apply Matrix_of_swap | apply nil_mat].
+  - exists 0%R. cbn [fold_right]. unfold gphase.
+    rewrite com_iexp_0, mat_scale_1, !mat_mul_eye_l.
+    apply mat_swap_csx_commute; assumption.
+Qed.
+
+Lemma Commute_swap_ccx : forall qbit1 qbit2 a b c,
+  Qbit_index_valid qbit1 -> Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+    (SeqInstr [SwapInstr qbit1 qbit2; ToffoliInstr (swap_qbit qbit1 qbit2 a) (swap_qbit qbit1 qbit2 b) (swap_qbit qbit1 qbit2 c)])
+    (SeqInstr [ToffoliInstr a b c; SwapInstr qbit1 qbit2]).
+Proof.
+  intros. eapply Instruction_equiv_of_seqs_from_matrix.
+  - eapply cons_mat; [apply Matrix_of_swap |].
+    eapply cons_mat; [apply Matrix_of_ccx | apply nil_mat].
+  - eapply cons_mat; [apply Matrix_of_ccx |].
+    eapply cons_mat; [apply Matrix_of_swap | apply nil_mat].
+  - exists 0%R. cbn [fold_right]. unfold gphase.
+    rewrite com_iexp_0, mat_scale_1, !mat_mul_eye_l.
+    apply mat_swap_ccx_commute; assumption.
+Qed.
+
+Lemma Commute_swap_cswap : forall qbit1 qbit2 a b c,
+  Qbit_index_valid qbit1 -> Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+    (SeqInstr [SwapInstr qbit1 qbit2; CswapInstr (swap_qbit qbit1 qbit2 a) (swap_qbit qbit1 qbit2 b) (swap_qbit qbit1 qbit2 c)])
+    (SeqInstr [CswapInstr a b c; SwapInstr qbit1 qbit2]).
+Proof.
+  intros. eapply Instruction_equiv_of_seqs_from_matrix.
+  - eapply cons_mat; [apply Matrix_of_swap |].
+    eapply cons_mat; [apply Matrix_of_cswap | apply nil_mat].
+  - eapply cons_mat; [apply Matrix_of_cswap |].
+    eapply cons_mat; [apply Matrix_of_swap | apply nil_mat].
+  - exists 0%R. cbn [fold_right]. unfold gphase.
+    rewrite com_iexp_0, mat_scale_1, !mat_mul_eye_l.
+    apply mat_swap_cswap_commute; assumption.
+Qed.
+
+Lemma Commute_swap_rccx : forall qbit1 qbit2 a b c,
+  Qbit_index_valid qbit1 -> Qbit_index_valid qbit2 ->
+  Instruction_equiv nq
+    (SeqInstr [SwapInstr qbit1 qbit2; RccxInstr (swap_qbit qbit1 qbit2 a) (swap_qbit qbit1 qbit2 b) (swap_qbit qbit1 qbit2 c)])
+    (SeqInstr [RccxInstr a b c; SwapInstr qbit1 qbit2]).
+Proof.
+  intros. eapply Instruction_equiv_of_seqs_from_matrix.
+  - eapply cons_mat; [apply Matrix_of_swap |].
+    eapply cons_mat; [apply Matrix_of_rccx | apply nil_mat].
+  - eapply cons_mat; [apply Matrix_of_rccx |].
+    eapply cons_mat; [apply Matrix_of_swap | apply nil_mat].
+  - exists 0%R. cbn [fold_right]. unfold gphase.
+    rewrite com_iexp_0, mat_scale_1, !mat_mul_eye_l.
+    apply mat_swap_rccx_commute; assumption.
+Qed.
+
 Lemma Commute_swap_instr:
   forall (qbit1 qbit2: nat) (instr: Instruction),
   Qbit_index_valid qbit1 ->
@@ -734,6 +853,13 @@ Proof.
     all: assumption.
   - apply Commute_swap_reset.
     all: assumption.
+  - apply Commute_swap_cz; assumption.
+  - apply Commute_swap_cy; assumption.
+  - apply Commute_swap_ch; assumption.
+  - apply Commute_swap_csx; assumption.
+  - apply Commute_swap_ccx; assumption.
+  - apply Commute_swap_cswap; assumption.
+  - apply Commute_swap_rccx; assumption.
 Qed.
 
 Lemma Commute_if_indep:

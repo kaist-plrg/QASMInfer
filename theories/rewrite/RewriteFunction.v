@@ -71,6 +71,20 @@ Fixpoint Instruction_eqb (instr1 instr2 : Instruction) {struct instr1} : bool :=
   | ResetInstr qbit1,
     ResetInstr qbit2 =>
       Nat.eqb qbit1 qbit2
+  | CzInstr a b, CzInstr a' b' =>
+      Nat.eqb a a' && Nat.eqb b b'
+  | CyInstr a b, CyInstr a' b' =>
+      Nat.eqb a a' && Nat.eqb b b'
+  | ChInstr a b, ChInstr a' b' =>
+      Nat.eqb a a' && Nat.eqb b b'
+  | CsxInstr a b, CsxInstr a' b' =>
+      Nat.eqb a a' && Nat.eqb b b'
+  | ToffoliInstr a b c, ToffoliInstr a' b' c' =>
+      Nat.eqb a a' && Nat.eqb b b' && Nat.eqb c c'
+  | CswapInstr a b c, CswapInstr a' b' c' =>
+      Nat.eqb a a' && Nat.eqb b b' && Nat.eqb c c'
+  | RccxInstr a b c, RccxInstr a' b' c' =>
+      Nat.eqb a a' && Nat.eqb b b' && Nat.eqb c c'
   | _, _ =>
       false
   end.
@@ -298,7 +312,14 @@ Inductive InstructionPattern: Type :=
   | PReset: NatPattern -> InstructionPattern
   | PIf: NatPattern -> bool -> list InstructionPattern -> InstructionPattern
   | PInstrVar: nat -> InstructionPattern
-  | PInstrExact: Instruction -> InstructionPattern.
+  | PInstrExact: Instruction -> InstructionPattern
+  | PCz: NatPattern -> NatPattern -> InstructionPattern
+  | PCy: NatPattern -> NatPattern -> InstructionPattern
+  | PCh: NatPattern -> NatPattern -> InstructionPattern
+  | PCsx: NatPattern -> NatPattern -> InstructionPattern
+  | PToffoli: NatPattern -> NatPattern -> NatPattern -> InstructionPattern
+  | PCswap: NatPattern -> NatPattern -> NatPattern -> InstructionPattern
+  | PRccx: NatPattern -> NatPattern -> NatPattern -> InstructionPattern.
 
 Lemma InstructionPattern_ind' :
   forall (P : InstructionPattern -> Prop),
@@ -313,9 +334,16 @@ Lemma InstructionPattern_ind' :
       P (PIf cbit expected body_patterns)) ->
     (forall variable, P (PInstrVar variable)) ->
     (forall instr, P (PInstrExact instr)) ->
+    (forall a b, P (PCz a b)) ->
+    (forall a b, P (PCy a b)) ->
+    (forall a b, P (PCh a b)) ->
+    (forall a b, P (PCsx a b)) ->
+    (forall a b c, P (PToffoli a b c)) ->
+    (forall a b c, P (PCswap a b c)) ->
+    (forall a b c, P (PRccx a b c)) ->
     forall pattern, P pattern.
 Proof.
-  intros P Hnop Hrotate Hcnot Hswap Hmeasure Hreset Hif Hinstr_var Hinstr_exact.
+  intros P Hnop Hrotate Hcnot Hswap Hmeasure Hreset Hif Hinstr_var Hinstr_exact Hcz Hcy Hch Hcsx Hccx Hcswap Hrccx.
   fix IH 1.
   intro pattern.
   destruct pattern.
@@ -333,6 +361,13 @@ Proof.
       * apply IHpatterns.
   - apply Hinstr_var.
   - apply Hinstr_exact.
+  - apply Hcz.
+  - apply Hcy.
+  - apply Hch.
+  - apply Hcsx.
+  - apply Hccx.
+  - apply Hcswap.
+  - apply Hrccx.
 Qed.
 
 Fixpoint InstructionPattern_match
@@ -391,6 +426,30 @@ Fixpoint InstructionPattern_match
           (InstructionPattern_body_view body)
           map'
       else None
+  | PCz a_pattern b_pattern, CzInstr a b =>
+      let* map1 := QbitPattern_match a_pattern a map in
+      QbitPattern_match b_pattern b map1
+  | PCy a_pattern b_pattern, CyInstr a b =>
+      let* map1 := QbitPattern_match a_pattern a map in
+      QbitPattern_match b_pattern b map1
+  | PCh a_pattern b_pattern, ChInstr a b =>
+      let* map1 := QbitPattern_match a_pattern a map in
+      QbitPattern_match b_pattern b map1
+  | PCsx a_pattern b_pattern, CsxInstr a b =>
+      let* map1 := QbitPattern_match a_pattern a map in
+      QbitPattern_match b_pattern b map1
+  | PToffoli a_pattern b_pattern c_pattern, ToffoliInstr a b c =>
+      let* map1 := QbitPattern_match a_pattern a map in
+      let* map2 := QbitPattern_match b_pattern b map1 in
+      QbitPattern_match c_pattern c map2
+  | PCswap a_pattern b_pattern c_pattern, CswapInstr a b c =>
+      let* map1 := QbitPattern_match a_pattern a map in
+      let* map2 := QbitPattern_match b_pattern b map1 in
+      QbitPattern_match c_pattern c map2
+  | PRccx a_pattern b_pattern c_pattern, RccxInstr a b c =>
+      let* map1 := QbitPattern_match a_pattern a map in
+      let* map2 := QbitPattern_match b_pattern b map1 in
+      QbitPattern_match c_pattern c map2
   | PInstrVar variable, _ =>
       PatternMap_bind_instr
         variable
@@ -455,6 +514,37 @@ Fixpoint InstructionPattern_inst
           body_patterns
       in
       Some (IfInstr cbit expected (Instruction_list_simp body_instrs))
+  | PCz a_pattern b_pattern =>
+      let* a := QbitPattern_inst a_pattern map in
+      let* b := QbitPattern_inst b_pattern map in
+      Some (CzInstr a b)
+  | PCy a_pattern b_pattern =>
+      let* a := QbitPattern_inst a_pattern map in
+      let* b := QbitPattern_inst b_pattern map in
+      Some (CyInstr a b)
+  | PCh a_pattern b_pattern =>
+      let* a := QbitPattern_inst a_pattern map in
+      let* b := QbitPattern_inst b_pattern map in
+      Some (ChInstr a b)
+  | PCsx a_pattern b_pattern =>
+      let* a := QbitPattern_inst a_pattern map in
+      let* b := QbitPattern_inst b_pattern map in
+      Some (CsxInstr a b)
+  | PToffoli a_pattern b_pattern c_pattern =>
+      let* a := QbitPattern_inst a_pattern map in
+      let* b := QbitPattern_inst b_pattern map in
+      let* c := QbitPattern_inst c_pattern map in
+      Some (ToffoliInstr a b c)
+  | PCswap a_pattern b_pattern c_pattern =>
+      let* a := QbitPattern_inst a_pattern map in
+      let* b := QbitPattern_inst b_pattern map in
+      let* c := QbitPattern_inst c_pattern map in
+      Some (CswapInstr a b c)
+  | PRccx a_pattern b_pattern c_pattern =>
+      let* a := QbitPattern_inst a_pattern map in
+      let* b := QbitPattern_inst b_pattern map in
+      let* c := QbitPattern_inst c_pattern map in
+      Some (RccxInstr a b c)
   | PInstrVar variable =>
       NatMap.find variable (pattern_instr_map map)
   | PInstrExact instr =>
@@ -498,6 +588,20 @@ Fixpoint InstructionPattern_qbit_vars
       NatPattern_vars control ++ NatPattern_vars target
   | PSwap qbit1 qbit2 =>
       NatPattern_vars qbit1 ++ NatPattern_vars qbit2
+  | PCz a b =>
+      NatPattern_vars a ++ NatPattern_vars b
+  | PCy a b =>
+      NatPattern_vars a ++ NatPattern_vars b
+  | PCh a b =>
+      NatPattern_vars a ++ NatPattern_vars b
+  | PCsx a b =>
+      NatPattern_vars a ++ NatPattern_vars b
+  | PToffoli a b c =>
+      NatPattern_vars a ++ NatPattern_vars b ++ NatPattern_vars c
+  | PCswap a b c =>
+      NatPattern_vars a ++ NatPattern_vars b ++ NatPattern_vars c
+  | PRccx a b c =>
+      NatPattern_vars a ++ NatPattern_vars b ++ NatPattern_vars c
   | PMeasure qbit _ =>
       NatPattern_vars qbit
   | PReset qbit =>
@@ -534,6 +638,13 @@ Fixpoint InstructionPattern_cbit_vars
       []
   | PInstrExact _ =>
       []
+  | PCz _ _ => []
+  | PCy _ _ => []
+  | PCh _ _ => []
+  | PCsx _ _ => []
+  | PToffoli _ _ _ => []
+  | PCswap _ _ _ => []
+  | PRccx _ _ _ => []
   end.
 
 Fixpoint InstructionPattern_instr_vars
@@ -559,6 +670,13 @@ Fixpoint InstructionPattern_instr_vars
       [variable]
   | PInstrExact _ =>
       []
+  | PCz _ _ => []
+  | PCy _ _ => []
+  | PCh _ _ => []
+  | PCsx _ _ => []
+  | PToffoli _ _ _ => []
+  | PCswap _ _ _ => []
+  | PRccx _ _ _ => []
   end.
 
 Definition InstructionPattern_list_qbit_vars
@@ -1129,6 +1247,50 @@ Inductive Instruction_qbits_valid : Instruction -> Prop :=
       Qbit_index_valid nq qbit ->
       Instruction_qbits_valid
         (ResetInstr qbit)
+  | IQV_Cz : forall a b,
+      Qbit_index_valid nq a ->
+      Qbit_index_valid nq b ->
+      a <> b ->
+      Instruction_qbits_valid (CzInstr a b)
+  | IQV_Cy : forall a b,
+      Qbit_index_valid nq a ->
+      Qbit_index_valid nq b ->
+      a <> b ->
+      Instruction_qbits_valid (CyInstr a b)
+  | IQV_Ch : forall a b,
+      Qbit_index_valid nq a ->
+      Qbit_index_valid nq b ->
+      a <> b ->
+      Instruction_qbits_valid (ChInstr a b)
+  | IQV_Csx : forall a b,
+      Qbit_index_valid nq a ->
+      Qbit_index_valid nq b ->
+      a <> b ->
+      Instruction_qbits_valid (CsxInstr a b)
+  | IQV_Toffoli : forall a b c,
+      Qbit_index_valid nq a ->
+      Qbit_index_valid nq b ->
+      Qbit_index_valid nq c ->
+      a <> b ->
+      a <> c ->
+      b <> c ->
+      Instruction_qbits_valid (ToffoliInstr a b c)
+  | IQV_Cswap : forall a b c,
+      Qbit_index_valid nq a ->
+      Qbit_index_valid nq b ->
+      Qbit_index_valid nq c ->
+      a <> b ->
+      a <> c ->
+      b <> c ->
+      Instruction_qbits_valid (CswapInstr a b c)
+  | IQV_Rccx : forall a b c,
+      Qbit_index_valid nq a ->
+      Qbit_index_valid nq b ->
+      Qbit_index_valid nq c ->
+      a <> b ->
+      a <> c ->
+      b <> c ->
+      Instruction_qbits_valid (RccxInstr a b c)
 
 with Instruction_list_qbits_valid
     : list Instruction -> Prop :=
@@ -1151,6 +1313,20 @@ Fixpoint Instruction_qbits_validb (instr : Instruction) : bool :=
       (control <? nq) && (target <? nq)
   | SwapInstr qbit1 qbit2 =>
       (qbit1 <? nq) && (qbit2 <? nq)
+  | CzInstr a b =>
+      (a <? nq) && (b <? nq) && negb (Nat.eqb a b)
+  | CyInstr a b =>
+      (a <? nq) && (b <? nq) && negb (Nat.eqb a b)
+  | ChInstr a b =>
+      (a <? nq) && (b <? nq) && negb (Nat.eqb a b)
+  | CsxInstr a b =>
+      (a <? nq) && (b <? nq) && negb (Nat.eqb a b)
+  | ToffoliInstr a b c =>
+      (a <? nq) && (b <? nq) && (c <? nq) && negb (Nat.eqb a b) && negb (Nat.eqb a c) && negb (Nat.eqb b c)
+  | CswapInstr a b c =>
+      (a <? nq) && (b <? nq) && (c <? nq) && negb (Nat.eqb a b) && negb (Nat.eqb a c) && negb (Nat.eqb b c)
+  | RccxInstr a b c =>
+      (a <? nq) && (b <? nq) && (c <? nq) && negb (Nat.eqb a b) && negb (Nat.eqb a c) && negb (Nat.eqb b c)
   | MeasureInstr qbit _ =>
       qbit <? nq
   | SeqInstr instrs =>

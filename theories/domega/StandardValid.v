@@ -38,7 +38,14 @@ Inductive StandardGate : Type :=
 Inductive StandardPatternGate : Type :=
 | SPG_Std : StandardGate -> nat -> StandardPatternGate
 | SPG_Cnot : nat -> nat -> StandardPatternGate
-| SPG_Swap : nat -> nat -> StandardPatternGate.
+| SPG_Swap : nat -> nat -> StandardPatternGate
+| SPG_Cz : nat -> nat -> StandardPatternGate
+| SPG_Cy : nat -> nat -> StandardPatternGate
+| SPG_Ch : nat -> nat -> StandardPatternGate
+| SPG_Csx : nat -> nat -> StandardPatternGate
+| SPG_Toffoli : nat -> nat -> nat -> StandardPatternGate
+| SPG_Cswap : nat -> nat -> nat -> StandardPatternGate
+| SPG_Rccx : nat -> nat -> nat -> StandardPatternGate.
 
 Definition standard_gate_pattern
     (gate : StandardGate)
@@ -68,6 +75,13 @@ Definition standard_pattern_gate_to_instruction_pattern
       PCnot (NatVar control) (NatVar target)
   | SPG_Swap qbit1 qbit2 =>
       PSwap (NatVar qbit1) (NatVar qbit2)
+  | SPG_Cz a b => PCz (NatVar a) (NatVar b)
+  | SPG_Cy a b => PCy (NatVar a) (NatVar b)
+  | SPG_Ch a b => PCh (NatVar a) (NatVar b)
+  | SPG_Csx a b => PCsx (NatVar a) (NatVar b)
+  | SPG_Toffoli a b c => PToffoli (NatVar a) (NatVar b) (NatVar c)
+  | SPG_Cswap a b c => PCswap (NatVar a) (NatVar b) (NatVar c)
+  | SPG_Rccx a b c => PRccx (NatVar a) (NatVar b) (NatVar c)
   end.
 
 Definition standard_pattern_sequence_to_instruction_patterns
@@ -122,6 +136,43 @@ Definition standard_gate_domega_matrix
         domega_half_one_plus_i domega_half_one_minus_i
   end.
 
+Definition qelib_single_standard (g : QelibSingle) : StandardGate :=
+  match g with
+  | QH => Std_H | QX => Std_X | QS => Std_S | QSdg => Std_Sdg
+  | QT => Std_T | QTdg => Std_Tdg
+  end.
+
+Definition qelib_op_domega_matrix (n : nat) (op : QelibOp) : DOmegaMatrix n :=
+  match op with
+  | QSingle g q => domega_matrix_single n q (standard_gate_domega_matrix (qelib_single_standard g))
+  | QCnot c t => domega_matrix_cnot c t
+  end.
+
+Definition qelib_body_domega_matrix (n : nat) (body : list QelibOp) : DOmegaMatrix n :=
+  fold_right (fun op acc => domega_matrix_mul acc (qelib_op_domega_matrix n op))
+    domega_matrix_eye body.
+
+Definition domega_matrix_cz {n : nat} (a b : nat) : DOmegaMatrix n :=
+  qelib_body_domega_matrix n (qelib_body_cz a b).
+
+Definition domega_matrix_cy {n : nat} (a b : nat) : DOmegaMatrix n :=
+  qelib_body_domega_matrix n (qelib_body_cy a b).
+
+Definition domega_matrix_ch {n : nat} (a b : nat) : DOmegaMatrix n :=
+  qelib_body_domega_matrix n (qelib_body_ch a b).
+
+Definition domega_matrix_csx {n : nat} (a b : nat) : DOmegaMatrix n :=
+  qelib_body_domega_matrix n (qelib_body_csx a b).
+
+Definition domega_matrix_ccx {n : nat} (a b c : nat) : DOmegaMatrix n :=
+  qelib_body_domega_matrix n (qelib_body_ccx a b c).
+
+Definition domega_matrix_cswap {n : nat} (a b c : nat) : DOmegaMatrix n :=
+  qelib_body_domega_matrix n (qelib_body_cswap a b c).
+
+Definition domega_matrix_rccx {n : nat} (a b c : nat) : DOmegaMatrix n :=
+  qelib_body_domega_matrix n (qelib_body_rccx a b c).
+
 End STANDARD_MULTI_DOMEGA_MATRICES.
 
 Section STANDARD_MULTI_CHECKER.
@@ -136,6 +187,13 @@ Definition standard_pattern_gate_nqubits
       S (Nat.max control target)
   | SPG_Swap qbit1 qbit2 =>
       S (Nat.max qbit1 qbit2)
+  | SPG_Cz a b => S (Nat.max a b)
+  | SPG_Cy a b => S (Nat.max a b)
+  | SPG_Ch a b => S (Nat.max a b)
+  | SPG_Csx a b => S (Nat.max a b)
+  | SPG_Toffoli a b c => S (Nat.max a (Nat.max b c))
+  | SPG_Cswap a b c => S (Nat.max a (Nat.max b c))
+  | SPG_Rccx a b c => S (Nat.max a (Nat.max b c))
   end.
 
 Fixpoint standard_pattern_sequence_nqubits
@@ -179,6 +237,27 @@ Definition standard_pattern_gate_matrix
       if Nat.eqb qbit1 qbit2 || negb (qbit_pair_in_bounds n qbit1 qbit2)
       then None
       else Some (domega_matrix_swap qbit1 qbit2)
+  | SPG_Cz a b =>
+      if Nat.eqb a b || negb (qbit_in_bounds n a && qbit_in_bounds n b)
+      then None else Some (domega_matrix_cz a b)
+  | SPG_Cy a b =>
+      if Nat.eqb a b || negb (qbit_in_bounds n a && qbit_in_bounds n b)
+      then None else Some (domega_matrix_cy a b)
+  | SPG_Ch a b =>
+      if Nat.eqb a b || negb (qbit_in_bounds n a && qbit_in_bounds n b)
+      then None else Some (domega_matrix_ch a b)
+  | SPG_Csx a b =>
+      if Nat.eqb a b || negb (qbit_in_bounds n a && qbit_in_bounds n b)
+      then None else Some (domega_matrix_csx a b)
+  | SPG_Toffoli a b c =>
+      if Nat.eqb a b || Nat.eqb a c || Nat.eqb b c || negb (qbit_in_bounds n a && qbit_in_bounds n b && qbit_in_bounds n c)
+      then None else Some (domega_matrix_ccx a b c)
+  | SPG_Cswap a b c =>
+      if Nat.eqb a b || Nat.eqb a c || Nat.eqb b c || negb (qbit_in_bounds n a && qbit_in_bounds n b && qbit_in_bounds n c)
+      then None else Some (domega_matrix_cswap a b c)
+  | SPG_Rccx a b c =>
+      if Nat.eqb a b || Nat.eqb a c || Nat.eqb b c || negb (qbit_in_bounds n a && qbit_in_bounds n b && qbit_in_bounds n c)
+      then None else Some (domega_matrix_rccx a b c)
   end.
 
 Fixpoint standard_pattern_sequence_matrix
@@ -265,6 +344,13 @@ Definition standard_pattern_gate_local_instruction
       CnotInstr control target
   | SPG_Swap qbit1 qbit2 =>
       SwapInstr qbit1 qbit2
+  | SPG_Cz a b => CzInstr a b
+  | SPG_Cy a b => CyInstr a b
+  | SPG_Ch a b => ChInstr a b
+  | SPG_Csx a b => CsxInstr a b
+  | SPG_Toffoli a b c => ToffoliInstr a b c
+  | SPG_Cswap a b c => CswapInstr a b c
+  | SPG_Rccx a b c => RccxInstr a b c
   end.
 
 Definition standard_pattern_sequence_local_instructions
@@ -288,6 +374,37 @@ Definition standard_pattern_gate_instruction
       let* qbit1' := NatMap.find qbit1 (pattern_qbit_map subst) in
       let* qbit2' := NatMap.find qbit2 (pattern_qbit_map subst) in
       Some (SwapInstr qbit1' qbit2')
+  | SPG_Cz a b =>
+      let* a' := NatMap.find a (pattern_qbit_map subst) in
+      let* b' := NatMap.find b (pattern_qbit_map subst) in
+      Some (CzInstr a' b')
+  | SPG_Cy a b =>
+      let* a' := NatMap.find a (pattern_qbit_map subst) in
+      let* b' := NatMap.find b (pattern_qbit_map subst) in
+      Some (CyInstr a' b')
+  | SPG_Ch a b =>
+      let* a' := NatMap.find a (pattern_qbit_map subst) in
+      let* b' := NatMap.find b (pattern_qbit_map subst) in
+      Some (ChInstr a' b')
+  | SPG_Csx a b =>
+      let* a' := NatMap.find a (pattern_qbit_map subst) in
+      let* b' := NatMap.find b (pattern_qbit_map subst) in
+      Some (CsxInstr a' b')
+  | SPG_Toffoli a b c =>
+      let* a' := NatMap.find a (pattern_qbit_map subst) in
+      let* b' := NatMap.find b (pattern_qbit_map subst) in
+      let* c' := NatMap.find c (pattern_qbit_map subst) in
+      Some (ToffoliInstr a' b' c')
+  | SPG_Cswap a b c =>
+      let* a' := NatMap.find a (pattern_qbit_map subst) in
+      let* b' := NatMap.find b (pattern_qbit_map subst) in
+      let* c' := NatMap.find c (pattern_qbit_map subst) in
+      Some (CswapInstr a' b' c')
+  | SPG_Rccx a b c =>
+      let* a' := NatMap.find a (pattern_qbit_map subst) in
+      let* b' := NatMap.find b (pattern_qbit_map subst) in
+      let* c' := NatMap.find c (pattern_qbit_map subst) in
+      Some (RccxInstr a' b' c')
   end.
 
 Fixpoint standard_pattern_sequence_instructions
@@ -310,7 +427,7 @@ Lemma standard_pattern_gate_inst :
       subst =
     standard_pattern_gate_instruction subst gate.
 Proof.
-  intros subst [gate qbit | control target | qbit1 qbit2];
+  intros subst [gate qbit | control target | qbit1 qbit2 | a b | a b | a b | a b | a b c | a b c | a b c];
     simpl; try reflexivity.
   destruct gate; simpl; reflexivity.
 Qed.
@@ -342,28 +459,7 @@ Definition standard_gate_complex_matrix
     : Matrix 1 :=
   complex_of_domega_matrix (standard_gate_domega_matrix gate).
 
-Lemma Matrix_of_rotate_with_global_phase_multi :
-  forall nq theta phi lambda qbit phase U,
-    mat_rot (Angle_to_R theta) (Angle_to_R phi) (Angle_to_R lambda) =
-    gphase phase .* U ->
-    Matrix_of nq (RotateInstr theta phi lambda qbit)
-      (mat_single nq qbit U).
-Proof.
-  intros nq theta phi lambda qbit phase U Hphase ps cstate.
-  simpl.
-  unfold Execute_rotate_instr, Execute_rotate_instr_branch.
-  f_equal; f_equal.
-  apply functional_extensionality.
-  intros branch.
-  f_equal.
-  rewrite Hphase.
-  destruct (le_lt_dec nq qbit) as [Hout | Hin].
-  - repeat rewrite (mat_single_out_of_bounds _ Hout).
-    reflexivity.
-  - rewrite (mat_single_scale _ _ Hin).
-    rewrite den_uop_gphase.
-    reflexivity.
-Qed.
+
 
 Lemma standard_gate_complex_matrix_I :
   standard_gate_complex_matrix Std_I = mat_eye.
@@ -422,29 +518,7 @@ Proof.
   repeat (f_equal; try lca).
 Qed.
 
-Definition phase_gate_matrix_multi (lambda : R) : Matrix 1 :=
-  rec_mat
-    (bas_mat Cone)
-    (bas_mat Czero)
-    (bas_mat Czero)
-    (bas_mat (com_iexp lambda)).
 
-Lemma phase_gate_matrix_gphase_multi :
-  forall lambda,
-    mat_rot 0 0 lambda =
-    gphase (- lambda / 2) .* phase_gate_matrix_multi lambda.
-Proof.
-  intros lambda.
-  unfold mat_rot, phase_gate_matrix_multi, gphase.
-  rewrite mat_rot_y_0_eye, mat_rot_z_0_eye.
-  repeat rewrite mat_mul_eye_l.
-  unfold mat_rot_z.
-  simpl.
-  f_equal; f_equal; try lca.
-  rewrite <- com_iexp_mul.
-  replace (- lambda / 2 + lambda)%R with (lambda / 2)%R by field.
-  reflexivity.
-Qed.
 
 Lemma standard_gate_complex_matrix_S :
   standard_gate_complex_matrix Std_S = phase_gate_matrix_multi PI2.
@@ -593,6 +667,60 @@ Proof.
     angle_to_R_simpl.
     apply standard_gate_complex_matrix_SXdg_gphase.
 Qed.
+
+Lemma complex_of_qelib_op_domega_matrix : forall n op,
+  complex_of_domega_matrix (qelib_op_domega_matrix n op) = qelib_op_matrix n op.
+Proof.
+  intros n [g q|c t]; cbn [qelib_op_domega_matrix qelib_op_matrix].
+  - rewrite complex_of_domega_matrix_single.
+    change (mat_single n q (standard_gate_complex_matrix (qelib_single_standard g)) =
+      mat_single n q (qelib_single_matrix g)).
+    destruct g; cbn [qelib_single_standard qelib_single_matrix];
+      rewrite ?standard_gate_complex_matrix_H, ?standard_gate_complex_matrix_X,
+        ?standard_gate_complex_matrix_S, ?standard_gate_complex_matrix_Sdg,
+        ?standard_gate_complex_matrix_T, ?standard_gate_complex_matrix_Tdg;
+      reflexivity.
+  - apply complex_of_domega_matrix_cnot.
+Qed.
+
+Lemma complex_of_qelib_body_domega_matrix : forall n body,
+  complex_of_domega_matrix (qelib_body_domega_matrix n body) = qelib_body_matrix n body.
+Proof.
+  intros n body. induction body as [|op rest IH].
+  - apply complex_of_domega_matrix_eye.
+  - cbn [qelib_body_domega_matrix qelib_body_matrix fold_right].
+    unfold qelib_body_domega_matrix, qelib_body_matrix in IH.
+    rewrite complex_of_domega_matrix_mul, complex_of_qelib_op_domega_matrix, IH.
+    reflexivity.
+Qed.
+
+Lemma complex_of_domega_matrix_cz : forall n a b,
+  complex_of_domega_matrix (@domega_matrix_cz n a b) = mat_cz a b.
+Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+
+Lemma complex_of_domega_matrix_cy : forall n a b,
+  complex_of_domega_matrix (@domega_matrix_cy n a b) = mat_cy a b.
+Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+
+Lemma complex_of_domega_matrix_ch : forall n a b,
+  complex_of_domega_matrix (@domega_matrix_ch n a b) = mat_ch a b.
+Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+
+Lemma complex_of_domega_matrix_csx : forall n a b,
+  complex_of_domega_matrix (@domega_matrix_csx n a b) = mat_csx a b.
+Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+
+Lemma complex_of_domega_matrix_ccx : forall n a b c,
+  complex_of_domega_matrix (@domega_matrix_ccx n a b c) = mat_ccx a b c.
+Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+
+Lemma complex_of_domega_matrix_cswap : forall n a b c,
+  complex_of_domega_matrix (@domega_matrix_cswap n a b c) = mat_cswap a b c.
+Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
+
+Lemma complex_of_domega_matrix_rccx : forall n a b c,
+  complex_of_domega_matrix (@domega_matrix_rccx n a b c) = mat_rccx a b c.
+Proof. intros. apply complex_of_qelib_body_domega_matrix. Qed.
 
 End STANDARD_MULTI_GATE_MATRIX_SOUNDNESS.
 
@@ -789,6 +917,13 @@ Definition standard_pattern_gate_qbits
       [control; target]
   | SPG_Swap qbit1 qbit2 =>
       [qbit1; qbit2]
+  | SPG_Cz a b => [a; b]
+  | SPG_Cy a b => [a; b]
+  | SPG_Ch a b => [a; b]
+  | SPG_Csx a b => [a; b]
+  | SPG_Toffoli a b c => [a; b; c]
+  | SPG_Cswap a b c => [a; b; c]
+  | SPG_Rccx a b c => [a; b; c]
   end.
 
 Definition standard_pattern_sequence_qbits
@@ -815,7 +950,7 @@ Lemma standard_pattern_gate_qbits_to_instruction_patterns :
       (standard_pattern_gate_to_instruction_pattern gate) =
     standard_pattern_gate_qbits gate.
 Proof.
-  intros [gate qbit | control target | qbit1 qbit2];
+  intros [gate qbit | control target | qbit1 qbit2 | a b | a b | a b | a b | a b c | a b c | a b c];
     simpl; try reflexivity.
   destruct gate; reflexivity.
 Qed.
@@ -842,7 +977,7 @@ Lemma standard_pattern_gate_qbit_bound :
     In qbit (standard_pattern_gate_qbits gate) ->
     qbit < standard_pattern_gate_nqubits gate.
 Proof.
-  intros [gate target | control target | qbit1 qbit2] qbit Hin;
+  intros [gate target | control target | qbit1 qbit2 | a b | a b | a b | a b | a b c | a b c | a b c] qbit Hin;
     simpl in *;
     repeat match goal with
     | H : _ \/ _ |- _ => destruct H as [H | H]; subst; try contradiction
@@ -1279,7 +1414,7 @@ Lemma standard_pattern_gate_instruction_change_swaps :
     change_qbit_instr_swaps swaps
       (standard_pattern_gate_local_instruction gate).
 Proof.
-  intros subst swaps [gate qbit | control target | qbit1 qbit2] instr Hreal Hinst.
+  intros subst swaps [gate qbit | control target | qbit1 qbit2 | a b | a b | a b | a b | a b c | a b c | a b c] instr Hreal Hinst.
   - simpl in Hinst.
     destruct (NatMap.find qbit (pattern_qbit_map subst)) as [actual |]
       eqn:Hfind; try discriminate.
@@ -1317,6 +1452,68 @@ Proof.
       [| simpl; auto | exact Hqbit1].
     rewrite (Hreal qbit2 qbit2');
       [reflexivity | simpl; auto | exact Hqbit2].
+  - simpl in Hinst.
+    destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+    destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+    inversion Hinst; subst; clear Hinst.
+    rewrite change_qbit_instr_swaps_eq. simpl.
+    rewrite (Hreal a a'); [|simpl; auto | exact Ha].
+    rewrite (Hreal b b'); [|simpl; auto | exact Hb].
+    reflexivity.
+  - simpl in Hinst.
+    destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+    destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+    inversion Hinst; subst; clear Hinst.
+    rewrite change_qbit_instr_swaps_eq. simpl.
+    rewrite (Hreal a a'); [|simpl; auto | exact Ha].
+    rewrite (Hreal b b'); [|simpl; auto | exact Hb].
+    reflexivity.
+  - simpl in Hinst.
+    destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+    destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+    inversion Hinst; subst; clear Hinst.
+    rewrite change_qbit_instr_swaps_eq. simpl.
+    rewrite (Hreal a a'); [|simpl; auto | exact Ha].
+    rewrite (Hreal b b'); [|simpl; auto | exact Hb].
+    reflexivity.
+  - simpl in Hinst.
+    destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+    destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+    inversion Hinst; subst; clear Hinst.
+    rewrite change_qbit_instr_swaps_eq. simpl.
+    rewrite (Hreal a a'); [|simpl; auto | exact Ha].
+    rewrite (Hreal b b'); [|simpl; auto | exact Hb].
+    reflexivity.
+  - simpl in Hinst.
+    destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+    destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+    destruct (NatMap.find c (pattern_qbit_map subst)) as [c' |] eqn:Hc; try discriminate.
+    inversion Hinst; subst; clear Hinst.
+    rewrite change_qbit_instr_swaps_eq. simpl.
+    rewrite (Hreal a a'); [|simpl; auto | exact Ha].
+    rewrite (Hreal b b'); [|simpl; auto | exact Hb].
+    rewrite (Hreal c c'); [|simpl; auto | exact Hc].
+    reflexivity.
+  - simpl in Hinst.
+    destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+    destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+    destruct (NatMap.find c (pattern_qbit_map subst)) as [c' |] eqn:Hc; try discriminate.
+    inversion Hinst; subst; clear Hinst.
+    rewrite change_qbit_instr_swaps_eq. simpl.
+    rewrite (Hreal a a'); [|simpl; auto | exact Ha].
+    rewrite (Hreal b b'); [|simpl; auto | exact Hb].
+    rewrite (Hreal c c'); [|simpl; auto | exact Hc].
+    reflexivity.
+  - simpl in Hinst.
+    destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+    destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+    destruct (NatMap.find c (pattern_qbit_map subst)) as [c' |] eqn:Hc; try discriminate.
+    inversion Hinst; subst; clear Hinst.
+    rewrite change_qbit_instr_swaps_eq. simpl.
+    rewrite (Hreal a a'); [|simpl; auto | exact Ha].
+    rewrite (Hreal b b'); [|simpl; auto | exact Hb].
+    rewrite (Hreal c c'); [|simpl; auto | exact Hc].
+    reflexivity.
 Qed.
 
 Lemma standard_pattern_sequence_instructions_change_swaps :
@@ -1387,7 +1584,7 @@ Proof.
     unfold standard_pattern_sequence_qbits in Hin.
     simpl in Hin.
     apply in_app_or in Hin as [Hin | Hin].
-    + destruct gate as [gate gate_qbit | control target | qbit1 qbit2].
+    + destruct gate as [gate gate_qbit | control target | qbit1 qbit2 | a b | a b | a b | a b | a b c | a b c | a b c].
       * simpl in Hgate.
         destruct (NatMap.find gate_qbit (pattern_qbit_map subst)) as [actual |]
           eqn:Hfind; try discriminate.
@@ -1439,6 +1636,58 @@ Proof.
            ++ match goal with
               | H : Qbit_index_valid nq qbit2' |- _ => exact H
               end.
+      * simpl in Hgate.
+        destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+        destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+        inversion Hgate; subst; clear Hgate.
+        inversion Hgate_valid; subst. simpl in Hin.
+        repeat match goal with H : _ \/ _ |- _ => destruct H end; subst; try contradiction;
+          eexists; split; eassumption.
+      * simpl in Hgate.
+        destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+        destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+        inversion Hgate; subst; clear Hgate.
+        inversion Hgate_valid; subst. simpl in Hin.
+        repeat match goal with H : _ \/ _ |- _ => destruct H end; subst; try contradiction;
+          eexists; split; eassumption.
+      * simpl in Hgate.
+        destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+        destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+        inversion Hgate; subst; clear Hgate.
+        inversion Hgate_valid; subst. simpl in Hin.
+        repeat match goal with H : _ \/ _ |- _ => destruct H end; subst; try contradiction;
+          eexists; split; eassumption.
+      * simpl in Hgate.
+        destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+        destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+        inversion Hgate; subst; clear Hgate.
+        inversion Hgate_valid; subst. simpl in Hin.
+        repeat match goal with H : _ \/ _ |- _ => destruct H end; subst; try contradiction;
+          eexists; split; eassumption.
+      * simpl in Hgate.
+        destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+        destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+        destruct (NatMap.find c (pattern_qbit_map subst)) as [c' |] eqn:Hc; try discriminate.
+        inversion Hgate; subst; clear Hgate.
+        inversion Hgate_valid; subst. simpl in Hin.
+        repeat match goal with H : _ \/ _ |- _ => destruct H end; subst; try contradiction;
+          eexists; split; eassumption.
+      * simpl in Hgate.
+        destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+        destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+        destruct (NatMap.find c (pattern_qbit_map subst)) as [c' |] eqn:Hc; try discriminate.
+        inversion Hgate; subst; clear Hgate.
+        inversion Hgate_valid; subst. simpl in Hin.
+        repeat match goal with H : _ \/ _ |- _ => destruct H end; subst; try contradiction;
+          eexists; split; eassumption.
+      * simpl in Hgate.
+        destruct (NatMap.find a (pattern_qbit_map subst)) as [a' |] eqn:Ha; try discriminate.
+        destruct (NatMap.find b (pattern_qbit_map subst)) as [b' |] eqn:Hb; try discriminate.
+        destruct (NatMap.find c (pattern_qbit_map subst)) as [c' |] eqn:Hc; try discriminate.
+        inversion Hgate; subst; clear Hgate.
+        inversion Hgate_valid; subst. simpl in Hin.
+        repeat match goal with H : _ \/ _ |- _ => destruct H end; subst; try contradiction;
+          eexists; split; eassumption.
     + eapply IH; eauto.
 Qed.
 
@@ -1517,6 +1766,13 @@ Definition standard_pattern_gate_complex_matrix
       mat_cnot control target
   | SPG_Swap qbit1 qbit2 =>
       mat_swap qbit1 qbit2
+  | SPG_Cz a b => mat_cz a b
+  | SPG_Cy a b => mat_cy a b
+  | SPG_Ch a b => mat_ch a b
+  | SPG_Csx a b => mat_csx a b
+  | SPG_Toffoli a b c => mat_ccx a b c
+  | SPG_Cswap a b c => mat_cswap a b c
+  | SPG_Rccx a b c => mat_rccx a b c
   end.
 
 Fixpoint standard_pattern_sequence_complex_matrices
@@ -1539,12 +1795,26 @@ Lemma Matrix_of_standard_pattern_sequence_local :
 Proof.
   induction gates as [| gate rest IH]; simpl.
   - apply nil_mat.
-  - destruct gate as [gate qbit | control target | qbit1 qbit2]; simpl; apply cons_mat.
+  - destruct gate as [gate qbit | control target | qbit1 qbit2 | a b | a b | a b | a b | a b c | a b c | a b c]; simpl; apply cons_mat.
     + apply Matrix_of_standard_gate_multi.
     + apply IH.
     + apply Matrix_of_cnot.
     + apply IH.
     + apply Matrix_of_swap.
+    + apply IH.
+    + apply Matrix_of_cz.
+    + apply IH.
+    + apply Matrix_of_cy.
+    + apply IH.
+    + apply Matrix_of_ch.
+    + apply IH.
+    + apply Matrix_of_csx.
+    + apply IH.
+    + apply Matrix_of_ccx.
+    + apply IH.
+    + apply Matrix_of_cswap.
+    + apply IH.
+    + apply Matrix_of_rccx.
     + apply IH.
 Qed.
 
@@ -1562,7 +1832,7 @@ Proof.
     inversion Hmatrix; subst; clear Hmatrix.
     rewrite complex_of_domega_matrix_eye.
     reflexivity.
-  - destruct gate as [gate qbit | control target | qbit1 qbit2].
+  - destruct gate as [gate qbit | control target | qbit1 qbit2 | a b | a b | a b | a b | a b c | a b c | a b c].
     + simpl in Hmatrix.
       destruct (qbit_in_bounds nq qbit) eqn:Hbound; try discriminate.
       destruct (standard_pattern_sequence_matrix nq rest) as [rest_matrix|]
@@ -1597,6 +1867,69 @@ Proof.
       rewrite complex_of_domega_matrix_mul.
       rewrite complex_of_domega_matrix_swap.
       reflexivity.
+    + simpl in Hmatrix.
+      match type of Hmatrix with
+      | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+      end; try discriminate.
+      destruct (standard_pattern_sequence_matrix nq rest) as [rest_matrix|]
+        eqn:Hrest; try discriminate.
+      inversion Hmatrix; subst; clear Hmatrix.
+      simpl. rewrite (IH rest_matrix eq_refl), complex_of_domega_matrix_mul,
+        complex_of_domega_matrix_cz. reflexivity.
+    + simpl in Hmatrix.
+      match type of Hmatrix with
+      | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+      end; try discriminate.
+      destruct (standard_pattern_sequence_matrix nq rest) as [rest_matrix|]
+        eqn:Hrest; try discriminate.
+      inversion Hmatrix; subst; clear Hmatrix.
+      simpl. rewrite (IH rest_matrix eq_refl), complex_of_domega_matrix_mul,
+        complex_of_domega_matrix_cy. reflexivity.
+    + simpl in Hmatrix.
+      match type of Hmatrix with
+      | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+      end; try discriminate.
+      destruct (standard_pattern_sequence_matrix nq rest) as [rest_matrix|]
+        eqn:Hrest; try discriminate.
+      inversion Hmatrix; subst; clear Hmatrix.
+      simpl. rewrite (IH rest_matrix eq_refl), complex_of_domega_matrix_mul,
+        complex_of_domega_matrix_ch. reflexivity.
+    + simpl in Hmatrix.
+      match type of Hmatrix with
+      | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+      end; try discriminate.
+      destruct (standard_pattern_sequence_matrix nq rest) as [rest_matrix|]
+        eqn:Hrest; try discriminate.
+      inversion Hmatrix; subst; clear Hmatrix.
+      simpl. rewrite (IH rest_matrix eq_refl), complex_of_domega_matrix_mul,
+        complex_of_domega_matrix_csx. reflexivity.
+    + simpl in Hmatrix.
+      match type of Hmatrix with
+      | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+      end; try discriminate.
+      destruct (standard_pattern_sequence_matrix nq rest) as [rest_matrix|]
+        eqn:Hrest; try discriminate.
+      inversion Hmatrix; subst; clear Hmatrix.
+      simpl. rewrite (IH rest_matrix eq_refl), complex_of_domega_matrix_mul,
+        complex_of_domega_matrix_ccx. reflexivity.
+    + simpl in Hmatrix.
+      match type of Hmatrix with
+      | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+      end; try discriminate.
+      destruct (standard_pattern_sequence_matrix nq rest) as [rest_matrix|]
+        eqn:Hrest; try discriminate.
+      inversion Hmatrix; subst; clear Hmatrix.
+      simpl. rewrite (IH rest_matrix eq_refl), complex_of_domega_matrix_mul,
+        complex_of_domega_matrix_cswap. reflexivity.
+    + simpl in Hmatrix.
+      match type of Hmatrix with
+      | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+      end; try discriminate.
+      destruct (standard_pattern_sequence_matrix nq rest) as [rest_matrix|]
+        eqn:Hrest; try discriminate.
+      inversion Hmatrix; subst; clear Hmatrix.
+      simpl. rewrite (IH rest_matrix eq_refl), complex_of_domega_matrix_mul,
+        complex_of_domega_matrix_rccx. reflexivity.
 Qed.
 
 Lemma standard_pattern_gate_complex_matrix_extend_right :
@@ -1605,7 +1938,7 @@ Lemma standard_pattern_gate_complex_matrix_extend_right :
     standard_pattern_gate_complex_matrix (n + extra) gate =
     standard_pattern_gate_complex_matrix n gate ⊗ @mat_eye extra.
 Proof.
-  intros n extra [gate qbit | control target | qbit1 qbit2] matrix Hmatrix.
+  intros n extra [gate qbit | control target | qbit1 qbit2 | a b | a b | a b | a b | a b c | a b c | a b c] matrix Hmatrix.
   - simpl in Hmatrix.
     destruct (qbit_in_bounds n qbit) eqn:Hbound; try discriminate.
     apply Nat.ltb_lt in Hbound.
@@ -1638,6 +1971,104 @@ Proof.
     apply Nat.ltb_lt in Hqbit2.
     simpl.
     apply mat_swap_extend_right; assumption.
+  - simpl in Hmatrix.
+    match type of Hmatrix with
+    | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+    end; try discriminate.
+    repeat rewrite Bool.orb_false_iff in Hinvalid.
+    repeat rewrite Bool.negb_false_iff in Hinvalid.
+    unfold qbit_in_bounds in Hinvalid.
+    repeat rewrite Bool.andb_true_iff in Hinvalid.
+    repeat match goal with H : _ /\ _ |- _ => destruct H end.
+    repeat match goal with
+    | H : Nat.eqb _ _ = false |- _ => apply Nat.eqb_neq in H
+    | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
+    end.
+    cbn [standard_pattern_gate_complex_matrix]. apply mat_cz_extend_right; assumption.
+  - simpl in Hmatrix.
+    match type of Hmatrix with
+    | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+    end; try discriminate.
+    repeat rewrite Bool.orb_false_iff in Hinvalid.
+    repeat rewrite Bool.negb_false_iff in Hinvalid.
+    unfold qbit_in_bounds in Hinvalid.
+    repeat rewrite Bool.andb_true_iff in Hinvalid.
+    repeat match goal with H : _ /\ _ |- _ => destruct H end.
+    repeat match goal with
+    | H : Nat.eqb _ _ = false |- _ => apply Nat.eqb_neq in H
+    | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
+    end.
+    cbn [standard_pattern_gate_complex_matrix]. apply mat_cy_extend_right; assumption.
+  - simpl in Hmatrix.
+    match type of Hmatrix with
+    | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+    end; try discriminate.
+    repeat rewrite Bool.orb_false_iff in Hinvalid.
+    repeat rewrite Bool.negb_false_iff in Hinvalid.
+    unfold qbit_in_bounds in Hinvalid.
+    repeat rewrite Bool.andb_true_iff in Hinvalid.
+    repeat match goal with H : _ /\ _ |- _ => destruct H end.
+    repeat match goal with
+    | H : Nat.eqb _ _ = false |- _ => apply Nat.eqb_neq in H
+    | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
+    end.
+    cbn [standard_pattern_gate_complex_matrix]. apply mat_ch_extend_right; assumption.
+  - simpl in Hmatrix.
+    match type of Hmatrix with
+    | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+    end; try discriminate.
+    repeat rewrite Bool.orb_false_iff in Hinvalid.
+    repeat rewrite Bool.negb_false_iff in Hinvalid.
+    unfold qbit_in_bounds in Hinvalid.
+    repeat rewrite Bool.andb_true_iff in Hinvalid.
+    repeat match goal with H : _ /\ _ |- _ => destruct H end.
+    repeat match goal with
+    | H : Nat.eqb _ _ = false |- _ => apply Nat.eqb_neq in H
+    | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
+    end.
+    cbn [standard_pattern_gate_complex_matrix]. apply mat_csx_extend_right; assumption.
+  - simpl in Hmatrix.
+    match type of Hmatrix with
+    | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+    end; try discriminate.
+    repeat rewrite Bool.orb_false_iff in Hinvalid.
+    repeat rewrite Bool.negb_false_iff in Hinvalid.
+    unfold qbit_in_bounds in Hinvalid.
+    repeat rewrite Bool.andb_true_iff in Hinvalid.
+    repeat match goal with H : _ /\ _ |- _ => destruct H end.
+    repeat match goal with
+    | H : Nat.eqb _ _ = false |- _ => apply Nat.eqb_neq in H
+    | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
+    end.
+    cbn [standard_pattern_gate_complex_matrix]. apply mat_ccx_extend_right; assumption.
+  - simpl in Hmatrix.
+    match type of Hmatrix with
+    | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+    end; try discriminate.
+    repeat rewrite Bool.orb_false_iff in Hinvalid.
+    repeat rewrite Bool.negb_false_iff in Hinvalid.
+    unfold qbit_in_bounds in Hinvalid.
+    repeat rewrite Bool.andb_true_iff in Hinvalid.
+    repeat match goal with H : _ /\ _ |- _ => destruct H end.
+    repeat match goal with
+    | H : Nat.eqb _ _ = false |- _ => apply Nat.eqb_neq in H
+    | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
+    end.
+    cbn [standard_pattern_gate_complex_matrix]. apply mat_cswap_extend_right; assumption.
+  - simpl in Hmatrix.
+    match type of Hmatrix with
+    | context[if ?test then _ else _] => destruct test eqn:Hinvalid
+    end; try discriminate.
+    repeat rewrite Bool.orb_false_iff in Hinvalid.
+    repeat rewrite Bool.negb_false_iff in Hinvalid.
+    unfold qbit_in_bounds in Hinvalid.
+    repeat rewrite Bool.andb_true_iff in Hinvalid.
+    repeat match goal with H : _ /\ _ |- _ => destruct H end.
+    repeat match goal with
+    | H : Nat.eqb _ _ = false |- _ => apply Nat.eqb_neq in H
+    | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
+    end.
+    cbn [standard_pattern_gate_complex_matrix]. apply mat_rccx_extend_right; assumption.
 Qed.
 
 Lemma standard_pattern_sequence_complex_matrices_extend_right :
