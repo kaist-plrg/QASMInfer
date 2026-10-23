@@ -1,7 +1,7 @@
 (*
  * GENERATED — DO NOT EDIT
  *
- * Source commit: 1f7abf61b9e2212edce46540d7c9b2178e7f5b8b
+ * Source commit: b25add572fe8cba922cbf89a79604730d43d9908
  * Rocq version: 9.1.0
  * Dune Rocq language version: 0.13
  * Extraction command: rocq repl -q -Q ../.. QASMInfer -batch -l ../../extract/Extract
@@ -3961,6 +3961,13 @@ let rule_Double_Reset =
   { rule_lhs = ((PReset (NatVar 0)) :: []); rule_rhs = ((PReset (NatVar
     0)) :: ((PReset (NatVar 0)) :: [])) }
 
+(** val rule_Double_Measure : rewriteRule **)
+
+let rule_Double_Measure =
+  { rule_lhs = ((PMeasure ((NatVar 0), (NatVar 0))) :: []); rule_rhs =
+    ((PMeasure ((NatVar 0), (NatVar 0))) :: ((PMeasure ((NatVar 0), (NatVar
+    0))) :: [])) }
+
 (** val transform_simple_rule :
     rewriteRule -> transformParameter -> rewriteRule option **)
 
@@ -4048,7 +4055,8 @@ let transform_spec_list nq =
                                                                   "Double_If_True"
                                                                   rule_Double_If_True) :: (
     (transformSpec_simple_rule "Double_If_False" rule_Double_If_False) :: (
-    (transformSpec_simple_rule "Double_Reset" rule_Double_Reset) :: [])))))))
+    (transformSpec_simple_rule "Double_Reset" rule_Double_Reset) :: (
+    (transformSpec_simple_rule "Double_Measure" rule_Double_Measure) :: []))))))))
 
 type dOmega = { domega_d0 : Big_int_Z.big_int; domega_d1 : Big_int_Z.big_int;
                 domega_d2 : Big_int_Z.big_int; domega_d3 : Big_int_Z.big_int;
