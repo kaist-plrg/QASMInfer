@@ -564,6 +564,336 @@ Proof.
   apply den_reset_idempotent.
 Qed.
 
+(* Double measurement *)
+
+(* Branching a classical state at a bit is idempotent: both resulting
+   states branch to themselves again. *)
+Lemma CState_branch_fixed:
+  forall (idx: nat) (cstate: CState),
+  let (c0, c1) := CState_branch idx cstate in
+  CState_branch idx c0 = (c0, c1) /\ CState_branch idx c1 = (c0, c1).
+Proof.
+  induction idx as [| idx IH]; intros cstate.
+  - destruct cstate; simpl; auto.
+  - destruct cstate as [c | c |]; simpl.
+    + specialize (IH c).
+      destruct (CState_branch idx c) as [c0 c1].
+      destruct IH as [H0 H1].
+      simpl. rewrite H0, H1. auto.
+    + specialize (IH c).
+      destruct (CState_branch idx c) as [c0 c1].
+      destruct IH as [H0 H1].
+      simpl. rewrite H0, H1. auto.
+    + specialize (IH 1%positive).
+      destruct (CState_branch idx 1%positive) as [c0 c1].
+      destruct IH as [H0 H1].
+      simpl. rewrite H0, H1. auto.
+Qed.
+
+(* A density matrix is projected by [proj] when conjugating it with [proj]
+   leaves it unchanged. *)
+Definition den_projected (proj den: Matrix nq) : Prop :=
+  proj * den * proj = den.
+
+Lemma mat_mul_scale_r:
+  forall (a: Complex) (A B: Matrix nq),
+  A * (a .* B) = a .* (A * B).
+Proof.
+  intros a A B.
+  rewrite <- mat_scale_mul_comm.
+  apply mat_scale_mul_assoc.
+Qed.
+
+Lemma den_projected_measure:
+  forall (proj den: Matrix nq),
+  mat_projection proj ->
+  den_projected proj (den_measure proj den).
+Proof.
+  intros proj den [Hp _].
+  unfold den_projected, den_measure.
+  rewrite mat_mul_scale_r, mat_scale_mul_assoc.
+  f_equal.
+  repeat rewrite mat_mul_assoc.
+  rewrite Hp.
+  rewrite <- (mat_mul_assoc _ proj proj).
+  rewrite Hp.
+  reflexivity.
+Qed.
+
+Lemma den_projected_mix:
+  forall (proj A B: Matrix nq) (a b: Complex),
+  den_projected proj A ->
+  den_projected proj B ->
+  den_projected proj (a .* A + b .* B).
+Proof.
+  intros proj A B a b HA HB.
+  unfold den_projected in *.
+  rewrite mat_mul_dist_l, mat_mul_dist_r.
+  repeat rewrite mat_mul_scale_r.
+  repeat rewrite mat_scale_mul_assoc.
+  rewrite HA, HB.
+  reflexivity.
+Qed.
+
+Lemma den_projected_prob_self:
+  forall (proj den: Matrix nq),
+  mat_projection proj ->
+  den_projected proj den ->
+  den_prob proj den = \tr den.
+Proof.
+  intros proj den [Hp _] Hden.
+  unfold den_prob, den_projected in *.
+  rewrite <- Hden at 1.
+  rewrite <- mat_mul_assoc, Hp.
+  rewrite Hden.
+  reflexivity.
+Qed.
+
+Lemma den_projected_prob_perp:
+  forall (proj proj' den: Matrix nq),
+  proj * proj' = mat_0 ->
+  den_projected proj den ->
+  den_prob proj' den = 0.
+Proof.
+  intros proj proj' den Hperp Hden.
+  unfold den_prob, den_projected in *.
+  rewrite <- Hden.
+  rewrite <- mat_mul_assoc, Hperp, mat_mul_0_r.
+  apply mat_trace_0.
+Qed.
+
+Lemma com_inv_1: (/ 1 = 1)%com.
+Proof.
+  rewrite <- (com_mul_1_r (/ 1)).
+  apply com_inv_mult.
+  apply com_proj_neq_fst.
+  simpl. lra.
+Qed.
+
+Lemma den_projected_measure_id:
+  forall (proj den: Matrix nq),
+  mat_projection proj ->
+  den_valid den ->
+  den_projected proj den ->
+  den_measure proj den = den.
+Proof.
+  intros proj den Hproj Hvalid Hden.
+  unfold den_measure.
+  rewrite (den_projected_prob_self proj den Hproj Hden).
+  rewrite (den_valid_normalized den Hvalid).
+  rewrite Hden.
+  rewrite com_inv_1.
+  apply mat_scale_1.
+Qed.
+
+(* After a measurement of [qbit] into [cbit], every branch sits at a
+   classical state that branching on [cbit] maps to itself, and its quantum
+   state is already projected onto the outcome recorded in that bit. *)
+Definition Branch_measured (qbit cbit: nat) (k: CState) (b: Branch nq) : Prop :=
+  Branch_valid nq b /\
+  ((fst (CState_branch cbit k) = k /\
+    den_projected (mat_proj0 nq qbit) (B_qstate nq b)) \/
+   (snd (CState_branch cbit k) = k /\
+    den_projected (mat_proj1 nq qbit) (B_qstate nq b))).
+
+Definition ProgramState_measured (qbit cbit: nat) (ps: ProgramState nq) : Prop :=
+  forall k b, PositiveMap.MapsTo k b ps -> Branch_measured qbit cbit k b.
+
+Lemma Branch_merge_measured:
+  forall (qbit cbit: nat) (k: CState) (b0 b1: Branch nq),
+  Branch_measured qbit cbit k b0 ->
+  Branch_measured qbit cbit k b1 ->
+  Branch_measured qbit cbit k (Branch_merge nq b0 b1).
+Proof.
+  intros qbit cbit k b0 b1 [Hv0 H0] [Hv1 H1].
+  split.
+  { apply Branch_merge_valid; assumption. }
+  pose proof (CState_branch_different cbit k) as Hdiff.
+  destruct (CState_branch cbit k) as [c0 c1].
+  simpl in *.
+  destruct H0 as [[Hk0 Hp0] | [Hk0 Hp0]], H1 as [[Hk1 Hp1] | [Hk1 Hp1]].
+  - left. split; try assumption.
+    apply den_projected_mix; assumption.
+  - exfalso. apply Hdiff. congruence.
+  - exfalso. apply Hdiff. congruence.
+  - right. split; try assumption.
+    apply den_projected_mix; assumption.
+Qed.
+
+Lemma ProgramState_merge_measured:
+  forall (qbit cbit: nat) (ps0 ps1: ProgramState nq),
+  ProgramState_measured qbit cbit ps0 ->
+  ProgramState_measured qbit cbit ps1 ->
+  ProgramState_measured qbit cbit (ProgramState_merge nq ps0 ps1).
+Proof.
+  intros qbit cbit ps0 ps1 H0 H1 k b Hmaps.
+  rewrite PFacts.find_mapsto_iff in Hmaps.
+  rewrite ProgramState_merge_o in Hmaps.
+  destruct (PositiveMap.find k ps0) as [b0 |] eqn:E0,
+           (PositiveMap.find k ps1) as [b1 |] eqn:E1;
+  inversion Hmaps; subst.
+  - apply Branch_merge_measured.
+    + apply H0. apply PFacts.find_mapsto_iff. assumption.
+    + apply H1. apply PFacts.find_mapsto_iff. assumption.
+  - apply H0. apply PFacts.find_mapsto_iff. assumption.
+  - apply H1. apply PFacts.find_mapsto_iff. assumption.
+Qed.
+
+Lemma Execute_measure_instr_branch_measured:
+  forall (qbit cbit: nat) (k: CState) (b: Branch nq),
+  Branch_valid nq b ->
+  ProgramState_measured qbit cbit
+    (Execute_measure_instr_branch nq qbit cbit k b).
+Proof.
+  intros qbit cbit k b Hb k' b' Hmaps.
+  split.
+  { apply (Execute_measure_instr_branch_valid nq qbit cbit k b Hb k' b' Hmaps). }
+  revert Hmaps.
+  unfold Execute_measure_instr_branch.
+  pose proof (CState_branch_fixed cbit k) as Hfix.
+  destruct (CState_branch cbit k) as [c0 c1].
+  destruct Hfix as [Hf0 Hf1].
+  destruct (Rgt_dec (com_real (den_prob_0 qbit (B_qstate nq b))) 0),
+           (Rgt_dec (com_real (den_prob_1 qbit (B_qstate nq b))) 0);
+  intros Hmaps.
+  all: repeat (
+    rewrite PFacts.add_mapsto_iff in Hmaps;
+    destruct Hmaps as [[Hk Hb'] | [_ Hmaps]];
+    [subst; rewrite ?Hf0, ?Hf1; simpl;
+     first
+       [ left; split; [reflexivity |
+           apply den_projected_measure; apply mat_proj0_projection]
+       | right; split; [reflexivity |
+           apply den_projected_measure; apply mat_proj1_projection] ]
+    | idtac ]).
+  all: rewrite PFacts.empty_mapsto_iff in Hmaps; contradiction.
+Qed.
+
+Lemma Execute_measure_instr_measured:
+  forall (qbit cbit: nat) (ps: ProgramState nq),
+  ProgramState_valid nq ps ->
+  ProgramState_measured qbit cbit (Execute_measure_instr nq qbit cbit ps).
+Proof.
+  intros qbit cbit ps Hps.
+  unfold Execute_measure_instr.
+  apply PProperties.fold_rec_nodep.
+  - intros k b Hmaps.
+    apply PFacts.empty_mapsto_iff in Hmaps.
+    contradiction.
+  - intros k b acc Hmaps Hacc.
+    unfold fold_step.
+    apply ProgramState_merge_measured.
+    + assumption.
+    + apply Execute_measure_instr_branch_measured.
+      apply Hps with k.
+      assumption.
+Qed.
+
+Lemma Execute_measure_instr_branch_measured_id:
+  forall (qbit cbit: nat) (k: CState) (b: Branch nq),
+  Branch_measured qbit cbit k b ->
+  Execute_measure_instr_branch nq qbit cbit k b =
+  PositiveMap.add k b (PositiveMap.empty (Branch nq)).
+Proof.
+  intros qbit cbit k [rho p] [[Hrho Hp] Hk].
+  unfold Execute_measure_instr_branch.
+  cbn [B_qstate B_prob] in *.
+  destruct (CState_branch cbit k) as [c0 c1].
+  simpl in Hk.
+  destruct Hk as [[Hk Hproj] | [Hk Hproj]]; subst.
+  - assert (H0: den_prob_0 qbit rho = 1).
+    { unfold den_prob_0.
+      rewrite (den_projected_prob_self _ _ (mat_proj0_projection nq qbit) Hproj).
+      apply (den_valid_normalized rho Hrho). }
+    assert (H1: den_prob_1 qbit rho = 0).
+    { unfold den_prob_1.
+      apply (den_projected_prob_perp (mat_proj0 nq qbit)).
+      apply mat_proj_01_perp.
+      assumption. }
+    rewrite H0, H1.
+    unfold com_real, RTC. simpl fst.
+    destruct (Rgt_dec 1 0) as [_ | Hn]; [| exfalso; lra].
+    destruct (Rgt_dec 0 0) as [Hn | _]; [exfalso; lra |].
+    f_equal. f_equal.
+    + apply den_projected_measure_id; try assumption.
+      apply mat_proj0_projection.
+    + lra.
+  - assert (H0: den_prob_0 qbit rho = 0).
+    { unfold den_prob_0.
+      apply (den_projected_prob_perp (mat_proj1 nq qbit)).
+      apply mat_proj_10_perp.
+      assumption. }
+    assert (H1: den_prob_1 qbit rho = 1).
+    { unfold den_prob_1.
+      rewrite (den_projected_prob_self _ _ (mat_proj1_projection nq qbit) Hproj).
+      apply (den_valid_normalized rho Hrho). }
+    rewrite H0, H1.
+    unfold com_real, RTC. simpl fst.
+    destruct (Rgt_dec 0 0) as [Hn | _]; [exfalso; lra |].
+    destruct (Rgt_dec 1 0) as [_ | Hn]; [| exfalso; lra].
+    f_equal. f_equal.
+    + apply den_projected_measure_id; try assumption.
+      apply mat_proj1_projection.
+    + lra.
+Qed.
+
+Lemma Execute_measure_instr_measured_id:
+  forall (qbit cbit: nat) (ps: ProgramState nq),
+  ProgramState_valid nq ps ->
+  ProgramState_measured qbit cbit ps ->
+  ProgramState_equiv nq (Execute_measure_instr nq qbit cbit ps) ps.
+Proof.
+  intros qbit cbit ps Hps Hmeas.
+  unfold Execute_measure_instr.
+  enough (H:
+    ProgramState_valid nq ps /\
+    ProgramState_equiv nq
+      (PositiveMap.fold
+        (fold_step nq (Execute_measure_instr_branch nq qbit cbit))
+        ps (PositiveMap.empty (Branch nq)))
+      ps)
+  by apply H.
+  apply (PProperties.fold_rec_bis
+    (P := fun m a => ProgramState_valid nq m /\ ProgramState_equiv nq a m)).
+  - intros m m' a Heq [Hv Ha].
+    split.
+    + apply ProgramState_valid_equal with m; assumption.
+    + etransitivity; eassumption.
+  - split.
+    + apply ProgramState_empty_valid.
+    + reflexivity.
+  - intros k b a m Hmaps Hnotin [Hv Ha].
+    assert (Hb: Branch_valid nq b) by (apply Hps with k; assumption).
+    split.
+    + apply ProgramState_add_valid; assumption.
+    + unfold fold_step.
+      rewrite Execute_measure_instr_branch_measured_id
+        by (apply Hmeas; assumption).
+      etransitivity.
+      { apply ProgramState_merge_Proper.
+        - exact Ha.
+        - reflexivity. }
+      symmetry.
+      apply ProgramState_merge_singleton_add; assumption.
+Qed.
+
+Lemma Transform_double_measure:
+  forall (qbit cbit: nat),
+  Instruction_equiv nq
+  qasm{ measure qbit -> cbit; measure qbit -> cbit }
+  qasm{ measure qbit -> cbit }.
+Proof.
+  intros qbit cbit ps Hps.
+  etransitivity.
+  { apply Execute_suppl_seq. }
+  cbn [Execute_suppl].
+  apply Execute_measure_instr_measured_id.
+  - apply Execute_measure_instr_valid.
+    assumption.
+  - apply Execute_measure_instr_measured.
+    assumption.
+Qed.
+
 (* Instruction_equiv rewrite inside If instruction *)
 (* Written here since Equiv.v do not reference Valid.v; causes cyclic reference *)
 Lemma Instruction_if_Proper:
