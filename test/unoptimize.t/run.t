@@ -57,6 +57,7 @@ kind rather than by concrete witness values.
   Insert_If_TF: occurrences=12 param=cbit_instr
   Double_If_False: occurrences=1 param=none
   Double_Reset: occurrences=1 param=none
+  Double_Measure: occurrences=5 param=none
   $ grep -F 'Swap_To_3Cnot' applicable-rules.stdout; test $? -ne 0
   $ qasminfer --unoptimize-rules qasm2.qasm --output applicable-rules.file >applicable-rules-file.stdout 2>applicable-rules-file.stderr
   $ test ! -s applicable-rules-file.stdout
@@ -124,6 +125,11 @@ kind rather than by concrete witness values.
       {
         "name": "Double_Reset",
         "occurrences": 1,
+        "param": "none"
+      },
+      {
+        "name": "Double_Measure",
+        "occurrences": 5,
         "param": "none"
       }
     ]
@@ -307,6 +313,77 @@ Distinct operands are unaffected.
   $ test ! -s manual-rules-fail.stdout
   $ head -n 1 manual-rules-fail.stderr
   --qbits, --cbits, and --occurrence cannot be used with --unoptimize-rules
+
+Double_Measure repeats one existing measurement into the same bit.  Its
+occurrences are the measurements in program order, including those inside a
+conditional body, and the rewrite leaves every other line and the outcome
+distribution unchanged.
+
+  $ cat > double-measure.qasm <<'EOF'
+  > OPENQASM 2.0;
+  > include "qelib1.inc";
+  > qreg q[2];
+  > creg c[2];
+  > x q[0];
+  > measure q[0] -> c[0];
+  > h q[1];
+  > measure q[1] -> c[1];
+  > EOF
+  $ qasminfer --unoptimize-rules double-measure.qasm | grep -F 'Double_Measure'
+  Double_Measure: occurrences=2 param=none
+  $ qasminfer --step 0 --unoptimize double-measure.qasm double-measure-canonical.qasm
+  $ qasminfer --rule Double_Measure --occurrence 0 --unoptimize double-measure.qasm double-measure-0.qasm >double-measure-0.stdout 2>double-measure-0.stderr
+  $ test ! -s double-measure-0.stdout
+  $ test ! -s double-measure-0.stderr
+  $ diff double-measure-canonical.qasm double-measure-0.qasm
+  6a7
+  > measure q[0] -> c[0];
+  [1]
+  $ qasminfer --rule Double_Measure --occurrence 1 --emit oq2 --unoptimize double-measure.qasm double-measure-1.qasm >double-measure-1.stdout 2>double-measure-1.stderr
+  $ test ! -s double-measure-1.stdout
+  $ test ! -s double-measure-1.stderr
+  $ diff double-measure-canonical.qasm double-measure-1.qasm
+  8a9
+  > measure q[1] -> c[1];
+  [1]
+  $ qasminfer --json double-measure.qasm >double-measure.json
+  $ qasminfer --json double-measure-0.qasm >double-measure-0.json
+  $ qasminfer --json double-measure-1.qasm >double-measure-1.json
+  $ cmp double-measure.json double-measure-0.json
+  $ cmp double-measure.json double-measure-1.json
+  $ qasminfer --rule Double_Measure --occurrence 2 --unoptimize double-measure.qasm double-measure-2.qasm >double-measure-2.stdout 2>double-measure-2.stderr
+  [1]
+  $ test ! -e double-measure-2.qasm
+  $ cat double-measure-2.stderr
+  qasminfer: occurrence: Occurrence 2 is out of range for rule 'Double_Measure' with 2 occurrence(s).
+
+A measurement inside a conditional that writes its own condition register can
+be doubled in the program, but the doubled body has no OpenQASM 2 form, so
+--emit oq2 refuses it and the automatic mode falls back to OpenQASM 3.
+
+  $ cat > double-measure-if.qasm <<'EOF'
+  > OPENQASM 2.0;
+  > include "qelib1.inc";
+  > qreg q[1];
+  > creg c[1];
+  > x q[0];
+  > if (c==0) measure q[0] -> c[0];
+  > EOF
+  $ qasminfer --unoptimize-rules double-measure-if.qasm | grep -F 'Double_Measure'
+  Double_Measure: occurrences=1 param=none
+  $ qasminfer --rule Double_Measure --occurrence 0 --emit oq2 --unoptimize double-measure-if.qasm double-measure-if-oq2.qasm >double-measure-if-oq2.stdout 2>double-measure-if-oq2.stderr
+  [1]
+  $ test ! -e double-measure-if-oq2.qasm
+  $ cat double-measure-if-oq2.stderr
+  qasminfer: emit: cannot express the program in OpenQASM 2: unrepresentable conditional: guarded operations mutate the condition register
+  $ qasminfer --rule Double_Measure --occurrence 0 --unoptimize double-measure-if.qasm double-measure-if.out.qasm
+  $ head -n 1 double-measure-if.out.qasm
+  OPENQASM 3.0;
+  $ grep -c -F 'c[0] = measure q[0];' double-measure-if.out.qasm
+  2
+  $ qasminfer --json double-measure-if.qasm >double-measure-if.json
+  $ qasminfer --json double-measure-if.out.qasm >double-measure-if.out.json
+  $ cmp double-measure-if.json double-measure-if.out.json
 
   $ qasminfer --json qasm2.qasm >qasm2-source.json 2>qasm2-source.stderr
   $ qasminfer --json qasm2.once.qasm >qasm2-generated.json 2>qasm2-generated.stderr
