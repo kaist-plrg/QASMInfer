@@ -83,6 +83,15 @@ Definition Rule_Double_Reset : RewriteRule :=
     ]
   |}.
 
+Definition Rule_Double_Measure : RewriteRule :=
+  {|
+    rule_lhs := [PMeasure (NatVar 0) (NatVar 0)];
+    rule_rhs := [
+      PMeasure (NatVar 0) (NatVar 0);
+      PMeasure (NatVar 0) (NatVar 0)
+    ]
+  |}.
+
 Definition Transform_simple_rule (rule: RewriteRule) : TransformParameter -> option RewriteRule :=
   fun param =>
     match param with
@@ -187,7 +196,8 @@ Definition Transform_spec_list : list TransformSpec :=
     TransformSpec_Insert_Contradictory_If_True;
     TransformSpec_simple_rule "Double_If_True" Rule_Double_If_True;
     TransformSpec_simple_rule "Double_If_False" Rule_Double_If_False;
-    TransformSpec_simple_rule "Double_Reset" Rule_Double_Reset
+    TransformSpec_simple_rule "Double_Reset" Rule_Double_Reset;
+    TransformSpec_simple_rule "Double_Measure" Rule_Double_Measure
   ].
 
 Lemma TransformSpec_Insert_I_valid :
@@ -387,6 +397,30 @@ Proof.
   assumption.
 Qed.
 
+Lemma TransformSpec_Double_Measure_valid :
+  TransformSpecValid nq
+    (TransformSpec_simple_rule "Double_Measure" Rule_Double_Measure).
+Proof.
+  unfold TransformSpecValid, TransformSpec_simple_rule, Transform_simple_rule.
+  simpl.
+  intros param.
+  destruct param as [| qbit | qbit1 qbit2 | cbit instr]; simpl.
+  all: try (intros rule Hrule; discriminate).
+  intros rule Hrule subst lhs rhs _ _ Hlhs Hrhs _.
+  injection Hrule as <-.
+  unfold Rule_Double_Measure in Hlhs, Hrhs.
+  simpl in Hlhs, Hrhs.
+  destruct (NatMap.find 0%nat (pattern_qbit_map subst)) as [qbit |];
+  try discriminate.
+  destruct (NatMap.find 0%nat (pattern_cbit_map subst)) as [cbit |];
+  try discriminate.
+  injection Hlhs as <-.
+  injection Hrhs as <-.
+  repeat rewrite Instruction_equiv_Seq_singleton.
+  symmetry.
+  apply Transform_double_measure.
+Qed.
+
 Theorem Transform_spec_list_valid :
   Forall (TransformSpecValid nq) Transform_spec_list.
 Proof.
@@ -399,6 +433,7 @@ Proof.
   - apply TransformSpec_Double_If_True_valid.
   - apply TransformSpec_Double_If_False_valid.
   - apply TransformSpec_Double_Reset_valid.
+  - apply TransformSpec_Double_Measure_valid.
 Qed.
 
 End TRANSFORM_FUNCTIONS.
