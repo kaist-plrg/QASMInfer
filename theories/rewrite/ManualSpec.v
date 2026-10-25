@@ -83,6 +83,12 @@ Definition Rule_Double_Reset : RewriteRule :=
     ]
   |}.
 
+(* Contextual only: registered through ContextualSpec.v, never through the
+   context-free Transform_spec_list or its validity theorem. *)
+Definition Rule_Insert_Dead_If_Bit (cbit : nat) (instr : Instruction) : RewriteRule :=
+  {| rule_lhs := [];
+     rule_rhs := [PIf (NatExact cbit) true [PInstrExact instr]] |}.
+
 Definition Rule_Double_Measure : RewriteRule :=
   {|
     rule_lhs := [PMeasure (NatVar 0) (NatVar 0)];

@@ -94,7 +94,8 @@ Extraction "extracted.ml"
   StandardPatternGate
   standard_rule_nqubits
   standard_rule_of_sequences
-  Transform_spec_list.
+  Transform_spec_list
+  ContextualSpec_Insert_Dead_If_Bit.
 
 (* Extraction "quantum_core.ml" Execute_and_calculate_prob. *)
 (* Extraction "./desugar.ml" desugar. *)
