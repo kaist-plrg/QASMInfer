@@ -3,7 +3,9 @@
 (rocq.theory
  (name QASMInfer)
  (theories Stdlib)
- (modules :standard))
+ ; Extract.v is run in extraction/stage by @extract, not compiled in the
+ ; theory root where its output would overwrite the read-only source copy.
+ (modules :standard \ extract.Extract))
 
 (alias
  (name proofs)
