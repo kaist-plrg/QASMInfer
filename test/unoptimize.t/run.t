@@ -58,6 +58,7 @@ kind rather than by concrete witness values.
   Double_If_False: occurrences=1 param=none
   Double_Reset: occurrences=1 param=none
   Double_Measure: occurrences=5 param=none
+  Insert_Dead_If_Bit: occurrences=12 param=cbit_instr
   $ grep -F 'Swap_To_3Cnot' applicable-rules.stdout; test $? -ne 0
   $ qasminfer --unoptimize-rules qasm2.qasm --output applicable-rules.file >applicable-rules-file.stdout 2>applicable-rules-file.stderr
   $ test ! -s applicable-rules-file.stdout
@@ -131,6 +132,11 @@ kind rather than by concrete witness values.
         "name": "Double_Measure",
         "occurrences": 5,
         "param": "none"
+      },
+      {
+        "name": "Insert_Dead_If_Bit",
+        "occurrences": 12,
+        "param": "cbit_instr"
       }
     ]
   }
