@@ -1,7 +1,7 @@
 (*
  * GENERATED — DO NOT EDIT
  *
- * Source commit: b25add572fe8cba922cbf89a79604730d43d9908
+ * Source commit: fbd5c2895ce34d55fc6e5202f1add44d2f995424
  * Rocq version: 9.1.0
  * Dune Rocq language version: 0.13
  * Extraction command: rocq repl -q -Q ../.. QASMInfer -batch -l ../../extract/Extract
@@ -3961,6 +3961,12 @@ let rule_Double_Reset =
   { rule_lhs = ((PReset (NatVar 0)) :: []); rule_rhs = ((PReset (NatVar
     0)) :: ((PReset (NatVar 0)) :: [])) }
 
+(** val rule_Insert_Dead_If_Bit : int -> instruction -> rewriteRule **)
+
+let rule_Insert_Dead_If_Bit cbit instr =
+  { rule_lhs = []; rule_rhs = ((PIf ((NatExact cbit), true, ((PInstrExact
+    instr) :: []))) :: []) }
+
 (** val rule_Double_Measure : rewriteRule **)
 
 let rule_Double_Measure =
@@ -4057,6 +4063,118 @@ let transform_spec_list nq =
     (transformSpec_simple_rule "Double_If_False" rule_Double_If_False) :: (
     (transformSpec_simple_rule "Double_Reset" rule_Double_Reset) :: (
     (transformSpec_simple_rule "Double_Measure" rule_Double_Measure) :: []))))))))
+
+(** val instruction_no_write : int -> instruction -> bool **)
+
+let rec instruction_no_write bit = function
+| MeasureInstr (_, target) -> negb ((=) bit target)
+| SeqInstr instrs -> forallb (instruction_no_write bit) instrs
+| IfInstr (_, _, body) -> instruction_no_write bit body
+| _ -> true
+
+(** val dead_guard_site_count : instruction -> int **)
+
+let rec dead_guard_site_count = function
+| SeqInstr instrs ->
+  let rec count_list = function
+  | [] -> 0
+  | head :: tail ->
+    Stdlib.Int.succ
+      ((+)
+        (match head with
+         | SeqInstr _ -> dead_guard_site_count head
+         | IfInstr (_, _, body) -> dead_guard_site_count body
+         | _ -> 0)
+        (count_list tail))
+  in count_list instrs
+| IfInstr (_, _, body) -> Stdlib.Int.succ (dead_guard_site_count body)
+| _ -> Stdlib.Int.succ 0
+
+(** val dead_guard_child_count : instruction -> int **)
+
+let dead_guard_child_count instr = match instr with
+| SeqInstr _ -> dead_guard_site_count instr
+| IfInstr (_, _, body) -> dead_guard_site_count body
+| _ -> 0
+
+(** val dead_guard_apply_list :
+    int -> instruction -> (instruction -> int -> instruction option) ->
+    instruction list -> int -> instruction list option **)
+
+let rec dead_guard_apply_list bit body rewrite instrs occurrence =
+  match instrs with
+  | [] -> None
+  | head :: tail ->
+    ((fun fO fS n -> if n=0 then fO () else fS (n-1))
+       (fun _ -> Some ((IfInstr (bit, true, body)) :: instrs))
+       (fun next ->
+       if Nat.ltb next (dead_guard_child_count head)
+       then let child_index =
+              match head with
+              | SeqInstr _ -> next
+              | _ -> Stdlib.Int.succ next
+            in
+            option_map (fun head' -> head' :: tail) (rewrite head child_index)
+       else if instruction_no_write bit head
+            then option_map (fun x -> head :: x)
+                   (dead_guard_apply_list bit body rewrite tail
+                     (sub next (dead_guard_child_count head)))
+            else None)
+       occurrence)
+
+(** val dead_guard_apply :
+    int -> instruction -> instruction -> int -> instruction option **)
+
+let rec dead_guard_apply bit body instr occurrence =
+  match instr with
+  | SeqInstr instrs ->
+    option_map (fun x -> SeqInstr x)
+      (dead_guard_apply_list bit body (dead_guard_apply bit body) instrs
+        occurrence)
+  | IfInstr (c, cond, inner) ->
+    ((fun fO fS n -> if n=0 then fO () else fS (n-1))
+       (fun _ -> Some (SeqInstr ((IfInstr (bit, true,
+       body)) :: (instr :: []))))
+       (fun next ->
+       option_map (fun x -> IfInstr (c, cond, x))
+         (dead_guard_apply bit body inner next))
+       occurrence)
+  | _ ->
+    ((fun fO fS n -> if n=0 then fO () else fS (n-1))
+       (fun _ -> Some (SeqInstr ((IfInstr (bit, true,
+       body)) :: (instr :: []))))
+       (fun _ -> None)
+       occurrence)
+
+type contextualTransformSpec = { contextual_metadata : transformSpec;
+                                 contextual_apply : (transformParameter ->
+                                                    instruction -> int ->
+                                                    instruction option) }
+
+(** val transformSpec_Insert_Dead_If_Bit : int -> transformSpec **)
+
+let transformSpec_Insert_Dead_If_Bit nq =
+  { transform_name = "Insert_Dead_If_Bit"; transform_rule = (fun param ->
+    match param with
+    | Param_cbit_instr (cbit, instr) ->
+      if instruction_qbits_validb nq instr
+      then Some (rule_Insert_Dead_If_Bit cbit instr)
+      else None
+    | _ -> None); transform_postprocess = (fun _ instr -> instr);
+    transform_strategy = TransformDeep; transform_param_kind =
+    ParamKind_cbit_instr }
+
+(** val contextualSpec_Insert_Dead_If_Bit : int -> contextualTransformSpec **)
+
+let contextualSpec_Insert_Dead_If_Bit nq =
+  { contextual_metadata = (transformSpec_Insert_Dead_If_Bit nq);
+    contextual_apply = (fun param instr occurrence ->
+    match param with
+    | Param_cbit_instr (cbit, body) ->
+      if instruction_qbits_validb nq body
+      then dead_guard_apply cbit body instr occurrence
+      else None
+    | _ -> None) }
 
 type dOmega = { domega_d0 : Big_int_Z.big_int; domega_d1 : Big_int_Z.big_int;
                 domega_d2 : Big_int_Z.big_int; domega_d3 : Big_int_Z.big_int;
