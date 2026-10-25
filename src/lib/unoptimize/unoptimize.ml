@@ -529,7 +529,8 @@ let try_transform rng ?manual specs nq nc instr =
       transformSpec_apply spec param instr occurrence
 
 let combined_specs nq specs =
-  let base_specs = transform_spec_list nq in
+  let base_specs = transform_spec_list nq @
+    [ (contextualSpec_Insert_Dead_If_Bit nq).contextual_metadata ] in
   match specs with
   | None -> base_specs
   | Some extra_specs -> base_specs @ extra_specs
@@ -572,7 +573,75 @@ let filter_specs_by_name rule_name specs =
   | [] -> domain_error "rule" "No transformation rule named '%s'." rule_name
   | _ -> matched
 
-let unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc =
+let dead_guard_name = "Insert_Dead_If_Bit"
+
+type dead_guard_trace = {
+  cbit : int;
+  occurrence : int;
+  payload : instruction;
+  payload_policy : string;
+}
+
+(* This add-on is explicitly selected. Keeping it out of the default sampler
+   also preserves all historical RNG draws and existing seeded outputs. *)
+let insert_dead_guard rng ?manual ~random_1q instr nq nc =
+  let contextual = contextualSpec_Insert_Dead_If_Bit nq in
+  let spec = contextual.contextual_metadata in
+  let qbits, cbits, occurrence, payload =
+    match manual with
+    | None -> None, None, None, None
+    | Some m -> m.qbits, m.cbits, m.occurrence, m.instr
+  in
+  require_arity "--qbits" 0 qbits;
+  require_arity "--cbits" 1 cbits;
+  if nc <= 0 then domain_error "param" "rule %s requires a classical bit" dead_guard_name;
+  let cbit = match cbits with
+    | Some [ c ] -> c
+    | _ -> Random.State.int rng nc
+  in
+  if cbit < 0 || cbit >= nc then
+    domain_error "param" "Manual cbit %d is out of range for %d cbit(s)." cbit nc;
+  if random_1q && Option.is_some payload then
+    domain_error "param" "--random-1q cannot be combined with --instr or --instr-file";
+  let payload, payload_policy = match payload with
+    | Some body -> body, "explicit"
+    | None ->
+        if nq <= 0 then domain_error "param" "rule %s requires a qubit for its generated payload" dead_guard_name;
+        let gates = [| Std_I; Std_X; Std_Y; Std_Z; Std_H; Std_S; Std_Sdg;
+                       Std_T; Std_Tdg; Std_SX; Std_SXdg |] in
+        let gate, qbit = if random_1q then
+          let gate = gates.(Random.State.int rng (Array.length gates)) in
+          gate, Random.State.int rng nq
+        else Std_I, 0 in
+        (* Instantiate through the same fixed-gate alphabet as rule files. *)
+        let pattern = standard_pattern_gate_to_instruction_pattern (SPG_Std (gate, qbit)) in
+        let body = match pattern with
+          | PRotate (theta, phi, lambda, _) -> RotateInstr (theta, phi, lambda, qbit)
+          | _ -> assert false in
+        body, (if random_1q then "random-1q" else "id")
+  in
+  let param = Param_cbit_instr (cbit, payload) in
+  validate_manual_parameter spec param;
+  let count = transformSpec_count spec param instr in
+  let occurrence = match occurrence with
+    | Some index -> validate_manual_occurrence spec index count; index
+    | None ->
+        (* The extracted checker decides admissibility, including all enclosing
+           prefixes. Do not silently reinterpret an addressed unsafe ordinal. *)
+        let safe = List.init count Fun.id |> List.filter (fun index ->
+          Option.is_some (contextual.contextual_apply
+            (Param_cbit_instr (cbit, NopInstr)) instr index)) in
+        if safe = [] then domain_error "rule" "rule %s has no admissible site for c[%d]" dead_guard_name cbit;
+        List.nth safe (Random.State.int rng (List.length safe))
+  in
+  match contextual.contextual_apply param instr occurrence with
+  | None -> domain_error "rule"
+      "rule %s precondition failed at occurrence %d: a preceding measurement may write c[%d]"
+      dead_guard_name occurrence cbit
+  | Some result -> result, { cbit; occurrence; payload; payload_policy }
+
+let unoptimize_with_state ?specs ?rule_name ?manual ?(random_1q=false)
+    ?(on_dead_guard=fun _ -> ()) rng instr step nq nc =
   validate_manual_values manual;
   if manual_requested manual then (
     match rule_name with
@@ -580,8 +649,17 @@ let unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc =
     | None -> domain_error "param" "Manual parameters require --rule.");
   if manual_requested manual && step <> 1 then
     domain_error "param" "Manual parameters require a single rewrite step.";
+  let registered = combined_specs nq specs |> ensure_unique_spec_names in
+  if random_1q && rule_name <> Some dead_guard_name then
+    domain_error "param" "--random-1q requires --rule Insert_Dead_If_Bit";
+  if rule_name = Some dead_guard_name then (
+    if step <> 1 then domain_error "param" "rule %s requires a single rewrite step" dead_guard_name;
+    let result, trace = insert_dead_guard rng ?manual ~random_1q instr nq nc in
+    on_dead_guard trace;
+    result
+  ) else
   let specs =
-    let specs = combined_specs nq specs |> ensure_unique_spec_names in
+    let specs = List.filter (fun spec -> spec.transform_name <> dead_guard_name) registered in
     let specs =
       match rule_name with
       | None -> specs
@@ -611,7 +689,7 @@ let unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc =
   in
   loop 0 instr
 
-let unoptimize ?specs ?rule_name ?manual ?seed instr step nq nc =
+let unoptimize ?specs ?rule_name ?manual ?seed ?random_1q ?on_dead_guard instr step nq nc =
   (* An explicit seed makes the random rewrite path reproducible.  A fully
      addressed rewrite (--rule with every parameter and an occurrence) does not
      consult the generator for anything that affects the result, so it is
@@ -622,5 +700,5 @@ let unoptimize ?specs ?rule_name ?manual ?seed instr step nq nc =
     | None -> Random.State.make_self_init ()
   in
   if instruction_qbits_validb nq instr
-  then unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc
+  then unoptimize_with_state ?specs ?rule_name ?manual ?random_1q ?on_dead_guard rng instr step nq nc
   else domain_error "parse" "Instruction qbit index is not valid."

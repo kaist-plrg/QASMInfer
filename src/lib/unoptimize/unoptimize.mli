@@ -28,11 +28,20 @@ val applicable_rules :
   int ->
   applicable_rule list
 
+type dead_guard_trace = {
+  cbit : int;
+  occurrence : int;
+  payload : Extracted.instruction;
+  payload_policy : string;
+}
+
 val unoptimize :
   ?specs:Extracted.transformSpec list ->
   ?rule_name:string ->
   ?manual:manual_parameters ->
   ?seed:int ->
+  ?random_1q:bool ->
+  ?on_dead_guard:(dead_guard_trace -> unit) ->
   Extracted.instruction ->
   int ->
   int ->

@@ -56,6 +56,8 @@ type command =
       emit : emit_mode;
       instr_source : instr_source option;
       seed : int option;
+      random_1q : bool;
+      trace_file : string option;
     }
   | UnoptimizeRules of {
       source : string;
@@ -96,6 +98,8 @@ let parse_args argv =
   let seed = ref None in
   let instr_text = ref None in
   let instr_file = ref None in
+  let random_1q = ref false in
+  let trace_file = ref None in
   let positionals = ref [] in
   let parse_int_list option_name raw =
     let parse_token token =
@@ -202,6 +206,12 @@ let parse_args argv =
       ( "--instr-file",
         Arg.String (set_instr "--instr-file" instr_file),
         "Read the --instr payload from FILE" );
+      ( "--random-1q", Arg.Set random_1q,
+        "Generate a fixed-alphabet one-qubit payload for Insert_Dead_If_Bit" );
+      ( "--trace", Arg.String (fun path ->
+          if Option.is_some !trace_file then raise (Arg.Bad "--trace cannot be specified more than once");
+          trace_file := Some path),
+        "Write the Insert_Dead_If_Bit choice as JSON to FILE" );
       ("--json", Arg.Set emit_json, "Emit result as JSON");
       ( "--output",
         Arg.String set_output_file,
@@ -219,6 +229,11 @@ let parse_args argv =
   in
   if Array.length argv <= 1 then
     raise (Arg.Bad (Arg.usage_string speclist usage_msg));
+  if (!random_1q || Option.is_some !trace_file) &&
+     (not !unoptimize || !rule_name <> Some "Insert_Dead_If_Bit") then
+    usage_error "--random-1q and --trace require --unoptimize --rule Insert_Dead_If_Bit";
+  if !random_1q && (Option.is_some !instr_text || Option.is_some !instr_file) then
+    usage_error "--random-1q cannot be combined with --instr or --instr-file";
   let instr_source =
     match (!instr_text, !instr_file) with
     | Some text, _ -> Some (Instr_text text)
@@ -264,6 +279,8 @@ let parse_args argv =
   | true, false, _ when manual_options_used && Option.is_none !rule_name ->
       usage_error "--qbits, --cbits, and --occurrence require --rule"
   | true, false, [ source; destination ] ->
+      if !trace_file = Some source || !trace_file = Some destination then
+        usage_error "--trace must differ from SOURCE and DESTINATION";
       Unoptimize
         {
           source;
@@ -276,6 +293,8 @@ let parse_args argv =
           emit = Option.value !emit ~default:Emit_auto;
           instr_source;
           seed = !seed;
+          random_1q = !random_1q;
+          trace_file = !trace_file;
         }
   | true, false, _ ->
       usage_error
@@ -666,7 +685,7 @@ let payload_source = function
   | Instr_file path -> ("--instr-file", read_source path)
 
 let unoptimize source destination step verbose rule_file rule_name manual emit
-    instr_source seed =
+    instr_source seed random_1q trace_file =
   let nq, nc, instr, q_assignment, c_assignment =
     parse_and_desugar source
   in
@@ -687,8 +706,10 @@ let unoptimize source destination step verbose rule_file rule_name manual emit
         in
         Some { manual with Unoptimize.instr = Some instruction }
   in
+  let trace = ref None in
   let transformed =
-    try Unoptimize.unoptimize ?specs ?rule_name ?manual ?seed instr step nq nc with
+    try Unoptimize.unoptimize ?specs ?rule_name ?manual ?seed ~random_1q
+      ~on_dead_guard:(fun choice -> trace := Some choice) instr step nq nc with
     | Unoptimize.Domain_error (error_class, detail) ->
         raise (Cli_error (error_class, detail))
   in
@@ -696,7 +717,22 @@ let unoptimize source destination step verbose rule_file rule_name manual emit
   let output =
     render_program emit nq nc q_assignment c_assignment transformed
   in
-  write_result (Some destination) output
+  write_result (Some destination) output;
+  Option.iter (fun path ->
+    match !trace with
+    | None -> cli_error "internal" "missing dead-guard trace"
+    | Some choice ->
+        let payload_qasm = render_program Emit_oq3 nq nc q_assignment c_assignment choice.payload in
+        let json = `Assoc [
+          "rule", `String "Insert_Dead_If_Bit";
+          "cbit", `Int choice.cbit;
+          "occurrence", `Int choice.occurrence;
+          "payload_policy", `String choice.payload_policy;
+          "payload_qasm", `String payload_qasm;
+          "seed", (match seed with None -> `Null | Some n -> `Int n);
+          "precondition", `String "no preceding measurement into the selected bit"
+        ] in
+        write_result (Some path) (Yojson.Safe.pretty_to_string json ^ "\n")) trace_file
 
 let unoptimize_rules source verbose emit_json output_file rule_file =
   let nq, nc, instr, _, _ = parse_and_desugar source in
@@ -807,10 +843,12 @@ let run_command = function
         emit;
         instr_source;
         seed;
+        random_1q;
+        trace_file;
       } ->
       let step = Option.value step ~default:1 in
       unoptimize source destination step verbose rule_file rule_name manual emit
-        instr_source seed
+        instr_source seed random_1q trace_file
   | UnoptimizeRules { source; verbose; emit_json; output_file; rule_file } ->
       unoptimize_rules source verbose emit_json output_file rule_file
 

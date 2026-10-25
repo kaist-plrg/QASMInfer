@@ -223,6 +223,34 @@ destination would use -- for an OpenQASM 3 source using physical qubits, that is
 the renamed register (`qasm3_physical[0]`), not `$0`. A payload that declares
 registers or references an out-of-range index is rejected.
 
+`Insert_Dead_If_Bit` is a contextual add-on, selected explicitly with `--rule`.
+It inserts one `if (c[k]) { g; }` before a deep empty-LHS site, provided no
+preceding instruction (including enclosing prefixes and guarded bodies) may
+measure into bit `k`. Classical bits start at zero. Measurements into other
+bits are allowed; reset does not write classical bits. The extracted checker
+enforces this condition at application time. An unsafe addressed site exits
+1 with error class `rule`, without writing the destination. Listing reports
+all syntactic empty-LHS sites, so rejected ordinals are never renumbered.
+
+The default payload is `id` on qubit 0. Use `--instr` / `--instr-file` for an
+explicit payload, or `--random-1q` for a seeded choice from
+`id,x,y,z,h,s,sdg,t,tdg,sx,sxdg` and a valid qubit. `--trace FILE` records the
+chosen bit, occurrence, payload policy, actual payload as an OpenQASM 3
+program, and seed. The last two options require this rule; `--random-1q`
+cannot accompany an explicit payload. The default random rewrite sampler
+does not select this add-on, preserving its existing seeded outputs.
+
+```sh
+qasminfer --unoptimize --rule Insert_Dead_If_Bit --cbits 0 --occurrence 0 \
+  --emit oq3 --trace choice.json input.qasm output.qasm
+```
+
+The existing emitter is unchanged: `--emit oq3` prints the bit guard;
+`--emit oq2` refuses a guard covering only part of a classical register, but
+can print a guard covering an entire one-bit register. No register-equality
+approximation is introduced. `--step 0 --emit oq3` re-emits the result as a
+fixed point.
+
 ### Exit codes and error classes
 
 | exit | meaning |
