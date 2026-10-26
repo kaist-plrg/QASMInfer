@@ -3,8 +3,9 @@
 
 The original --baseline/--candidate invocation checks task-79 against ee83932.
 Adding --pinned-baseline enables task-80: the composite-free union of 4a9ea80
-and 22caa1d fixtures is checked against both binaries. All differences, including
-historical default-sampler differences, are reported and cause exit status 1.
+and 22caa1d fixtures is checked against both binaries. Task-80 Addendum 1
+compares default sampling only with 4a9ea80, whose sampler includes Double_Measure.
+Every required difference is reported and causes exit status 1.
 Only temporary destinations are written. --json is used for rule listing only;
 this script never simulates a program, builds a binary, or changes a baseline.
 """
@@ -134,7 +135,7 @@ def result_record(result):
             "stderr": bytes_record(stderr), "destination": bytes_record(destination)}
 
 
-def check_baseline(binary, candidate, commit, additions, fixtures, extended, directory):
+def check_baseline(binary, candidate, commit, additions, fixtures, extended, directory, check_sampler=True):
     counts = collections.Counter()
     per_rule = collections.Counter()
     by_category = collections.defaultdict(collections.Counter)
@@ -197,8 +198,9 @@ def check_baseline(binary, candidate, commit, additions, fixtures, extended, dir
             continue
         for emit in EMISSIONS:
             compare(fixture, "step0", ["--step", "0", "--emit", emit])
-            for seed in SEEDS:
-                compare(fixture, "default_step3", ["--step", "3", "--seed", str(seed), "--emit", emit])
+            if check_sampler:
+                for seed in SEEDS:
+                    compare(fixture, "default_step3", ["--step", "3", "--seed", str(seed), "--emit", emit])
             for row in rows:
                 params = {"none": [], "qbit1": ["--qbits", "0"],
                           "qbit2": ["--qbits", "0,1"],
@@ -215,6 +217,7 @@ def check_baseline(binary, candidate, commit, additions, fixtures, extended, dir
                 per_rule[row["name"]] += 1
     return {"baseline_commit": commit, "baseline_path": str(binary),
             "baseline_sha256": sha256(binary.read_bytes()),
+            "default_sampler_checked": check_sampler,
             "passed": not mismatches, "counts": dict(counts),
             "by_category": {name: dict(values) for name, values in sorted(by_category.items())},
             "existing_rules": dict(sorted(per_rule.items())),
@@ -268,13 +271,16 @@ def main():
             selected.append(fixture)
     if not selected:
         raise ValueError("No fixtures selected")
-    baselines = [(args.baseline.resolve(), commit, set() if extended else {NEW_RULE})]
+    baselines = [(args.baseline.resolve(), commit, set() if extended else {NEW_RULE}, True)]
     if extended:
-        baselines.append((args.pinned_baseline.resolve(), "22caa1d", {NEW_RULE, "Double_Measure"}))
+        # The original rules and step 0 must still match both frozen binaries.
+        # Only the sampler changed at ee83932; task-80 Addendum 1 pins it to
+        # 4a9ea80. Any difference from that sampler remains a hard failure.
+        baselines.append((args.pinned_baseline.resolve(), "22caa1d", {NEW_RULE, "Double_Measure"}, False))
     candidate = args.candidate.resolve()
     with tempfile.TemporaryDirectory(prefix="task80-identity-" if extended else "task79-identity-") as directory:
-        reports = [check_baseline(binary, candidate, ref, additions, selected, extended, Path(directory))
-                   for binary, ref, additions in baselines]
+        reports = [check_baseline(binary, candidate, ref, additions, selected, extended, Path(directory), check_sampler)
+                   for binary, ref, additions, check_sampler in baselines]
     report = {"passed": all(item["passed"] for item in reports),
               "candidate_path": str(candidate), "candidate_sha256": sha256(candidate.read_bytes()),
               "fixture_refs": refs, "fixture_count": len(fixtures),
@@ -283,6 +289,8 @@ def main():
               "fixtures": [{"name": f["name"], "origins": f["origins"],
                             "sha256": sha256(f["content"])} for f in selected],
               "emission_modes": list(EMISSIONS), "default_step3_seeds": list(SEEDS),
+              "acceptance_contract": "task-80 Addendum 1 (6d0931c2)" if extended else "task-79",
+              "default_sampler_baseline": commit,
               "baselines": reports, "d56_files_checked": check_frozen_surface(args.benchmark_root)}
     if not extended:
         # Retain the original top-level summary fields for task-79 consumers.
