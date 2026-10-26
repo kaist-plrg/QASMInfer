@@ -36,6 +36,24 @@ let () =
         require (Option.map flatten_core pattern_result = Some (flatten_core result))
           "contextual insertion addresses a different deep site") actual
     done) cases;
+  let named_gates = [CzInstr (0, 1); CyInstr (0, 1); ChInstr (0, 1);
+    CsxInstr (0, 1); ToffoliInstr (0, 1, 2); CswapInstr (0, 1, 2);
+    RccxInstr (0, 1, 2)] in
+  let named_spec = contextualSpec_Insert_Dead_If_Bit 3 in
+  List.iter (fun gate ->
+    require (instruction_no_write 0 gate) "named gate marked as a classical write";
+    let instr = SeqInstr [RotateInstr (aPI2, a0, aPI, 0);
+      IfInstr (1, false, gate); MeasureInstr (0, 0); id] in
+    let expected = execute_and_calculate_prob 3 2 instr in
+    (* Sites 0/1/2/3 precede the measurement; site 4 follows it. *)
+    for index = 0 to 4 do
+      let actual = named_spec.contextual_apply (Param_cbit_instr (0, payload)) instr index in
+      require (Option.is_some actual = (index < 4))
+        "named-gate prefix changed dead-guard admissibility";
+      Option.iter (fun result ->
+        require (execute_and_calculate_prob 3 2 result = expected)
+          "dead guard in a named-gate program changed the distribution") actual
+    done) named_gates;
   let invalid = Param_cbit_instr (0, ResetInstr 2) in
   require (spec.contextual_apply invalid id 0 = None) "invalid payload accepted";
   require (spec.contextual_apply Param_None id 0 = None) "invalid parameter accepted";
@@ -57,4 +75,4 @@ let () =
     require (probabilities result = expected) "dead payload changed the distribution"
   done;
   require (List.length (List.sort_uniq compare !payloads) > 1) "payload did not vary";
-  print_endline "dead guard: 10 deep-site cases, ordinal agreement, payload checks, 32 seeded semantic checks passed"
+  print_endline "dead guard: 10 deep-site cases, ordinal agreement, seven named-gate prefixes, payload checks, 32 seeded semantic checks passed"
