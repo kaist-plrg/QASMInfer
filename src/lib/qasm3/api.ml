@@ -995,11 +995,16 @@ let stdgates_decl =
         ] );
   ]
 
+let mark_native_declaration = function
+  | GateDecl ((name, [], args) as head, _) when List.mem name Qasm2.Native.names ->
+      GateDecl (head, [GUop (Native (name, List.map (fun arg -> arg, None) args))])
+  | statement -> statement
+
 let rec inline_qelib ast =
   match ast with
   | [] -> []
-  | Ast.Include "qelib1.inc" :: t -> qelib_decl @ inline_qelib t
-  | Ast.Include "stdgates.inc" :: t -> stdgates_decl @ inline_qelib t
+  | Ast.Include "qelib1.inc" :: t -> List.map mark_native_declaration qelib_decl @ inline_qelib t
+  | Ast.Include "stdgates.inc" :: t -> List.map mark_native_declaration stdgates_decl @ inline_qelib t
   | h :: t -> h :: inline_qelib t
 
 let sugar = Sugar.sugar

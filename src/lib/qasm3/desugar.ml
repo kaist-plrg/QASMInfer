@@ -13,7 +13,7 @@ let extract_physical_idx_qop = function
   | Uop (CX (control, target)) ->
       List.filter_map physical_idx_of_arg [ control; target ]
   | Uop (U (_, arg)) -> List.filter_map physical_idx_of_arg [ arg ]
-  | Uop (Gate (_, _, args)) -> List.filter_map physical_idx_of_arg args
+  | Uop (Gate (_, _, args) | Native (_, args)) -> List.filter_map physical_idx_of_arg args
   | Meas (qubit, _) | Reset qubit ->
       List.filter_map physical_idx_of_arg [ qubit ]
 
@@ -71,6 +71,7 @@ let rec desugar3_exp = function
 let desugar3_uop = function
   | CX (arg1, arg2) -> Ast2.CX (arg1, arg2)
   | U (exp_list, arg) -> Ast2.U (List.map desugar3_exp exp_list, arg)
+  | Native (name, args) -> Ast2.Native (name, args)
   | Gate (id, exp_list, arg_list) ->
       Ast2.Gate (id, List.map desugar3_exp exp_list, arg_list)
 
@@ -95,7 +96,8 @@ let rec desugar3_statement = function
   | Include dep -> [ Ast2.Include dep ]
   | Decl decl -> [ Ast2.Decl (desugar3_decl decl) ]
   | GateDecl (gdecl, gop_list) ->
-      [ Ast2.GateDecl (gdecl, List.map desugar3_gop gop_list) ]
+      [ Qasm2.Native.recognize_local_declaration
+          (Ast2.GateDecl (gdecl, List.map desugar3_gop gop_list)) ]
   | OpaqueDecl gdecl -> [ Ast2.OpaqueDecl gdecl ]
   | Qop qop -> [ Ast2.Qop (desugar3_qop qop) ]
   | If (cond, body) ->

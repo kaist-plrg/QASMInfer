@@ -72,6 +72,9 @@ Extract Inlined Constant PI2 => "(2. *. Stdlib.atan 1.)".
 
 Extract Inlined Constant Complex => "Complex.t".
 Extract Inlined Constant com_make => "(fun re im -> {re=re; im=im})".
+Extract Inlined Constant Czero => "{re=0.0; im=0.0}".
+Extract Inlined Constant Cone => "{re=1.0; im=0.0}".
+Extract Inlined Constant Ione => "{re=0.0; im=1.0}".
 Extract Inlined Constant com_add => "Complex.add".
 Extract Inlined Constant com_neg => "Complex.neg".
 Extract Inlined Constant com_sub => "Complex.sub".

@@ -43,6 +43,13 @@ let string_of_pattern_gate = function
   | SPG_Std (gate, qbit) -> Printf.sprintf "%s %d" (string_of_gate gate) qbit
   | SPG_Cnot (control, target) -> Printf.sprintf "cx %d %d" control target
   | SPG_Swap (qbit1, qbit2) -> Printf.sprintf "swap %d %d" qbit1 qbit2
+  | SPG_Cz (a, b) -> Printf.sprintf "cz %d %d" a b
+  | SPG_Cy (a, b) -> Printf.sprintf "cy %d %d" a b
+  | SPG_Ch (a, b) -> Printf.sprintf "ch %d %d" a b
+  | SPG_Csx (a, b) -> Printf.sprintf "csx %d %d" a b
+  | SPG_Toffoli (a, b, c) -> Printf.sprintf "ccx %d %d %d" a b c
+  | SPG_Cswap (a, b, c) -> Printf.sprintf "cswap %d %d %d" a b c
+  | SPG_Rccx (a, b, c) -> Printf.sprintf "rccx %d %d %d" a b c
 
 let string_of_pattern_gate_list gates =
   gates |> List.map string_of_pattern_gate |> String.concat "; "
@@ -59,14 +66,16 @@ let rec result_map_list f = function
           result_bind (result_map_list f rest) (fun mapped_rest ->
               Ok (mapped :: mapped_rest)))
 
-let rec result_filter_map_list f = function
-  | [] -> Ok []
-  | value :: rest ->
-      result_bind (f value) (fun mapped ->
-          result_bind (result_filter_map_list f rest) (fun mapped_rest ->
-              match mapped with
-              | None -> Ok mapped_rest
-              | Some value -> Ok (value :: mapped_rest)))
+let result_filter_map_list f values =
+  let rec loop acc = function
+    | [] -> Ok (List.rev acc)
+    | value :: rest ->
+        match f value with
+        | Error _ as error -> error
+        | Ok None -> loop acc rest
+        | Ok (Some value) -> loop (value :: acc) rest
+  in
+  loop [] values
 
 let json_object error json =
   try
@@ -137,6 +146,51 @@ let pattern_gate_of_json rule_name key json =
                   (fun qbit1 ->
                     result_bind (int_field rule_name gate_name json "q2")
                       (fun qbit2 -> Ok (SPG_Swap (qbit1, qbit2))))
+            | "cz" ->
+                result_bind (int_field rule_name gate_name json "control") (fun a ->
+                result_bind (int_field rule_name gate_name json "target") (fun b ->
+                  if a = b then
+                    Error (Printf.sprintf "rule %s gate '%s' requires distinct qubits" rule_name gate_name)
+                  else Ok (SPG_Cz (a, b))))
+            | "cy" ->
+                result_bind (int_field rule_name gate_name json "control") (fun a ->
+                result_bind (int_field rule_name gate_name json "target") (fun b ->
+                  if a = b then
+                    Error (Printf.sprintf "rule %s gate '%s' requires distinct qubits" rule_name gate_name)
+                  else Ok (SPG_Cy (a, b))))
+            | "ch" ->
+                result_bind (int_field rule_name gate_name json "control") (fun a ->
+                result_bind (int_field rule_name gate_name json "target") (fun b ->
+                  if a = b then
+                    Error (Printf.sprintf "rule %s gate '%s' requires distinct qubits" rule_name gate_name)
+                  else Ok (SPG_Ch (a, b))))
+            | "csx" ->
+                result_bind (int_field rule_name gate_name json "control") (fun a ->
+                result_bind (int_field rule_name gate_name json "target") (fun b ->
+                  if a = b then
+                    Error (Printf.sprintf "rule %s gate '%s' requires distinct qubits" rule_name gate_name)
+                  else Ok (SPG_Csx (a, b))))
+            | "ccx" ->
+                result_bind (int_field rule_name gate_name json "control1") (fun a ->
+                result_bind (int_field rule_name gate_name json "control2") (fun b ->
+                result_bind (int_field rule_name gate_name json "target") (fun c ->
+                  if a = b || a = c || b = c then
+                    Error (Printf.sprintf "rule %s gate '%s' requires distinct qubits" rule_name gate_name)
+                  else Ok (SPG_Toffoli (a, b, c)))))
+            | "cswap" ->
+                result_bind (int_field rule_name gate_name json "control") (fun a ->
+                result_bind (int_field rule_name gate_name json "q1") (fun b ->
+                result_bind (int_field rule_name gate_name json "q2") (fun c ->
+                  if a = b || a = c || b = c then
+                    Error (Printf.sprintf "rule %s gate '%s' requires distinct qubits" rule_name gate_name)
+                  else Ok (SPG_Cswap (a, b, c)))))
+            | "rccx" ->
+                result_bind (int_field rule_name gate_name json "control1") (fun a ->
+                result_bind (int_field rule_name gate_name json "control2") (fun b ->
+                result_bind (int_field rule_name gate_name json "target") (fun c ->
+                  if a = b || a = c || b = c then
+                    Error (Printf.sprintf "rule %s gate '%s' requires distinct qubits" rule_name gate_name)
+                  else Ok (SPG_Rccx (a, b, c)))))
             | _ -> (
                 match gate_of_string normalized with
                 | Some gate ->
@@ -162,6 +216,13 @@ let pattern_gate_qbits = function
   | SPG_Std (_, qbit) -> [ qbit ]
   | SPG_Cnot (control, target) -> [ control; target ]
   | SPG_Swap (qbit1, qbit2) -> [ qbit1; qbit2 ]
+  | SPG_Cz (a, b) -> [ a; b ]
+  | SPG_Cy (a, b) -> [ a; b ]
+  | SPG_Ch (a, b) -> [ a; b ]
+  | SPG_Csx (a, b) -> [ a; b ]
+  | SPG_Toffoli (a, b, c) -> [ a; b; c ]
+  | SPG_Cswap (a, b, c) -> [ a; b; c ]
+  | SPG_Rccx (a, b, c) -> [ a; b; c ]
 
 (* Every qubit index in a rule-file rule becomes a pattern *variable*:
    standard_pattern_gate_to_instruction_pattern emits NatVar for each of them
@@ -429,6 +490,11 @@ let require_no_payload spec = function
         "rule %s takes no instruction payload; --instr applies to cbit_instr rules"
         spec.transform_name
 
+let rule_qbit_variables spec =
+  match spec.transform_rule Param_None with
+  | None -> []
+  | Some rule -> instructionPattern_list_qbit_vars rule.rule_lhs |> List.sort_uniq compare
+
 let manual_parameter rng nq nc spec manual =
   let qbits, cbits, payload =
     match manual with
@@ -438,7 +504,12 @@ let manual_parameter rng nq nc spec manual =
   let make_random () = random_parameter rng nq nc spec.transform_param_kind in
   match spec.transform_param_kind with
   | ParamKind_None ->
-      require_arity "--qbits" 0 qbits;
+      require_arity "--qbits" (List.length (rule_qbit_variables spec)) qbits;
+      Option.iter (fun values ->
+        if List.length (List.sort_uniq compare values) <> List.length values then
+          domain_error "param" "rule %s requires distinct qubits" spec.transform_name;
+        List.iter (fun q -> if q >= nq then
+          domain_error "param" "Manual qubit %d is out of range for %d qubit(s)." q nq) values) qbits;
       require_arity "--cbits" 0 cbits;
       require_no_payload spec payload;
       Some Param_None
@@ -500,6 +571,51 @@ let validate_manual_occurrence spec occurrence count =
       "Occurrence %d is out of range for rule '%s' with %d occurrence(s)."
       occurrence spec.transform_name count
 
+(* Select among the original rule's matching occurrences.  The rule and the
+   extracted application function remain the ones admitted by the checker.
+   Traversal follows RewriteRule_match_count: list position, child, siblings. *)
+let addressed_occurrences spec param instr qbits =
+  match spec.transform_rule param with
+  | None -> [||]
+  | Some rule ->
+      let bindings = List.combine (rule_qbit_variables spec) qbits in
+      let ordinal = ref 0 and selected = ref [] in
+      let visit instructions =
+        match rewriteRule_apply rule instructions with
+        | None -> ()
+        | Some _ ->
+            let subst = instructionPattern_match_list rule.rule_lhs instructions patternMap_empty in
+            (match subst with
+            | Some subst when List.for_all (fun (variable, actual) ->
+                NatMap.find variable subst.pattern_qbit_map = Some actual) bindings ->
+                selected := !ordinal :: !selected
+            | _ -> ());
+            incr ordinal
+      in
+      let rec deep = function
+        | SeqInstr instructions -> sequence instructions
+        | IfInstr (_, _, body) as instruction -> visit [instruction]; deep body
+        | instruction -> visit [instruction]
+      and sequence = function
+        | [] -> ()
+        | head :: rest as instructions ->
+            visit instructions;
+            (match head with
+            | SeqInstr _ -> deep head
+            | IfInstr (_, _, body) -> deep body
+            | _ -> ());
+            sequence rest
+      in
+      (match spec.transform_strategy with
+      | TransformDeep -> deep instr
+      | TransformTopLevel ->
+          let rec top = function
+            | [] -> ()
+            | _ :: rest as instructions -> visit instructions; top rest
+          in
+          (match instr with SeqInstr instructions -> top instructions | _ -> visit [instr]));
+      Array.of_list (List.rev !selected)
+
 let try_transform rng ?manual specs nq nc instr =
   let candidates =
     Array.fold_left
@@ -508,15 +624,23 @@ let try_transform rng ?manual specs nq nc instr =
         | None -> acc
         | Some param ->
             if manual_numeric_requested manual then validate_manual_parameter spec param;
-            let count = transformSpec_count spec param instr in
-            if count <= 0 then acc else (spec, param, count) :: acc)
+            let addressed = match manual, spec.transform_param_kind with
+              | Some { qbits = Some qbits; _ }, ParamKind_None ->
+                  Some (addressed_occurrences spec param instr qbits)
+              | _ -> None
+            in
+            let count = match addressed with
+              | Some indices -> Array.length indices
+              | None -> transformSpec_count spec param instr
+            in
+            if count <= 0 then acc else (spec, param, count, addressed) :: acc)
       []
       specs
   in
   match candidates with
   | [] -> None
   | _ ->
-      let spec, param, count =
+      let spec, param, count, addressed =
         List.nth candidates (Random.State.int rng (List.length candidates))
       in
       let occurrence =
@@ -525,6 +649,10 @@ let try_transform rng ?manual specs nq nc instr =
             validate_manual_occurrence spec occurrence count;
             occurrence
         | _ -> Random.State.int rng count
+      in
+      let occurrence = match addressed with
+        | Some indices -> indices.(occurrence)
+        | None -> occurrence
       in
       transformSpec_apply spec param instr occurrence
 
@@ -536,15 +664,12 @@ let combined_specs nq specs =
   | Some extra_specs -> base_specs @ extra_specs
 
 let ensure_unique_spec_names specs =
-  let rec loop seen = function
-    | [] -> specs
-    | spec :: rest ->
-        if List.exists (String.equal spec.transform_name) seen then
-          domain_error "rule" "Duplicate transformation rule name '%s'."
-            spec.transform_name
-        else loop (spec.transform_name :: seen) rest
-  in
-  loop [] specs
+  let seen = Hashtbl.create (List.length specs) in
+  List.iter (fun spec ->
+    if Hashtbl.mem seen spec.transform_name then
+      domain_error "rule" "Duplicate transformation rule name '%s'." spec.transform_name;
+    Hashtbl.add seen spec.transform_name ()) specs;
+  specs
 
 let applicable_rules ?specs instr nq nc =
   if instruction_qbits_validb nq instr then

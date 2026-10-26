@@ -638,10 +638,14 @@ let check_payload_gates option_name instruction =
         cli_error "param"
           "%s: cx names qubit %d twice, which OpenQASM does not allow"
           option_name qbit1
+    | instruction when Option.is_some (Qasm2.Native.named_instruction instruction) ->
+        let name, qbits = Option.get (Qasm2.Native.named_instruction instruction) in
+        if List.length (List.sort_uniq compare qbits) <> List.length qbits then
+          cli_error "param" "%s: %s requires distinct qubits" option_name name
     | SeqInstr instructions -> List.iter check instructions
     | IfInstr (_, _, body) -> check body
     | NopInstr | RotateInstr _ | CnotInstr _ | SwapInstr _ | MeasureInstr _
-    | ResetInstr _ ->
+    | ResetInstr _ | CzInstr _ | CyInstr _ | ChInstr _ | CsxInstr _ | ToffoliInstr _ | CswapInstr _ | RccxInstr _ ->
         ()
   in
   check instruction
@@ -653,7 +657,8 @@ let instruction_of_payload option_name nq nc q_assignment c_assignment payload =
     | Error message -> cli_error "param" "%s: %s" option_name message
   in
   let preamble =
-    Q3.Ast.Include "stdgates.inc" :: declarations
+    Q3.Ast.Include "stdgates.inc"
+    :: (Qasm3.Sugar.native_gate_declarations @ declarations)
     |> Q3.string_of_program |> String.split_on_char '\n'
     |> List.filter (fun line -> line <> "")
     |> String.concat " "

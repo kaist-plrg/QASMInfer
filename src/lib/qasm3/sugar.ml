@@ -57,7 +57,7 @@ let rec exp_of_qasm2 = function
    name "sxdg", which stdgates.inc does not define, so that one falls back to a
    literal U rotation. *)
 let stdgates_gate_names =
-  [ "id"; "x"; "y"; "z"; "h"; "s"; "sdg"; "t"; "tdg"; "sx"; "swap"; "cx" ]
+  [ "id"; "x"; "y"; "z"; "h"; "s"; "sdg"; "t"; "tdg"; "sx"; "swap"; "cx"; "cz"; "cy"; "ch"; "ccx"; "cswap" ]
 
 let expression_of_angle angle =
   let* expression = S2.expression_of_angle angle in
@@ -90,6 +90,37 @@ let qop_of_leaf layout instruction =
       let* qubit1 = qubit qubit1 in
       let* qubit2 = qubit qubit2 in
       Ok (Uop (Gate ("swap", [], [ indexed qubit1; indexed qubit2 ])))
+  | CzInstr (a, b) ->
+      let* a = qubit a in
+      let* b = qubit b in
+      Ok (Uop (Gate ("cz", [], [ indexed a; indexed b ])))
+  | CyInstr (a, b) ->
+      let* a = qubit a in
+      let* b = qubit b in
+      Ok (Uop (Gate ("cy", [], [ indexed a; indexed b ])))
+  | ChInstr (a, b) ->
+      let* a = qubit a in
+      let* b = qubit b in
+      Ok (Uop (Gate ("ch", [], [ indexed a; indexed b ])))
+  | CsxInstr (a, b) ->
+      let* a = qubit a in
+      let* b = qubit b in
+      Ok (Uop (Gate ("csx", [], [ indexed a; indexed b ])))
+  | ToffoliInstr (a, b, c) ->
+      let* a = qubit a in
+      let* b = qubit b in
+      let* c = qubit c in
+      Ok (Uop (Gate ("ccx", [], [ indexed a; indexed b; indexed c ])))
+  | CswapInstr (a, b, c) ->
+      let* a = qubit a in
+      let* b = qubit b in
+      let* c = qubit c in
+      Ok (Uop (Gate ("cswap", [], [ indexed a; indexed b; indexed c ])))
+  | RccxInstr (a, b, c) ->
+      let* a = qubit a in
+      let* b = qubit b in
+      let* c = qubit c in
+      Ok (Uop (Gate ("rccx", [], [ indexed a; indexed b; indexed c ])))
   | MeasureInstr (target, destination) ->
       let* target = qubit target in
       let* destination = cbit destination in
@@ -125,8 +156,28 @@ let rec statements_of_instruction layout instruction =
 let rec statement_uses_stdgates = function
   | Qop (Uop (Gate (name, _, _))) -> List.mem name stdgates_gate_names
   | If (_, body) -> List.exists statement_uses_stdgates body
-  | Qop (Uop (U _ | CX _)) | Qop (Meas _) | Qop (Reset _) -> false
+  | Qop (Uop (U _ | CX _ | Native _)) | Qop (Meas _) | Qop (Reset _) -> false
   | Include _ | Decl _ | GateDecl _ | OpaqueDecl _ | Barrier _ -> false
+
+let rec statement_uses_name name = function
+  | Qop (Uop (Gate (gate, _, _))) -> gate = name
+  | If (_, body) -> List.exists (statement_uses_name name) body
+  | _ -> false
+
+let native_gate_declarations =
+  Qasm2.Native.local_declarations
+  |> List.map (function
+      | A2.GateDecl (head, body) ->
+          let body = List.map (function
+            | A2.GUop (A2.Gate (name, [], args)) -> GUop (Gate (name, [], args))
+            | _ -> invalid_arg "invalid native OQ3 declaration") body in
+          GateDecl (head, body)
+      | _ -> invalid_arg "invalid native OQ3 declaration")
+
+let local_declarations statements =
+  List.filter (function
+    | GateDecl ((name, _, _), _) -> List.exists (statement_uses_name name) statements
+    | _ -> false) native_gate_declarations
 
 let sugar nq nc q_assignment c_assignment instruction =
   let* layout = S2.layout_of_assignments nq nc q_assignment c_assignment in
@@ -139,9 +190,10 @@ let sugar nq nc q_assignment c_assignment instruction =
     @ List.map (fun register -> Decl (CReg (register.S2.name, register.S2.size)))
         layout.S2.cregs
   in
+  let local_gates = local_declarations statements in
   let includes =
-    if List.exists statement_uses_stdgates statements then
+    if local_gates <> [] || List.exists statement_uses_stdgates statements then
       [ Include "stdgates.inc" ]
     else []
   in
-  Ok (includes @ declarations @ statements)
+  Ok (includes @ local_gates @ declarations @ statements)

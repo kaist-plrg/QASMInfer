@@ -204,6 +204,14 @@ Proof.
       apply bit_zero_add; [eauto | apply bit_zero_empty].
     + apply bit_zero_add; [eauto | apply bit_zero_empty].
   - apply bit_zero_map; exact Hzero.
+  (* Named qelib1 gates transform branch values without changing classical keys. *)
+  - apply bit_zero_map; exact Hzero. (* CzInstr *)
+  - apply bit_zero_map; exact Hzero. (* CyInstr *)
+  - apply bit_zero_map; exact Hzero. (* ChInstr *)
+  - apply bit_zero_map; exact Hzero. (* CsxInstr *)
+  - apply bit_zero_map; exact Hzero. (* ToffoliInstr *)
+  - apply bit_zero_map; exact Hzero. (* CswapInstr *)
+  - apply bit_zero_map; exact Hzero. (* RccxInstr *)
 Qed.
 
 Lemma Execute_dead_if_zero : forall bit body ps,

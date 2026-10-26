@@ -145,15 +145,8 @@ Proof.
   apply (proj2 Hu).
 Qed.
 
-Definition Gate_X_matrix: Matrix 1 :=
-  rec_mat (bas_mat 0) (bas_mat 1)
-          (bas_mat 1) (bas_mat 0).
 
-Lemma Gate_X_matrix_unitary: mat_unitary Gate_X_matrix.
-Proof.
-  unfold mat_unitary, Gate_X_matrix. simpl.
-  split; f_equal; f_equal; lca.
-Qed.
+
 
 Lemma Gate_X_matrix_Hermitian: mat_Hermitian Gate_X_matrix.
 Proof.
@@ -227,30 +220,10 @@ Proof.
   f_equal; f_equal; com_simpl.
 Qed.
 
-Definition Gate_H_matrix: Matrix 1 :=
-  (/ sqrt 2)%R .*
-  rec_mat (bas_mat 1) (bas_mat 1)
-          (bas_mat 1) (bas_mat (-1)%R).
 
-Lemma Gate_H_matrix_Hermitian: mat_Hermitian Gate_H_matrix.
-Proof.
-  unfold mat_Hermitian, Gate_H_matrix. simpl.
-  f_equal; f_equal; lca.
-Qed.
 
-Lemma Gate_H_matrix_unitary: mat_unitary Gate_H_matrix.
-Proof.
-  unfold mat_unitary.
-  rewrite Gate_H_matrix_Hermitian.
-  unfold Gate_H_matrix. simpl.
-  split; f_equal; f_equal; com_simpl.
-  all: apply com_proj_eq.
-  all: simpl.
-  all: try lra.
-  all: ring_simplify; simpl.
-  all: rewrite Rmult_1_r, <- Rinv_mult, sqrt_sqrt.
-  all: lra.
-Qed.
+
+
 
 Lemma Gate_H_matrix_gphase:
   mat_rot PI2 0 PI = gphase (- PI2) .* Gate_H_matrix.
@@ -588,6 +561,34 @@ Proof.
   intros cstate. reflexivity.
 Qed.
 
+Lemma Matrix_of_cz {a b : nat} :
+  Matrix_of (CzInstr a b) (mat_cz a b).
+Proof. intros ps cstate. reflexivity. Qed.
+
+Lemma Matrix_of_cy {a b : nat} :
+  Matrix_of (CyInstr a b) (mat_cy a b).
+Proof. intros ps cstate. reflexivity. Qed.
+
+Lemma Matrix_of_ch {a b : nat} :
+  Matrix_of (ChInstr a b) (mat_ch a b).
+Proof. intros ps cstate. reflexivity. Qed.
+
+Lemma Matrix_of_csx {a b : nat} :
+  Matrix_of (CsxInstr a b) (mat_csx a b).
+Proof. intros ps cstate. reflexivity. Qed.
+
+Lemma Matrix_of_ccx {a b c : nat} :
+  Matrix_of (ToffoliInstr a b c) (mat_ccx a b c).
+Proof. intros ps cstate. reflexivity. Qed.
+
+Lemma Matrix_of_cswap {a b c : nat} :
+  Matrix_of (CswapInstr a b c) (mat_cswap a b c).
+Proof. intros ps cstate. reflexivity. Qed.
+
+Lemma Matrix_of_rccx {a b c : nat} :
+  Matrix_of (RccxInstr a b c) (mat_rccx a b c).
+Proof. intros ps cstate. reflexivity. Qed.
+
 Lemma Matrix_of_U {qbit: nat} (theta phi lambda: R):
   Matrix_of qasm{ U (theta, phi, lambda) qbit } (mat_single nq qbit (mat_rot theta phi lambda)).
 Proof.
@@ -611,3 +612,153 @@ Ltac mat_of :=
   | |- Matrix_of _ qasm{ cx _ _ } _ => apply Matrix_of_cnot
   | |- Matrix_of _ qasm{ swap _ _ } _ => apply Matrix_of_swap
   end.
+
+Lemma Matrix_of_rotate_with_global_phase_multi :
+  forall nq theta phi lambda qbit phase U,
+    mat_rot (Angle_to_R theta) (Angle_to_R phi) (Angle_to_R lambda) =
+    gphase phase .* U ->
+    Matrix_of nq (RotateInstr theta phi lambda qbit)
+      (mat_single nq qbit U).
+Proof.
+  intros nq theta phi lambda qbit phase U Hphase ps cstate.
+  simpl.
+  unfold Execute_rotate_instr, Execute_rotate_instr_branch.
+  f_equal; f_equal.
+  apply functional_extensionality.
+  intros branch.
+  f_equal.
+  rewrite Hphase.
+  destruct (le_lt_dec nq qbit) as [Hout | Hin].
+  - repeat rewrite (mat_single_out_of_bounds _ Hout).
+    reflexivity.
+  - rewrite (mat_single_scale _ _ Hin).
+    rewrite den_uop_gphase.
+    reflexivity.
+Qed.
+
+Lemma phase_gate_matrix_gphase_multi :
+  forall lambda,
+    mat_rot 0 0 lambda =
+    gphase (- lambda / 2) .* phase_gate_matrix_multi lambda.
+Proof.
+  intros lambda.
+  unfold mat_rot, phase_gate_matrix_multi, gphase.
+  rewrite mat_rot_y_0_eye, mat_rot_z_0_eye.
+  repeat rewrite mat_mul_eye_l.
+  unfold mat_rot_z.
+  simpl.
+  f_equal; f_equal; try lca.
+  rewrite <- com_iexp_mul.
+  replace (- lambda / 2 + lambda)%R with (lambda / 2)%R by field.
+  reflexivity.
+Qed.
+
+Definition qelib_single_instruction (g : QelibSingle) (q : nat) : Instruction :=
+  match g with
+  | QH => Gate_H q | QX => Gate_X q
+  | QS => Gate_S q | QSdg => Gate_Sdg q
+  | QT => Gate_T q | QTdg => Gate_Tdg q
+  end.
+
+Definition qelib_op_instruction (op : QelibOp) : Instruction :=
+  match op with
+  | QSingle g q => qelib_single_instruction g q
+  | QCnot c t => CnotInstr c t
+  end.
+
+Lemma Matrix_of_qelib_op : forall n op,
+  Matrix_of n (qelib_op_instruction op) (qelib_op_matrix n op).
+Proof.
+  intros n [g q|c t]; cbn [qelib_op_instruction qelib_op_matrix].
+  - destruct g; cbn [qelib_single_instruction qelib_single_matrix].
+    + apply Matrix_of_H.
+    + apply Matrix_of_X.
+    + eapply Matrix_of_rotate_with_global_phase_multi.
+      angle_to_R_simpl. apply phase_gate_matrix_gphase_multi.
+    + eapply Matrix_of_rotate_with_global_phase_multi.
+      angle_to_R_simpl. apply phase_gate_matrix_gphase_multi.
+    + eapply Matrix_of_rotate_with_global_phase_multi.
+      angle_to_R_simpl. apply phase_gate_matrix_gphase_multi.
+    + eapply Matrix_of_rotate_with_global_phase_multi.
+      angle_to_R_simpl. replace (-(PI / 4))%R with (- PI / 4)%R by field.
+      apply phase_gate_matrix_gphase_multi.
+  - apply Matrix_of_cnot.
+Qed.
+
+Lemma Matrix_of_qelib_body : forall n body,
+  Matrix_of n (SeqInstr (map qelib_op_instruction body)) (qelib_body_matrix n body).
+Proof.
+  intros n body ps.
+  assert (Hfold : fold_right (fun a b => b * a) mat_eye
+      (map (qelib_op_matrix n) body) = qelib_body_matrix n body).
+  { induction body as [|op rest IH]; [reflexivity |].
+    cbn [map fold_right]. rewrite IH. reflexivity. }
+  rewrite <- Hfold. apply Matrix_of_list_id. clear Hfold ps.
+  induction body; simpl; constructor; auto using Matrix_of_qelib_op.
+Qed.
+
+(* Conservativity is an equality of state transformers.  The core's SU(2)
+   representation of U may differ from qelib1 single-gate matrices by global
+   phase; Matrix_of removes exactly that unobservable phase. *)
+Theorem Execute_cz_qelib_body : forall n a b ps,
+  PositiveMap.Equal
+    (Execute_suppl n (CzInstr a b) ps)
+    (Execute_suppl n (SeqInstr (map qelib_op_instruction (qelib_body_cz a b))) ps).
+Proof.
+  intros n a b ps k. rewrite (Matrix_of_qelib_body n (qelib_body_cz a b) ps k).
+  reflexivity.
+Qed.
+
+Theorem Execute_cy_qelib_body : forall n a b ps,
+  PositiveMap.Equal
+    (Execute_suppl n (CyInstr a b) ps)
+    (Execute_suppl n (SeqInstr (map qelib_op_instruction (qelib_body_cy a b))) ps).
+Proof.
+  intros n a b ps k. rewrite (Matrix_of_qelib_body n (qelib_body_cy a b) ps k).
+  reflexivity.
+Qed.
+
+Theorem Execute_ch_qelib_body : forall n a b ps,
+  PositiveMap.Equal
+    (Execute_suppl n (ChInstr a b) ps)
+    (Execute_suppl n (SeqInstr (map qelib_op_instruction (qelib_body_ch a b))) ps).
+Proof.
+  intros n a b ps k. rewrite (Matrix_of_qelib_body n (qelib_body_ch a b) ps k).
+  reflexivity.
+Qed.
+
+Theorem Execute_csx_qelib_body : forall n a b ps,
+  PositiveMap.Equal
+    (Execute_suppl n (CsxInstr a b) ps)
+    (Execute_suppl n (SeqInstr (map qelib_op_instruction (qelib_body_csx a b))) ps).
+Proof.
+  intros n a b ps k. rewrite (Matrix_of_qelib_body n (qelib_body_csx a b) ps k).
+  reflexivity.
+Qed.
+
+Theorem Execute_ccx_qelib_body : forall n a b c ps,
+  PositiveMap.Equal
+    (Execute_suppl n (ToffoliInstr a b c) ps)
+    (Execute_suppl n (SeqInstr (map qelib_op_instruction (qelib_body_ccx a b c))) ps).
+Proof.
+  intros n a b c ps k. rewrite (Matrix_of_qelib_body n (qelib_body_ccx a b c) ps k).
+  reflexivity.
+Qed.
+
+Theorem Execute_cswap_qelib_body : forall n a b c ps,
+  PositiveMap.Equal
+    (Execute_suppl n (CswapInstr a b c) ps)
+    (Execute_suppl n (SeqInstr (map qelib_op_instruction (qelib_body_cswap a b c))) ps).
+Proof.
+  intros n a b c ps k. rewrite (Matrix_of_qelib_body n (qelib_body_cswap a b c) ps k).
+  reflexivity.
+Qed.
+
+Theorem Execute_rccx_qelib_body : forall n a b c ps,
+  PositiveMap.Equal
+    (Execute_suppl n (RccxInstr a b c) ps)
+    (Execute_suppl n (SeqInstr (map qelib_op_instruction (qelib_body_rccx a b c))) ps).
+Proof.
+  intros n a b c ps k. rewrite (Matrix_of_qelib_body n (qelib_body_rccx a b c) ps k).
+  reflexivity.
+Qed.

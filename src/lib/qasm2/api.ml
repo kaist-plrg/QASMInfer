@@ -1010,6 +1010,6 @@ let stdgates_decl =
 let rec inline_qelib ast =
   match ast with
   | [] -> []
-  | Ast.Include "qelib1.inc" :: t -> qelib_decl @ inline_qelib t
-  | Ast.Include "stdgates.inc" :: t -> stdgates_decl @ inline_qelib t
+  | Ast.Include "qelib1.inc" :: t -> List.map Native.mark_declaration qelib_decl @ inline_qelib t
+  | Ast.Include "stdgates.inc" :: t -> List.map Native.mark_declaration stdgates_decl @ inline_qelib t
   | h :: t -> h :: inline_qelib t

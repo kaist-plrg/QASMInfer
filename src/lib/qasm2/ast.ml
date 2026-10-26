@@ -17,6 +17,7 @@ type uop =
   | CX of argument * argument
   | U of exp list * argument
   | Gate of id * exp list * argument list
+  | Native of id * argument list (* trusted, parameter-free qelib1 instruction *)
 
 type qop = Uop of uop | Meas of argument * argument | Reset of argument
 type gop = GUop of uop | GBarrier of id list
@@ -95,6 +96,9 @@ let code_of_uop = function
       Printf.sprintf "U ([%s], %s)"
         (String.concat "; " (List.map code_of_exp exps))
         (code_of_argument arg)
+  | Native (id, args) ->
+      Printf.sprintf "Native (%s, [%s])" (code_of_id id)
+        (String.concat "; " (List.map code_of_argument args))
   | Gate (id, exps, args) ->
       Printf.sprintf "Gate (%s, [%s], [%s])" (code_of_id id)
         (String.concat "; " (List.map code_of_exp exps))

@@ -37,6 +37,13 @@ Fixpoint Instr_max_index (instr: Instruction): nat :=
   | RotateInstr _ _ _ target    => target
   | CnotInstr control target    => max control target
   | SwapInstr q1 q2             => max q1 q2
+  | CzInstr a b => max a b
+  | CyInstr a b => max a b
+  | ChInstr a b => max a b
+  | CsxInstr a b => max a b
+  | ToffoliInstr a b c => max a (max b c)
+  | CswapInstr a b c => max a (max b c)
+  | RccxInstr a b c => max a (max b c)
   | MeasureInstr qbit cbit      => qbit
   | SeqInstr il                 => List.fold_left (fun q instr => max q (Instr_max_index instr)) il 0
   | IfInstr cbit cond subinstr  => Instr_max_index subinstr
@@ -288,6 +295,20 @@ Proof.
     + apply Heq.
     + apply ProgramState_equiv_equivalence.
   - apply Execute_reset_instr_Proper. assumption.
+  - intros k. unfold Execute_cz_instr, Execute_matrix_instr.
+    repeat rewrite PFacts.map_o. rewrite Heq. reflexivity.
+  - intros k. unfold Execute_cy_instr, Execute_matrix_instr.
+    repeat rewrite PFacts.map_o. rewrite Heq. reflexivity.
+  - intros k. unfold Execute_ch_instr, Execute_matrix_instr.
+    repeat rewrite PFacts.map_o. rewrite Heq. reflexivity.
+  - intros k. unfold Execute_csx_instr, Execute_matrix_instr.
+    repeat rewrite PFacts.map_o. rewrite Heq. reflexivity.
+  - intros k. unfold Execute_ccx_instr, Execute_matrix_instr.
+    repeat rewrite PFacts.map_o. rewrite Heq. reflexivity.
+  - intros k. unfold Execute_cswap_instr, Execute_matrix_instr.
+    repeat rewrite PFacts.map_o. rewrite Heq. reflexivity.
+  - intros k. unfold Execute_rccx_instr, Execute_matrix_instr.
+    repeat rewrite PFacts.map_o. rewrite Heq. reflexivity.
 Qed.
 
 (* Proving ProgramState_merge is symmetric *)

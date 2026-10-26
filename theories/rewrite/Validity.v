@@ -65,6 +65,13 @@ Proof.
     | instrs1 Hinstrs1
     | cbit1 expected1 body1 Hbody1
     | qbit1
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
   ] using Instruction_ind';
   intros instr2 Heq;
   destruct instr2 as [
@@ -75,6 +82,13 @@ Proof.
     | instrs2
     | cbit2 expected2 body2
     | reset_qbit2
+    | a2 b2
+    | a2 b2
+    | a2 b2
+    | a2 b2
+    | a2 b2 c2
+    | a2 b2 c2
+    | a2 b2 c2
   ]; simpl in Heq; try discriminate.
   - reflexivity.
   - apply andb_true_iff in Heq as [Hangles Hqbit].
@@ -124,6 +138,34 @@ Proof.
   - apply Nat.eqb_eq in Heq.
     subst.
     reflexivity.
+  - repeat rewrite andb_true_iff in Heq;
+    repeat match goal with H : _ /\ _ |- _ => destruct H end;
+    repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end;
+    subst; reflexivity.
+  - repeat rewrite andb_true_iff in Heq;
+    repeat match goal with H : _ /\ _ |- _ => destruct H end;
+    repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end;
+    subst; reflexivity.
+  - repeat rewrite andb_true_iff in Heq;
+    repeat match goal with H : _ /\ _ |- _ => destruct H end;
+    repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end;
+    subst; reflexivity.
+  - repeat rewrite andb_true_iff in Heq;
+    repeat match goal with H : _ /\ _ |- _ => destruct H end;
+    repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end;
+    subst; reflexivity.
+  - repeat rewrite andb_true_iff in Heq;
+    repeat match goal with H : _ /\ _ |- _ => destruct H end;
+    repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end;
+    subst; reflexivity.
+  - repeat rewrite andb_true_iff in Heq;
+    repeat match goal with H : _ /\ _ |- _ => destruct H end;
+    repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end;
+    subst; reflexivity.
+  - repeat rewrite andb_true_iff in Heq;
+    repeat match goal with H : _ /\ _ |- _ => destruct H end;
+    repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end;
+    subst; reflexivity.
 Qed.
 
 Lemma PatternMap_extends_refl :
@@ -561,6 +603,13 @@ Proof.
     | cbit_pattern expected body_patterns Hbody_patterns
     | instr_variable
     | exact_instr
+    | pa pb
+    | pa pb
+    | pa pb
+    | pa pb
+    | pa pb pc
+    | pa pb pc
+    | pa pb pc
   ] using InstructionPattern_ind';
   intros map1 map2 instr Hextends Hinst; simpl in *.
   - assumption.
@@ -637,6 +686,47 @@ Proof.
     rewrite Hfound.
     reflexivity.
   - exact Hinst.
+  - destruct (QbitPattern_inst pa map1) as [a |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_inst pb map1) as [b |] eqn:Hb; try discriminate.
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := a).
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := b).
+    all: assumption.
+  - destruct (QbitPattern_inst pa map1) as [a |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_inst pb map1) as [b |] eqn:Hb; try discriminate.
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := a).
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := b).
+    all: assumption.
+  - destruct (QbitPattern_inst pa map1) as [a |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_inst pb map1) as [b |] eqn:Hb; try discriminate.
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := a).
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := b).
+    all: assumption.
+  - destruct (QbitPattern_inst pa map1) as [a |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_inst pb map1) as [b |] eqn:Hb; try discriminate.
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := a).
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := b).
+    all: assumption.
+  - destruct (QbitPattern_inst pa map1) as [a |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_inst pb map1) as [b |] eqn:Hb; try discriminate.
+    destruct (QbitPattern_inst pc map1) as [c |] eqn:Hc; try discriminate.
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := a).
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := b).
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := c).
+    all: assumption.
+  - destruct (QbitPattern_inst pa map1) as [a |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_inst pb map1) as [b |] eqn:Hb; try discriminate.
+    destruct (QbitPattern_inst pc map1) as [c |] eqn:Hc; try discriminate.
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := a).
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := b).
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := c).
+    all: assumption.
+  - destruct (QbitPattern_inst pa map1) as [a |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_inst pb map1) as [b |] eqn:Hb; try discriminate.
+    destruct (QbitPattern_inst pc map1) as [c |] eqn:Hc; try discriminate.
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := a).
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := b).
+    rewrite QbitPattern_inst_extends with (map1 := map1) (value := c).
+    all: assumption.
 Qed.
 
 Lemma InstructionPattern_match_extends :
@@ -653,6 +743,13 @@ Proof.
     | cbit_pattern expected_pattern body_patterns Hbody_patterns
     | instr_variable
     | exact_instr
+    | pa pb
+    | pa pb
+    | pa pb
+    | pa pb
+    | pa pb pc
+    | pa pb pc
+    | pa pb pc
   ] using InstructionPattern_ind';
   intros instr map map' Hmatch.
   - destruct instr; simpl in Hmatch; try discriminate.
@@ -666,7 +763,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (Angle_eqb theta theta');
     destruct (Angle_eqb phi phi');
     destruct (Angle_eqb lambda lambda'); try discriminate.
@@ -680,7 +784,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (QbitPattern_match control_pattern control map)
       as [map_control |] eqn:Hcontrol; try discriminate.
     apply PatternMap_extends_trans with map_control.
@@ -696,7 +807,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (QbitPattern_match qbit1_pattern qbit1 map)
       as [map_qbit1 |] eqn:Hqbit1; try discriminate.
     apply PatternMap_extends_trans with map_qbit1.
@@ -712,7 +830,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (QbitPattern_match qbit_pattern qbit map)
       as [map_qbit |] eqn:Hqbit; try discriminate.
     apply PatternMap_extends_trans with map_qbit.
@@ -728,7 +853,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     eapply QbitPattern_match_extends.
     apply Hmatch.
   - destruct instr as [
@@ -739,7 +871,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (Bool.eqb expected_pattern expected); try discriminate.
     destruct (CbitPattern_match cbit_pattern cbit map)
       as [map_cbit |] eqn:Hcbit; try discriminate.
@@ -770,6 +909,40 @@ Proof.
     try discriminate.
     inversion Hmatch; subst.
     apply PatternMap_extends_refl.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Ha |].
+    eapply QbitPattern_match_extends; exact Hmatch.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Ha |].
+    eapply QbitPattern_match_extends; exact Hmatch.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Ha |].
+    eapply QbitPattern_match_extends; exact Hmatch.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Ha |].
+    eapply QbitPattern_match_extends; exact Hmatch.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_match pb b m1) as [m2 |] eqn:Hb; try discriminate.
+    eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Ha |].
+    eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Hb |].
+    eapply QbitPattern_match_extends; exact Hmatch.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_match pb b m1) as [m2 |] eqn:Hb; try discriminate.
+    eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Ha |].
+    eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Hb |].
+    eapply QbitPattern_match_extends; exact Hmatch.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_match pb b m1) as [m2 |] eqn:Hb; try discriminate.
+    eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Ha |].
+    eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Hb |].
+    eapply QbitPattern_match_extends; exact Hmatch.
 Qed.
 
 Lemma QbitPattern_match_distinct :
@@ -815,6 +988,13 @@ Proof.
     | cbit_pattern expected_pattern body_patterns Hbody_patterns
     | instr_variable
     | exact_instr
+    | pa pb
+    | pa pb
+    | pa pb
+    | pa pb
+    | pa pb pc
+    | pa pb pc
+    | pa pb pc
   ] using InstructionPattern_ind';
   intros instr map map' Hdistinct Hmatch.
   - destruct instr; simpl in Hmatch; try discriminate.
@@ -828,7 +1008,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (Angle_eqb theta theta');
     destruct (Angle_eqb phi phi');
     destruct (Angle_eqb lambda lambda'); try discriminate.
@@ -843,7 +1030,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (QbitPattern_match control_pattern control map)
       as [map_control |] eqn:Hcontrol; try discriminate.
     eapply QbitPattern_match_distinct
@@ -860,7 +1054,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (QbitPattern_match qbit1_pattern qbit1 map)
       as [map_qbit1 |] eqn:Hqbit1; try discriminate.
     eapply QbitPattern_match_distinct
@@ -877,7 +1078,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (QbitPattern_match qbit_pattern qbit map)
       as [map_qbit |] eqn:Hqbit; try discriminate.
     eapply CbitPattern_match_distinct
@@ -894,7 +1102,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     eapply QbitPattern_match_distinct
       with (pattern := qbit_pattern) (value := qbit) (map := map);
       eauto.
@@ -906,7 +1121,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (Bool.eqb expected_pattern expected); try discriminate.
     destruct (CbitPattern_match cbit_pattern cbit map)
       as [map_cbit |] eqn:Hcbit; try discriminate.
@@ -936,6 +1158,50 @@ Proof.
     try discriminate.
     inversion Hmatch; subst.
     exact Hdistinct.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    pose proof (QbitPattern_match_distinct _ _ _ _ Hdistinct Ha) as Hnext.
+    clear Hdistinct. rename Hnext into Hdistinct.
+    eapply QbitPattern_match_distinct; eassumption.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    pose proof (QbitPattern_match_distinct _ _ _ _ Hdistinct Ha) as Hnext.
+    clear Hdistinct. rename Hnext into Hdistinct.
+    eapply QbitPattern_match_distinct; eassumption.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    pose proof (QbitPattern_match_distinct _ _ _ _ Hdistinct Ha) as Hnext.
+    clear Hdistinct. rename Hnext into Hdistinct.
+    eapply QbitPattern_match_distinct; eassumption.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    pose proof (QbitPattern_match_distinct _ _ _ _ Hdistinct Ha) as Hnext.
+    clear Hdistinct. rename Hnext into Hdistinct.
+    eapply QbitPattern_match_distinct; eassumption.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_match pb b m1) as [m2 |] eqn:Hb; try discriminate.
+    pose proof (QbitPattern_match_distinct _ _ _ _ Hdistinct Ha) as Hnext.
+    clear Hdistinct. rename Hnext into Hdistinct.
+    pose proof (QbitPattern_match_distinct _ _ _ _ Hdistinct Hb) as Hnext.
+    clear Hdistinct. rename Hnext into Hdistinct.
+    eapply QbitPattern_match_distinct; eassumption.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_match pb b m1) as [m2 |] eqn:Hb; try discriminate.
+    pose proof (QbitPattern_match_distinct _ _ _ _ Hdistinct Ha) as Hnext.
+    clear Hdistinct. rename Hnext into Hdistinct.
+    pose proof (QbitPattern_match_distinct _ _ _ _ Hdistinct Hb) as Hnext.
+    clear Hdistinct. rename Hnext into Hdistinct.
+    eapply QbitPattern_match_distinct; eassumption.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_match pb b m1) as [m2 |] eqn:Hb; try discriminate.
+    pose proof (QbitPattern_match_distinct _ _ _ _ Hdistinct Ha) as Hnext.
+    clear Hdistinct. rename Hnext into Hdistinct.
+    pose proof (QbitPattern_match_distinct _ _ _ _ Hdistinct Hb) as Hnext.
+    clear Hdistinct. rename Hnext into Hdistinct.
+    eapply QbitPattern_match_distinct; eassumption.
 Qed.
 
 Lemma InstructionPattern_match_list_distinct :
@@ -971,6 +1237,13 @@ Proof.
     | cbit_pattern expected_pattern body_patterns Hbody_patterns
     | instr_variable
     | exact_instr
+    | pa pb
+    | pa pb
+    | pa pb
+    | pa pb
+    | pa pb pc
+    | pa pb pc
+    | pa pb pc
   ] using InstructionPattern_ind';
   intros instr map map' Hmatch.
   - destruct instr; simpl in Hmatch; try discriminate.
@@ -984,7 +1257,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (Angle_eqb theta theta') eqn:Htheta;
     destruct (Angle_eqb phi phi') eqn:Hphi;
     destruct (Angle_eqb lambda lambda') eqn:Hlambda; try discriminate.
@@ -1001,7 +1281,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (QbitPattern_match control_pattern control map)
       as [map_control |] eqn:Hcontrol; try discriminate.
     simpl.
@@ -1019,7 +1306,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (QbitPattern_match qbit1_pattern qbit1 map)
       as [map_qbit1 |] eqn:Hqbit1; try discriminate.
     simpl.
@@ -1037,7 +1331,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (QbitPattern_match qbit_pattern qbit map)
       as [map_qbit |] eqn:Hqbit; try discriminate.
     simpl.
@@ -1055,7 +1356,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     simpl.
     erewrite QbitPattern_match_sound with (value := qbit).
     reflexivity.
@@ -1068,7 +1376,14 @@ Proof.
       | instrs
       | cbit expected body
       | qbit
-    ]; simpl in Hmatch; try discriminate.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in Hmatch; try discriminate.
     destruct (Bool.eqb expected_pattern expected) eqn:Hexpected;
     try discriminate.
     assert (Hexpected_eq : expected_pattern = expected).
@@ -1152,6 +1467,87 @@ Proof.
     apply Instruction_eqb_eq in Hinstr_eq.
     subst exact_instr.
     reflexivity.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    assert (Ia : QbitPattern_inst pa map' = Some a).
+    { eapply QbitPattern_inst_extends with (map1 := m1).
+      - eapply QbitPattern_match_extends; exact Hmatch.
+      - eapply QbitPattern_match_sound; exact Ha. }
+    assert (Ib : QbitPattern_inst pb map' = Some b).
+    { eapply QbitPattern_match_sound; exact Hmatch. }
+    simpl. rewrite Ia, Ib. reflexivity.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    assert (Ia : QbitPattern_inst pa map' = Some a).
+    { eapply QbitPattern_inst_extends with (map1 := m1).
+      - eapply QbitPattern_match_extends; exact Hmatch.
+      - eapply QbitPattern_match_sound; exact Ha. }
+    assert (Ib : QbitPattern_inst pb map' = Some b).
+    { eapply QbitPattern_match_sound; exact Hmatch. }
+    simpl. rewrite Ia, Ib. reflexivity.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    assert (Ia : QbitPattern_inst pa map' = Some a).
+    { eapply QbitPattern_inst_extends with (map1 := m1).
+      - eapply QbitPattern_match_extends; exact Hmatch.
+      - eapply QbitPattern_match_sound; exact Ha. }
+    assert (Ib : QbitPattern_inst pb map' = Some b).
+    { eapply QbitPattern_match_sound; exact Hmatch. }
+    simpl. rewrite Ia, Ib. reflexivity.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    assert (Ia : QbitPattern_inst pa map' = Some a).
+    { eapply QbitPattern_inst_extends with (map1 := m1).
+      - eapply QbitPattern_match_extends; exact Hmatch.
+      - eapply QbitPattern_match_sound; exact Ha. }
+    assert (Ib : QbitPattern_inst pb map' = Some b).
+    { eapply QbitPattern_match_sound; exact Hmatch. }
+    simpl. rewrite Ia, Ib. reflexivity.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_match pb b m1) as [m2 |] eqn:Hb; try discriminate.
+    assert (Ia : QbitPattern_inst pa map' = Some a).
+    { eapply QbitPattern_inst_extends with (map1 := m1).
+      - eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Hb |].
+        eapply QbitPattern_match_extends; exact Hmatch.
+      - eapply QbitPattern_match_sound; exact Ha. }
+    assert (Ib : QbitPattern_inst pb map' = Some b).
+    { eapply QbitPattern_inst_extends with (map1 := m2).
+      - eapply QbitPattern_match_extends; exact Hmatch.
+      - eapply QbitPattern_match_sound; exact Hb. }
+    assert (Ic : QbitPattern_inst pc map' = Some c).
+    { eapply QbitPattern_match_sound; exact Hmatch. }
+    simpl. rewrite Ia, Ib, Ic. reflexivity.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_match pb b m1) as [m2 |] eqn:Hb; try discriminate.
+    assert (Ia : QbitPattern_inst pa map' = Some a).
+    { eapply QbitPattern_inst_extends with (map1 := m1).
+      - eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Hb |].
+        eapply QbitPattern_match_extends; exact Hmatch.
+      - eapply QbitPattern_match_sound; exact Ha. }
+    assert (Ib : QbitPattern_inst pb map' = Some b).
+    { eapply QbitPattern_inst_extends with (map1 := m2).
+      - eapply QbitPattern_match_extends; exact Hmatch.
+      - eapply QbitPattern_match_sound; exact Hb. }
+    assert (Ic : QbitPattern_inst pc map' = Some c).
+    { eapply QbitPattern_match_sound; exact Hmatch. }
+    simpl. rewrite Ia, Ib, Ic. reflexivity.
+  - destruct instr as [|theta phi lambda q|a b|a b|q cb|is|cb cond body|q|a b|a b|a b|a b|a b c|a b c|a b c]; simpl in Hmatch; try discriminate.
+    destruct (QbitPattern_match pa a map) as [m1 |] eqn:Ha; try discriminate.
+    destruct (QbitPattern_match pb b m1) as [m2 |] eqn:Hb; try discriminate.
+    assert (Ia : QbitPattern_inst pa map' = Some a).
+    { eapply QbitPattern_inst_extends with (map1 := m1).
+      - eapply PatternMap_extends_trans; [eapply QbitPattern_match_extends; exact Hb |].
+        eapply QbitPattern_match_extends; exact Hmatch.
+      - eapply QbitPattern_match_sound; exact Ha. }
+    assert (Ib : QbitPattern_inst pb map' = Some b).
+    { eapply QbitPattern_inst_extends with (map1 := m2).
+      - eapply QbitPattern_match_extends; exact Hmatch.
+      - eapply QbitPattern_match_sound; exact Hb. }
+    assert (Ic : QbitPattern_inst pc map' = Some c).
+    { eapply QbitPattern_match_sound; exact Hmatch. }
+    simpl. rewrite Ia, Ib, Ic. reflexivity.
 Qed.
 
 Lemma InstructionPattern_match_list_extends :
@@ -1335,35 +1731,32 @@ Qed.
 
 Lemma Instruction_qbits_validb_spec :
   forall instr,
-    Instruction_qbits_validb nq instr = true <->
-    Instruction_qbits_valid nq instr.
+    Instruction_qbits_validb nq instr = true <-> Instruction_qbits_valid nq instr.
 Proof.
-  intros; split.
-  - apply Instruction_ind' with (instr:=instr); simpl in *; try constructor.
-    all: try (rewrite andb_true_iff in H; destruct H as [H0 H1]).
-    all: try rewrite Nat.ltb_lt in H.
-    all: try rewrite Nat.ltb_lt in H0, H1.
-    all: try assumption.
-    + induction is. constructor.
-      inversion H; subst.
-      rewrite andb_true_iff in H0; destruct H0.
-      constructor.
-      * apply H3. apply H0.
-      * apply IHis. apply H4. apply H1.
-    + apply H.
-      assumption.
-  - apply Instruction_ind' with (instr:=instr); simpl in *; intros.
-    all: try (rewrite andb_true_iff; split).
-    all: try apply Nat.ltb_lt.
-    all: try (inversion H; assumption).
-    + reflexivity.
-    + induction is; try reflexivity.
-      inversion H. inversion H0. inversion H6.
-      rewrite andb_true_iff; split.
-      * apply H3. apply H9.
-      * apply IHis. apply H4.
-        constructor. apply H10.
-    + apply H. inversion H0. assumption.
+  intro instr. induction instr using Instruction_ind';
+    cbn [Instruction_qbits_validb];
+    try solve [split; intro Hvalid;
+      [repeat rewrite Bool.andb_true_iff in Hvalid;
+       repeat match goal with H : _ /\ _ |- _ => destruct H end;
+       repeat match goal with
+       | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
+       | H : negb (Nat.eqb _ _) = true |- _ =>
+           apply Bool.negb_true_iff in H; apply Nat.eqb_neq in H
+       end; constructor; assumption
+      | inversion Hvalid; subst; repeat rewrite Bool.andb_true_iff; repeat split;
+        try apply Nat.ltb_lt;
+        try (apply Bool.negb_true_iff; apply Nat.eqb_neq); assumption]].
+  - induction is as [|i rest IH]; cbn.
+    + split; intro Hvalid; [constructor; constructor | reflexivity].
+    + inversion H as [|? ? Hi Hr]; subst.
+      rewrite Bool.andb_true_iff, Hi, (IH Hr).
+      split.
+      * intros [Ha Hb]. inversion Hb; subst. constructor. constructor; assumption.
+      * intro Hvalid. inversion Hvalid; subst.
+        match goal with Hlist : Instruction_list_qbits_valid _ (_ :: _) |- _ =>
+          inversion Hlist; subst end.
+        split; [assumption | constructor; assumption].
+  - rewrite IHinstr. split; intro Hvalid; [constructor; assumption | inversion Hvalid; assumption].
 Qed.
 
 Lemma InstructionPattern_canonicalize_equiv :
@@ -1395,6 +1788,14 @@ Proof.
         apply Instruction_list_simp_eq.
     + apply Instruction_if_Proper; exact Hbody.
     + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper; exact Hbody.
+    + apply Instruction_if_Proper; exact Hbody.
+
 Qed.
 
 Lemma InstructionPattern_canonicalize_list_equiv :
@@ -1440,6 +1841,13 @@ Proof.
     | instrs Hforall
     | cbit expected body Hbody_ih
     | qbit
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
   ] using Instruction_ind'; simpl.
   - intros _.
     constructor.
@@ -1452,7 +1860,7 @@ Proof.
   - intros Hvalid.
     exact Hvalid.
   - intros Hvalid.
-    inversion Hvalid as [| | | | | ? Hlist_valid | |]; subst.
+    inversion Hvalid as [| | | | | ? Hlist_valid | | | | | | | | |]; subst.
     constructor.
     revert Hforall Hlist_valid.
     induction instrs as [| instr instrs IHinstrs];
@@ -1469,7 +1877,7 @@ Proof.
         -- exact Htail_ih.
         -- exact Htail_valid.
   - intros Hvalid.
-    inversion Hvalid as [| | | | | | ? ? ? Hbody_valid |]; subst.
+    inversion Hvalid as [| | | | | | ? ? ? Hbody_valid | | | | | | | |]; subst.
     destruct body as [
       | theta phi lambda qbit
       | control target
@@ -1478,7 +1886,14 @@ Proof.
       | instrs
       | cbit' expected' body'
       | qbit
-    ]; simpl in *.
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ]; simpl in *.
     + constructor.
       apply Hbody_ih.
       exact Hbody_valid.
@@ -1498,7 +1913,7 @@ Proof.
       apply Instruction_list_simp_qbits_valid.
       specialize (Hbody_ih Hbody_valid).
       simpl in Hbody_ih.
-      inversion Hbody_ih as [| | | | | ? Hcanonical_list_valid | |]; subst.
+      inversion Hbody_ih as [| | | | | ? Hcanonical_list_valid | | | | | | | | |]; subst.
       exact Hcanonical_list_valid.
     + constructor.
       apply Hbody_ih.
@@ -1506,8 +1921,22 @@ Proof.
     + constructor.
       apply Hbody_ih.
       exact Hbody_valid.
+    + constructor. apply Hbody_ih. exact Hbody_valid.
+    + constructor. apply Hbody_ih. exact Hbody_valid.
+    + constructor. apply Hbody_ih. exact Hbody_valid.
+    + constructor. apply Hbody_ih. exact Hbody_valid.
+    + constructor. apply Hbody_ih. exact Hbody_valid.
+    + constructor. apply Hbody_ih. exact Hbody_valid.
+    + constructor. apply Hbody_ih. exact Hbody_valid.
   - intros Hvalid.
     exact Hvalid.
+  - intros Hvalid. exact Hvalid.
+  - intros Hvalid. exact Hvalid.
+  - intros Hvalid. exact Hvalid.
+  - intros Hvalid. exact Hvalid.
+  - intros Hvalid. exact Hvalid.
+  - intros Hvalid. exact Hvalid.
+  - intros Hvalid. exact Hvalid.
 Qed.
 
 Lemma InstructionPattern_canonicalize_list_qbits_valid :
@@ -1862,7 +2291,7 @@ Proof.
     occurrence instr' status Hresult.
   destruct instr; simpl in Hresult.
   6: {
-    inversion Hvalid as [| | | | | ? Hlist_valid | |]; subst.
+    inversion Hvalid as [| | | | | ? Hlist_valid | | | | | | | | |]; subst.
     destruct
       (RewriteRule_apply_top_level_list_result
         rule (transform_postprocess spec param) l occurrence)
@@ -2057,7 +2486,15 @@ Proof.
                | qbit cbit
                | seq_instrs
 	               | cbit expected body
-	               | target].
+	               | target
+    | a b
+    | a b
+    | a b
+    | a b
+    | a b c
+    | a b c
+    | a b c
+  ].
 	          all: try solve [
 	            solve_rewrite_apply_deep_list_atomic
 	              rule instrs occurrence Hresult IHHvalid0
@@ -2165,7 +2602,7 @@ Proof.
       eapply RewriteRule_apply_deep_single_result_sound; eauto;
       inversion Hvalid; constructor; eauto
     ].
-    - inversion Hvalid as [| | | | | ? Hlist_valid | |]; subst.
+    - inversion Hvalid as [| | | | | ? Hlist_valid | | | | | | | | |]; subst.
       destruct
         (RewriteRule_apply_deep_list_result
           rule (RewriteRule_apply_deep_result rule) is occurrence)
@@ -2176,7 +2613,7 @@ Proof.
       destruct status; subst.
       + exact Hlist_sound.
       + reflexivity.
-	    - inversion Hvalid as [| | | | | | ? ? ? Hbody_valid |]; subst.
+	    - inversion Hvalid as [| | | | | | ? ? ? Hbody_valid | | | | | | | |]; subst.
 	      destruct (RewriteRule_apply rule [IfInstr cbit cond instr])
 	        as [root_result |] eqn:Hroot.
 	      + destruct occurrence as [| occurrence'].
