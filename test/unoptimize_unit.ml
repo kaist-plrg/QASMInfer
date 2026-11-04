@@ -41,14 +41,16 @@ let pi_angle numerator denominator =
       qden = Big_int_Z.big_int_of_int denominator;
     }
 
-let manual ?qbits ?cbits ?occurrence () =
-  { Unoptimize.qbits; cbits; occurrence }
+let manual ?qbits ?cbits ?occurrence ?instr () =
+  { Unoptimize.qbits; cbits; occurrence; instr }
 
 let expect_failure_contains fragment f =
   try
     let _ = f () in
     failf "expected failure containing %S" fragment
-  with Failure message -> require_contains message fragment
+  with
+  | Unoptimize.Domain_error (_, detail) -> require_contains detail fragment
+  | Failure message -> require_contains message fragment
 
 let test_unoptimize_nop_is_exact_identity () =
 let instruction =
@@ -127,20 +129,37 @@ let test_insert_swap_uses_distinct_parameters () =
           swaps
   done
 
-let test_swap_to_3cnot_uses_matched_swap_operands () =
-  let transformed =
-    Unoptimize.unoptimize ~rule_name:"Swap_To_3Cnot" (E.SwapInstr (0, 1)) 1
-      2 0
-  in
-  match transformed with
-  | E.SeqInstr
-      [
-        E.CnotInstr (0, 1);
-        E.CnotInstr (1, 0);
-        E.CnotInstr (0, 1);
-      ] ->
-      ()
-  | _ -> failf "Swap_To_3Cnot did not reuse the matched swap operands"
+let expect_domain_error ~error_class ~detail thunk =
+  match thunk () with
+  | exception Unoptimize.Domain_error (actual_class, actual_detail) ->
+      require (actual_class = error_class)
+        (Printf.sprintf "expected error class %S but got %S" error_class
+           actual_class);
+      require (actual_detail = detail)
+        (Printf.sprintf "expected detail %S but got %S" detail actual_detail)
+  | exception exn ->
+      failf "expected Domain_error but got %s" (Printexc.to_string exn)
+  | _ -> failf "expected Domain_error (%s) but the call succeeded" error_class
+
+let test_qbit2_rules_reject_equal_operands () =
+  List.iter
+    (fun rule_name ->
+      expect_domain_error ~error_class:"param"
+        ~detail:("rule " ^ rule_name ^ " requires two distinct qubits")
+        (fun () ->
+          Unoptimize.unoptimize ~rule_name
+            ~manual:(manual ~qbits:[ 1; 1 ] ~occurrence:0 ())
+            E.NopInstr 1 2 0))
+    [ "Insert_Swap"; "Insert_Cnot_Cnot" ]
+
+let test_qbit2_rules_accept_distinct_operands () =
+  List.iter
+    (fun rule_name ->
+      ignore
+        (Unoptimize.unoptimize ~rule_name
+           ~manual:(manual ~qbits:[ 1; 0 ] ~occurrence:0 ())
+           E.NopInstr 1 2 0))
+    [ "Insert_Swap"; "Insert_Cnot_Cnot" ]
 
 let test_manual_qbit1_insert_i () =
   let transformed =
@@ -202,20 +221,6 @@ let test_manual_parameter_errors () =
 
 let applicable_rule name rules =
   List.find_opt (fun rule -> String.equal rule.Unoptimize.name name) rules
-
-let require_no_applicable_rule name rules =
-  match applicable_rule name rules with
-  | None -> ()
-  | Some _ -> failf "%s should not be applicable" name
-
-let test_applicable_rules_reports_swap_to_3cnot_only_for_swap () =
-  let without_swap = Unoptimize.applicable_rules E.NopInstr 2 0 in
-  require_no_applicable_rule "Swap_To_3Cnot" without_swap;
-  let with_swap = Unoptimize.applicable_rules (E.SwapInstr (0, 1)) 2 0 in
-  match applicable_rule "Swap_To_3Cnot" with_swap with
-  | Some { Unoptimize.param = "none"; occurrences = 1; _ } -> ()
-  | Some _ -> failf "Swap_To_3Cnot reported the wrong applicability summary"
-  | None -> failf "Swap_To_3Cnot should be applicable to a swap instruction"
 
 let test_applicable_rules_reports_param_kind_without_values () =
   let rules = Unoptimize.applicable_rules E.NopInstr 2 1 in
@@ -471,6 +476,187 @@ if (flag==1) reset $2;
 
 let singleton_map index argument = IntMap.add index argument IntMap.empty
 
+(* Sequence nesting is not observable: QASMCore treats SeqInstr as associative
+   with NopInstr as its unit, and both front ends bracket differently.  Compare
+   instructions modulo that. *)
+let rec normalize_instruction instruction =
+  match instruction with
+  | E.SeqInstr instructions -> (
+      let flattened =
+        List.concat_map
+          (fun instruction ->
+            match normalize_instruction instruction with
+            | E.SeqInstr instructions -> instructions
+            | E.NopInstr -> []
+            | instruction -> [ instruction ])
+          instructions
+      in
+      match flattened with
+      | [] -> E.NopInstr
+      | [ instruction ] -> instruction
+      | instructions -> E.SeqInstr instructions)
+  | E.IfInstr (cbit, condition, body) ->
+      E.IfInstr (cbit, condition, normalize_instruction body)
+  | instruction -> instruction
+
+let qasm3_round_trip ~context nq nc q_assignment c_assignment instruction =
+  let program =
+    match Q3.sugar nq nc q_assignment c_assignment instruction with
+    | Ok program -> program
+    | Error message -> failf "%s: unexpected OpenQASM 3 sugar error: %s" context message
+  in
+  let rendered = Q3.string_of_program program in
+  let reparsed_nq, reparsed_nc, reparsed, _, _ =
+    rendered |> Q3.parse_string |> Q3.desugar |> Q2.inline_qelib |> Q2.desugar
+  in
+  require (reparsed_nq = nq)
+    (Printf.sprintf "%s: expected %d qubit(s) after reparse but got %d" context nq
+       reparsed_nq);
+  require (reparsed_nc = nc)
+    (Printf.sprintf "%s: expected %d cbit(s) after reparse but got %d" context nc
+       reparsed_nc);
+  require
+    (normalize_instruction reparsed = normalize_instruction instruction)
+    (Printf.sprintf "%s: reparsing\n%s\nyielded %s instead of %s" context rendered
+       (Q2.string_of_instruction (normalize_instruction reparsed))
+       (Q2.string_of_instruction (normalize_instruction instruction)));
+  rendered
+
+let test_qasm3_sugar_expresses_nested_conditional () =
+  let body = E.RotateInstr (pi_angle 1 1, pi_angle 0 1, pi_angle 1 1, 0) in
+  let instruction = E.IfInstr (0, false, E.IfInstr (0, true, body)) in
+  let q_assignment = singleton_map 0 ("q", 0) in
+  let c_assignment = singleton_map 0 ("c", 0) in
+  Q2.sugar 1 1 q_assignment c_assignment instruction
+  |> expect_error "condition does not cover a whole classical register";
+  let rendered =
+    qasm3_round_trip ~context:"nested conditional" 1 1 q_assignment c_assignment
+      instruction
+  in
+  require_contains rendered "OPENQASM 3.0;";
+  require_contains rendered "qubit[1] q;";
+  require_contains rendered "bit[1] c;";
+  require_contains rendered "if (!c[0]) {";
+  require_contains rendered "if (c[0]) {"
+
+let test_qasm3_sugar_round_trips_every_leaf () =
+  let q_assignment =
+    IntMap.empty |> IntMap.add 0 ("q", 0) |> IntMap.add 1 ("q", 1)
+  in
+  let c_assignment =
+    IntMap.empty |> IntMap.add 0 ("c", 0) |> IntMap.add 1 ("c", 1)
+  in
+  let instruction =
+    E.SeqInstr
+      [
+        E.RotateInstr (pi_angle 1 1, pi_angle 0 1, pi_angle 1 1, 0);
+        E.RotateInstr (pi_angle 1 2, pi_angle (-1) 2, pi_angle 1 2, 1);
+        E.RotateInstr (pi_angle 1 2, pi_angle 1 2, pi_angle (-1) 2, 0);
+        E.RotateInstr (pi_angle 1 3, pi_angle 1 5, pi_angle 1 7, 1);
+        E.CnotInstr (0, 1);
+        E.SwapInstr (1, 0);
+        E.ResetInstr 1;
+        E.MeasureInstr (0, 1);
+        E.IfInstr (1, true, E.SeqInstr [ E.ResetInstr 0; E.MeasureInstr (1, 0) ]);
+        E.IfInstr
+          ( 0,
+            false,
+            E.SeqInstr
+              [ E.ResetInstr 1; E.IfInstr (1, false, E.CnotInstr (1, 0)); E.ResetInstr 0 ]
+          );
+      ]
+  in
+  let rendered =
+    qasm3_round_trip ~context:"every leaf" 2 2 q_assignment c_assignment
+      instruction
+  in
+  require_contains rendered "include \"stdgates.inc\";";
+  require_contains rendered "c[1] = measure q[0];";
+  require_contains rendered "swap q[1],q[0];";
+  require_contains rendered "cx q[0],q[1];";
+  require_contains rendered "reset q[1];"
+
+let real_angle value = E.RealAngle (E.RbaseSymbolsImpl.coq_Rabst value)
+
+(* QASMCore holds the angle zero two ways.  The reader folds a "0.0" literal to
+   the exact form, so the writer has to emit the exact form too, or its own
+   output would not read back to the program it wrote. *)
+let test_qasm3_sugar_canonicalises_a_real_zero_angle () =
+  let instruction =
+    E.SeqInstr
+      [
+        E.RotateInstr (real_angle 0.0, real_angle (-0.0), real_angle 0.0, 0);
+        E.RotateInstr (real_angle 0.5, real_angle 0.0, real_angle 0.0, 0);
+      ]
+  in
+  let q_assignment = singleton_map 0 ("q", 0) in
+  let c_assignment = IntMap.empty in
+  let program =
+    match Q3.sugar 1 0 q_assignment c_assignment instruction with
+    | Ok program -> program
+    | Error message -> failf "unexpected sugar error: %s" message
+  in
+  let rendered = Q3.string_of_program program in
+  require_contains rendered "id q[0];";
+  require_contains rendered "U(0.5,0,0) q[0];";
+  let _, _, reparsed, reparsed_q, reparsed_c =
+    rendered |> Q3.parse_string |> Q3.desugar |> Q2.inline_qelib |> Q2.desugar
+  in
+  let again =
+    match Q3.sugar 1 0 reparsed_q reparsed_c reparsed with
+    | Ok program -> Q3.string_of_program program
+    | Error message -> failf "unexpected re-emission error: %s" message
+  in
+  require (rendered = again)
+    (Printf.sprintf "a real zero angle must reach a fixed point at once:\n%s\n---\n%s"
+       rendered again)
+
+let test_qasm3_sugar_output_is_stable_under_reemission () =
+  let instruction =
+    E.IfInstr (0, true, E.IfInstr (0, true, E.ResetInstr 0))
+  in
+  let q_assignment = singleton_map 0 ("q", 0) in
+  let c_assignment = singleton_map 0 ("c", 0) in
+  let once =
+    qasm3_round_trip ~context:"stability" 1 1 q_assignment c_assignment
+      instruction
+  in
+  let nq, nc, reparsed, reparsed_q, reparsed_c =
+    once |> Q3.parse_string |> Q3.desugar |> Q2.inline_qelib |> Q2.desugar
+  in
+  let twice =
+    match Q3.sugar nq nc reparsed_q reparsed_c reparsed with
+    | Ok program -> Q3.string_of_program program
+    | Error message -> failf "unexpected re-emission error: %s" message
+  in
+  require (once = twice)
+    (Printf.sprintf "OpenQASM 3 emission is not idempotent:\n%s\n---\n%s" once
+       twice)
+
+let test_qasm3_parses_conditional_written_as_a_block () =
+  let source =
+    {|
+OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+bit[2] c;
+if (c == 2) {
+  x q[0];
+  reset q[0];
+}
+|}
+  in
+  let _, _, instruction, _, _ =
+    source |> Q3.parse_string |> Q3.desugar |> Q2.inline_qelib |> Q2.desugar
+  in
+  match normalize_instruction instruction with
+  | E.IfInstr (0, false, E.IfInstr (1, true, E.SeqInstr [ _; E.ResetInstr 0 ])) ->
+      ()
+  | other ->
+      failf "an OpenQASM 3 block conditional must guard its whole body: %s"
+        (Q2.string_of_instruction other)
+
+
 let test_sugar_reports_missing_quantum_mapping () =
   Q2.sugar 1 0 IntMap.empty IntMap.empty
     (E.RotateInstr (pi_angle 0 1, pi_angle 0 1, pi_angle 0 1, 0))
@@ -550,15 +736,15 @@ let tests =
   [ ("unoptimize_nop exact identity", test_unoptimize_nop_is_exact_identity);
     ( "Insert_Swap uses distinct parameters",
       test_insert_swap_uses_distinct_parameters );
-    ( "Swap_To_3Cnot uses matched swap operands",
-      test_swap_to_3cnot_uses_matched_swap_operands );
+    ( "qbit2 rules reject equal operands",
+      test_qbit2_rules_reject_equal_operands );
+    ( "qbit2 rules accept distinct operands",
+      test_qbit2_rules_accept_distinct_operands );
     ("manual Insert_I qbit", test_manual_qbit1_insert_i);
     ("manual Insert_Swap qbits", test_manual_qbit2_insert_swap);
     ("manual Insert_Cnot_Cnot qbits", test_manual_qbit2_insert_cnot_cnot);
     ("manual occurrence", test_manual_occurrence_selects_position);
     ("manual parameter errors", test_manual_parameter_errors);
-    ( "applicable_rules reports Swap_To_3Cnot only for swaps",
-      test_applicable_rules_reports_swap_to_3cnot_only_for_swap );
     ( "applicable_rules reports param kinds without values",
       test_applicable_rules_reports_param_kind_without_values );
     ("Double_If accepts any instruction", test_double_if_accepts_any_instruction);
@@ -574,6 +760,16 @@ let tests =
       test_qasm3_physical_qubit_rename_avoids_classical_collision );
     ( "QASM3 conditional physical qubit",
       test_qasm3_conditional_physical_qubit_round_trip );
+    ( "QASM3 sugar expresses nested conditionals",
+      test_qasm3_sugar_expresses_nested_conditional );
+    ( "QASM3 sugar round trips every leaf",
+      test_qasm3_sugar_round_trips_every_leaf );
+    ( "QASM3 canonicalises a real zero angle",
+      test_qasm3_sugar_canonicalises_a_real_zero_angle );
+    ( "QASM3 emission is idempotent",
+      test_qasm3_sugar_output_is_stable_under_reemission );
+    ( "QASM3 block conditional guards its whole body",
+      test_qasm3_parses_conditional_written_as_a_block );
     ("missing quantum map", test_sugar_reports_missing_quantum_mapping);
     ("missing classical map", test_sugar_reports_missing_classical_mapping);
     ( "reserved quantum register name",

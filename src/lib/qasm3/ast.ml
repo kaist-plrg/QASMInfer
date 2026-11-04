@@ -23,13 +23,20 @@ type gop = GUop of uop | GBarrier of id list
 type gatedecl = id * id list * id list
 type decl = QReg of id * int | CReg of id * int
 
+(* A guard on classical state.  [CondReg (creg, value)] compares a whole
+   register, [CondBit (creg, index, value)] tests one bit.  OpenQASM 3
+   conditionals nest, so the body is a statement list rather than a qop list. *)
+type cond =
+  | CondReg of id * int
+  | CondBit of id * int * bool
+
 type statement =
   | Include of string
   | Decl of decl
   | GateDecl of gatedecl * gop list
   | OpaqueDecl of gatedecl
   | Qop of qop
-  | If of id * int * qop list
+  | If of cond * statement list
   | Barrier of argument list
 
 type program = statement list
@@ -111,7 +118,12 @@ let code_of_decl = function
   | QReg (id, i) -> Printf.sprintf "QReg (%s, %d)" (code_of_id id) i
   | CReg (id, i) -> Printf.sprintf "CReg (%s, %d)" (code_of_id id) i
 
-let code_of_statement = function
+let code_of_cond = function
+  | CondReg (id, value) -> Printf.sprintf "CondReg (%s, %d)" (code_of_id id) value
+  | CondBit (id, index, value) ->
+      Printf.sprintf "CondBit (%s, %d, %b)" (code_of_id id) index value
+
+let rec code_of_statement = function
   | Include s -> Printf.sprintf "Include \"%s\"" s
   | Decl decl -> Printf.sprintf "Decl (%s)" (code_of_decl decl)
   | GateDecl (gdecl, gops) ->
@@ -120,9 +132,9 @@ let code_of_statement = function
   | OpaqueDecl gdecl ->
       Printf.sprintf "OpaqueDecl (%s)" (code_of_gatedecl gdecl)
   | Qop qop -> Printf.sprintf "Qop (%s)" (code_of_qop qop)
-  | If (id, i, qops) ->
-      Printf.sprintf "If (%s, %d, [%s])" (code_of_id id) i
-        (String.concat "; " (List.map code_of_qop qops))
+  | If (cond, body) ->
+      Printf.sprintf "If (%s, [%s])" (code_of_cond cond)
+        (String.concat "; " (List.map code_of_statement body))
   | Barrier args ->
       Printf.sprintf "Barrier [%s]"
         (String.concat "; " (List.map code_of_argument args))

@@ -20,7 +20,11 @@ type qop_dp =
   | Meas_dp of argument_dp * argument_dp
   | Reset_dp of argument_dp
 
-type statement_dp = Qop_dp of qop_dp | IfList_dp of id * int * qop_dp list
+type statement_dp =
+  | Qop_dp of qop_dp
+  | IfList_dp of id * int * qop_dp list
+  | IfBlock_dp of cond * statement_dp list
+
 type program_dp = statement_dp list
 
 module IdMap = Map.Make (struct
@@ -136,6 +140,9 @@ let rec desugar_parallel_program (qasm_program : program)
   | If (cid, i, qop) :: tail ->
       IfList_dp (cid, i, desugar_parallel_qop qop qreg_size creg_size)
       :: desugar_parallel_program tail qreg_size creg_size
+  | IfBlock (cond, body) :: tail ->
+      IfBlock_dp (cond, desugar_parallel_program body qreg_size creg_size)
+      :: desugar_parallel_program tail qreg_size creg_size
   | Decl _ :: t
   | GateDecl _ :: t
   | Include _ :: t
@@ -147,9 +154,19 @@ let rec desugar_parallel_program (qasm_program : program)
 (* 2. desugar gate subroutines (macros) *)
 (****************************************)
 
-let create_param_map (params : id list) (args : 'a list) : 'a IdMap.t =
-  List.combine params args
-  |> List.fold_left (fun acc (k, v) -> IdMap.add k v acc) IdMap.empty
+(* Calling a gate with the wrong number of parameters or arguments is a
+   malformed program, so say which gate and what it expected rather than letting
+   List.combine raise Invalid_argument. *)
+let create_param_map (kind : string) (gate_name : id) (params : id list)
+    (args : 'a list) : 'a IdMap.t =
+  let expected = List.length params and actual = List.length args in
+  if expected <> actual then
+    failwith
+      (Printf.sprintf "gate %s expects %d %s but got %d" gate_name expected kind
+         actual)
+  else
+    List.combine params args
+    |> List.fold_left (fun acc (k, v) -> IdMap.add k v acc) IdMap.empty
 
 let instantiate_arg (arg_map : argument_dp IdMap.t) (arg : argument) :
     argument_dp =
@@ -184,9 +201,9 @@ let instantiate_gop (exp_map : exp IdMap.t) (arg_map : argument_dp IdMap.t)
 
 let instantiate_gate_decl (decl_head : gatedecl) (decl_body : gop list)
     (exp_list : exp list) (arg_list : argument_dp list) : uop_dp list =
-  let _, exp_params, arg_params = decl_head in
-  let exp_map = create_param_map exp_params exp_list in
-  let arg_map = create_param_map arg_params arg_list in
+  let gate_name, exp_params, arg_params = decl_head in
+  let exp_map = create_param_map "parameter(s)" gate_name exp_params exp_list in
+  let arg_map = create_param_map "argument(s)" gate_name arg_params arg_list in
   decl_body |> List.filter_map (instantiate_gop exp_map arg_map)
 
 let extract_gate_decl_rev (qasm : program) : (gatedecl * gop list) list =
@@ -230,6 +247,9 @@ let rec desugar_macro_program (qasm_dp : program_dp)
         |> fun x -> List.append x (inline decl_head decl_body tail)
     | IfList_dp (cid, i, qop_list) :: tail ->
         IfList_dp (cid, i, desugar_macro_qop_list decl_head decl_body qop_list)
+        :: inline decl_head decl_body tail
+    | IfBlock_dp (cond, body) :: tail ->
+        IfBlock_dp (cond, inline decl_head decl_body body)
         :: inline decl_head decl_body tail
     | x :: tail -> x :: inline decl_head decl_body tail
   in
@@ -289,7 +309,9 @@ let assign_int_arg (assign_seq : (int * (id * int)) Seq.t) : QASMArg.t IntMap.t
 let deref_or_fail key msg map =
   match QASMArgMap.find_opt key map with
   | Some value -> value
-  | None -> failwith msg
+  | None ->
+      let name, index = key in
+      failwith (Printf.sprintf "%s: %s[%d] is out of range" msg name index)
 
 let unfold_if (creg_size_map : int IdMap.t)
     (assingment_c_rev : int QASMArgMap.t) (creg_id : id) (cmp : int) :
@@ -303,7 +325,7 @@ let unfold_if (creg_size_map : int IdMap.t)
   let reg_size = get_or_fail creg_id "invalid creg id" creg_size_map in
   let cbits =
     List.init reg_size (fun i ->
-        deref_or_fail (creg_id, i) "unfold_if: invalid argument"
+        deref_or_fail (creg_id, i) "conditional"
           assingment_c_rev)
   in
   List.combine cbits (to_binary cmp reg_size)
@@ -417,15 +439,15 @@ let desugar_qasm_qop (assignment_q_rev : int QASMArgMap.t)
   match qasm_qop with
   | Uop_dp (CX_dp (arg1, arg2)) ->
       CnotIr
-        ( deref_or_fail arg1 "desugar_qasm_qop: CX: invalid argument"
+        ( deref_or_fail arg1 "CX"
             assignment_q_rev,
-          deref_or_fail arg2 "desugar_qasm_qop: CX: invalid argument"
+          deref_or_fail arg2 "CX"
             assignment_q_rev )
   | Uop_dp (Swap_dp (arg1, arg2)) ->
       SwapIr
-        ( deref_or_fail arg1 "desugar_qasm_qop: swap: invalid argument"
+        ( deref_or_fail arg1 "swap"
             assignment_q_rev,
-          deref_or_fail arg2 "desugar_qasm_qop: swap: invalid argument"
+          deref_or_fail arg2 "swap"
             assignment_q_rev )
   | Uop_dp (U_dp (exp_list, arg)) ->
       let theta, phi, lambda = eval_angle_list exp_list in
@@ -433,17 +455,15 @@ let desugar_qasm_qop (assignment_q_rev : int QASMArgMap.t)
         ( theta,
           phi,
           lambda,
-          deref_or_fail arg "desugar_qasm_qop: U: invalid argument"
+          deref_or_fail arg "U"
             assignment_q_rev )
   | Meas_dp (qarg, carg) ->
       MeasureIr
-        ( deref_or_fail qarg "desugar_qasm_qop: invalid argument"
+        ( deref_or_fail qarg "measure"
             assignment_q_rev,
-          deref_or_fail carg "desugar_qasm_qop: invalid argument"
+          deref_or_fail carg "measure"
             assignment_c_rev )
-  | Reset_dp arg ->
-      ResetIr
-        (deref_or_fail arg "desugar_qasm_qop: invalid argument" assignment_q_rev)
+  | Reset_dp arg -> ResetIr (deref_or_fail arg "reset" assignment_q_rev)
   | Uop_dp (Gate_dp (gate_id, _, _)) ->
       failwith ("macro gate " ^ gate_id ^ " is not inlined")
 
@@ -463,7 +483,7 @@ let desugar_qasm_qop_list (assignment_q_rev : int QASMArgMap.t)
 let desugar_qasm_program (creg_size_map : int IdMap.t)
     (assignment_q_rev : int QASMArgMap.t) (assignment_c_rev : int QASMArgMap.t)
     (qasm_dm : program_dp) : qc_ir =
-  let desugar_statement = function
+  let rec desugar_statement = function
     | Qop_dp op -> desugar_qasm_qop assignment_q_rev assignment_c_rev op
     | IfList_dp (cid, comp, qop_list) ->
         let cond_list = unfold_if creg_size_map assignment_c_rev cid comp in
@@ -471,6 +491,20 @@ let desugar_qasm_program (creg_size_map : int IdMap.t)
           desugar_qasm_qop_list assignment_q_rev assignment_c_rev qop_list
         in
         desugar_qasm_if cond_list qop_ir
+    | IfBlock_dp (cond, body) ->
+        (* A guarded block guards its body as a whole, so the body becomes one
+           sequence under the guard rather than one guard per statement. *)
+        let cond_list =
+          match cond with
+          | CondReg (cid, comp) ->
+              unfold_if creg_size_map assignment_c_rev cid comp
+          | CondBit (cid, index, value) ->
+              [ ( deref_or_fail (cid, index)
+                    "conditional"
+                    assignment_c_rev,
+                  value ) ]
+        in
+        desugar_qasm_if cond_list (SeqIr (List.map desugar_statement body))
   in
   SeqIr (List.map desugar_statement qasm_dm)
 

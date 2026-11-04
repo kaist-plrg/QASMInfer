@@ -1001,3 +1001,6 @@ let rec inline_qelib ast =
   | Ast.Include "qelib1.inc" :: t -> qelib_decl @ inline_qelib t
   | Ast.Include "stdgates.inc" :: t -> stdgates_decl @ inline_qelib t
   | h :: t -> h :: inline_qelib t
+
+let sugar = Sugar.sugar
+let string_of_program = Stringifier.string_of_program

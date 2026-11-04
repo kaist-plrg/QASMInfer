@@ -91,7 +91,7 @@ let string_of_gop = function
   | GUop uop -> string_of_uop uop
   | GBarrier ids -> "barrier " ^ string_of_id_list ids ^ ";"
 
-let string_of_statement = function
+let rec string_of_statement = function
   | Include filename -> Printf.sprintf "include %S;" filename
   | Decl (QReg (id, size)) -> Printf.sprintf "qreg %s[%d];" id size
   | Decl (CReg (id, size)) -> Printf.sprintf "creg %s[%d];" id size
@@ -106,6 +106,15 @@ let string_of_statement = function
   | Qop qop -> string_of_qop qop
   | If (id, value, qop) ->
       Printf.sprintf "if(%s==%d) %s" id value (string_of_qop qop)
+  | IfBlock (CondReg (id, value), [ Qop qop ]) ->
+      Printf.sprintf "if(%s==%d) %s" id value (string_of_qop qop)
+  | IfBlock _ ->
+      (* OpenQASM 2 has no nestable conditional and no single-bit guard.
+         Sugar.sugar never builds one of these, so this is unreachable from the
+         CLI; Sugar returns a diagnostic instead.  Use Qasm3.Sugar to render a
+         program that needs them. *)
+      invalid_arg
+        "OpenQASM 2 cannot express a nested or single-bit conditional"
   | Barrier arguments ->
       "barrier " ^ string_of_argument_list arguments ^ ";"
 
@@ -227,11 +236,19 @@ let string_of_qop_dp = function
         (string_of_argument_dp a2)
   | Reset_dp a -> Printf.sprintf "Reset_dp (%s)" (string_of_argument_dp a)
 
-let string_of_statement_dp = function
+let string_of_cond = function
+  | CondReg (id, value) -> Printf.sprintf "CondReg (%s, %d)" id value
+  | CondBit (id, index, value) ->
+      Printf.sprintf "CondBit (%s, %d, %b)" id index value
+
+let rec string_of_statement_dp = function
   | Qop_dp q -> Printf.sprintf "Qop_dp (%s)" (string_of_qop_dp q)
   | IfList_dp (id, i, qlist) ->
       Printf.sprintf "IfList_dp (%s, %d, [%s])" id i
         (String.concat ", " (List.map string_of_qop_dp qlist))
+  | IfBlock_dp (cond, body) ->
+      Printf.sprintf "IfBlock_dp (%s, [%s])" (string_of_cond cond)
+        (String.concat ", " (List.map string_of_statement_dp body))
 
 let string_of_program_dp prog =
   String.concat "\n" (List.map string_of_statement_dp prog)

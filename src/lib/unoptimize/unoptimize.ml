@@ -2,6 +2,14 @@ open Extracted
 
 module Json = Yojson.Safe.Util
 
+(* Every failure this module can reach is reported as a [Domain_error (class,
+   detail)].  The class is part of the CLI contract: it becomes the middle field
+   of the "qasminfer: <class>: <detail>" diagnostic line. *)
+exception Domain_error of string * string
+
+let domain_error error_class format =
+  Printf.ksprintf (fun detail -> raise (Domain_error (error_class, detail))) format
+
 let unoptimize_nop instruction = instruction
 
 let gate_of_string = function
@@ -150,6 +158,34 @@ let pattern_gate_list_field rule_name json key =
            value)
         (result_map_list (pattern_gate_of_json rule_name key))
 
+let pattern_gate_qbits = function
+  | SPG_Std (_, qbit) -> [ qbit ]
+  | SPG_Cnot (control, target) -> [ control; target ]
+  | SPG_Swap (qbit1, qbit2) -> [ qbit1; qbit2 ]
+
+(* Every qubit index in a rule-file rule becomes a pattern *variable*:
+   standard_pattern_gate_to_instruction_pattern emits NatVar for each of them
+   (theories/domega/StandardValid.v).  RewriteRule_safeb
+   (theories/rewrite/RewriteFunction.v) then requires the right-hand side's
+   variables to be bound by the left-hand side.  A rule that breaks this passes
+   the DOmega validity check and is then silently inert -- it never appears in
+   --unoptimize-rules and --rule reports it as inapplicable -- so reject it when
+   the file is loaded instead.  An empty lhs is the extreme case: it binds
+   nothing, so it can only carry an empty rhs. *)
+let check_rhs_qbits_bound index rule_name lhs rhs =
+  let bound = List.concat_map pattern_gate_qbits lhs in
+  let unbound =
+    List.concat_map pattern_gate_qbits rhs
+    |> List.find_opt (fun qbit -> not (List.mem qbit bound))
+  in
+  match unbound with
+  | None -> Ok ()
+  | Some qbit ->
+      Error
+        (Printf.sprintf
+           "rule #%d %s rewrites qubit %d, which its lhs does not bind" index
+           rule_name qbit)
+
 let rule_jsons_of_json json =
   match json with
   | `List _ -> Ok (Json.to_list json)
@@ -177,6 +213,8 @@ let spec_of_rule_json nq index json =
       result_bind name (fun name ->
           result_bind (pattern_gate_list_field name json "lhs") (fun lhs ->
               result_bind (pattern_gate_list_field name json "rhs") (fun rhs ->
+                result_bind (check_rhs_qbits_bound (index + 1) name lhs rhs)
+                  (fun () ->
                   if standard_rule_nqubits lhs rhs > nq then Ok None
                   else
                     match standard_rule_of_sequences nq name lhs rhs with
@@ -186,7 +224,7 @@ let spec_of_rule_json nq index json =
                         (Printf.sprintf
                            "rule #%d %s (%s -> %s) is not valid up to global omega phase"
                            (index + 1) name (string_of_pattern_gate_list lhs)
-                           (string_of_pattern_gate_list rhs))))))
+                           (string_of_pattern_gate_list rhs)))))))
 
 let specs_of_rule_file nq path =
   try
@@ -291,6 +329,10 @@ type manual_parameters = {
   qbits : int list option;
   cbits : int list option;
   occurrence : int option;
+  (* The payload a cbit_instr rule inserts.  When absent it is drawn at
+     random, which is why an otherwise fully-addressed conditional insertion
+     was not reproducible. *)
+  instr : instruction option;
 }
 
 type applicable_rule = {
@@ -316,12 +358,16 @@ let representative_parameter nq nc = function
 
 let manual_requested = function
   | None -> false
-  | Some { qbits; cbits; occurrence } ->
+  | Some { qbits; cbits; occurrence; instr } ->
       Option.is_some qbits || Option.is_some cbits || Option.is_some occurrence
+      || Option.is_some instr
 
+(* Whether the caller pinned a parameter value, as opposed to only an
+   occurrence.  Pinned values are checked against the rule before use. *)
 let manual_numeric_requested = function
   | None -> false
-  | Some { qbits; cbits; _ } -> Option.is_some qbits || Option.is_some cbits
+  | Some { qbits; cbits; instr; _ } ->
+      Option.is_some qbits || Option.is_some cbits || Option.is_some instr
 
 let validate_manual_values manual =
   let check_values name = function
@@ -330,15 +376,16 @@ let validate_manual_values manual =
         List.iter
           (fun value ->
             if value < 0 then
-              failwith (Printf.sprintf "%s must contain non-negative integers." name))
+              domain_error "param" "%s must contain non-negative integers." name)
           values
   in
   Option.iter
-    (fun { qbits; cbits; occurrence } ->
+    (fun { qbits; cbits; occurrence; instr = _ } ->
       check_values "--qbits" qbits;
       check_values "--cbits" cbits;
       match occurrence with
-      | Some value when value < 0 -> failwith "--occurrence must be non-negative."
+      | Some value when value < 0 ->
+          domain_error "occurrence" "--occurrence must be non-negative."
       | _ -> ())
     manual
 
@@ -347,24 +394,57 @@ let require_arity option_name expected = function
   | Some values ->
       let actual = List.length values in
       if actual <> expected then
-        failwith
-          (Printf.sprintf "%s expects %d value(s), but got %d." option_name
-             expected actual)
+        domain_error "param" "%s expects %d value(s), but got %d." option_name
+          expected actual
+
+(* Rules taking a [qbit2] parameter must be given two distinct qubits.
+
+   This is a surface-syntax restriction, not a proof-side one.  The Rocq
+   transforms behind Insert_Swap and Insert_Cnot_Cnot -- Transform_swap_insert
+   and Transform_cnot_cnot in theories/transform/Transform.v -- assume only
+   [Qbit_index_valid] of each index and carry no distinctness hypothesis, and
+   the matrix model is total at equal indices: mat_swap q q and mat_cnot q q
+   both reduce to mat_eye (theories/operator/Multiple.v, mat_swap_eq and
+   mat_ctrl_single_eq), and mat_cnot_Hermitian / mat_cnot_unitary hold with no
+   hypotheses at all.  A degenerate two-qubit gate is therefore a well-defined
+   identity in the semantics, just a useless one.
+
+   OpenQASM is the part that objects: both dialects forbid naming the same
+   qubit twice in one gate, so "swap q[0],q[0];" and "CX q[0],q[0];" are
+   rejected by mainstream parsers (Qiskit 2.3.0 raises QASM2ParseError).
+   Emitting them would produce a DESTINATION nobody can read back, so the
+   equal-operand case is refused here instead.
+
+   The automatic path never reaches this: [random_qbit2] draws an ordered
+   distinct pair by construction. *)
+let require_distinct_qbits spec qbit1 qbit2 =
+  if qbit1 = qbit2 then
+    domain_error "param" "rule %s requires two distinct qubits"
+      spec.transform_name
+
+let require_no_payload spec = function
+  | None -> ()
+  | Some _ ->
+      domain_error "param"
+        "rule %s takes no instruction payload; --instr applies to cbit_instr rules"
+        spec.transform_name
 
 let manual_parameter rng nq nc spec manual =
-  let qbits, cbits =
+  let qbits, cbits, payload =
     match manual with
-    | None -> (None, None)
-    | Some { qbits; cbits; _ } -> (qbits, cbits)
+    | None -> (None, None, None)
+    | Some { qbits; cbits; instr; _ } -> (qbits, cbits, instr)
   in
   let make_random () = random_parameter rng nq nc spec.transform_param_kind in
   match spec.transform_param_kind with
   | ParamKind_None ->
       require_arity "--qbits" 0 qbits;
       require_arity "--cbits" 0 cbits;
+      require_no_payload spec payload;
       Some Param_None
   | ParamKind_qbit1 -> (
       require_arity "--cbits" 0 cbits;
+      require_no_payload spec payload;
       match qbits with
       | Some [ qbit ] -> Some (Param_qbit1 qbit)
       | Some _ ->
@@ -373,41 +453,52 @@ let manual_parameter rng nq nc spec manual =
       | None -> make_random ())
   | ParamKind_qbit2 -> (
       require_arity "--cbits" 0 cbits;
+      require_no_payload spec payload;
       match qbits with
-      | Some [ qbit1; qbit2 ] -> Some (Param_qbit2 (qbit1, qbit2))
+      | Some [ qbit1; qbit2 ] ->
+          require_distinct_qbits spec qbit1 qbit2;
+          Some (Param_qbit2 (qbit1, qbit2))
       | Some _ ->
           require_arity "--qbits" 2 qbits;
           None
       | None -> make_random ())
   | ParamKind_cbit_instr -> (
       require_arity "--qbits" 0 qbits;
+      let instruction () =
+        match payload with
+        | Some payload -> payload
+        | None -> random_instruction rng nq nc 2
+      in
       match cbits with
       | Some [ cbit ] ->
           if cbit >= nc then
-            failwith
-              (Printf.sprintf "Manual cbit %d is out of range for %d cbit(s)."
-                 cbit nc);
-          Some (Param_cbit_instr (cbit, random_instruction rng nq nc 2))
+            domain_error "param" "Manual cbit %d is out of range for %d cbit(s)."
+              cbit nc;
+          Some (Param_cbit_instr (cbit, instruction ()))
       | Some _ ->
           require_arity "--cbits" 1 cbits;
           None
-      | None -> make_random ())
+      | None -> (
+          match payload with
+          | None -> make_random ()
+          | Some _ when nc <= 0 -> None
+          | Some _ ->
+              Some (Param_cbit_instr (Random.State.int rng nc, instruction ()))))
 
 let validate_manual_parameter spec param =
   match spec.transform_rule param with
   | Some _ -> ()
   | None ->
-      failwith
-        (Printf.sprintf "Manual parameters are invalid for rule '%s'."
-           spec.transform_name)
+      domain_error "param" "Manual parameters are invalid for rule '%s'."
+        spec.transform_name
 
 let validate_manual_occurrence spec occurrence count =
-  if occurrence < 0 then failwith "--occurrence must be non-negative.";
+  if occurrence < 0 then
+    domain_error "occurrence" "--occurrence must be non-negative.";
   if occurrence >= count then
-    failwith
-      (Printf.sprintf
-         "Occurrence %d is out of range for rule '%s' with %d occurrence(s)."
-         occurrence spec.transform_name count)
+    domain_error "occurrence"
+      "Occurrence %d is out of range for rule '%s' with %d occurrence(s)."
+      occurrence spec.transform_name count
 
 let try_transform rng ?manual specs nq nc instr =
   let candidates =
@@ -448,9 +539,8 @@ let ensure_unique_spec_names specs =
     | [] -> specs
     | spec :: rest ->
         if List.exists (String.equal spec.transform_name) seen then
-          failwith
-            (Printf.sprintf "Duplicate transformation rule name '%s'."
-               spec.transform_name)
+          domain_error "rule" "Duplicate transformation rule name '%s'."
+            spec.transform_name
         else loop (spec.transform_name :: seen) rest
   in
   loop [] specs
@@ -472,16 +562,14 @@ let applicable_rules ?specs instr nq nc =
                      param = string_of_param_kind spec.transform_param_kind;
                      occurrences;
                    })
-  else failwith "Instruction qbit index is not valid."
+  else domain_error "parse" "Instruction qbit index is not valid."
 
 let filter_specs_by_name rule_name specs =
   let matched =
     List.filter (fun spec -> String.equal spec.transform_name rule_name) specs
   in
   match matched with
-  | [] ->
-      failwith
-        (Printf.sprintf "No transformation rule named '%s'." rule_name)
+  | [] -> domain_error "rule" "No transformation rule named '%s'." rule_name
   | _ -> matched
 
 let unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc =
@@ -489,9 +577,9 @@ let unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc =
   if manual_requested manual then (
     match rule_name with
     | Some _ -> ()
-    | None -> failwith "Manual parameters require --rule.");
+    | None -> domain_error "param" "Manual parameters require --rule.");
   if manual_requested manual && step <> 1 then
-    failwith "Manual parameters require a single rewrite step.";
+    domain_error "param" "Manual parameters require a single rewrite step.";
   let specs =
     let specs = combined_specs nq specs |> ensure_unique_spec_names in
     let specs =
@@ -510,25 +598,29 @@ let unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc =
       match try_transform rng ?manual specs nq nc current
       with
       | None ->
-          let message =
-            match rule_name with
-            | None ->
-                "No transformation rule matched before the requested step count was reached."
-            | Some name ->
-                Printf.sprintf
-                  "Transformation rule '%s' is not applicable to the current instruction."
-                  name
-          in
-          failwith message
+          (match rule_name with
+           | None ->
+               domain_error "rule"
+                 "No transformation rule matched before the requested step count was reached."
+           | Some name ->
+               domain_error "rule"
+                 "Transformation rule '%s' is not applicable to the current instruction."
+                 name)
       | Some next ->
           loop (successful_steps + 1) next
   in
   loop 0 instr
 
-let unoptimize ?specs ?rule_name ?manual instr step nq nc =
+let unoptimize ?specs ?rule_name ?manual ?seed instr step nq nc =
+  (* An explicit seed makes the random rewrite path reproducible.  A fully
+     addressed rewrite (--rule with every parameter and an occurrence) does not
+     consult the generator for anything that affects the result, so it is
+     reproducible with or without one. *)
   let rng =
-    Random.State.make_self_init ()
+    match seed with
+    | Some seed -> Random.State.make [| seed |]
+    | None -> Random.State.make_self_init ()
   in
   if instruction_qbits_validb nq instr
   then unoptimize_with_state ?specs ?rule_name ?manual rng instr step nq nc
-  else failwith "Instruction qbit index is not valid."
+  else domain_error "parse" "Instruction qbit index is not valid."

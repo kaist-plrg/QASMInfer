@@ -1,6 +1,6 @@
 /_build/
 /.dune/
-/src/lib/extracted/extracted.ml
+/theories/_build/
 
 .*.qasm
 *.qasm
