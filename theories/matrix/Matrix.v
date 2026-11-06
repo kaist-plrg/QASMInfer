@@ -183,6 +183,13 @@ Proof.
   - exact (IHA1 + IHA4).
 Defined.
 
+(* Top-left entry of a matrix *)
+Fixpoint mat_top_left {n : nat} (x : Matrix n) : Complex :=
+  match x with
+  | bas_mat a => a
+  | rec_mat a _ _ _ => mat_top_left a
+  end.
+
 End UOP.
 
 
@@ -652,6 +659,15 @@ Proof.
   - simpl.
     rewrite IHA1, IHA4.
     lca.
+Qed.
+
+Lemma mat_top_left_scale_eye :
+  forall {n : nat} (c : Complex),
+    mat_top_left (mat_scale c (@mat_eye n)) = c.
+Proof.
+  induction n as [| n IH]; intros c; simpl.
+  - apply com_mul_1_r.
+  - apply IH.
 Qed.
 
 Lemma mat_add_trace : forall {n} (A B : Matrix n), \tr (A + B) = (\tr A + \tr B)%com.

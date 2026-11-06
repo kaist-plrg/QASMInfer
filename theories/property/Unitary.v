@@ -95,6 +95,18 @@ Proof.
   all: mat_simpl.
 Qed.
 
+Lemma unitary_conjtrans_mul_scale :
+  forall {n : nat} (c : Complex) (V : Matrix n),
+    mat_unitary V ->
+    mat_mul (mat_conjtrans V) (mat_scale c V) = mat_scale c mat_eye.
+Proof.
+  intros n c V [Hunitary _].
+  rewrite <- mat_scale_mul_comm.
+  rewrite mat_scale_mul_assoc.
+  rewrite Hunitary.
+  reflexivity.
+Qed.
+
 End PROPERTIES.
 
 
