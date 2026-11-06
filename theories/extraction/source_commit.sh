@@ -35,9 +35,19 @@ if [ -n "$untracked_inputs" ]; then
 fi
 
 source_commit="$(
-  git -C "$repo_root" log --first-parent --full-history -1 --format=%H -- \
+  git -C "$repo_root" log --no-merges -1 --format=%H -- \
     "${extraction_inputs[@]}"
 )"
+if [[ "$source_commit" =~ ^[0-9a-f]{40}$ ]] &&
+   git -C "$repo_root" diff --quiet "$source_commit" HEAD -- \
+     "${extraction_inputs[@]}"; then
+  :
+else
+  source_commit="$(
+    git -C "$repo_root" log --first-parent --full-history -1 --format=%H -- \
+      "${extraction_inputs[@]}"
+  )"
+fi
 if [[ ! "$source_commit" =~ ^[0-9a-f]{40}$ ]]; then
   echo "could not determine the committed extraction-input revision" >&2
   exit 1
