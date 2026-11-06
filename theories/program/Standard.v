@@ -136,6 +136,64 @@ Proof.
   mat_simpl.
 Qed.
 
+Lemma gphase_mul_conj :
+  forall lambda,
+    (gphase lambda * com_conj (gphase lambda))%com = Cone.
+Proof.
+  intros lambda.
+  unfold gphase.
+  rewrite com_iexp_conj_anticomm.
+  apply com_iexp_inv_r.
+Qed.
+
+Lemma mat_unitary_gphase_scale :
+  forall {n : nat} lambda (A : Matrix n),
+    mat_unitary A ->
+    mat_unitary (mat_scale (gphase lambda) A).
+Proof.
+  intros n lambda A [Hl Hr].
+  assert (Hphase :
+    (com_conj (gphase lambda) * gphase lambda)%com = Cone).
+  { unfold gphase.
+    rewrite com_iexp_conj_anticomm.
+    apply com_iexp_inv_l. }
+  assert (Hphase' :
+    (gphase lambda * com_conj (gphase lambda))%com = Cone).
+  { rewrite com_mul_comm. exact Hphase. }
+  split.
+  - rewrite mat_scale_conjtrans.
+    rewrite mat_scale_mul_assoc.
+    rewrite <- mat_scale_mul_comm.
+    rewrite mat_scale_mul_assoc.
+    rewrite <- mat_scale_cmul_assoc.
+    rewrite Hphase, Hl.
+    apply mat_scale_1.
+  - rewrite mat_scale_conjtrans.
+    rewrite mat_scale_mul_assoc.
+    rewrite <- mat_scale_mul_comm.
+    rewrite mat_scale_mul_assoc.
+    rewrite <- mat_scale_cmul_assoc.
+    rewrite com_mul_comm, Hphase, Hr.
+    apply mat_scale_1.
+Qed.
+
+Lemma mat_unitary_of_gphase_scale :
+  forall {n : nat} lambda (A B : Matrix n),
+    A = mat_scale (gphase lambda) B ->
+    mat_unitary A ->
+    mat_unitary B.
+Proof.
+  intros n lambda A B HAB HA.
+  replace B with (mat_scale (gphase (- lambda)) A).
+  - apply mat_unitary_gphase_scale.
+    exact HA.
+  - rewrite HAB.
+    rewrite <- mat_scale_cmul_assoc.
+    unfold gphase.
+    rewrite com_iexp_inv_l.
+    apply mat_scale_1.
+Qed.
+
 Lemma mat_Hermitian_unitary__involutory:
   forall {n: nat} (A: Matrix n),
   mat_Hermitian A -> mat_unitary A -> A * A = mat_eye.

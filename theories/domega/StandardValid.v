@@ -3,6 +3,7 @@ Require Import QASMInfer.domega.DOmegaMatrix.
 Require Import QASMInfer.util.All.
 Require Import QASMInfer.matrix.All.
 Require Import QASMInfer.operator.All.
+Require Import QASMInfer.property.All.
 Require Import QASMInfer.program.All.
 Require Import QASMInfer.transform.All.
 Require Import QASMInfer.rewrite.All.
@@ -1901,3 +1902,303 @@ Proof.
 Qed.
 
 End STANDARD_MULTI_RULE_SOUNDNESS.
+
+(* Completeness of the eight-phase check: for a unitary right-hand side,
+   equality up to an arbitrary global phase already holds up to some
+   eighth root of unity, so trying only domega_phase_list loses nothing. *)
+Section STANDARD_MULTI_PHASE_COMPLETENESS.
+
+(* For z = a + b w + c w^2 + d w^3, |z|^2 = S + sqrt 2 * T. *)
+Definition zomega_norm_rational (a b c d : Z) : Z :=
+  (a * a + b * b + c * c + d * d)%Z.
+
+Definition zomega_norm_irrational (a b c d : Z) : Z :=
+  (a * b + b * c + c * d - d * a)%Z.
+
+(* (a, b, c, d) has exactly one nonzero coordinate, and it is +-2^k. *)
+Definition zomega_unit_coeffs (k : nat) (a b c d : Z) : Prop :=
+  exists s,
+    (s = 1 \/ s = -1)%Z /\
+    ((a = s * pow2 k /\ b = 0 /\ c = 0 /\ d = 0)
+     \/ (a = 0 /\ b = s * pow2 k /\ c = 0 /\ d = 0)
+     \/ (a = 0 /\ b = 0 /\ c = s * pow2 k /\ d = 0)
+     \/ (a = 0 /\ b = 0 /\ c = 0 /\ d = s * pow2 k))%Z.
+
+(* x * conj x = (S, T, 0, -T) / 4^k, and S + sqrt 2 * T = 4^k splits. *)
+Lemma domega_norm_one_coeffs :
+  forall x,
+    complex_of_domega (domega_mul x (domega_conj x)) =
+    complex_of_domega domega_one ->
+    zomega_norm_rational
+      (domega_d0 x) (domega_d1 x) (domega_d2 x) (domega_d3 x)
+    = pow2 (2 * domega_k x)
+    /\
+    zomega_norm_irrational
+      (domega_d0 x) (domega_d1 x) (domega_d2 x) (domega_d3 x)
+    = 0%Z.
+Proof.
+  intros x H.
+  apply domega_eqb_complete in H.
+  destruct x as [a b c d k].
+  unfold domega_eqb, domega_common_k, domega_align, domega_mul,
+    domega_conj, domega_one, domega_make in H.
+  cbn [domega_d0 domega_d1 domega_d2 domega_d3 domega_k] in H.
+  rewrite Nat.max_l in H by lia.
+  rewrite Nat.sub_diag, Nat.sub_0_r in H.
+  repeat rewrite andb_true_iff in H.
+  repeat rewrite Z.eqb_eq in H.
+  destruct H as [[[H0 H1] _] _].
+  cbn [pow2] in H0, H1.
+  unfold zomega_norm_rational, zomega_norm_irrational.
+  cbn [domega_d0 domega_d1 domega_d2 domega_d3 domega_k].
+  replace (2 * k) with (k + k) by lia.
+  split; nia.
+Qed.
+
+Lemma Z_square_le_1 :
+  forall z, (z * z <= 1)%Z -> z = (-1)%Z \/ z = 0%Z \/ z = 1%Z.
+Proof.
+  intros z H.
+  destruct (Z.le_gt_cases z 1) as [Hle | Hgt]; [| exfalso; nia].
+  destruct (Z.le_gt_cases (-1) z) as [Hge | Hlt]; [lia | exfalso; nia].
+Qed.
+
+(* Parity descent: S = 4^k forces all coordinates even unless k = 0,
+   since four odd coordinates make T = 2 (mod 4). *)
+Lemma zomega_norm_descent :
+  forall k a b c d,
+    zomega_norm_rational a b c d = pow2 (2 * k) ->
+    zomega_norm_irrational a b c d = 0%Z ->
+    zomega_unit_coeffs k a b c d.
+Proof.
+  unfold zomega_norm_rational, zomega_norm_irrational, zomega_unit_coeffs.
+  induction k as [| k IH]; intros a b c d HS HT.
+  - change (pow2 (2 * 0)) with 1%Z in HS.
+    exists (a + b + c + d)%Z.
+    cbn [pow2].
+    pose proof (Z.square_nonneg a).
+    pose proof (Z.square_nonneg b).
+    pose proof (Z.square_nonneg c).
+    pose proof (Z.square_nonneg d).
+    destruct (Z_square_le_1 a ltac:(nia)) as [-> | [-> | ->]];
+    destruct (Z_square_le_1 b ltac:(nia)) as [-> | [-> | ->]];
+    destruct (Z_square_le_1 c ltac:(nia)) as [-> | [-> | ->]];
+    destruct (Z_square_le_1 d ltac:(nia)) as [-> | [-> | ->]];
+    lia.
+  - replace (2 * S k) with (S (S (2 * k))) in HS by lia.
+    cbn [pow2] in HS.
+    destruct (Z.Even_or_Odd a) as [[a' ->] | [a' ->]];
+    destruct (Z.Even_or_Odd b) as [[b' ->] | [b' ->]];
+    destruct (Z.Even_or_Odd c) as [[c' ->] | [c' ->]];
+    destruct (Z.Even_or_Odd d) as [[d' ->] | [d' ->]];
+    try (exfalso; nia).
+    destruct (IH a' b' c' d') as [s [Hs Hcases]]; [nia | nia |].
+    exists s.
+    split; [exact Hs |].
+    cbn [pow2].
+    destruct Hcases as [H | [H | [H | H]]];
+      destruct H as [-> [-> [-> ->]]]; lia.
+Qed.
+
+Ltac solve_domega_phase_witness m :=
+  exists (domega_pow8 m);
+  split;
+  [ cbn [domega_phase_list domega_pow8 In]; tauto
+  | rewrite !complex_of_domega_parts;
+    cbn [domega_pow8 domega_neg domega_one domega_w domega_w2 domega_w3
+      domega_make domega_d0 domega_d1 domega_d2 domega_d3 domega_k];
+    rewrite ?domega_coeff_scaled_pow2, ?domega_coeff_zero,
+      ?domega_coeff_k0, ?opp_IZR;
+    apply com_proj_eq; cbn [fst snd]; ring ].
+
+Lemma domega_unit_coeffs_phase :
+  forall x,
+    zomega_unit_coeffs (domega_k x)
+      (domega_d0 x) (domega_d1 x) (domega_d2 x) (domega_d3 x) ->
+    exists phase,
+      In phase domega_phase_list
+      /\ complex_of_domega x = complex_of_domega phase.
+Proof.
+  intros [d0 d1 d2 d3 k] [s [Hs Hcases]].
+  cbn [domega_d0 domega_d1 domega_d2 domega_d3 domega_k] in Hcases.
+  destruct Hs as [-> | ->];
+    destruct Hcases as [H | [H | [H | H]]];
+    destruct H as [-> [-> [-> ->]]];
+    first
+      [ solve_domega_phase_witness 0 | solve_domega_phase_witness 1
+      | solve_domega_phase_witness 2 | solve_domega_phase_witness 3
+      | solve_domega_phase_witness 4 | solve_domega_phase_witness 5
+      | solve_domega_phase_witness 6 | solve_domega_phase_witness 7 ].
+Qed.
+
+Lemma domega_unit_modulus_phase :
+  forall x,
+    complex_of_domega (domega_mul x (domega_conj x)) =
+    complex_of_domega domega_one ->
+    exists phase,
+      In phase domega_phase_list
+      /\ complex_of_domega x = complex_of_domega phase.
+Proof.
+  intros x Hnorm.
+  apply domega_unit_coeffs_phase.
+  destruct (domega_norm_one_coeffs x Hnorm) as [Hrational Hirrational].
+  apply zomega_norm_descent; assumption.
+Qed.
+
+Theorem domega_matrix_eq_up_to_phaseb_complete :
+  forall {n : nat} (x y : DOmegaMatrix n),
+    mat_unitary (complex_of_domega_matrix y) ->
+    (exists lambda,
+      complex_of_domega_matrix x =
+      mat_scale (gphase lambda) (complex_of_domega_matrix y)) ->
+    domega_matrix_eq_up_to_phaseb x y = true.
+Proof.
+  intros n x y Hunitary [lambda Hx].
+  (* The phase itself is an entry of y^dagger x = gphase lambda * I. *)
+  set (w := domega_matrix_top_left
+    (domega_matrix_mul (domega_matrix_adjoint y) x)).
+  assert (Hw : complex_of_domega w = gphase lambda).
+  {
+    unfold w.
+    rewrite complex_of_domega_matrix_top_left.
+    rewrite complex_of_domega_matrix_mul.
+    rewrite complex_of_domega_matrix_adjoint.
+    rewrite Hx.
+    rewrite (unitary_conjtrans_mul_scale _ _ Hunitary).
+    apply mat_top_left_scale_eye.
+  }
+  assert (Hnorm :
+    complex_of_domega (domega_mul w (domega_conj w)) =
+    complex_of_domega domega_one).
+  {
+    rewrite complex_of_domega_mul.
+    rewrite complex_of_domega_conj.
+    rewrite Hw.
+    rewrite complex_of_domega_one.
+    apply gphase_mul_conj.
+  }
+  destruct (domega_unit_modulus_phase w Hnorm) as [phase [Hin Hphase]].
+  unfold domega_matrix_eq_up_to_phaseb.
+  apply existsb_exists.
+  exists phase.
+  split.
+  - exact Hin.
+  - apply domega_matrix_eqb_complete.
+    rewrite complex_of_domega_matrix_scale.
+    rewrite Hx.
+    rewrite <- Hw.
+    rewrite Hphase.
+    reflexivity.
+Qed.
+
+Theorem domega_matrix_eq_up_to_phaseb_iff :
+  forall {n : nat} (x y : DOmegaMatrix n),
+    mat_unitary (complex_of_domega_matrix y) ->
+    domega_matrix_eq_up_to_phaseb x y = true <->
+    exists lambda,
+      complex_of_domega_matrix x =
+      mat_scale (gphase lambda) (complex_of_domega_matrix y).
+Proof.
+  intros n x y Hunitary.
+  split.
+  - intros Hcheck.
+    apply domega_matrix_eq_up_to_phaseb_sound in Hcheck
+      as [phase [Hin Heq]].
+    destruct (domega_phase_gphase phase Hin) as [lambda Hlambda].
+    exists lambda.
+    rewrite Heq, Hlambda.
+    reflexivity.
+  - apply domega_matrix_eq_up_to_phaseb_complete.
+    exact Hunitary.
+Qed.
+
+(* Every checker matrix is unitary, discharging the premise above. *)
+Lemma standard_gate_complex_matrix_unitary :
+  forall gate,
+    mat_unitary (standard_gate_complex_matrix gate).
+Proof.
+  intros gate.
+  destruct gate.
+  - rewrite standard_gate_complex_matrix_I. apply mat_eye_unitary.
+  - rewrite standard_gate_complex_matrix_X. apply Gate_X_matrix_unitary.
+  - rewrite standard_gate_complex_matrix_Y. apply Gate_Y_matrix_unitary.
+  - rewrite standard_gate_complex_matrix_Z. apply Gate_Z_matrix_unitary.
+  - rewrite standard_gate_complex_matrix_H. apply Gate_H_matrix_unitary.
+  - rewrite standard_gate_complex_matrix_S.
+    eapply mat_unitary_of_gphase_scale;
+      [apply phase_gate_matrix_gphase_multi | apply mat_rot_unitary].
+  - rewrite standard_gate_complex_matrix_Sdg.
+    eapply mat_unitary_of_gphase_scale;
+      [apply phase_gate_matrix_gphase_multi | apply mat_rot_unitary].
+  - rewrite standard_gate_complex_matrix_T.
+    eapply mat_unitary_of_gphase_scale;
+      [apply phase_gate_matrix_gphase_multi | apply mat_rot_unitary].
+  - rewrite standard_gate_complex_matrix_Tdg.
+    eapply mat_unitary_of_gphase_scale;
+      [apply phase_gate_matrix_gphase_multi | apply mat_rot_unitary].
+  - eapply mat_unitary_of_gphase_scale;
+      [apply standard_gate_complex_matrix_SX_gphase | apply mat_rot_unitary].
+  - eapply mat_unitary_of_gphase_scale;
+      [apply standard_gate_complex_matrix_SXdg_gphase | apply mat_rot_unitary].
+Qed.
+
+Lemma standard_pattern_sequence_matrix_unitary :
+  forall n gates matrix,
+    standard_pattern_sequence_matrix n gates = Some matrix ->
+    mat_unitary (complex_of_domega_matrix matrix).
+Proof.
+  intros n gates.
+  induction gates as [| gate rest IH]; intros matrix Hmatrix.
+  - inversion Hmatrix; subst; clear Hmatrix.
+    rewrite complex_of_domega_matrix_eye.
+    apply mat_eye_unitary.
+  - cbn [standard_pattern_sequence_matrix] in Hmatrix.
+    destruct (standard_pattern_gate_matrix n gate) as [gate_matrix |]
+      eqn:Hgate; try discriminate.
+    destruct (standard_pattern_sequence_matrix n rest) as [rest_matrix |]
+      eqn:Hrest; try discriminate.
+    inversion Hmatrix; subst; clear Hmatrix.
+    rewrite complex_of_domega_matrix_mul.
+    apply mat_mul_unitary.
+    + apply (IH rest_matrix eq_refl).
+    + destruct gate as [gate qbit | control target | qbit1 qbit2];
+        cbn [standard_pattern_gate_matrix] in Hgate.
+      * destruct (qbit_in_bounds n qbit); try discriminate.
+        inversion Hgate; subst; clear Hgate.
+        rewrite complex_of_domega_matrix_single.
+        apply mat_single_unitary.
+        apply standard_gate_complex_matrix_unitary.
+      * destruct (Nat.eqb control target
+          || negb (qbit_pair_in_bounds n control target));
+          try discriminate.
+        inversion Hgate; subst; clear Hgate.
+        rewrite complex_of_domega_matrix_cnot.
+        apply mat_cnot_unitary.
+      * destruct (Nat.eqb qbit1 qbit2
+          || negb (qbit_pair_in_bounds n qbit1 qbit2));
+          try discriminate.
+        inversion Hgate; subst; clear Hgate.
+        rewrite complex_of_domega_matrix_swap.
+        apply mat_swap_unitary.
+Qed.
+
+Theorem standard_transform_validb_iff :
+  forall lhs rhs lhs_matrix rhs_matrix,
+    standard_pattern_sequence_matrix
+      (standard_rule_nqubits lhs rhs) lhs = Some lhs_matrix ->
+    standard_pattern_sequence_matrix
+      (standard_rule_nqubits lhs rhs) rhs = Some rhs_matrix ->
+    standard_transform_validb lhs rhs = true <->
+    exists lambda,
+      complex_of_domega_matrix lhs_matrix =
+      mat_scale (gphase lambda) (complex_of_domega_matrix rhs_matrix).
+Proof.
+  intros lhs rhs lhs_matrix rhs_matrix Hlhs Hrhs.
+  unfold standard_transform_validb.
+  rewrite Hlhs, Hrhs.
+  apply domega_matrix_eq_up_to_phaseb_iff.
+  eapply standard_pattern_sequence_matrix_unitary.
+  exact Hrhs.
+Qed.
+
+End STANDARD_MULTI_PHASE_COMPLETENESS.

@@ -55,6 +55,15 @@ Definition domega_neg (x : DOmega) : DOmega :=
     (- domega_d3 x)%Z
     (domega_k x).
 
+(* conj (d0 + d1 w + d2 w^2 + d3 w^3) = d0 - d3 w - d2 w^2 - d1 w^3 *)
+Definition domega_conj (x : DOmega) : DOmega :=
+  domega_make
+    (domega_d0 x)
+    (- domega_d3 x)%Z
+    (- domega_d2 x)%Z
+    (- domega_d1 x)%Z
+    (domega_k x).
+
 Definition domega_minus_one : DOmega :=
   domega_neg domega_one.
 
@@ -338,6 +347,36 @@ Proof.
   split; apply rpow2_nonzero.
 Qed.
 
+Lemma domega_coeff_scaled_pow2 :
+  forall s k, domega_coeff (s * pow2 k) k = IZR s.
+Proof.
+  intros s k.
+  unfold domega_coeff, rpow2.
+  rewrite mult_IZR.
+  field.
+  apply not_0_IZR.
+  apply pow2_nonzero.
+Qed.
+
+Lemma domega_coeff_zero :
+  forall k, domega_coeff 0 k = 0%R.
+Proof.
+  intros k.
+  unfold domega_coeff, Rdiv.
+  ring.
+Qed.
+
+Lemma domega_coeff_k0 :
+  forall z, domega_coeff z 0 = IZR z.
+Proof.
+  intros z.
+  unfold domega_coeff, rpow2.
+  cbn [pow2].
+  unfold Rdiv.
+  rewrite Rinv_1.
+  ring.
+Qed.
+
 Lemma domega_coeff_add_align :
   forall dx dy kx ky target_k,
     (kx <= target_k)%nat ->
@@ -602,6 +641,161 @@ Proof.
   all: replace (sqrt 2 ^ 2)%R with 2%R by
     (simpl; rewrite Rmult_1_r; rewrite sqrt_sqrt; lra).
   all: nra.
+Qed.
+
+Lemma complex_of_domega_parts :
+  forall x,
+    complex_of_domega x =
+    ((domega_coeff (domega_d0 x) (domega_k x)
+      + (domega_coeff (domega_d1 x) (domega_k x)
+         - domega_coeff (domega_d3 x) (domega_k x)) * (1 / sqrt 2))%R,
+     (domega_coeff (domega_d2 x) (domega_k x)
+      + (domega_coeff (domega_d1 x) (domega_k x)
+         + domega_coeff (domega_d3 x) (domega_k x)) * (1 / sqrt 2))%R).
+Proof.
+  intros x.
+  unfold complex_of_domega.
+  rewrite omega_pow2.
+  unfold omega, com_iexp.
+  rewrite cos_PI4, sin_PI4.
+  apply com_proj_eq; simpl; ring.
+Qed.
+
+Lemma complex_of_domega_conj :
+  forall x,
+    complex_of_domega (domega_conj x) = com_conj (complex_of_domega x).
+Proof.
+  intros x.
+  rewrite !complex_of_domega_parts.
+  unfold domega_conj, domega_make, com_conj; simpl.
+  rewrite !domega_coeff_neg.
+  apply com_proj_eq; simpl; ring.
+Qed.
+
+(* Exactness of DOmega equality: 1, w, w^2, w^3 are independent over Q. *)
+Lemma Z_sq_eq_twice_sq :
+  forall p q : Z, (q * q = 2 * (p * p))%Z -> p = 0%Z.
+Proof.
+  intros p.
+  induction p as [p IH] using (well_founded_induction
+    (Wf_nat.well_founded_ltof Z Z.abs_nat)).
+  intros q H.
+  destruct (Z.Even_or_Odd q) as [[q' Hq] | [q' Hq]]; subst q.
+  - destruct (Z.Even_or_Odd p) as [[p' Hp] | [p' Hp]]; subst p.
+    + destruct (Z.eq_dec p' 0) as [Hzero | Hnonzero]; [lia |].
+      exfalso.
+      assert (Hp' : p' = 0%Z).
+      { apply (IH p' ltac:(unfold Wf_nat.ltof; lia) q').
+        nia. }
+      lia.
+    + exfalso. nia.
+  - exfalso. nia.
+Qed.
+
+Lemma Z_plus_sqrt2_inv_zero :
+  forall p q : Z,
+    (IZR p + IZR q * (1 / sqrt 2))%R = 0%R ->
+    p = 0%Z /\ q = 0%Z.
+Proof.
+  intros p q H.
+  assert (Hs : (sqrt 2 * sqrt 2)%R = 2%R) by (apply sqrt_sqrt; lra).
+  assert (Hne := sqrt2_neq_0).
+  assert (Hq : IZR q = (- IZR p * sqrt 2)%R).
+  { apply (Rmult_eq_reg_r (1 / sqrt 2)).
+    - rewrite Rmult_assoc.
+      replace (sqrt 2 * (1 / sqrt 2))%R with 1%R by (field; exact Hne).
+      lra.
+    - apply Rmult_integral_contrapositive_currified; [lra |].
+      apply Rinv_neq_0_compat in Hne. lra. }
+  assert (Hsq : (q * q = 2 * (p * p))%Z).
+  { apply eq_IZR.
+    rewrite !mult_IZR, Hq.
+    replace (- IZR p * sqrt 2 * (- IZR p * sqrt 2))%R
+      with (IZR p * IZR p * (sqrt 2 * sqrt 2))%R by ring.
+    rewrite Hs. simpl. ring. }
+  pose proof (Z_sq_eq_twice_sq p q Hsq) as Hp.
+  split; [exact Hp |].
+  subst p. nia.
+Qed.
+
+Lemma domega_coeff_common :
+  forall x y d,
+    domega_coeff d (domega_k x) =
+    (IZR (domega_align (domega_common_k x y) x d)
+     / rpow2 (domega_common_k x y))%R.
+Proof.
+  intros x y d.
+  destruct (domega_common_k_le x y) as [Hx _].
+  unfold domega_align.
+  symmetry.
+  apply (domega_coeff_align d (domega_k x) (domega_common_k x y) Hx).
+Qed.
+
+Lemma domega_coeff_common_r :
+  forall x y d,
+    domega_coeff d (domega_k y) =
+    (IZR (domega_align (domega_common_k x y) y d)
+     / rpow2 (domega_common_k x y))%R.
+Proof.
+  intros x y d.
+  destruct (domega_common_k_le x y) as [_ Hy].
+  unfold domega_align.
+  symmetry.
+  apply (domega_coeff_align d (domega_k y) (domega_common_k x y) Hy).
+Qed.
+
+Lemma domega_eqb_complete :
+  forall x y,
+    domega_equiv x y ->
+    domega_eqb x y = true.
+Proof.
+  intros x y H.
+  unfold domega_equiv in H.
+  rewrite !complex_of_domega_parts in H.
+  rewrite !(domega_coeff_common x y) in H.
+  rewrite !(domega_coeff_common_r x y) in H.
+  unfold domega_eqb.
+  set (k := domega_common_k x y) in *.
+  set (a0 := domega_align k x (domega_d0 x)) in *.
+  set (a1 := domega_align k x (domega_d1 x)) in *.
+  set (a2 := domega_align k x (domega_d2 x)) in *.
+  set (a3 := domega_align k x (domega_d3 x)) in *.
+  set (b0 := domega_align k y (domega_d0 y)) in *.
+  set (b1 := domega_align k y (domega_d1 y)) in *.
+  set (b2 := domega_align k y (domega_d2 y)) in *.
+  set (b3 := domega_align k y (domega_d3 y)) in *.
+  injection H as Hre Him.
+  pose proof (rpow2_nonzero k) as Hk.
+  set (P := rpow2 k) in *.
+  assert (Hre' :
+    (IZR (a0 - b0) + IZR ((a1 - b1) - (a3 - b3)) * (1 / sqrt 2))%R = 0%R).
+  { rewrite !minus_IZR.
+    apply (Rmult_eq_reg_r (/ P)); [| apply Rinv_neq_0_compat; exact Hk].
+    rewrite Rmult_0_l.
+    unfold Rdiv in Hre |- *.
+    lra. }
+  assert (Him' :
+    (IZR (a2 - b2) + IZR ((a1 - b1) + (a3 - b3)) * (1 / sqrt 2))%R = 0%R).
+  { rewrite minus_IZR, plus_IZR, !minus_IZR.
+    apply (Rmult_eq_reg_r (/ P)); [| apply Rinv_neq_0_compat; exact Hk].
+    rewrite Rmult_0_l.
+    unfold Rdiv in Him |- *.
+    lra. }
+  apply Z_plus_sqrt2_inv_zero in Hre' as [H0 H13].
+  apply Z_plus_sqrt2_inv_zero in Him' as [H2 H13'].
+  repeat rewrite andb_true_iff.
+  repeat rewrite Z.eqb_eq.
+  lia.
+Qed.
+
+Lemma domega_eqb_iff :
+  forall x y,
+    domega_eqb x y = true <-> domega_equiv x y.
+Proof.
+  intros x y.
+  split.
+  - apply domega_eqb_sound.
+  - apply domega_eqb_complete.
 Qed.
 
 Fixpoint domega_pow8 (n : nat) : DOmega :=

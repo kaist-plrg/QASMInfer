@@ -56,6 +56,25 @@ Fixpoint complex_of_domega_matrix {n : nat} (x : DOmegaMatrix n)
         (complex_of_domega_matrix d)
   end.
 
+Fixpoint domega_matrix_adjoint {n : nat} (x : DOmegaMatrix n)
+    : DOmegaMatrix n :=
+  match x with
+  | domega_bas_mat a =>
+      domega_bas_mat (domega_conj a)
+  | domega_rec_mat a b c d =>
+      domega_rec_mat
+        (domega_matrix_adjoint a)
+        (domega_matrix_adjoint c)
+        (domega_matrix_adjoint b)
+        (domega_matrix_adjoint d)
+  end.
+
+Fixpoint domega_matrix_top_left {n : nat} (x : DOmegaMatrix n) : DOmega :=
+  match x with
+  | domega_bas_mat a => a
+  | domega_rec_mat a _ _ _ => domega_matrix_top_left a
+  end.
+
 Fixpoint domega_matrix_zero {n : nat} : DOmegaMatrix n :=
   match n with
   | O => domega_bas_mat domega_zero
@@ -200,6 +219,41 @@ Proof.
     + apply IHb. exact Hbf.
     + apply IHc. exact Hcg.
     + apply IHd. exact Hdh.
+Qed.
+
+Lemma domega_matrix_eqb_complete :
+  forall {n : nat} (x y : DOmegaMatrix n),
+    complex_of_domega_matrix x = complex_of_domega_matrix y ->
+    domega_matrix_eqb x y = true.
+Proof.
+  induction x as [a | n a IHa b IHb c IHc d IHd]; intros y H.
+  - dependent destruction y.
+    apply (f_equal mat_top_left) in H.
+    cbn [complex_of_domega_matrix mat_top_left] in H.
+    cbn [domega_matrix_eqb domega_matrix_case0].
+    apply domega_eqb_complete.
+    exact H.
+  - dependent destruction y.
+    cbn [complex_of_domega_matrix] in H.
+    injection H as Ha Hb Hc Hd.
+    repeat match goal with
+    | Hx : existT _ _ _ = existT _ _ _ |- _ =>
+        apply Eqdep_dec.inj_pair2_eq_dec in Hx; [| exact Nat.eq_dec]
+    end.
+    cbn [domega_matrix_eqb domega_matrix_caseS_].
+    rewrite (IHa _ Ha), (IHb _ Hb), (IHc _ Hc), (IHd _ Hd).
+    reflexivity.
+Qed.
+
+Lemma domega_matrix_eqb_iff :
+  forall {n : nat} (x y : DOmegaMatrix n),
+    domega_matrix_eqb x y = true <->
+    complex_of_domega_matrix x = complex_of_domega_matrix y.
+Proof.
+  intros n x y.
+  split.
+  - apply domega_matrix_eqb_sound.
+  - apply domega_matrix_eqb_complete.
 Qed.
 
 Lemma complex_of_domega_matrix_zero :
@@ -526,6 +580,30 @@ Proof.
   repeat rewrite complex_of_domega_matrix_mul.
   repeat rewrite complex_of_domega_matrix_cnot.
   mat_sort.
+Qed.
+
+Lemma complex_of_domega_matrix_adjoint :
+  forall {n : nat} (x : DOmegaMatrix n),
+    complex_of_domega_matrix (domega_matrix_adjoint x) =
+    mat_conjtrans (complex_of_domega_matrix x).
+Proof.
+  induction x as [a | n a IHa b IHb c IHc d IHd].
+  - cbn [domega_matrix_adjoint complex_of_domega_matrix].
+    rewrite complex_of_domega_conj.
+    reflexivity.
+  - cbn [domega_matrix_adjoint complex_of_domega_matrix].
+    rewrite IHa, IHb, IHc, IHd.
+    reflexivity.
+Qed.
+
+Lemma complex_of_domega_matrix_top_left :
+  forall {n : nat} (x : DOmegaMatrix n),
+    complex_of_domega (domega_matrix_top_left x) =
+    mat_top_left (complex_of_domega_matrix x).
+Proof.
+  induction x as [a | n a IHa b IHb c IHc d IHd]; simpl.
+  - reflexivity.
+  - exact IHa.
 Qed.
 
 Lemma domega_matrix_eq_up_to_phaseb_sound :
