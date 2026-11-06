@@ -1,0 +1,174 @@
+[
+    {
+        "name": "X0_H1_commute",
+        "lhs": [
+            { "gate": "x", "q": 0 },
+            { "gate": "h", "q": 1 }
+        ],
+        "rhs": [
+            { "gate": "h", "q": 1 },
+            { "gate": "x", "q": 0 }
+        ]
+    },
+    {
+        "name": "S0_T1_commute",
+        "lhs": [
+            { "gate": "s", "q": 0 },
+            { "gate": "t", "q": 1 }
+        ],
+        "rhs": [
+            { "gate": "t", "q": 1 },
+            { "gate": "s", "q": 0 }
+        ]
+    },
+    {
+        "name": "H0_CX12_commute",
+        "lhs": [
+            { "gate": "h", "q": 0 },
+            { "gate": "cx", "control": 1, "target": 2 }
+        ],
+        "rhs": [
+            { "gate": "cx", "control": 1, "target": 2 },
+            { "gate": "h", "q": 0 }
+        ]
+    },
+    {
+        "name": "CX01_X2_commute",
+        "lhs": [
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "x", "q": 2 }
+        ],
+        "rhs": [
+            { "gate": "x", "q": 2 },
+            { "gate": "cx", "control": 0, "target": 1 }
+        ]
+    },
+    {
+        "name": "CX01_CX23_commute",
+        "lhs": [
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "cx", "control": 2, "target": 3 }
+        ],
+        "rhs": [
+            { "gate": "cx", "control": 2, "target": 3 },
+            { "gate": "cx", "control": 0, "target": 1 }
+        ]
+    },
+    {
+        "name": "Swap01_CX23_commute",
+        "lhs": [
+            { "gate": "swap", "q1": 0, "q2": 1 },
+            { "gate": "cx", "control": 2, "target": 3 }
+        ],
+        "rhs": [
+            { "gate": "cx", "control": 2, "target": 3 },
+            { "gate": "swap", "q1": 0, "q2": 1 }
+        ]
+    },
+    {
+        "name": "Swap01_as_3CX_CX23_commute",
+        "lhs": [
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "cx", "control": 1, "target": 0 },
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "cx", "control": 2, "target": 3 }
+        ],
+        "rhs": [
+            { "gate": "cx", "control": 2, "target": 3 },
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "cx", "control": 1, "target": 0 },
+            { "gate": "cx", "control": 0, "target": 1 }
+        ]
+    },
+    {
+        "name": "CX01_CX01_to_I",
+        "lhs": [
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "cx", "control": 0, "target": 1 }
+        ],
+        "rhs": [
+            { "gate": "id", "q": 0 },
+            { "gate": "id", "q": 1 }
+        ]
+    },
+    {
+        "name": "Swap01_Swap01_to_I",
+        "lhs": [
+            { "gate": "swap", "q1": 0, "q2": 1 },
+            { "gate": "swap", "q1": 0, "q2": 1 }
+        ],
+        "rhs": [
+            { "gate": "id", "q": 0 },
+            { "gate": "id", "q": 1 }
+        ]
+    },
+    {
+        "name": "Swap01_to_3CX",
+        "lhs": [
+            { "gate": "swap", "q1": 0, "q2": 1 }
+        ],
+        "rhs": [
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "cx", "control": 1, "target": 0 },
+            { "gate": "cx", "control": 0, "target": 1 }
+        ]
+    },
+    {
+        "name": "3CX_to_Swap01",
+        "lhs": [
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "cx", "control": 1, "target": 0 },
+            { "gate": "cx", "control": 0, "target": 1 }
+        ],
+        "rhs": [
+            { "gate": "swap", "q1": 0, "q2": 1 }
+        ]
+    },
+    {
+        "name": "Swap01_CX01_Swap01_to_CX10",
+        "lhs": [
+            { "gate": "swap", "q1": 0, "q2": 1 },
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "swap", "q1": 0, "q2": 1 }
+        ],
+        "rhs": [
+            { "gate": "cx", "control": 1, "target": 0 }
+        ]
+    },
+    {
+        "name": "Swap01_X0_Swap01_to_X1",
+        "lhs": [
+            { "gate": "swap", "q1": 0, "q2": 1 },
+            { "gate": "x", "q": 0 },
+            { "gate": "swap", "q1": 0, "q2": 1 }
+        ],
+        "rhs": [
+            { "gate": "x", "q": 1 }
+        ]
+    },
+    {
+        "name": "H0_H1_CX01_H0_H1_to_CX10",
+        "lhs": [
+            { "gate": "h", "q": 0 },
+            { "gate": "h", "q": 1 },
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "h", "q": 0 },
+            { "gate": "h", "q": 1 }
+        ],
+        "rhs": [
+            { "gate": "cx", "control": 1, "target": 0 }
+        ]
+    },
+    {
+        "name": "CX01_Z1_to_Z0_Z1_CX01",
+        "lhs": [
+            { "gate": "cx", "control": 0, "target": 1 },
+            { "gate": "z", "q": 1 }
+        ],
+        "rhs": [
+            { "gate": "z", "q": 0 },
+            { "gate": "z", "q": 1 },
+            { "gate": "cx", "control": 0, "target": 1 }
+        ]
+    }
+]

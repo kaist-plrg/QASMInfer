@@ -6,43 +6,326 @@ module IntMap = Map.Make(Int)
 
 type version = V2 | V3
 
-let verbose = ref false
-let emit_json = ref false
-let input_file = ref ""
-let output_file = ref None
+(* Which OpenQASM dialect --unoptimize writes.  [Emit_auto] keeps OpenQASM 2
+   whenever the transformed program fits in it, so existing outputs stay
+   byte-identical, and falls back to OpenQASM 3 for the nested conditionals only
+   OpenQASM 3 can spell. *)
+type emit_mode = Emit_auto | Emit_oq2 | Emit_oq3
+
+(* Where the --instr payload comes from.  It is kept as text until SOURCE has
+   been read, because it is parsed against SOURCE's register layout. *)
+type instr_source = Instr_text of string | Instr_file of string
+
+let emit_mode_of_string = function
+  | "auto" -> Some Emit_auto
+  | "oq2" -> Some Emit_oq2
+  | "oq3" -> Some Emit_oq3
+  | _ -> None
+
+(* A failure the user can act on.  The first field is the error class, which is
+   part of the CLI contract; see the "Exit codes and error classes" section of
+   the README. *)
+exception Cli_error of string * string
+
+let cli_error error_class format =
+  Printf.ksprintf (fun detail -> raise (Cli_error (error_class, detail))) format
+
+(* System error messages usually carry the path, but not always: reading a
+   directory reports a bare "Is a directory" on some platforms.  Make every io
+   diagnostic name the file exactly once. *)
+let io_error file_path message =
+  if String.starts_with ~prefix:(file_path ^ ":") message then
+    cli_error "io" "%s" message
+  else cli_error "io" "%s: %s" file_path message
+
+type command =
+  | Execute of {
+      source : string;
+      verbose : bool;
+      emit_json : bool;
+      output_file : string option;
+    }
+  | Unoptimize of {
+      source : string;
+      destination : string;
+      verbose : bool;
+      step: int option;
+      rule_file : string option;
+      rule_name : string option;
+      manual : Unoptimize.manual_parameters option;
+      emit : emit_mode;
+      instr_source : instr_source option;
+      seed : int option;
+    }
+  | UnoptimizeRules of {
+      source : string;
+      verbose : bool;
+      emit_json : bool;
+      output_file : string option;
+      rule_file : string option;
+    }
 
 type result_entry = {
   state : string;
   probability : float;
 }
 
-let usage_msg = "usage: qasminfer <qasm_file> [--verbose] [--json] [--output FILE]"
+let usage_msg =
+  "usage: qasminfer [--verbose] [--json] [--output FILE] SOURCE\n\
+   \       qasminfer --unoptimize [--verbose] [--step N] [--seed N]\n\
+   \                 [--emit auto|oq2|oq3] [--rule-file FILE]\n\
+   \                 [--rule NAME [--qbits Q[,Q]] [--cbits C]\n\
+   \                 [--instr TEXT | --instr-file FILE] [--occurrence K]]\n\
+   \                 SOURCE DESTINATION\n\
+   \       qasminfer --unoptimize-rules [--verbose] [--json] [--output FILE]\n\
+   \                 [--rule-file FILE] SOURCE"
 
-let set_output_file path =
-  match !output_file with
-  | None -> output_file := Some path
-  | Some _ -> raise (Arg.Bad "Multiple output files are not supported")
-
-let speclist = [
-  ("--verbose", Arg.Set verbose, "Print intermediate QASMCore representation");
-  ("-v", Arg.Set verbose, "Short for --verbose");
-  ("--json", Arg.Set emit_json, "Emit result as JSON");
-  ("--output", Arg.String set_output_file, "Write result to FILE instead of stdout");
-  ("-o", Arg.String set_output_file, "Short for --output");
-]
-
-let set_input_file s =
-  if !input_file = "" then input_file := s
-  else raise (Arg.Bad "Multiple input files are not supported")
+let parse_args argv =
+  let verbose = ref false in
+  let emit_json = ref false in
+  let unoptimize = ref false in
+  let unoptimize_rules = ref false in
+  let output_file = ref None in
+  let step = ref None in
+  let rule_file = ref None in
+  let rule_name = ref None in
+  let qbits = ref None in
+  let cbits = ref None in
+  let occurrence = ref None in
+  let emit = ref None in
+  let seed = ref None in
+  let instr_text = ref None in
+  let instr_file = ref None in
+  let positionals = ref [] in
+  let parse_int_list option_name raw =
+    let parse_token token =
+      let token = String.trim token in
+      if token = "" then
+        raise
+          (Arg.Bad
+             (Printf.sprintf "%s expects comma-separated non-negative integers"
+                option_name));
+      try
+        let value = int_of_string token in
+        if value < 0 then
+          raise
+            (Arg.Bad
+               (Printf.sprintf "%s expects non-negative integers" option_name));
+        value
+      with Failure _ ->
+        raise
+          (Arg.Bad
+             (Printf.sprintf "%s expects comma-separated non-negative integers"
+                option_name))
+    in
+    String.split_on_char ',' raw |> List.map parse_token
+  in
+  let set_int_list option_name target raw =
+    match !target with
+    | None -> target := Some (parse_int_list option_name raw)
+    | Some _ -> raise (Arg.Bad (option_name ^ " cannot be specified more than once"))
+  in
+  let set_occurrence value =
+    if value < 0 then raise (Arg.Bad "--occurrence must be non-negative");
+    match !occurrence with
+    | None -> occurrence := Some value
+    | Some _ -> raise (Arg.Bad "--occurrence cannot be specified more than once")
+  in
+  let set_instr option_name target value =
+    if Option.is_some !target then
+      raise (Arg.Bad (option_name ^ " cannot be specified more than once"))
+    else if Option.is_some !instr_text || Option.is_some !instr_file then
+      raise (Arg.Bad "--instr and --instr-file cannot be combined")
+    else target := Some value
+  in
+  let set_emit raw =
+    match emit_mode_of_string raw with
+    | None -> raise (Arg.Bad "--emit expects auto, oq2, or oq3")
+    | Some _ when Option.is_some !emit ->
+        raise (Arg.Bad "--emit cannot be specified more than once")
+    | Some mode -> emit := Some mode
+  in
+  let set_output_file path =
+    match !output_file with
+    | None -> output_file := Some path
+    | Some _ -> raise (Arg.Bad "Multiple output files are not supported")
+  in
+  let speclist =
+    [ ( "--unoptimize",
+        Arg.Set unoptimize,
+        "Rewrite SOURCE as canonical OpenQASM 2 in DESTINATION" );
+      ("--unopt", Arg.Set unoptimize, "Short for --unoptimize");
+      ( "--unoptimize-rules",
+        Arg.Set unoptimize_rules,
+        "List unoptimization rules applicable to SOURCE" );
+      ( "--verbose",
+        Arg.Set verbose,
+        "Print intermediate QASMCore representation" );
+      ("-v", Arg.Set verbose, "Short for --verbose");
+      ("--step", Arg.Int (fun n -> step := Some n), "Set step number of unoptimization");
+      ( "--rule",
+        Arg.String
+          (fun name ->
+            if Option.is_some !rule_name then
+              raise (Arg.Bad "--rule cannot be specified more than once");
+            rule_name := Some name),
+        "Apply only the transform rule named NAME once" );
+      ( "--qbits",
+        Arg.String (set_int_list "--qbits" qbits),
+        "Set comma-separated qbit parameter(s) for --unoptimize --rule" );
+      ( "--cbits",
+        Arg.String (set_int_list "--cbits" cbits),
+        "Set comma-separated cbit parameter(s) for --unoptimize --rule" );
+      ( "--occurrence",
+        Arg.Int set_occurrence,
+        "Set rewrite occurrence for --unoptimize --rule" );
+      ( "--rule-file",
+        Arg.String
+          (fun path ->
+            if Option.is_some !rule_file then
+              raise (Arg.Bad "--rule-file cannot be specified more than once");
+            rule_file := Some path),
+        "Read standard-gate rewrite rules from JSON FILE" );
+      ( "--emit",
+        Arg.String set_emit,
+        "Choose the DESTINATION dialect: auto (default), oq2, or oq3" );
+      ( "--seed",
+        Arg.Int
+          (fun value ->
+            if Option.is_some !seed then
+              raise (Arg.Bad "--seed cannot be specified more than once");
+            seed := Some value),
+        "Seed the generator that picks random rewrites" );
+      ( "--instr",
+        Arg.String (set_instr "--instr" instr_text),
+        "Fix the instruction a cbit_instr rule inserts, as QASM TEXT" );
+      ( "--instr-file",
+        Arg.String (set_instr "--instr-file" instr_file),
+        "Read the --instr payload from FILE" );
+      ("--json", Arg.Set emit_json, "Emit result as JSON");
+      ( "--output",
+        Arg.String set_output_file,
+        "Write result to FILE instead of stdout" );
+      ("-o", Arg.String set_output_file, "Short for --output") ]
+  in
+  let argv = Array.copy argv in
+  if Array.length argv > 0 then argv.(0) <- "qasminfer";
+  Arg.parse_argv ~current:(ref 0) argv speclist
+    (fun positional -> positionals := positional :: !positionals)
+    usage_msg;
+  let positionals = List.rev !positionals in
+  let usage_error message =
+    raise (Arg.Bad (message ^ "\n" ^ Arg.usage_string speclist usage_msg))
+  in
+  if Array.length argv <= 1 then
+    raise (Arg.Bad (Arg.usage_string speclist usage_msg));
+  let instr_source =
+    match (!instr_text, !instr_file) with
+    | Some text, _ -> Some (Instr_text text)
+    | None, Some path -> Some (Instr_file path)
+    | None, None -> None
+  in
+  let manual_options_used =
+    Option.is_some !qbits || Option.is_some !cbits || Option.is_some !occurrence
+    || Option.is_some instr_source
+  in
+  let manual =
+    if manual_options_used then
+      Some
+        {
+          Unoptimize.qbits = !qbits;
+          cbits = !cbits;
+          occurrence = !occurrence;
+          instr = None;
+        }
+    else None
+  in
+  match (!unoptimize, !unoptimize_rules, positionals) with
+  | true, true, _ ->
+      usage_error "--unoptimize cannot be used with --unoptimize-rules"
+  | false, _, _ when Option.is_some !emit ->
+      usage_error "--emit can only be used with --unoptimize"
+  | false, _, _ when Option.is_some !seed ->
+      usage_error "--seed can only be used with --unoptimize"
+  | false, _, _ when Option.is_some instr_source ->
+      usage_error "--instr and --instr-file can only be used with --unoptimize"
+  | false, true, _ when manual_options_used ->
+      usage_error
+        "--qbits, --cbits, and --occurrence cannot be used with --unoptimize-rules"
+  | true, false, _ when !emit_json ->
+      usage_error "--json cannot be used with --unoptimize"
+  | true, false, _ when Option.is_some !output_file ->
+      usage_error "--output/-o cannot be used with --unoptimize"
+  | true, false, _ when Option.is_some !rule_name && Option.is_some !step ->
+      usage_error "--rule cannot be used with --step"
+  | true, false, _
+    when Option.is_some instr_source && Option.is_none !rule_name ->
+      usage_error "--instr and --instr-file require --rule"
+  | true, false, _ when manual_options_used && Option.is_none !rule_name ->
+      usage_error "--qbits, --cbits, and --occurrence require --rule"
+  | true, false, [ source; destination ] ->
+      Unoptimize
+        {
+          source;
+          destination;
+          verbose = !verbose;
+          step = !step;
+          rule_file = !rule_file;
+          rule_name = !rule_name;
+          manual;
+          emit = Option.value !emit ~default:Emit_auto;
+          instr_source;
+          seed = !seed;
+        }
+  | true, false, _ ->
+      usage_error
+        "--unoptimize expects exactly two positional arguments: SOURCE DESTINATION"
+  | false, true, _ when Option.is_some !step ->
+      usage_error "--step cannot be used with --unoptimize-rules"
+  | false, true, _ when Option.is_some !rule_name ->
+      usage_error "--rule cannot be used with --unoptimize-rules"
+  | false, true, [ source ] ->
+      UnoptimizeRules
+        {
+          source;
+          verbose = !verbose;
+          emit_json = !emit_json;
+          output_file = !output_file;
+          rule_file = !rule_file;
+        }
+  | false, true, _ ->
+      usage_error "--unoptimize-rules expects exactly one positional SOURCE"
+  | false, false, _ when manual_options_used ->
+      usage_error "--qbits, --cbits, and --occurrence can only be used with --unoptimize --rule"
+  | false, false, _ when Option.is_some !step ->
+      usage_error "--step can only be used with --unoptimize"
+  | false, false, _ when Option.is_some !rule_file ->
+      usage_error "--rule-file can only be used with --unoptimize or --unoptimize-rules"
+  | false, false, _ when Option.is_some !rule_name ->
+      usage_error "--rule can only be used with --unoptimize"
+  | false, false, [ source ] ->
+      Execute
+        {
+          source;
+          verbose = !verbose;
+          emit_json = !emit_json;
+          output_file = !output_file;
+        }
+  | false, false, _ -> usage_error "execution expects exactly one positional SOURCE"
 
 let rec to_binary n =
   if n = 0 then "0"
   else if n = 1 then "1"
   else to_binary (n / 2) ^ string_of_int (n mod 2)
 
-let to_map = List.fold_left (fun acc (k, v) -> IntMap.add k v acc) IntMap.empty
+let int_of_cstate = Big_int_Z.int_of_big_int
 
-let dense_list (nc: int) (exec_res: (int * float) list): float list =
+let to_map =
+  List.fold_left
+    (fun acc (k, v) -> IntMap.add (int_of_cstate k) v acc)
+    IntMap.empty
+
+let dense_list (nc: int) exec_res : float list =
   let sparse_map = to_map exec_res in
   (* interpreted value of IH of Rocq's positive, also # of possible classical states *)
   let num_classical_states = Int.shift_left 1 nc in
@@ -114,79 +397,469 @@ let json_of_result nq nc entries =
       "{\n  \"qubits\": %d,\n  \"clbits\": %d,\n  \"probabilities\": [\n%s\n  ]\n}\n"
       nq nc probabilities
 
-let write_result output =
-  match !output_file with
-  | None -> output_string stdout output
-  | Some path ->
-      let channel = open_out path in
-      Fun.protect
-        ~finally:(fun () -> close_out channel)
-        (fun () -> output_string channel output)
+let text_of_applicable_rules rules =
+  rules
+  |> List.map (fun { Unoptimize.name; occurrences; param } ->
+         Printf.sprintf "%s: occurrences=%d param=%s" name occurrences param)
+  |> String.concat "\n"
+  |> fun body -> if body = "" then body else body ^ "\n"
+
+let json_of_applicable_rules source nq nc rules =
+  let rules_json =
+    rules
+    |> List.map (fun { Unoptimize.name; occurrences; param } ->
+           Printf.sprintf
+             "    {\n      \"name\": \"%s\",\n      \"occurrences\": %d,\n      \"param\": \"%s\"\n    }"
+             (json_escape name) occurrences (json_escape param))
+    |> String.concat ",\n"
+  in
+  if rules_json = "" then
+    Printf.sprintf
+      "{\n  \"source\": \"%s\",\n  \"qubits\": %d,\n  \"clbits\": %d,\n  \"rules\": []\n}\n"
+      (json_escape source) nq nc
+  else
+    Printf.sprintf
+      "{\n  \"source\": \"%s\",\n  \"qubits\": %d,\n  \"clbits\": %d,\n  \"rules\": [\n%s\n  ]\n}\n"
+      (json_escape source) nq nc rules_json
+
+(* Write through a scratch file in the same directory and rename it into place,
+   so a destination either appears whole or not at all.  Writing directly would
+   truncate an existing destination the moment the file is opened, and a write
+   that failed part way -- a full disk, say -- would leave a half-written program
+   for the next tool in the pipeline to read.  Flushing here also keeps such a
+   failure a Sys_error we can classify, rather than one surfacing out of close
+   wrapped as Fun.Finally_raised. *)
+let write_atomically path output =
+  let scratch = path ^ ".qasminfer.tmp" in
+  let discard () = try Sys.remove scratch with Sys_error _ -> () in
+  (* The scratch file is an implementation detail; a diagnostic names the
+     destination the caller asked for. *)
+  let about_destination message =
+    let prefix = scratch ^ ": " in
+    if String.starts_with ~prefix message then
+      String.sub message (String.length prefix)
+        (String.length message - String.length prefix)
+    else message
+  in
+  (try
+     let channel = open_out_bin scratch in
+     Fun.protect
+       ~finally:(fun () -> close_out_noerr channel)
+       (fun () ->
+         output_string channel output;
+         flush channel)
+   with
+  | Sys_error message ->
+      discard ();
+      io_error path (about_destination message)
+  | exn ->
+      discard ();
+      raise exn);
+  try Sys.rename scratch path with
+  | Sys_error message ->
+      discard ();
+      io_error path (about_destination message)
+
+let write_result output_file output =
+  match output_file with
+  | None -> (
+      try output_string stdout output with
+      | Sys_error message -> cli_error "io" "<stdout>: %s" message)
+  | Some path -> write_atomically path output
 
 let log_line line =
   output_string stderr line;
   output_char stderr '\n'
 
-let check_qasm_version file_path =
-  let ch = open_in file_path in
-  let rec find_version_line () =
-    try
-      let line = input_line ch in
+(* Quoting a line of the source back to the user must not let the source dictate
+   the shape of a diagnostic.  A domain error is one printable line, so bound the
+   quotation and reduce it to printable ASCII: a binary file would otherwise put
+   raw bytes on stderr, and a caller decoding that stream as UTF-8 would fail on
+   them rather than read the diagnostic. *)
+let quote_source_line line =
+  let limit = 60 in
+  let visible =
+    String.map
+      (fun character ->
+        let code = Char.code character in
+        if code < 0x20 || code >= 0x7f then '?' else character)
+      line
+  in
+  if String.length visible <= limit then visible
+  else String.sub visible 0 limit ^ "..."
+
+let check_qasm_version source =
+  let rec find_version_line = function
+    | [] -> failwith "File is empty or contains only whitespace/comments"
+    | line :: rest ->
       let trimmed = String.trim line in
-      if trimmed = "" then find_version_line ()
+      if trimmed = "" then find_version_line rest
       else if String.length trimmed >= 2 && String.sub trimmed 0 2 = "//" then
-        find_version_line ()
+        find_version_line rest
       else line
-    with End_of_file ->
-      close_in ch;
-      failwith "File is empty or contains only whitespace/comments"
   in
   let first_meaningful_line =
-    try find_version_line ()
-    with e ->
-      close_in ch;
-      raise e
+    source |> String.split_on_char '\n' |> find_version_line
   in
-  close_in ch;
   if String.length first_meaningful_line >= 10 then
     let prefix = String.sub first_meaningful_line 0 10 in
     if prefix = "OPENQASM 2" then V2
     else if prefix = "OPENQASM 3" then V3
     else
-      failwith ("Unsupported QASM version: " ^ first_meaningful_line)
+      failwith
+        ("Unsupported QASM version: " ^ quote_source_line first_meaningful_line)
   else
-    failwith ("Invalid QASM file format: " ^ first_meaningful_line)
+    failwith
+      ("Invalid QASM file format: " ^ quote_source_line first_meaningful_line)
 
-let main () =
-  Arg.parse speclist set_input_file usage_msg;
+let read_source file_path =
+  try In_channel.with_open_bin file_path In_channel.input_all with
+  | Sys_error message -> io_error file_path message
 
-  if !input_file = "" then (
-    Arg.usage speclist usage_msg;
-    exit 1
-  );
-
-  let file_path = !input_file in
-  let ast =
-    (match check_qasm_version file_path with
-    | V2 -> Q2.get_ast file_path
-    | V3 -> Q3.get_ast file_path |> Q3.desugar)
-    |> Q2.inline_qelib
+let parse_to_qasm2_ast ~filename source =
+  let version =
+    try check_qasm_version source with
+    | Failure message -> cli_error "parse" "%s" message
   in
-  let nq, nc, instr, _, _ = Q2.desugar ast in
+  let ast =
+    match version with
+    | V2 -> Q2.parse_string_result ~filename source
+    | V3 -> Q3.parse_string_result ~filename source |> Result.map Q3.desugar
+  in
+  match ast with
+  | Ok program -> program
+  | Error message -> cli_error "parse" "%s" message
 
-  if !verbose then (
+let desugar_qasm2_ast ~filename ast =
+  let ast = Q2.inline_qelib ast in
+  try Q2.desugar ast with
+  | Failure message | Invalid_argument message ->
+      cli_error "parse" "%s: %s" filename message
+
+let parse_and_desugar_string ~filename source =
+  desugar_qasm2_ast ~filename (parse_to_qasm2_ast ~filename source)
+
+let parse_and_desugar file_path =
+  parse_and_desugar_string ~filename:file_path (read_source file_path)
+
+let log_instruction verbose instruction =
+  if verbose then (
     log_line "QASMCore ========================================";
-    log_line (Q2.string_of_instruction instr)
-  );
+    log_line (Q2.string_of_instruction instruction)
+  )
 
-  if !verbose then log_line "RESULT ==========================================";
+let execute source verbose emit_json output_file =
+  let nq, nc, instr, _, _ = parse_and_desugar source in
+
+  log_instruction verbose instr;
+
+  if verbose then log_line "RESULT ==========================================";
 
   let result =
     execute_and_calculate_prob nq nc instr
     |> dense_list nc
     |> result_entries nc
-    |> if !emit_json then json_of_result nq nc else text_of_result
+    |> if emit_json then json_of_result nq nc else text_of_result
   in
-  write_result result
+  write_result output_file result
 
-let _ = main ()
+let specs_of_rule_file_option nq rule_file =
+  match rule_file with
+  | None -> None
+  | Some path -> (
+      match Unoptimize.specs_of_rule_file nq path with
+      | Ok specs -> Some specs
+      (* specs_of_rule_file surfaces Sys_error messages verbatim, and those
+         already name the file. *)
+      | Error message when String.starts_with ~prefix:(path ^ ":") message ->
+          cli_error "rule-file" "%s" message
+      | Error message -> cli_error "rule-file" "%s: %s" path message)
+
+(* Render the transformed program in the requested dialect.  OpenQASM 3 can
+   express every QASMCore instruction, so it is always available as the
+   fallback; OpenQASM 2 cannot spell nested or single-bit guards. *)
+let render_program emit nq nc q_assignment c_assignment instruction =
+  let as_oq2 () = Q2.sugar nq nc q_assignment c_assignment instruction in
+  let as_oq3 () =
+    match Q3.sugar nq nc q_assignment c_assignment instruction with
+    | Ok program -> Q3.string_of_program program
+    | Error message ->
+        cli_error "emit" "cannot express the program in OpenQASM 3: %s" message
+  in
+  match emit with
+  | Emit_oq3 -> as_oq3 ()
+  | Emit_oq2 -> (
+      match as_oq2 () with
+      | Ok program -> Q2.string_of_program program
+      | Error message ->
+          cli_error "emit" "cannot express the program in OpenQASM 2: %s" message)
+  | Emit_auto -> (
+      match as_oq2 () with
+      | Ok program -> Q2.string_of_program program
+      | Error _ -> as_oq3 ())
+
+(* Parse an --instr payload against SOURCE's own register layout.
+
+   The payload names registers by the canonical names the sugar would print, so
+   for an OpenQASM 3 source using physical qubits it names the renamed register
+   ("qasm3_physical[0]"), not "$0".  The generated preamble is one line, so a
+   diagnostic's line number is the payload's own except on the first line, where
+   the column is shifted. *)
+(* The --qbits path refuses a two-qubit gate that names one qubit twice; a
+   payload is another way of asking this tool to emit one, so it is held to the
+   same rule.  A degenerate gate already present in SOURCE is still passed
+   through: that is the user's own program, not something asked for here. *)
+let check_payload_gates option_name instruction =
+  let rec check = function
+    | SwapInstr (qbit1, qbit2) when qbit1 = qbit2 ->
+        cli_error "param"
+          "%s: swap names qubit %d twice, which OpenQASM does not allow"
+          option_name qbit1
+    | CnotInstr (qbit1, qbit2) when qbit1 = qbit2 ->
+        cli_error "param"
+          "%s: cx names qubit %d twice, which OpenQASM does not allow"
+          option_name qbit1
+    | SeqInstr instructions -> List.iter check instructions
+    | IfInstr (_, _, body) -> check body
+    | NopInstr | RotateInstr _ | CnotInstr _ | SwapInstr _ | MeasureInstr _
+    | ResetInstr _ ->
+        ()
+  in
+  check instruction
+
+let instruction_of_payload option_name nq nc q_assignment c_assignment payload =
+  let declarations =
+    match Q3.sugar nq nc q_assignment c_assignment Extracted.NopInstr with
+    | Ok program -> program
+    | Error message -> cli_error "param" "%s: %s" option_name message
+  in
+  let preamble =
+    Q3.Ast.Include "stdgates.inc" :: declarations
+    |> Q3.string_of_program |> String.split_on_char '\n'
+    |> List.filter (fun line -> line <> "")
+    |> String.concat " "
+  in
+  let ast =
+    try parse_to_qasm2_ast ~filename:option_name (preamble ^ " " ^ payload ^ "\n")
+    with Cli_error (_, detail) -> cli_error "param" "%s" detail
+  in
+  (* Count declarations rather than qubits: a zero-width register, or one
+     shadowing a register the preamble already declared, leaves the counts
+     unchanged while still changing the layout the payload is written against.
+     A physical qubit counts too -- the OpenQASM 3 front end turns "$0" into a
+     declaration. *)
+  let declared =
+    List.length (List.filter (function Qasm2.Ast.Decl _ -> true | _ -> false) ast)
+  in
+  let payload_nq, payload_nc, instruction, _, _ =
+    try desugar_qasm2_ast ~filename:option_name ast
+    with Cli_error (_, detail) -> cli_error "param" "%s" detail
+  in
+  if declared <> List.length declarations || payload_nq <> nq || payload_nc <> nc
+  then
+    cli_error "param" "%s: the payload must not introduce registers" option_name;
+  check_payload_gates option_name instruction;
+  instruction
+
+let payload_source = function
+  | Instr_text text -> ("--instr", text)
+  | Instr_file path -> ("--instr-file", read_source path)
+
+let unoptimize source destination step verbose rule_file rule_name manual emit
+    instr_source seed =
+  let nq, nc, instr, q_assignment, c_assignment =
+    parse_and_desugar source
+  in
+  let specs = specs_of_rule_file_option nq rule_file in
+  let manual =
+    match instr_source with
+    | None -> manual
+    | Some instr_source ->
+        let option_name, payload = payload_source instr_source in
+        let instruction =
+          instruction_of_payload option_name nq nc q_assignment c_assignment
+            payload
+        in
+        let manual =
+          Option.value manual
+            ~default:
+              { Unoptimize.qbits = None; cbits = None; occurrence = None; instr = None }
+        in
+        Some { manual with Unoptimize.instr = Some instruction }
+  in
+  let transformed =
+    try Unoptimize.unoptimize ?specs ?rule_name ?manual ?seed instr step nq nc with
+    | Unoptimize.Domain_error (error_class, detail) ->
+        raise (Cli_error (error_class, detail))
+  in
+  log_instruction verbose transformed;
+  let output =
+    render_program emit nq nc q_assignment c_assignment transformed
+  in
+  write_result (Some destination) output
+
+let unoptimize_rules source verbose emit_json output_file rule_file =
+  let nq, nc, instr, _, _ = parse_and_desugar source in
+  let specs = specs_of_rule_file_option nq rule_file in
+  log_instruction verbose instr;
+  let rules =
+    try Unoptimize.applicable_rules ?specs instr nq nc with
+    | Unoptimize.Domain_error (error_class, detail) ->
+        raise (Cli_error (error_class, detail))
+  in
+  let output =
+    if emit_json then json_of_applicable_rules source nq nc rules
+    else text_of_applicable_rules rules
+  in
+  write_result output_file output
+
+let output_message channel message =
+  output_string channel message;
+  if message = "" || message.[String.length message - 1] <> '\n' then
+    output_char channel '\n'
+
+let json_of_error error_class detail =
+  Printf.sprintf
+    "{\n  \"error\": {\n    \"class\": \"%s\",\n    \"message\": \"%s\"\n  }\n}\n"
+    (json_escape error_class) (json_escape detail)
+
+(* Every domain failure prints exactly one stderr line, and, when the caller
+   asked for JSON, the same failure as a structured object on stdout. *)
+let is_valid_utf8 text =
+  let length = String.length text in
+  let byte index = Char.code text.[index] in
+  let continuation index count =
+    index + count < length
+    &&
+    let rec check offset =
+      offset > count
+      || (byte (index + offset) land 0xc0 = 0x80 && check (offset + 1))
+    in
+    check 1
+  in
+  let rec scan index =
+    if index >= length then true
+    else
+      let first = byte index in
+      if first < 0x80 then scan (index + 1)
+      else if first >= 0xc2 && first <= 0xdf && continuation index 1 then
+        scan (index + 2)
+      else if
+        first >= 0xe0 && first <= 0xef
+        && continuation index 2
+        && not (first = 0xe0 && byte (index + 1) < 0xa0)
+        && not (first = 0xed && byte (index + 1) >= 0xa0)
+      then scan (index + 3)
+      else if
+        first >= 0xf0 && first <= 0xf4
+        && continuation index 3
+        && not (first = 0xf0 && byte (index + 1) < 0x90)
+        && not (first = 0xf4 && byte (index + 1) >= 0x90)
+      then scan (index + 4)
+      else false
+  in
+  scan 0
+
+(* A diagnostic has to survive two consumers: it is one line on stderr and a
+   JSON string on stdout.  So it carries no control characters, and it decodes
+   as UTF-8.  Text that is already valid UTF-8 keeps its characters -- a
+   non-ASCII path stays readable -- while text that is not, such as raw bytes
+   echoed out of a binary source, has the offending bytes replaced. *)
+let printable_detail detail =
+  let ascii_only = not (is_valid_utf8 detail) in
+  String.map
+    (fun character ->
+      let code = Char.code character in
+      if code < 0x20 || code = 0x7f then ' '
+      else if code >= 0x80 && ascii_only then '?'
+      else character)
+    detail
+
+(* Report on stderr first: it is the stream that always carries the diagnostic,
+   and the JSON copy goes to the very channel whose failure may be what we are
+   reporting.  Each write is drained here, so a stream that cannot be written
+   loses its copy of the message instead of raising after main has returned. *)
+let report_domain_error emit_json error_class detail =
+  let detail = printable_detail detail in
+  (try
+     output_message stderr (Printf.sprintf "qasminfer: %s: %s" error_class detail);
+     flush stderr
+   with Sys_error _ -> close_out_noerr stderr);
+  if emit_json then (
+    try
+      output_string stdout (json_of_error error_class detail);
+      flush stdout
+    with Sys_error _ -> close_out_noerr stdout);
+  1
+
+let run_command = function
+  | Execute { source; verbose; emit_json; output_file } ->
+      execute source verbose emit_json output_file
+  | Unoptimize
+      {
+        source;
+        destination;
+        step;
+        verbose;
+        rule_file;
+        rule_name;
+        manual;
+        emit;
+        instr_source;
+        seed;
+      } ->
+      let step = Option.value step ~default:1 in
+      unoptimize source destination step verbose rule_file rule_name manual emit
+        instr_source seed
+  | UnoptimizeRules { source; verbose; emit_json; output_file; rule_file } ->
+      unoptimize_rules source verbose emit_json output_file rule_file
+
+(* Draining the buffers is part of the work.  A write that only fails once the
+   buffer reaches the file descriptor -- a closed or full stdout -- would
+   otherwise escape after main has returned, as a Fatal error with the wrong
+   exit code.  On failure the channel is closed without a second flush attempt,
+   so the runtime's own exit-time flush cannot raise again. *)
+let drain_output () =
+  match flush stdout with
+  | () -> ()
+  | exception Sys_error message ->
+      close_out_noerr stdout;
+      cli_error "io" "<stdout>: %s" message
+
+let drain_diagnostics () = try flush stderr with Sys_error _ -> close_out_noerr stderr
+
+let emits_json = function
+  | Execute { emit_json; _ } | UnoptimizeRules { emit_json; _ } -> emit_json
+  | Unoptimize _ -> false
+
+let main argv =
+  let no_arguments = Array.length argv <= 1 in
+  match parse_args argv with
+  | exception Arg.Help message ->
+      output_message stdout message;
+      0
+  | exception Arg.Bad message ->
+      output_message stderr message;
+      (* A bare "qasminfer" keeps its legacy exit status; every other
+         argument-shape error exits 2. *)
+      if no_arguments then 1 else 2
+  | command -> (
+      let emit_json = emits_json command in
+      let fail = report_domain_error emit_json in
+      match
+        run_command command;
+        drain_output ()
+      with
+      | () ->
+          drain_diagnostics ();
+          0
+      | exception Cli_error (error_class, detail) -> fail error_class detail
+      | exception Unoptimize.Domain_error (error_class, detail) ->
+          fail error_class detail
+      | exception Sys_error message -> fail "io" message
+      | exception Failure message -> fail "internal" message
+      | exception Stack_overflow -> fail "internal" "stack overflow"
+      | exception Out_of_memory -> fail "internal" "out of memory"
+      | exception exn -> fail "internal" (Printexc.to_string exn))
+
+let () = exit (main Sys.argv)

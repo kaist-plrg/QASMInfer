@@ -2,56 +2,25 @@ open Ast
 open Desugar
 open Extracted
 
-let rec string_of_program prog =
-  String.concat "\n" (List.map string_of_statement prog)
+let string_of_float_round_trip value =
+  if not (Float.is_finite value) then
+    invalid_arg "OpenQASM 2 cannot represent non-finite floats";
+  let rendered = Printf.sprintf "%.17g" value in
+  if
+    String.contains rendered '.'
+    || String.contains rendered 'e'
+    || String.contains rendered 'E'
+  then rendered
+  else rendered ^ ".0"
 
-and string_of_statement = function
-  | Include filename -> "include \"" ^ filename ^ "\""
-  | Decl decl -> string_of_decl decl
-  | GateDecl (gatedecl, gop_list) -> string_of_gatedecl gatedecl ^ " { " ^ string_of_gop_list gop_list ^ " }"
-  | OpaqueDecl gatedecl -> string_of_gatedecl gatedecl
-  | Qop qop -> string_of_qop qop
-  | If (id, int, qop) -> "if " ^ id ^ " " ^ string_of_int int ^ " " ^ string_of_qop qop
-  | Barrier argument_list -> "barrier " ^ string_of_argument_list argument_list
-
-and string_of_decl = function
-  | QReg (id, int) -> "qreg " ^ id ^ " " ^ string_of_int int
-  | CReg (id, int) -> "creg " ^ id ^ " " ^ string_of_int int
-
-and string_of_gatedecl (id, id_list1, id_list2) =
-  "gate " ^ id ^ " " ^ string_of_id_list id_list1 ^ ", " ^ string_of_id_list id_list2
-
-and string_of_qop = function
-  | Uop uop -> string_of_uop uop
-  | Meas (arg1, arg2) -> "meas " ^ string_of_argument arg1 ^ ", " ^ string_of_argument arg2
-  | Reset arg -> "reset " ^ string_of_argument arg
-
-and string_of_uop = function
-  | CX (arg1, arg2) -> "cx " ^ string_of_argument arg1 ^ ", " ^ string_of_argument arg2
-  | U (exp_list, arg) -> "u (" ^ string_of_exp_list exp_list ^ ") " ^ string_of_argument arg
-  | Gate (id, exp_list, arg_list) -> "gate " ^ id ^ " " ^ string_of_exp_list exp_list ^ ", " ^ string_of_argument_list arg_list
-
-and string_of_argument (id, int_opt) =
-  match int_opt with
-  | Some int -> id ^ "[" ^ string_of_int int ^ "]"
-  | None -> id
-
-and string_of_exp = function
-  | Real f -> string_of_float f
-  | Nninteger i -> string_of_int i
-  | Pi -> "pi"
-  | Id id -> id
-  | BinaryOp (bop, exp1, exp2) -> string_of_binaryop bop ^ " " ^ string_of_exp exp1 ^ ", " ^ string_of_exp exp2
-  | UnaryOp (uop, exp) -> string_of_unaryop uop ^ " " ^ string_of_exp exp
-
-and string_of_binaryop = function
+let string_of_binaryop = function
   | Plus -> "+"
   | Minus -> "-"
   | Times -> "*"
   | Div -> "/"
   | Pow -> "^"
 
-and string_of_unaryop = function
+let string_of_unaryop = function
   | Sin -> "sin"
   | Cos -> "cos"
   | Tan -> "tan"
@@ -60,39 +29,133 @@ and string_of_unaryop = function
   | Sqrt -> "sqrt"
   | UMinus -> "-"
 
-and string_of_exp_list exp_list =
-  String.concat ", " (List.map string_of_exp exp_list)
+let rec string_of_exp = function
+  | Real value -> string_of_float_round_trip value
+  | Nninteger value -> string_of_int value
+  | Pi -> "pi"
+  | Id id -> id
+  | BinaryOp (operator, left, right) ->
+      Printf.sprintf "(%s %s %s)" (string_of_exp left)
+        (string_of_binaryop operator) (string_of_exp right)
+  | UnaryOp (UMinus, expression) -> "-(" ^ string_of_exp expression ^ ")"
+  | UnaryOp (operator, expression) ->
+      Printf.sprintf "%s(%s)" (string_of_unaryop operator)
+        (string_of_exp expression)
 
-and string_of_argument_list arg_list =
-  String.concat ", " (List.map string_of_argument arg_list)
+let string_of_argument (id, index) =
+  match index with
+  | None -> id
+  | Some index -> Printf.sprintf "%s[%d]" id index
 
-and string_of_id_list id_list =
-  String.concat ", " id_list
+let string_of_exp_list expressions =
+  String.concat "," (List.map string_of_exp expressions)
 
-and string_of_gop_list gop_list =
-  String.concat "\n" (List.map string_of_gop gop_list)
+let string_of_argument_list arguments =
+  String.concat "," (List.map string_of_argument arguments)
 
-and string_of_gop = function
+let string_of_id_list ids = String.concat "," ids
+
+let gate_head keyword (id, parameters, arguments) =
+  let parameters =
+    match parameters with
+    | [] -> ""
+    | _ -> "(" ^ string_of_id_list parameters ^ ")"
+  in
+  Printf.sprintf "%s %s%s %s" keyword id parameters
+    (string_of_id_list arguments)
+
+let string_of_uop = function
+  | CX (control, target) ->
+      Printf.sprintf "CX %s,%s;" (string_of_argument control)
+        (string_of_argument target)
+  | U (expressions, argument) ->
+      Printf.sprintf "U(%s) %s;" (string_of_exp_list expressions)
+        (string_of_argument argument)
+  | Gate (id, expressions, arguments) ->
+      let parameters =
+        match expressions with
+        | [] -> ""
+        | _ -> "(" ^ string_of_exp_list expressions ^ ")"
+      in
+      Printf.sprintf "%s%s %s;" id parameters
+        (string_of_argument_list arguments)
+
+let string_of_qop = function
+  | Uop uop -> string_of_uop uop
+  | Meas (qubit, cbit) ->
+      Printf.sprintf "measure %s -> %s;" (string_of_argument qubit)
+        (string_of_argument cbit)
+  | Reset argument -> Printf.sprintf "reset %s;" (string_of_argument argument)
+
+let string_of_gop = function
   | GUop uop -> string_of_uop uop
-  | GBarrier id_list -> "barrier " ^ string_of_id_list id_list
+  | GBarrier ids -> "barrier " ^ string_of_id_list ids ^ ";"
+
+let rec string_of_statement = function
+  | Include filename -> Printf.sprintf "include %S;" filename
+  | Decl (QReg (id, size)) -> Printf.sprintf "qreg %s[%d];" id size
+  | Decl (CReg (id, size)) -> Printf.sprintf "creg %s[%d];" id size
+  | GateDecl (declaration, body) ->
+      let body =
+        body |> List.map (fun operation -> "  " ^ string_of_gop operation)
+        |> String.concat "\n"
+      in
+      if body = "" then gate_head "gate" declaration ^ " {\n}"
+      else gate_head "gate" declaration ^ " {\n" ^ body ^ "\n}"
+  | OpaqueDecl declaration -> gate_head "opaque" declaration ^ ";"
+  | Qop qop -> string_of_qop qop
+  | If (id, value, qop) ->
+      Printf.sprintf "if(%s==%d) %s" id value (string_of_qop qop)
+  | IfBlock (CondReg (id, value), [ Qop qop ]) ->
+      Printf.sprintf "if(%s==%d) %s" id value (string_of_qop qop)
+  | IfBlock _ ->
+      (* OpenQASM 2 has no nestable conditional and no single-bit guard.
+         Sugar.sugar never builds one of these, so this is unreachable from the
+         CLI; Sugar returns a diagnostic instead.  Use Qasm3.Sugar to render a
+         program that needs them. *)
+      invalid_arg
+        "OpenQASM 2 cannot express a nested or single-bit conditional"
+  | Barrier arguments ->
+      "barrier " ^ string_of_argument_list arguments ^ ";"
+
+let string_of_program program =
+  match program with
+  | [] -> "OPENQASM 2.0;\n"
+  | _ ->
+      "OPENQASM 2.0;\n"
+      ^ String.concat "\n" (List.map string_of_statement program)
+      ^ "\n"
 
   (****************************)
 (* OpenQASMCore stringifier *)
 (****************************)
 
+let string_of_angle = function
+  | PiAngle q when Big_int_Z.eq_big_int q.qden Big_int_Z.unit_big_int ->
+      Printf.sprintf "%s π" (Big_int_Z.string_of_big_int q.qnum)
+  | PiAngle q ->
+      Printf.sprintf "%s/%s π" (Big_int_Z.string_of_big_int q.qnum)
+        (Big_int_Z.string_of_big_int q.qden)
+  | RealAngle value -> RbaseSymbolsImpl.coq_Rrepr value |> Printf.sprintf "%f"
+
 let rec string_of_instruction = function
   | NopInstr -> "NopInstr"
   | RotateInstr (x, y, z, i) ->
-      Printf.sprintf "RotateInstr (%f, %f, %f, %d)"
-        (RbaseSymbolsImpl.coq_Rrepr x)
-        (RbaseSymbolsImpl.coq_Rrepr y)
-        (RbaseSymbolsImpl.coq_Rrepr z)
+      Printf.sprintf "RotateInstr (%s, %s, %s, %d)"
+        (string_of_angle x)
+        (string_of_angle y)
+        (string_of_angle z)
         i
   | CnotInstr (i, j) -> Printf.sprintf "CnotInstr (%d, %d)" i j
   | SwapInstr (i, j) -> Printf.sprintf "SwapInstr (%d, %d)" i j
   | MeasureInstr (i, j) -> Printf.sprintf "MeasureInstr (%d, %d)" i j
-  | SeqInstr (instr1, instr2) ->
-      string_of_instruction instr1 ^ "\n" ^ string_of_instruction instr2
+  | SeqInstr instrs ->
+      let contents =
+        instrs
+        |> List.map string_of_instruction
+        |> String.concat ";\n"
+      in
+      Printf.sprintf "[\n%s\n]" contents
   | IfInstr (i, b, instr) ->
       Printf.sprintf "IfInstr (%d, %b, \n%s)" i b (string_of_instruction instr)
   | ResetInstr i -> Printf.sprintf "ResetInstr %d" i
@@ -104,15 +167,16 @@ let rec string_of_instruction = function
 let rec string_of_qc_ir = function
   | NopIr -> "NopIr"
   | RotateIr (x, y, z, i) ->
-      Printf.sprintf "RotateIr (%f, %f, %f, %d)"
-        (RbaseSymbolsImpl.coq_Rrepr x)
-        (RbaseSymbolsImpl.coq_Rrepr y)
-        (RbaseSymbolsImpl.coq_Rrepr z)
+      Printf.sprintf "RotateIr (%s, %s, %s, %d)"
+        (string_of_angle x)
+        (string_of_angle y)
+        (string_of_angle z)
         i
   | CnotIr (i, j) -> Printf.sprintf "CnotIr (%d, %d)" i j
+  | SwapIr (i, j) -> Printf.sprintf "SwapIr (%d, %d)" i j
   | MeasureIr (i, j) -> Printf.sprintf "MeasureIr (%d, %d)" i j
   | ResetIr i -> Printf.sprintf "ResetIr %d" i
-  | SeqIr (ir1, ir2) -> string_of_qc_ir ir1 ^ "\n" ^ string_of_qc_ir ir2
+  | SeqIr irs -> String.concat "\n" (List.map string_of_qc_ir irs)
   | IfIr (i, b, ir) ->
       Printf.sprintf "IfIr (%d, %b, \n%s)" i b (string_of_qc_ir ir)
 
@@ -153,6 +217,9 @@ let string_of_uop_dp = function
   | CX_dp (a1, a2) ->
       Printf.sprintf "CX_dp (%s, %s)" (string_of_argument_dp a1)
         (string_of_argument_dp a2)
+  | Swap_dp (a1, a2) ->
+      Printf.sprintf "Swap_dp (%s, %s)" (string_of_argument_dp a1)
+        (string_of_argument_dp a2)
   | U_dp (exps, a) ->
       Printf.sprintf "U_dp (%s, %s)"
         (String.concat ", " (List.map string_of_exp exps))
@@ -169,12 +236,19 @@ let string_of_qop_dp = function
         (string_of_argument_dp a2)
   | Reset_dp a -> Printf.sprintf "Reset_dp (%s)" (string_of_argument_dp a)
 
-let string_of_statement_dp = function
+let string_of_cond = function
+  | CondReg (id, value) -> Printf.sprintf "CondReg (%s, %d)" id value
+  | CondBit (id, index, value) ->
+      Printf.sprintf "CondBit (%s, %d, %b)" id index value
+
+let rec string_of_statement_dp = function
   | Qop_dp q -> Printf.sprintf "Qop_dp (%s)" (string_of_qop_dp q)
   | IfList_dp (id, i, qlist) ->
       Printf.sprintf "IfList_dp (%s, %d, [%s])" id i
         (String.concat ", " (List.map string_of_qop_dp qlist))
+  | IfBlock_dp (cond, body) ->
+      Printf.sprintf "IfBlock_dp (%s, [%s])" (string_of_cond cond)
+        (String.concat ", " (List.map string_of_statement_dp body))
 
 let string_of_program_dp prog =
   String.concat "\n" (List.map string_of_statement_dp prog)
-

@@ -1,0 +1,6 @@
+(test
+ (name unoptimize_unit)
+ (libraries extracted qasm2 qasm3))
+
+(cram
+ (deps %{bin:qasminfer}))

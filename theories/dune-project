@@ -1,0 +1,4 @@
+(lang dune 3.23)
+(name qasminfer_proofs)
+
+(using rocq 0.13)
