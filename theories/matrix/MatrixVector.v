@@ -420,7 +420,6 @@ Proof.
 Qed.
 
 Ltac mat_simpl := repeat (
-  simpl ||
   rewrite mat_add_0_l ||
   rewrite mat_add_0_r ||
   rewrite mat_add_inv ||
@@ -449,6 +448,7 @@ Ltac mat_simpl := repeat (
   rewrite com_conj_involutive ||
   rewrite eye_vec_mul ||
   rewrite vec_eye_mul ||
+  simpl ||
   auto
 ).
 

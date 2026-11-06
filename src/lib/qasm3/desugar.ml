@@ -5,34 +5,24 @@ module Ast2 = Qasm2.Ast
 (* 1. Desugar physical qubits *)
 (******************************)
 
-let rec extract_physical_idx prog =
-  match prog with
+let physical_idx_of_arg = function
+  | "$", Some idx -> Some idx
+  | _ -> None
+
+let extract_physical_idx_qop = function
+  | Uop (CX (control, target)) ->
+      List.filter_map physical_idx_of_arg [ control; target ]
+  | Uop (U (_, arg)) -> List.filter_map physical_idx_of_arg [ arg ]
+  | Uop (Gate (_, _, args)) -> List.filter_map physical_idx_of_arg args
+  | Meas (qubit, _) | Reset qubit ->
+      List.filter_map physical_idx_of_arg [ qubit ]
+
+let rec extract_physical_idx = function
   | [] -> []
-  | stmt :: rest -> (
-      match stmt with
-      | Qop (Uop (CX ((name1, Some idx1), (name2, Some idx2)))) ->
-          if name1 = "$" && name2 = "$" then
-            [ idx1; idx2 ] @ extract_physical_idx rest
-          else if name1 = "$" then idx1 :: extract_physical_idx rest
-          else if name2 = "$" then idx2 :: extract_physical_idx rest
-          else extract_physical_idx rest
-      | Qop (Uop (U (_, (name, Some idx)))) ->
-          if name = "$" then idx :: extract_physical_idx rest
-          else extract_physical_idx rest
-      | Qop (Uop (Gate (_, _, args))) ->
-          let physical_indices =
-            List.fold_left
-              (fun acc (arg_name, opt_idx) ->
-                if arg_name = "$" then
-                  match opt_idx with Some idx -> idx :: acc | None -> acc
-                else acc)
-              [] args
-          in
-          physical_indices @ extract_physical_idx rest
-      | Qop (Meas ((name, Some idx), _)) | Qop (Reset (name, Some idx)) ->
-          if name = "$" then idx :: extract_physical_idx rest
-          else extract_physical_idx rest
-      | _ -> extract_physical_idx rest)
+  | Qop qop :: rest ->
+      extract_physical_idx_qop qop @ extract_physical_idx rest
+  | If (_, body) :: rest -> extract_physical_idx body @ extract_physical_idx rest
+  | _ :: rest -> extract_physical_idx rest
 
 let desugar_physical_qubits prog =
   let physical_indices = extract_physical_idx prog in
@@ -97,15 +87,22 @@ let desugar3_decl = function
   | QReg (id, i) -> Ast2.QReg (id, i)
   | CReg (id, i) -> Ast2.CReg (id, i)
 
-let desugar3_statement = function
+let desugar3_cond = function
+  | CondReg (id, value) -> Ast2.CondReg (id, value)
+  | CondBit (id, index, value) -> Ast2.CondBit (id, index, value)
+
+let rec desugar3_statement = function
   | Include dep -> [ Ast2.Include dep ]
   | Decl decl -> [ Ast2.Decl (desugar3_decl decl) ]
   | GateDecl (gdecl, gop_list) ->
       [ Ast2.GateDecl (gdecl, List.map desugar3_gop gop_list) ]
   | OpaqueDecl gdecl -> [ Ast2.OpaqueDecl gdecl ]
   | Qop qop -> [ Ast2.Qop (desugar3_qop qop) ]
-  | If (id, i, qops) ->
-      List.map (fun qop -> Ast2.If (id, i, desugar3_qop qop)) qops
+  | If (cond, body) ->
+      (* A conditional guards its whole body.  Splitting it into one guard per
+         statement would change the meaning whenever the body writes to the
+         register it is guarded on. *)
+      [ Ast2.IfBlock (desugar3_cond cond, List.concat_map desugar3_statement body) ]
   | Barrier args -> [ Ast2.Barrier args ]
 
 let desugar3_program prog =

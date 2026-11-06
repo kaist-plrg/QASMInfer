@@ -9,10 +9,16 @@ Set Extraction Output Directory ".".
 Separate Extraction parity. *)
 
 Require Import Extraction.
+From Stdlib Require Import ExtrOcamlNativeString.
 From Stdlib Require Import ZArith Reals.
-From Stdlib Require ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZInt ExtrOcamlIntConv.
-Require Import QASMInfer.program.Program.
-Require Import QASMInfer.matrix.Complex.
+From Stdlib Require ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZBigInt ExtrOcamlIntConv.
+Require Import QASMInfer.program.All.
+Require Import QASMInfer.matrix.All.
+Require Import QASMInfer.transform.All.
+Require Import QASMInfer.rewrite.All.
+Require Import QASMInfer.domega.DOmega.
+Require Import QASMInfer.domega.DOmegaMatrix.
+Require Import QASMInfer.domega.StandardValid.
 
 Set Extraction Output Directory ".".
 Extraction Language OCaml.
@@ -26,14 +32,12 @@ Extract Inlined Constant Nat.div => "(/)".
 Extract Inlined Constant Nat.modulo => "(mod)".
 (* Extract Inlined Constant pow_2 => "(fun n -> Int.shift_left 1 n)". *)
 
-Extract Constant Pos.succ => "Stdlib.succ".
-
 Extract Inlined Constant Reals.ClassicalDedekindReals.DReal => "float".
 Extract Inductive Reals.Cauchy.ConstructiveCauchyReals.CReal => "float"
-  [ "(fun seq scale => seq scale)" ]
-  "(fun f creal -> f (creal.seq) (creal.scale))".
+  [ "(fun (seq, scale) -> seq scale)" ]
+  "(fun f _ -> f (fun _ -> assert false) 0)".
 
-Extract Inlined Constant IZR => "float_of_int".
+Extract Inlined Constant IZR => "Big_int_Z.float_of_big_int".
 
 Extract Constant RbaseSymbolsImpl.R => "float".
 Extract Constant RbaseSymbolsImpl.R0 => "0.0".
@@ -52,7 +56,6 @@ Extract Constant total_order_T =>
   else if (y < x) then None else (Some false))".
 Extract Constant Rlt_dec => "(fun x y -> x < y)".
 Extract Constant Rgt_dec => "(fun x y -> x > y)".
-
 Extract Constant RTC => "fun x -> {re=x; im=0.0}".
 Extract Constant RTIm => "fun y -> {re=0.0; im=y}".
 Extract Constant NTC => "fun n -> {re=float_of_int n; im=0.0}".
@@ -65,6 +68,7 @@ Extract Inlined Constant Rpower => "(fun x y -> x ** y)".
 Extract Inlined Constant ln => "Stdlib.log".
 Extract Inlined Constant R_sqrt.sqrt => "Stdlib.sqrt".
 Extract Inlined Constant PI => "(4. *. Stdlib.atan 1.)".
+Extract Inlined Constant PI2 => "(2. *. Stdlib.atan 1.)".
 
 Extract Inlined Constant Complex => "Complex.t".
 Extract Inlined Constant com_make => "(fun re im -> {re=re; im=im})".
@@ -79,7 +83,18 @@ Extract Inlined Constant com_inv => "Complex.inv".
 
 (* Extract Inlined Constant ocaml_max_int => "Int.max_int". *)
 
-Extraction "extracted.ml" Execute_and_calculate_prob.
+Extraction "extracted.ml"
+  Execute_and_calculate_prob
+  flatten_core
+  Angle_eqb_mod_2
+  Instruction_qbits_validb
+  TransformSpec_count
+  TransformSpec_apply
+  TransformSpec_simple_rule
+  StandardPatternGate
+  standard_rule_nqubits
+  standard_rule_of_sequences
+  Transform_spec_list.
 
 (* Extraction "quantum_core.ml" Execute_and_calculate_prob. *)
 (* Extraction "./desugar.ml" desugar. *)

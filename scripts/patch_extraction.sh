@@ -1,24 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -ne 2 ]; then
-  echo "usage: patch_extraction.sh <header-file> <generated-file>" >&2
-  exit 1
-fi
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "$script_dir/.." && pwd)"
+source_commit="$("$repo_root/theories/extraction/source_commit.sh")"
+rocq_version="$(rocq --print-version | awk 'NR == 1 { print $1 }')"
+extraction_command="$(
+  "$repo_root/theories/extraction/run_extraction.sh" --print-command
+)"
 
-header="$1"
-target="$2"
-
-if [ ! -f "$header" ]; then
-  echo "missing header $header" >&2
-  exit 1
-fi
-
-if [ ! -f "$target" ]; then
-  echo "missing generated file $target" >&2
-  exit 1
-fi
-
-tmp="$(mktemp "${TMPDIR:-/tmp}/extracted.XXXXXX")"
-cat "$header" "$target" > "$tmp"
-mv "$tmp" "$target"
+QASMINFER_SOURCE_COMMIT="$source_commit" \
+QASMINFER_ROCQ_VERSION="$rocq_version" \
+QASMINFER_EXTRACTION_COMMAND="$extraction_command" \
+QASMINFER_DUNE_PROJECT="$repo_root/theories/dune-project" \
+  exec "$repo_root/theories/extraction/patch_extraction.sh" "$@"
